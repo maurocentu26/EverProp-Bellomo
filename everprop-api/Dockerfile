@@ -42,3 +42,6 @@ FROM runtime AS production
 COPY --chown=everprop:everprop . /var/www/html
 RUN APP_ENV=build composer install --no-dev --classmap-authoritative --no-interaction --no-progress \
     && APP_ENV=build php artisan package:discover --ansi
+
+EXPOSE 8080
+CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
