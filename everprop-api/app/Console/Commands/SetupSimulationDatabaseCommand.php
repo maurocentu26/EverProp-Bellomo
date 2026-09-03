@@ -50,7 +50,23 @@ class SetupSimulationDatabaseCommand extends Command
             $this->warn('   Notice on baseline: ' . $e->getMessage());
         }
 
-        $this->info('2. Seeding simulation data (users, properties, leads, visits)...');
+        $forwardDir = database_path('schema/forward');
+        if (is_dir($forwardDir)) {
+            $this->info('2. Executing forward schema migrations (password_hash & interop)...');
+            $files = glob($forwardDir . '/*.sql');
+            sort($files);
+            foreach ($files as $migrationFile) {
+                $filename = basename($migrationFile);
+                try {
+                    DB::unprepared(file_get_contents($migrationFile));
+                    $this->info("   ✓ Migration {$filename} applied.");
+                } catch (\Throwable $e) {
+                    $this->warn("   Notice on {$filename}: " . $e->getMessage());
+                }
+            }
+        }
+
+        $this->info('3. Seeding simulation data (users, properties, leads, visits)...');
         $seedSql = file_get_contents($seedPath);
         DB::unprepared($seedSql);
         $this->info('   ✓ Simulation data seeded successfully.');
