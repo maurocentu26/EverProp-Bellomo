@@ -13,18 +13,9 @@ const TENANT =
 
 export function resolveApiUrl(): string {
   if (typeof window !== "undefined") {
-    try {
-      const url = new URL(CONFIGURED_API_URL);
-      if (
-        (window.location.hostname === "localhost" && url.hostname === "127.0.0.1") ||
-        (window.location.hostname === "127.0.0.1" && url.hostname === "localhost")
-      ) {
-        url.hostname = window.location.hostname;
-        return url.origin;
-      }
-    } catch {
-      // ignore
-    }
+    // In the browser, return window.location.origin so requests go through Next.js rewrites.
+    // This makes cookies first-party, resolving CSRF mismatch and cross-domain cookie blocking.
+    return window.location.origin;
   }
   return CONFIGURED_API_URL;
 }

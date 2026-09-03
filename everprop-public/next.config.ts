@@ -1,11 +1,23 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  
-};
+const backendUrl =
+  process.env.NEXT_PUBLIC_EVERPROP_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://everprop-bellomo-production.up.railway.app";
 
-module.exports = {
-    allowedDevOrigins: ["192.168.1.13"]
-}
+const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+      {
+        source: "/sanctum/:path*",
+        destination: `${backendUrl}/sanctum/:path*`,
+      },
+    ];
+  },
+};
 
 export default nextConfig;
