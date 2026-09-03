@@ -79,6 +79,36 @@ class SetupSimulationDatabaseCommand extends Command
             $this->info('   ✓ Baseline schema created successfully.');
         }
 
+        $this->info('   ✓ Creating cache and sessions tables...');
+        DB::unprepared("
+            CREATE TABLE IF NOT EXISTS `cache` (
+                `key` VARCHAR(255) NOT NULL,
+                `value` MEDIUMTEXT NOT NULL,
+                `expiration` INT NOT NULL,
+                PRIMARY KEY (`key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS `cache_locks` (
+                `key` VARCHAR(255) NOT NULL,
+                `owner` VARCHAR(255) NOT NULL,
+                `expiration` INT NOT NULL,
+                PRIMARY KEY (`key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS `sessions` (
+                `id` VARCHAR(255) NOT NULL,
+                `user_id` BIGINT UNSIGNED NULL,
+                `ip_address` VARCHAR(45) NULL,
+                `user_agent` TEXT NULL,
+                `payload` LONGTEXT NOT NULL,
+                `last_activity` INT NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `sessions_user_id_index` (`user_id`),
+                KEY `sessions_last_activity_index` (`last_activity`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+        $this->info('   ✓ Cache and sessions tables created successfully.');
+
         $forwardDir = database_path('schema/forward');
         if (is_dir($forwardDir)) {
             $this->info('2. Executing forward schema migrations (password_hash & interop)...');
