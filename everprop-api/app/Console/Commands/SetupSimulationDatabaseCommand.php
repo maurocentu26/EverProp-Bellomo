@@ -43,11 +43,40 @@ class SetupSimulationDatabaseCommand extends Command
 
         $this->info('1. Executing baseline schema (creating tables)...');
         $baselineSql = file_get_contents($baselinePath);
-        try {
+
+        // Remove CREATE DATABASE and USE statements so all tables are created in the current database
+        $baselineSql = preg_replace('/CREATE\s+DATABASE\s+IF\s+NOT\s+EXISTS\s+[^\;]+;/i', '', $baselineSql);
+        $baselineSql = preg_replace('/USE\s+[^\;]+;/i', '', $baselineSql);
+
+        // Split DELIMITER blocks so PDO can execute stored procedures and tables separately
+        if (preg_match('/DELIMITER\s+\$\$(.*?)(DELIMITER\s+;)/s', $baselineSql, $matches)) {
+            $parts = preg_split('/DELIMITER\s+\$\$.*?DELIMITER\s+;/s', $baselineSql);
+            $part1 = $parts[0];
+            $procsRaw = $matches[1];
+            $part2 = $parts[1] ?? '';
+
+            // Execute Part 1 (Initial tables and structures)
+            DB::unprepared($part1);
+            $this->info('   ✓ Baseline Part 1 (CRM & core tables) created.');
+
+            // Execute Stored Procedures individually
+            $procStatements = preg_split('/\$\$/', $procsRaw);
+            foreach ($procStatements as $stmt) {
+                $trimmed = trim($stmt);
+                if (! empty($trimmed)) {
+                    DB::unprepared($trimmed);
+                }
+            }
+            $this->info('   ✓ Stored procedures created.');
+
+            // Execute Part 2 (Projects, Properties, Units, Inventory)
+            if (! empty(trim($part2))) {
+                DB::unprepared($part2);
+                $this->info('   ✓ Baseline Part 2 (Properties & Real Estate inventory) created.');
+            }
+        } else {
             DB::unprepared($baselineSql);
             $this->info('   ✓ Baseline schema created successfully.');
-        } catch (\Throwable $e) {
-            $this->warn('   Notice on baseline: ' . $e->getMessage());
         }
 
         $forwardDir = database_path('schema/forward');
