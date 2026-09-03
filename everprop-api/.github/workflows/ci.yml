@@ -1,0 +1,176 @@
+name: API quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure isolated CI resources
+        shell: pwsh
+        run: |
+          $slug = "everprop-api-ci-${{ github.run_id }}-${{ github.run_attempt }}"
+          $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+          try {
+              $listener.Start()
+              $httpPort = ([System.Net.IPEndPoint] $listener.LocalEndpoint).Port
+          }
+          finally {
+              $listener.Stop()
+          }
+
+          "COMPOSE_PROJECT_NAME=$slug" >> $env:GITHUB_ENV
+          "EVERPROP_RESOURCE_PREFIX=$slug" >> $env:GITHUB_ENV
+          "EVERPROP_PHP_IMAGE=${slug}-php:local" >> $env:GITHUB_ENV
+          "CI_PRODUCTION_IMAGE=${slug}-php:production" >> $env:GITHUB_ENV
+          "HTTP_PORT=$httpPort" >> $env:GITHUB_ENV
+
+      - name: Generate isolated CI secrets
+        shell: pwsh
+        run: |
+          ./scripts/bootstrap-local.ps1 `
+              -ProjectName $env:COMPOSE_PROJECT_NAME `
+              -ResourcePrefix $env:EVERPROP_RESOURCE_PREFIX `
+              -PhpImage $env:EVERPROP_PHP_IMAGE `
+              -HttpPort ([int] $env:HTTP_PORT)
+
+          if ($IsLinux) {
+              chmod 0700 -- .docker/secrets
+              Get-ChildItem -File -LiteralPath .docker/secrets | ForEach-Object {
+                  chmod 0444 -- $_.FullName
+              }
+              chmod 0444 -- .env .env.testing
+          }
+
+      - name: Build the isolated development image
+        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" build everprop-api-php
+
+      - name: Install clean-clone dependencies with PHP 8.4
+        run: |
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" run --rm --no-deps --user "$(id -u):$(id -g)" \
+            -e COMPOSER_HOME=/tmp/composer \
+            -e GIT_CONFIG_COUNT=1 \
+            -e GIT_CONFIG_KEY_0=safe.directory \
+            -e GIT_CONFIG_VALUE_0=/var/www/html \
+            everprop-api-php composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Prepare Laravel writable volumes and package discovery
+        run: |
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" run --rm --no-deps everprop-api-init
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" run --rm --no-deps everprop-api-php php artisan package:discover --ansi
+
+      - name: Start the isolated stack and wait for healthchecks
+        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" up -d --no-build --wait --wait-timeout 240
+
+      - name: Import and verify the immutable schema
+        shell: pwsh
+        run: |
+          ./scripts/import-schema.ps1 `
+              -ProjectName $env:COMPOSE_PROJECT_NAME `
+              -ResourcePrefix $env:EVERPROP_RESOURCE_PREFIX `
+              -PhpImage $env:EVERPROP_PHP_IMAGE `
+              -HttpPort ([int] $env:HTTP_PORT)
+
+      - name: Create isolated HTTP smoke tenant
+        run: |
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php php -r '
+            require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            App\Domain\Tenancy\Models\Tenant::query()->updateOrCreate(
+              ["slug" => "ci-smoke"],
+              [
+                "public_id" => "00000000-0000-4000-8000-000000000001",
+                "name" => "CI Smoke Tenant",
+                "timezone" => "UTC",
+                "status" => "ACTIVE",
+                "settings_json" => null,
+              ],
+            );
+          '
+
+      - name: Validate dependencies and code
+        run: |
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T -e COMPOSER_HOME=/tmp/composer -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/var/www/html everprop-api-php composer validate --strict
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T -e COMPOSER_HOME=/tmp/composer -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/var/www/html everprop-api-php composer audit --locked --no-interaction
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" run --rm --no-deps --user "$(id -u):$(id -g)" everprop-api-php vendor/bin/pint --test
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php vendor/bin/phpstan analyse --no-progress
+
+      - name: Validate OpenAPI and routes
+        run: |
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php php -r '$d=json_decode(file_get_contents("openapi.yaml"), true, 512, JSON_THROW_ON_ERROR); exit(isset($d["openapi"], $d["paths"], $d["components"]) ? 0 : 1);'
+          docker run --rm --volume "$PWD:/spec:ro" redocly/cli@sha256:ef8c65712e65c50ce0eadc44fd507c8acfb1df36a382ecae7cdc652060036010 lint /spec/openapi.yaml
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php php artisan route:list --except-vendor
+
+      - name: Run MySQL and Redis backed tests
+        run: docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php php artisan test --no-coverage
+
+      - name: Build production image
+        run: docker build --target production -t "$CI_PRODUCTION_IMAGE" .
+
+      - name: Inspect production image
+        run: docker run --rm --entrypoint sh "$CI_PRODUCTION_IMAGE" -lc 'test ! -e /var/www/html/.env && test ! -d /var/www/html/vendor/phpunit && test -f /var/www/html/composer.lock'
+
+      - name: HTTP health evidence
+        run: |
+          base_url="http://127.0.0.1:${HTTP_PORT}"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/healthz")" = 200
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "$base_url/readyz")" = 200
+          tenant_header='X-EverProp-Tenant: ci-smoke'
+          accept_header='Accept: application/json'
+          test "$(curl --silent --header "$accept_header" --header "$tenant_header" --output /dev/null --write-out '%{http_code}' "$base_url/api/v1/auth/me")" = 401
+          test "$(curl --silent --header "$accept_header" --header "$tenant_header" --output /dev/null --write-out '%{http_code}' "$base_url/api/v1/public/projects")" = 200
+          test "$(curl --silent --header "$accept_header" --header "$tenant_header" --output /dev/null --write-out '%{http_code}' "$base_url/api/v1/public/properties")" = 200
+
+      - name: Container diagnostics on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          docker compose --project-name $env:COMPOSE_PROJECT_NAME ps
+
+          $containerIds = docker compose --project-name $env:COMPOSE_PROJECT_NAME ps --all --quiet
+          foreach ($containerId in $containerIds) {
+              docker inspect --format '{{.Name}} state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' $containerId
+          }
+
+          $logs = docker compose --project-name $env:COMPOSE_PROJECT_NAME logs --no-color --tail=100 2>&1
+          $logs = $logs -replace '(?i)(MYSQL_PWD|REDISCLI_AUTH)=\S+', '$1=[REDACTED]'
+          $logs = $logs -replace '(?i)(password|token|secret|authorization)(\s*[:=]\s*)\S+', '$1$2[REDACTED]'
+          $logs
+
+      - name: Stop isolated stack
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:COMPOSE_PROJECT_NAME -notmatch '^everprop-api-ci-[0-9]+-[0-9]+$') {
+              Write-Host 'No isolated CI project was configured; cleanup is not required.'
+              exit 0
+          }
+
+          docker compose --project-name $env:COMPOSE_PROJECT_NAME down --volumes --remove-orphans
+          if ($LASTEXITCODE -ne 0) {
+              throw 'The isolated Compose project could not be removed.'
+          }
+
+          foreach ($image in @($env:CI_PRODUCTION_IMAGE, $env:EVERPROP_PHP_IMAGE)) {
+              $imageExists = docker image ls --format '{{.Repository}}:{{.Tag}}' | Where-Object { $_ -eq $image }
+              if ($image -and $imageExists) {
+                  docker image rm $image | Out-Null
+                  if ($LASTEXITCODE -ne 0) {
+                      throw "The isolated image $image could not be removed."
+                  }
+              }
+          }
+
+          Remove-Item -LiteralPath .env, .env.testing -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath .docker/secrets -Recurse -Force -ErrorAction SilentlyContinue

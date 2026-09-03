@@ -1,0 +1,3127 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "EverProp / Bellomo API",
+        "version": "1.0.0",
+        "description": "Canonical tenant-aware API. Production tenancy is resolved from the configured hostname; X-Everprop-Tenant is available only in local/testing.",
+        "license": {
+            "name": "Proprietary",
+            "identifier": "LicenseRef-Proprietary"
+        }
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:18080",
+            "description": "Local Docker"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Health",
+            "description": "Liveness and dependency readiness."
+        },
+        {
+            "name": "Auth",
+            "description": "Sanctum SPA session lifecycle."
+        },
+        {
+            "name": "Public inventory",
+            "description": "Publicly visible tenant catalog."
+        },
+        {
+            "name": "Admin inventory",
+            "description": "Authenticated tenant-scoped inventory management."
+        },
+        {
+            "name": "CRM",
+            "description": "Public lead intake and idempotency."
+        },
+        {
+            "name": "Webhooks",
+            "description": "Signed durable integration deliveries."
+        }
+    ],
+    "security": [],
+    "paths": {
+        "/healthz": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "operationId": "health",
+                "summary": "Check process liveness",
+                "responses": {
+                    "200": {
+                        "description": "Process is alive",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Health"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    }
+                }
+            }
+        },
+        "/readyz": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "operationId": "readiness",
+                "summary": "Check MySQL and Redis readiness",
+                "responses": {
+                    "200": {
+                        "description": "MySQL and Redis are ready",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Readiness"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Unavailable"
+                    }
+                }
+            }
+        },
+        "/sanctum/csrf-cookie": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "operationId": "csrfCookie",
+                "summary": "Issue the SPA CSRF cookie",
+                "description": "Sets the encrypted session and XSRF-TOKEN cookies. Browser clients send credentials and later echo the decoded XSRF-TOKEN as X-XSRF-TOKEN.",
+                "responses": {
+                    "204": {
+                        "description": "CSRF cookie set"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "operationId": "login",
+                "summary": "Create a tenant-bound SPA session",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            },
+                            "example": {
+                                "email": "admin@example.test",
+                                "password": "replace-me"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Authenticated session",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/CsrfMismatch"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/me": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "operationId": "currentUser",
+                "summary": "Get the authenticated user",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Current user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "operationId": "logout",
+                "summary": "Invalidate the current SPA session",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Session invalidated"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/CsrfMismatch"
+                    }
+                }
+            }
+        },
+        "/api/v1/public/projects": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Public inventory"
+                ],
+                "operationId": "listPublicProjects",
+                "summary": "List public projects",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "name": "project_type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "LAND_DEVELOPMENT",
+                                "BUILDING",
+                                "COMMERCIAL"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 160
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 120
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "name",
+                                "status",
+                                "progress",
+                                "total_units",
+                                "created_at",
+                                "updated_at"
+                            ]
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/Direction"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Public project page",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectPage"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/public/projects/{project}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/ProjectPublicId"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Public inventory"
+                ],
+                "operationId": "getPublicProject",
+                "summary": "Get a public project",
+                "responses": {
+                    "200": {
+                        "description": "Public project",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/public/properties": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Public inventory"
+                ],
+                "operationId": "listPublicProperties",
+                "summary": "List public properties",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "name": "operation",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "SALE",
+                                "RENT",
+                                "TEMPORARY"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "LOT",
+                                "GARAGE",
+                                "LOCAL",
+                                "TRADITIONAL",
+                                "APARTMENT",
+                                "HOUSE"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "project",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "neighborhood",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "bedrooms_min",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "bedrooms_max",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "price_min",
+                        "in": "query",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "price_max",
+                        "in": "query",
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 120
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "title",
+                                "status",
+                                "price",
+                                "area_m2",
+                                "bedrooms",
+                                "created_at",
+                                "updated_at"
+                            ]
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/Direction"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Public property page",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyPage"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/public/properties/{property}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/PropertyPublicId"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Public inventory"
+                ],
+                "operationId": "getPublicProperty",
+                "summary": "Get a public property",
+                "responses": {
+                    "200": {
+                        "description": "Public property",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/public/leads": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "post": {
+                "tags": [
+                    "CRM"
+                ],
+                "operationId": "createPublicLead",
+                "summary": "Submit an idempotent public lead",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    },
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PublicLeadRequest"
+                            },
+                            "example": {
+                                "contact": {
+                                    "display_name": "Ana Pérez",
+                                    "email": "ana@example.test",
+                                    "locale": "es-AR"
+                                },
+                                "identity": {
+                                    "channel_type": "EMAIL",
+                                    "provider_user_id": "ana@example.test"
+                                },
+                                "consent": {
+                                    "purpose_code": "COMMERCIAL_CONTACT",
+                                    "status": "GRANTED",
+                                    "legal_text_version": "2026-08"
+                                },
+                                "lead": {
+                                    "source_channel": "WEB_FORM",
+                                    "source_kind": "PROPERTY_INQUIRY",
+                                    "priority": "NORMAL"
+                                },
+                                "property_public_id": "b1100000-0000-4000-8000-000000001001",
+                                "touchpoint": {
+                                    "type": "WEB_FORM",
+                                    "summary": "Consulta desde la ficha"
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "$ref": "#/components/responses/LeadAccepted"
+                    },
+                    "200": {
+                        "$ref": "#/components/responses/LeadAccepted"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/CsrfMismatch"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                }
+            }
+        },
+        "/api/v1/webhooks/{integrationPublicId}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "name": "integrationPublicId",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "operationId": "receiveWebhook",
+                "summary": "Accept a signed webhook delivery",
+                "parameters": [
+                    {
+                        "name": "X-Everprop-Timestamp",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9]{10}$"
+                        }
+                    },
+                    {
+                        "name": "X-Everprop-Signature",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^sha256=[a-fA-F0-9]{64}$"
+                        }
+                    },
+                    {
+                        "name": "X-Webhook-Idempotency-Key",
+                        "in": "header",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 191
+                        }
+                    },
+                    {
+                        "name": "X-Request-Id",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 191
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true
+                            },
+                            "example": {
+                                "event_id": "provider-event-1",
+                                "event_type": "CONTACT_UPDATED",
+                                "object": "contact",
+                                "object_id": "provider-contact-1"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "$ref": "#/components/responses/WebhookAccepted"
+                    },
+                    "200": {
+                        "$ref": "#/components/responses/WebhookAccepted"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Unavailable"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/projects": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "listAdminProjects",
+                "summary": "List projects in the user inventory scope",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/ProjectStatus"
+                        }
+                    },
+                    {
+                        "name": "project_type",
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/ProjectType"
+                        }
+                    },
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "name",
+                                "status",
+                                "progress",
+                                "total_units",
+                                "created_at",
+                                "updated_at"
+                            ]
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/Direction"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Scoped project page",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectPage"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "createProject",
+                "summary": "Create a tenant project",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProjectWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Project created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/projects/{project}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/ProjectPublicId"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "getAdminProject",
+                "summary": "Get a tenant project",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "updateProject",
+                "summary": "Update a tenant project",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProjectWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Project updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "deleteProject",
+                "summary": "Delete an empty tenant project",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Project deleted"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/projects/{project}/publish": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/ProjectPublicId"
+                }
+            ],
+            "patch": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "publishProject",
+                "summary": "Change project publication status",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "$ref": "#/components/schemas/ProjectStatus"
+                                    }
+                                },
+                                "additionalProperties": false
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Publication status updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "listAdminProperties",
+                "summary": "List properties in the user inventory scope",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/PropertyStatus"
+                        }
+                    },
+                    {
+                        "name": "operation",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "SALE",
+                                "RENT",
+                                "TEMPORARY"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/PropertyCategory"
+                        }
+                    },
+                    {
+                        "name": "project_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "title",
+                                "status",
+                                "price",
+                                "area_m2",
+                                "bedrooms",
+                                "created_at",
+                                "updated_at"
+                            ]
+                        }
+                    },
+                    {
+                        "$ref": "#/components/parameters/Direction"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Scoped property page",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyPage"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "createProperty",
+                "summary": "Create a tenant property",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Property created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties/{property}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/PropertyPublicId"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "getAdminProperty",
+                "summary": "Get a tenant property",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Property",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "updateProperty",
+                "summary": "Update a property with optimistic locking",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/PropertyWrite"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "version"
+                                        ],
+                                        "properties": {
+                                            "version": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Property updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "deleteProperty",
+                "summary": "Delete a tenant property",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Property deleted"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties/{property}/publish": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/PropertyPublicId"
+                }
+            ],
+            "patch": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "publishProperty",
+                "summary": "Change property status with optimistic locking",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "status",
+                                    "version"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "$ref": "#/components/schemas/PropertyStatus"
+                                    },
+                                    "version": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    }
+                                },
+                                "additionalProperties": false
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Publication status updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties/{property}/features": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/PropertyPublicId"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "listPropertyFeatures",
+                "summary": "List property features",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "200": {
+                        "description": "Features",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PropertyFeature"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "createPropertyFeature",
+                "summary": "Create a property feature",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyFeatureWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Feature created"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties/{property}/features/{feature}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/PropertyPublicId"
+                },
+                {
+                    "name": "feature",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "integer"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "getPropertyFeature",
+                "summary": "Get a property feature",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Feature"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "updatePropertyFeature",
+                "summary": "Update a property feature",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyFeatureWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Feature updated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "deletePropertyFeature",
+                "summary": "Delete a property feature",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Feature deleted"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties/{property}/media": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/PropertyPublicId"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "listPropertyMedia",
+                "summary": "List property media",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "200": {
+                        "description": "Media",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PropertyMedia"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "createPropertyMedia",
+                "summary": "Create private property media",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyMediaWrite"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyMediaWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Media created"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties/{property}/media/{media}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/PropertyPublicId"
+                },
+                {
+                    "name": "media",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "integer"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "getPropertyMedia",
+                "summary": "Get property media",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Media"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "updatePropertyMedia",
+                "summary": "Update property media",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyMediaWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Media updated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "deletePropertyMedia",
+                "summary": "Delete property media and its private object",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Media and private object deleted after commit"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "cookieAuth": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "everprop_api_session",
+                "description": "Encrypted Sanctum SPA session cookie; actual cookie name is environment-configurable."
+            }
+        },
+        "parameters": {
+            "TenantHeader": {
+                "name": "X-Everprop-Tenant",
+                "in": "header",
+                "required": false,
+                "description": "Local/testing only. Production resolves tenant from configured hostname.",
+                "schema": {
+                    "type": "string"
+                }
+            },
+            "XsrfHeader": {
+                "name": "X-XSRF-TOKEN",
+                "in": "header",
+                "required": false,
+                "description": "Required for browser requests from a Sanctum stateful origin.",
+                "schema": {
+                    "type": "string"
+                }
+            },
+            "IdempotencyKey": {
+                "name": "Idempotency-Key",
+                "in": "header",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "minLength": 16,
+                    "maxLength": 191,
+                    "pattern": "^[A-Za-z0-9._:-]+$"
+                }
+            },
+            "Page": {
+                "name": "page",
+                "in": "query",
+                "schema": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                }
+            },
+            "PerPage": {
+                "name": "per_page",
+                "in": "query",
+                "schema": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 20
+                }
+            },
+            "Direction": {
+                "name": "direction",
+                "in": "query",
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "asc",
+                        "desc"
+                    ],
+                    "default": "desc"
+                }
+            },
+            "ProjectPublicId": {
+                "name": "project",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "PropertyPublicId": {
+                "name": "property",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            }
+        },
+        "responses": {
+            "BadRequest": {
+                "description": "Malformed request or untrusted host",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Unauthenticated": {
+                "description": "Unauthenticated or invalid signature",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Authenticated but capability/scope denied",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Not found, not public, or hidden by tenant isolation",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Conflict": {
+                "description": "Idempotency or optimistic locking conflict",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "CsrfMismatch": {
+                "description": "CSRF/session requirement failed",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "ValidationError": {
+                "description": "Validation failed",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        }
+                    }
+                }
+            },
+            "TooManyRequests": {
+                "description": "Rate limit exceeded",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Unavailable": {
+                "description": "Dependency or integration secret unavailable",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "LeadAccepted": {
+                "description": "Created or idempotent replay",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/PublicLeadEnvelope"
+                        },
+                        "example": {
+                            "data": {
+                                "lead_id": "d744ac3a-703d-4d92-9aa1-f262f3f6dbca",
+                                "lead_created": true,
+                                "assigned": true,
+                                "property_linked": true,
+                                "idempotent_replay": false
+                            }
+                        }
+                    }
+                }
+            },
+            "WebhookAccepted": {
+                "description": "Durably accepted or replayed",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/WebhookEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "schemas": {
+            "Health": {
+                "type": "object",
+                "required": [
+                    "status"
+                ],
+                "properties": {
+                    "status": {
+                        "const": "up"
+                    }
+                }
+            },
+            "Readiness": {
+                "type": "object",
+                "required": [
+                    "status"
+                ],
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "ready",
+                            "unavailable"
+                        ]
+                    }
+                }
+            },
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string"
+                    },
+                    "error": {
+                        "type": "object",
+                        "properties": {
+                            "code": {
+                                "type": "string"
+                            },
+                            "message": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "ValidationError": {
+                "type": "object",
+                "required": [
+                    "message",
+                    "errors"
+                ],
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "LoginRequest": {
+                "type": "object",
+                "required": [
+                    "email",
+                    "password"
+                ],
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 320
+                    },
+                    "password": {
+                        "type": "string",
+                        "maxLength": 4096
+                    }
+                },
+                "additionalProperties": false
+            },
+            "UserEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/User"
+                    }
+                }
+            },
+            "User": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "display_name",
+                    "email",
+                    "role",
+                    "status",
+                    "capabilities",
+                    "tenant"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "display_name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "phone_e164": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "role": {
+                        "type": "string",
+                        "enum": [
+                            "SUPER_ADMIN",
+                            "TENANT_ADMIN",
+                            "SALES_MANAGER",
+                            "SALES_ADVISOR",
+                            "BOT_OPERATOR",
+                            "READ_ONLY"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "ACTIVE",
+                            "PAUSED",
+                            "DISABLED"
+                        ]
+                    },
+                    "capabilities": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "tenant": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "slug": {
+                                "type": "string"
+                            },
+                            "timezone": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "ProjectType": {
+                "type": "string",
+                "enum": [
+                    "LAND_DEVELOPMENT",
+                    "BUILDING",
+                    "COMMERCIAL"
+                ]
+            },
+            "ProjectStatus": {
+                "type": "string",
+                "enum": [
+                    "PLANNING",
+                    "PRE_SALE",
+                    "UNDER_CONSTRUCTION",
+                    "COMPLETED"
+                ]
+            },
+            "PropertyStatus": {
+                "type": "string",
+                "enum": [
+                    "AVAILABLE",
+                    "RESERVED",
+                    "SOLD",
+                    "RENTED"
+                ]
+            },
+            "PropertyCategory": {
+                "type": "string",
+                "enum": [
+                    "LOT",
+                    "GARAGE",
+                    "LOCAL",
+                    "TRADITIONAL",
+                    "APARTMENT",
+                    "HOUSE"
+                ]
+            },
+            "ProjectWrite": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 80
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    },
+                    "project_type": {
+                        "$ref": "#/components/schemas/ProjectType"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ProjectStatus"
+                    },
+                    "progress": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100
+                    },
+                    "total_units": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 160
+                    },
+                    "province": {
+                        "type": "string",
+                        "maxLength": 160
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "masterplan_image_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uri"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "Project": {
+                "type": "object",
+                "required": [
+                    "public_id",
+                    "name",
+                    "project_type",
+                    "status",
+                    "city",
+                    "province"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Admin responses only"
+                    },
+                    "public_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "project_type": {
+                        "$ref": "#/components/schemas/ProjectType"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ProjectStatus"
+                    },
+                    "progress": {
+                        "type": "integer"
+                    },
+                    "total_units": {
+                        "type": "integer"
+                    },
+                    "city": {
+                        "type": "string"
+                    },
+                    "province": {
+                        "type": "string"
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "masterplan_image_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "properties_count": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "ProjectEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Project"
+                    }
+                }
+            },
+            "ProjectPage": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/PageBase"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "data": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Project"
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "PropertyWrite": {
+                "type": "object",
+                "properties": {
+                    "project_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "operation": {
+                        "type": "string",
+                        "enum": [
+                            "SALE",
+                            "RENT",
+                            "TEMPORARY"
+                        ]
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/PropertyCategory"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/PropertyStatus"
+                    },
+                    "price": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "currency_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "USD",
+                            "ARS",
+                            null
+                        ]
+                    },
+                    "city": {
+                        "type": "string"
+                    },
+                    "province": {
+                        "type": "string"
+                    },
+                    "neighborhood": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "bedrooms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "bathrooms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "area_m2": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "sector_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "unit_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "main_image_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uri"
+                    },
+                    "services_json": {
+                        "type": [
+                            "array",
+                            "object",
+                            "null"
+                        ]
+                    },
+                    "commercial_features_json": {
+                        "type": [
+                            "array",
+                            "object",
+                            "null"
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "Property": {
+                "type": "object",
+                "required": [
+                    "public_id",
+                    "title",
+                    "operation",
+                    "category",
+                    "status",
+                    "city",
+                    "province"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Admin responses only"
+                    },
+                    "public_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "project_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "Admin responses only"
+                    },
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "operation": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/PropertyCategory"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/PropertyStatus"
+                    },
+                    "price": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "pattern": "^[0-9]+\\.[0-9]{2}$"
+                    },
+                    "currency_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "city": {
+                        "type": "string"
+                    },
+                    "province": {
+                        "type": "string"
+                    },
+                    "neighborhood": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "bedrooms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "bathrooms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "area_m2": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "main_image_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "version": {
+                        "type": "integer",
+                        "description": "Admin responses only"
+                    },
+                    "project": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/Project"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "features": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PropertyFeature"
+                        }
+                    },
+                    "media": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PropertyMedia"
+                        }
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "PropertyEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Property"
+                    }
+                }
+            },
+            "PropertyPage": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/PageBase"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "data": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Property"
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "PageBase": {
+                "type": "object",
+                "properties": {
+                    "links": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "meta": {
+                        "type": "object",
+                        "properties": {
+                            "current_page": {
+                                "type": "integer"
+                            },
+                            "last_page": {
+                                "type": "integer"
+                            },
+                            "per_page": {
+                                "type": "integer"
+                            },
+                            "total": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            },
+            "PropertyFeatureWrite": {
+                "type": "object",
+                "properties": {
+                    "feature_group": {
+                        "type": "string",
+                        "enum": [
+                            "GENERAL",
+                            "INTERIOR",
+                            "EXTERIOR",
+                            "AMENITY",
+                            "SERVICE",
+                            "COMMERCIAL"
+                        ]
+                    },
+                    "feature_code": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "feature_value": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "unit_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "is_filterable": {
+                        "type": "boolean"
+                    },
+                    "sort_order": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "additionalProperties": false
+            },
+            "PropertyFeature": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "feature_group": {
+                        "type": "string"
+                    },
+                    "feature_code": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "unit_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "is_filterable": {
+                        "type": "boolean"
+                    },
+                    "sort_order": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "PropertyMediaWrite": {
+                "type": "object",
+                "required": [
+                    "media_type"
+                ],
+                "properties": {
+                    "media_type": {
+                        "type": "string",
+                        "enum": [
+                            "IMAGE",
+                            "VIDEO",
+                            "FLOORPLAN",
+                            "DOCUMENT",
+                            "VIRTUAL_TOUR"
+                        ]
+                    },
+                    "file": {
+                        "type": "string",
+                        "format": "binary"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "thumbnail_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uri"
+                    },
+                    "alt_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "caption": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "sort_order": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "is_primary": {
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "PropertyMedia": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "media_type": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Temporary URL for private objects when supported"
+                    },
+                    "thumbnail_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "alt_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "caption": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "sort_order": {
+                        "type": "integer"
+                    },
+                    "is_primary": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "PublicLeadRequest": {
+                "type": "object",
+                "required": [
+                    "contact",
+                    "identity",
+                    "lead",
+                    "touchpoint"
+                ],
+                "properties": {
+                    "contact": {
+                        "type": "object",
+                        "properties": {
+                            "display_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "first_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "last_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "email": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "email"
+                            },
+                            "phone_e164": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "pattern": "^\\+[1-9][0-9]{7,14}$"
+                            },
+                            "locale": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "identity": {
+                        "type": "object",
+                        "required": [
+                            "channel_type",
+                            "provider_user_id"
+                        ],
+                        "properties": {
+                            "channel_type": {
+                                "type": "string",
+                                "enum": [
+                                    "EMAIL",
+                                    "PHONE",
+                                    "WEB_VISITOR",
+                                    "WEB_CHAT",
+                                    "WEB_FORM"
+                                ]
+                            },
+                            "provider_user_id": {
+                                "type": "string"
+                            },
+                            "username": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "display_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "consent": {
+                        "type": "object",
+                        "properties": {
+                            "purpose_code": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "GRANTED",
+                                    "DENIED"
+                                ]
+                            },
+                            "legal_text_version": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "lead": {
+                        "type": "object",
+                        "required": [
+                            "source_channel",
+                            "source_kind"
+                        ],
+                        "properties": {
+                            "source_channel": {
+                                "type": "string",
+                                "enum": [
+                                    "WEB_FORM",
+                                    "WEB_CHAT",
+                                    "WEB_TRACKING"
+                                ]
+                            },
+                            "source_kind": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "priority": {
+                                "type": "string",
+                                "enum": [
+                                    "LOW",
+                                    "NORMAL",
+                                    "HIGH",
+                                    "URGENT"
+                                ]
+                            },
+                            "occurred_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "format": "date-time"
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "property_public_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid"
+                    },
+                    "touchpoint": {
+                        "type": "object",
+                        "required": [
+                            "type"
+                        ],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "WEB_FORM",
+                                    "WEB_CHAT",
+                                    "WEB_VISIT"
+                                ]
+                            },
+                            "summary": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 500
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "additionalProperties": false
+            },
+            "PublicLeadEnvelope": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "lead_id": {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            "lead_created": {
+                                "type": "boolean"
+                            },
+                            "assigned": {
+                                "type": "boolean"
+                            },
+                            "property_linked": {
+                                "type": "boolean"
+                            },
+                            "idempotent_replay": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            },
+            "WebhookEnvelope": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "properties": {
+                            "accepted": {
+                                "const": true
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "RECEIVED",
+                                    "VERIFIED",
+                                    "PROCESSING",
+                                    "PROCESSED",
+                                    "RETRY",
+                                    "REJECTED",
+                                    "DEAD_LETTER"
+                                ]
+                            },
+                            "idempotent_replay": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,44 @@
+@baseUrl = http://127.0.0.1:18080
+@tenant = replace-with-local-tenant-public-id
+@email = replace-with-user-email
+@password = replace-with-user-password
+@xsrf = replace-with-decoded-xsrf-cookie
+
+### Liveness
+GET {{baseUrl}}/healthz
+
+### Readiness
+GET {{baseUrl}}/readyz
+
+### CSRF cookie (guardar cookies y copiar XSRF-TOKEN decodificado a @xsrf)
+GET {{baseUrl}}/sanctum/csrf-cookie
+Origin: http://localhost:5173
+
+### Login local
+POST {{baseUrl}}/api/v1/auth/login
+Origin: http://localhost:5173
+X-Everprop-Tenant: {{tenant}}
+X-XSRF-TOKEN: {{xsrf}}
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Current user
+GET {{baseUrl}}/api/v1/auth/me
+Origin: http://localhost:5173
+X-Everprop-Tenant: {{tenant}}
+
+### Public projects
+GET {{baseUrl}}/api/v1/public/projects?per_page=10&sort=created_at&direction=desc
+X-Everprop-Tenant: {{tenant}}
+
+### Public properties
+GET {{baseUrl}}/api/v1/public/properties?status=AVAILABLE&per_page=10
+X-Everprop-Tenant: {{tenant}}
+
+### Negative: tenant selection in query is rejected
+GET {{baseUrl}}/api/v1/public/properties?tenant_id=1
+X-Everprop-Tenant: {{tenant}}

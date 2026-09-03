@@ -1,0 +1,247 @@
+name: ${COMPOSE_PROJECT_NAME:-everprop-api}
+
+services:
+  everprop-api-init:
+    image: ${EVERPROP_PHP_IMAGE:-everprop-api-php:local}
+    container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-init
+    user: "0:0"
+    restart: "no"
+    entrypoint: ["sh", "-lc"]
+    command:
+      - >-
+        mkdir -p
+        /var/www/html/storage/app/private
+        /var/www/html/storage/framework/cache/data
+        /var/www/html/storage/framework/sessions
+        /var/www/html/storage/framework/views
+        /var/www/html/storage/logs
+        /var/www/html/bootstrap/cache
+        && chown -R 10001:10001 /var/www/html/storage /var/www/html/bootstrap/cache
+    volumes:
+      - everprop-api-storage:/var/www/html/storage
+      - everprop-api-cache:/var/www/html/bootstrap/cache
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+
+  everprop-api-nginx:
+    image: nginxinc/nginx-unprivileged:1.28-alpine
+    container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-nginx
+    restart: unless-stopped
+    depends_on:
+      everprop-api-php:
+        condition: service_healthy
+    ports:
+      - target: 8080
+        published: "${HTTP_PORT:-18080}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - everprop-api-edge
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  everprop-api-php:
+    build:
+      context: .
+      target: development
+    image: ${EVERPROP_PHP_IMAGE:-everprop-api-php:local}
+    container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-php
+    restart: unless-stopped
+    depends_on:
+      everprop-api-init:
+        condition: service_completed_successfully
+      everprop-api-mysql:
+        condition: service_healthy
+      everprop-api-redis:
+        condition: service_healthy
+    volumes:
+      - ./:/var/www/html
+      - everprop-api-storage:/var/www/html/storage
+      - everprop-api-cache:/var/www/html/bootstrap/cache
+    networks:
+      - everprop-api-edge
+      - everprop-api-data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "php", "-r", "$$s=@fsockopen('127.0.0.1',9000); exit($$s ? 0 : 1);"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  everprop-api-worker:
+    image: ${EVERPROP_PHP_IMAGE:-everprop-api-php:local}
+    container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-worker
+    restart: unless-stopped
+    depends_on:
+      everprop-api-php:
+        condition: service_healthy
+    command: ["php", "artisan", "queue:work", "redis", "--sleep=2", "--tries=3", "--timeout=60", "--max-time=3600"]
+    volumes:
+      - ./:/var/www/html:ro
+      - everprop-api-storage:/var/www/html/storage
+      - everprop-api-cache:/var/www/html/bootstrap/cache
+    networks:
+      - everprop-api-edge
+      - everprop-api-data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "php", "-r", "$$c=file_get_contents('/proc/1/cmdline'); exit(str_contains($$c, 'queue:work') ? 0 : 1);"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  everprop-api-mysql:
+    image: mysql:8.4
+    container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+      - --local-infile=OFF
+      - --skip-name-resolve
+    volumes:
+      - everprop-api-mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./docker/mysql/healthcheck.sh:/usr/local/bin/everprop-mysql-healthcheck:ro
+    secrets:
+      - mysql_root_password
+      - mysql_app_password
+      - mysql_test_password
+    networks:
+      - everprop-api-data
+    healthcheck:
+      test: ["CMD", "sh", "/usr/local/bin/everprop-mysql-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  everprop-api-redis:
+    image: redis:8.2-alpine
+    container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-redis
+    restart: unless-stopped
+    command: ["redis-server", "--aclfile", "/run/secrets/redis_acl", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - everprop-api-redis-data:/data
+      - ./docker/redis/healthcheck.sh:/usr/local/bin/everprop-redis-healthcheck:ro
+    secrets:
+      - redis_acl
+    networks:
+      - everprop-api-data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "sh", "/usr/local/bin/everprop-redis-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  everprop-api-edge:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-edge
+  everprop-api-data:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-data
+    internal: true
+
+volumes:
+  everprop-api-mysql-data:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-mysql-data
+  everprop-api-redis-data:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-redis-data
+  everprop-api-storage:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-storage
+  everprop-api-cache:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-cache
+
+secrets:
+  mysql_root_password:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}_mysql_root_password
+    file: ./.docker/secrets/mysql_root_password.txt
+  mysql_app_password:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}_mysql_app_password
+    file: ./.docker/secrets/mysql_app_password.txt
+  mysql_test_password:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}_mysql_test_password
+    file: ./.docker/secrets/mysql_test_password.txt
+  redis_acl:
+    name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}_redis_acl
+    file: ./.docker/secrets/redis.acl

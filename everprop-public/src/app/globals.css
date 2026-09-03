@@ -1,0 +1,324 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  color-scheme: light;
+  --background: #f4f7fb;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #edf2f8;
+  --muted-foreground: #475569;
+  --border: #d6deea;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --accent: #e8f0ff;
+  --accent-foreground: #1d4ed8;
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --secondary: #edf2f8;
+  --secondary-foreground: #0f172a;
+  --destructive: oklch(0.577 0.245 27.325);
+  --input: #cbd5e1;
+  --ring: #2563eb;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f0ff;
+  --sidebar-accent-foreground: #1e3a5f;
+  --sidebar-border: #d6deea;
+  --sidebar-ring: #2563eb;
+}
+
+body {
+  font-family: var(--font-geist-sans), "Inter", "Segoe UI", sans-serif;
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #07101f;
+  --foreground: #f8fafc;
+  --card: #101b2d;
+  --card-foreground: #f8fafc;
+  --popover: #101b2d;
+  --popover-foreground: #f8fafc;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1b2940;
+  --secondary-foreground: #f8fafc;
+  --muted: #1b2940;
+  --muted-foreground: #cbd5e1;
+  --accent: #1e3a5f;
+  --accent-foreground: #dbeafe;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #334155;
+  --input: #475569;
+  --ring: #60a5fa;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #081225;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #60a5fa;
+  --sidebar-primary-foreground: #07101f;
+  --sidebar-accent: #dbeafe;
+  --sidebar-accent-foreground: #0c162b;
+  --sidebar-border: #2b3a55;
+  --sidebar-ring: #60a5fa;
+}
+
+/*
+ * Compatibilidad visual para las pantallas administrativas existentes.
+ * El proyecto todavía contiene utilidades de color fijas; estas reglas las
+ * llevan a la misma escala cromática en modo oscuro y evitan texto sin contraste.
+ */
+.dark .theme-root :is([class~="bg-white"], [class~="bg-white/80"], [class~="bg-white/90"], [class~="bg-white/95"]) {
+  background-color: #101b2d !important;
+}
+
+.dark .theme-root :is([class~="bg-slate-50"], [class~="bg-slate-50/50"], [class~="bg-slate-50/80"], [class~="bg-gray-50"], [class~="bg-gray-100"]) {
+  background-color: #0b1527 !important;
+}
+
+.dark .theme-root :is([class~="bg-slate-100"], [class~="bg-slate-100/90"], [class~="bg-slate-200"]) {
+  background-color: #1b2940 !important;
+}
+
+.dark .theme-root :is([class~="text-black"], [class~="text-slate-950"], [class~="text-slate-900"], [class~="text-slate-800"]) {
+  color: #f8fafc !important;
+}
+
+.dark .theme-root :is([class~="text-slate-700"], [class~="text-slate-600"], [class~="text-slate-500"], [class~="text-slate-400"]) {
+  color: #cbd5e1 !important;
+}
+
+.dark .theme-root :is([class~="border-slate-50"], [class~="border-slate-100"], [class~="border-slate-200"], [class~="border-slate-300"], [class~="border-gray-200"]) {
+  border-color: #334155 !important;
+}
+
+.dark .theme-root :is([class~="bg-blue-50"], [class~="bg-blue-50/50"], [class~="bg-blue-100"]) {
+  background-color: #112b50 !important;
+}
+
+.dark .theme-root :is([class~="text-blue-950"], [class~="text-blue-900"], [class~="text-blue-800"], [class~="text-blue-700"], [class~="text-blue-600"]) {
+  color: #93c5fd !important;
+}
+
+.dark .theme-root :is([class~="border-blue-100"], [class~="border-blue-200"], [class~="border-blue-300"]) {
+  border-color: #1d4ed8 !important;
+}
+
+.dark .theme-root :is([class~="bg-emerald-50"], [class~="bg-emerald-100"], [class~="bg-emerald-200"]) {
+  background-color: #0d332b !important;
+}
+
+.dark .theme-root :is([class~="text-emerald-950"], [class~="text-emerald-800"], [class~="text-emerald-700"], [class~="text-emerald-600"]) {
+  color: #6ee7b7 !important;
+}
+
+.dark .theme-root :is([class~="border-emerald-200"], [class~="border-emerald-300"]) {
+  border-color: #047857 !important;
+}
+
+.dark .theme-root :is([class~="bg-amber-50"], [class~="bg-amber-100"], [class~="bg-amber-200"]) {
+  background-color: #3b2b0d !important;
+}
+
+.dark .theme-root :is([class~="text-amber-950"], [class~="text-amber-800"], [class~="text-amber-700"], [class~="text-amber-600"]) {
+  color: #fcd34d !important;
+}
+
+.dark .theme-root :is([class~="border-amber-200"], [class~="border-amber-300"]) {
+  border-color: #a16207 !important;
+}
+
+.dark .theme-root :is([class~="bg-rose-50"], [class~="bg-rose-100"], [class~="bg-rose-200"]) {
+  background-color: #3b1723 !important;
+}
+
+.dark .theme-root :is([class~="text-rose-950"], [class~="text-rose-800"], [class~="text-rose-700"], [class~="text-rose-600"], [class~="text-red-600"]) {
+  color: #fda4af !important;
+}
+
+.dark .theme-root :is([class~="border-rose-200"], [class~="border-rose-300"]) {
+  border-color: #be123c !important;
+}
+
+.dark .theme-root :is(input, textarea, select) {
+  color: #f8fafc;
+  caret-color: #60a5fa;
+}
+
+.dark .theme-root :is(input, textarea)::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+
+.dark .theme-root select option {
+  background-color: #101b2d;
+  color: #f8fafc;
+}
+
+.dark .theme-root [data-sidebar="menu-button"][data-active="true"] [class~="text-blue-600"] {
+  color: #1d4ed8 !important;
+}
+
+/* El alta de leads nació como una superficie oscura. En modo claro se adapta
+   sin tocar su estructura ni sus validaciones. */
+:root:not(.dark) .theme-root [data-theme-panel="lead"]:is([class~="bg-slate-950"]),
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="bg-slate-950"] {
+  background-color: #f4f7fb !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is([class~="bg-slate-900"], [class~="bg-slate-800"]) {
+  background-color: #ffffff !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is([class~="border-slate-600"], [class~="border-slate-700"]) {
+  border-color: #cbd5e1 !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"]) {
+  color: #0f172a !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is([class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"]) {
+  color: #475569 !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is([class~="bg-blue-950/60"], [class~="bg-blue-950/70"]) {
+  background-color: #eff6ff !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="bg-violet-950"] {
+  background-color: #f5f3ff !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="bg-emerald-950/60"] {
+  background-color: #ecfdf5 !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="bg-indigo-950/60"] {
+  background-color: #eef2ff !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="bg-amber-950/60"] {
+  background-color: #fffbeb !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is([class~="text-blue-100"], [class~="text-blue-200"], [class~="text-blue-300"]) {
+  color: #1d4ed8 !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="text-emerald-300"] {
+  color: #047857 !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is([class~="text-indigo-300"], [class~="text-violet-300"]) {
+  color: #6d28d9 !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="text-amber-300"] {
+  color: #a16207 !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is([class~="border-blue-700"], [class~="border-blue-600"]) {
+  border-color: #93c5fd !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="border-emerald-700"] {
+  border-color: #6ee7b7 !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="border-indigo-700"] {
+  border-color: #a5b4fc !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="border-amber-700"] {
+  border-color: #fcd34d !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] [class~="bg-blue-600"] {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is(input, textarea, select) {
+  color: #0f172a !important;
+  caret-color: #2563eb;
+}
+
+:root:not(.dark) .theme-root [data-theme-panel="lead"] :is(input, textarea)::placeholder {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+  html {
+    @apply font-sans;
+  }
+}
