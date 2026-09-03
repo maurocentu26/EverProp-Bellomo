@@ -40,6 +40,15 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
     });
 });
 
+Route::get('/setup-simulation-database', function () {
+    \Illuminate\Support\Facades\Artisan::call('db:setup-simulation');
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Base de datos de simulación configurada con éxito en Bellomo CRM',
+        'output' => \Illuminate\Support\Facades\Artisan::output(),
+    ]);
+});
+
 Route::middleware('tenant')->group(function (): void {
     Route::get('/public/projects', [PublicProjectController::class, 'index'])->name('public.projects.index');
     Route::get('/public/projects/{project}', [PublicProjectController::class, 'show'])->name('public.projects.show');
