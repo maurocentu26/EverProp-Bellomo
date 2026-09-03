@@ -2,37 +2,35 @@
 SET FOREIGN_KEY_CHECKS=0;
 
 
-    UPDATE users SET 
-        display_name = 'Lucas Albarracín', 
-        email = 'lucas.albarracin@bellomo.com', 
-        role_code = 'SALES_ADVISOR', 
-        password_hash = '$2y$12$85dtdzwvvgNbSoP8BFEVAeGRrlHkCXz8iF/x9tCxNpl/dp1SAaEH2',
-        status = 'ACTIVE' 
-    WHERE id = 1;
-
-    UPDATE users SET 
-        display_name = 'Valentina Morales', 
-        email = 'valentina.morales@bellomo.com', 
-        role_code = 'SALES_ADVISOR', 
-        password_hash = '$2y$12$85dtdzwvvgNbSoP8BFEVAeGRrlHkCXz8iF/x9tCxNpl/dp1SAaEH2',
-        status = 'ACTIVE' 
-    WHERE id = 2;
-
-    UPDATE users SET 
-        display_name = 'Marcos Bellomo', 
-        email = 'admin@bellomo.com', 
-        role_code = 'TENANT_ADMIN', 
-        password_hash = '$2y$12$85dtdzwvvgNbSoP8BFEVAeGRrlHkCXz8iF/x9tCxNpl/dp1SAaEH2',
-        status = 'ACTIVE' 
-    WHERE id = 3;
-
-    UPDATE users SET 
-        display_name = 'Ing. Sofía Bellomo', 
-        email = 'sofia@bellomo.com', 
-        role_code = 'SALES_MANAGER', 
-        password_hash = '$2y$12$85dtdzwvvgNbSoP8BFEVAeGRrlHkCXz8iF/x9tCxNpl/dp1SAaEH2',
-        status = 'ACTIVE' 
-    WHERE id = 4;
+    INSERT INTO users (
+        id, tenant_id, public_id, display_name, email, role_code, password_hash, status
+    ) VALUES
+    (
+        1, 1, 'b1100000-0000-4000-8000-000000000101',
+        'Lucas Albarracín', 'lucas.albarracin@bellomo.com', 'SALES_ADVISOR',
+        '$2y$12$85dtdzwvvgNbSoP8BFEVAeGRrlHkCXz8iF/x9tCxNpl/dp1SAaEH2', 'ACTIVE'
+    ),
+    (
+        2, 1, 'b1100000-0000-4000-8000-000000000102',
+        'Valentina Morales', 'valentina.morales@bellomo.com', 'SALES_ADVISOR',
+        '$2y$12$85dtdzwvvgNbSoP8BFEVAeGRrlHkCXz8iF/x9tCxNpl/dp1SAaEH2', 'ACTIVE'
+    ),
+    (
+        3, 1, 'b1100000-0000-4000-8000-000000000103',
+        'Marcos Bellomo', 'admin@bellomo.com', 'TENANT_ADMIN',
+        '$2y$12$85dtdzwvvgNbSoP8BFEVAeGRrlHkCXz8iF/x9tCxNpl/dp1SAaEH2', 'ACTIVE'
+    ),
+    (
+        4, 1, 'b1100000-0000-4000-8000-000000000104',
+        'Ing. Sofía Bellomo', 'sofia@bellomo.com', 'SALES_MANAGER',
+        '$2y$12$85dtdzwvvgNbSoP8BFEVAeGRrlHkCXz8iF/x9tCxNpl/dp1SAaEH2', 'ACTIVE'
+    )
+    ON DUPLICATE KEY UPDATE
+        display_name = VALUES(display_name),
+        email = VALUES(email),
+        role_code = VALUES(role_code),
+        password_hash = VALUES(password_hash),
+        status = VALUES(status);
     
 DELETE FROM properties WHERE tenant_id = 1 AND category IN ('LOCAL', 'GARAGE', 'HOUSE', 'APARTMENT');
 
