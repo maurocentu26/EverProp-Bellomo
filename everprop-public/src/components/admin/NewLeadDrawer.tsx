@@ -49,7 +49,8 @@ import { useAuth } from "@/lib/auth-context";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { createLeadInterest, isProjectUnit } from "@/lib/lead-interests";
 import { isMockDataMode } from "@/lib/data-mode";
-import { updateEverpropLead } from "@/lib/everprop-api";
+import { createEverpropLead, updateEverpropLead } from "@/lib/everprop-api";
+import { createNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
 export type AssetCategory = LeadInterestCategory;
@@ -347,8 +348,48 @@ export function NewLeadDrawer({
       agentId: currentUser?.role === "ADVISOR" ? currentUser.id : data.agentId,
     };
 
+    if (!isMockDataMode) {
+      try {
+        const stageApiMap: Record<string, string> = {
+          new: "NEW",
+          contacted: "CONTACTED",
+          visiting: "VISIT_SCHEDULED",
+          negotiation: "NEGOTIATION",
+          closing: "WON",
+        };
+        const created = await createEverpropLead({
+          name: trimmedName,
+          email: nextLead.email,
+          phone: nextLead.phone,
+          stage: stageApiMap[nextLead.stage] || "NEW",
+          notes: nextLead.notes,
+          agentId: nextLead.agentId,
+        });
+        nextLead.id = created.id;
+      } catch (e: any) {
+        toast.error("Error al guardar lead en base de datos: " + (e.message || "Error desconocido"));
+        return;
+      }
+    }
+
     try {
       appendLeadToStorage(nextLead, sampleLeads, companyId);
+
+      if (nextLead.agentId) {
+        try {
+          const channel = new BroadcastChannel("everprop_events");
+          channel.postMessage({ type: "LEAD_REASSIGNED", targetAgentId: nextLead.agentId, leadName: nextLead.name });
+          channel.close();
+          createNotification(nextLead.agentId, `Se te ha asignado el nuevo lead "${nextLead.name}"`, {
+            title: "Nuevo lead asignado",
+            leadId: nextLead.id,
+            actionUrl: `/admin/leads/${nextLead.id}`,
+            eventType: "LEAD_CREATED",
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      }
 
       toast.success("Lead registrado con éxito", {
         description: selectedAsset

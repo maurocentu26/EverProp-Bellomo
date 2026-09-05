@@ -106,8 +106,22 @@ class SetupSimulationDatabaseCommand extends Command
                 KEY `sessions_user_id_index` (`user_id`),
                 KEY `sessions_last_activity_index` (`last_activity`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS `notifications` (
+                `id` CHAR(36) NOT NULL,
+                `type` VARCHAR(255) NOT NULL,
+                `notifiable_type` VARCHAR(255) NOT NULL,
+                `notifiable_id` BIGINT UNSIGNED NOT NULL,
+                `data` JSON NOT NULL,
+                `read_at` TIMESTAMP NULL DEFAULT NULL,
+                `created_at` TIMESTAMP NULL DEFAULT NULL,
+                `updated_at` TIMESTAMP NULL DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `notifications_notifiable_type_notifiable_id_index` (`notifiable_type`, `notifiable_id`),
+                KEY `notifications_read_at_index` (`read_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
-        $this->info('   ✓ Cache and sessions tables created successfully.');
+        $this->info('   ✓ Cache, sessions and notifications tables created successfully.');
 
         $forwardDir = database_path('schema/forward');
         if (is_dir($forwardDir)) {

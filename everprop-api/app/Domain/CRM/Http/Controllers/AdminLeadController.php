@@ -2,9 +2,11 @@
 
 namespace App\Domain\CRM\Http\Controllers;
 
+use App\Domain\CRM\Notifications\LeadAssignedNotification;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -106,7 +108,7 @@ final class AdminLeadController extends Controller
                 'budget' => 'nullable|numeric|min:0',
                 'currency' => 'nullable|string|in:USD,ARS',
                 'notes' => 'nullable|string|max:10000',
-                'agent_id' => 'nullable|integer',
+                'agent_id' => 'nullable',
             ]);
 
             return DB::transaction(function () use ($tenantId, $user, $validated) {
@@ -142,7 +144,8 @@ final class AdminLeadController extends Controller
                 }
 
                 // 3. Resolve assigned agent
-                $assignedId = $validated['agent_id'] ?? ($user ? $user->id : null);
+                $assignedId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId)
+                    ?? ($user ? $user->id : null);
 
                 // 4. Create lead
                 $leadUuid = (string) Str::uuid();
@@ -165,6 +168,25 @@ final class AdminLeadController extends Controller
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
+
+                // 5. Notify assigned agent
+                if ($assignedId) {
+                    try {
+                        $assignedUser = User::find($assignedId);
+                        if ($assignedUser) {
+                            $assignedUser->notify(new LeadAssignedNotification(
+                                leadPublicId: $leadUuid,
+                                leadName: $validated['name'],
+                                eventType: 'LEAD_CREATED',
+                                title: 'Nuevo lead asignado',
+                                message: "Se te ha asignado el nuevo lead '{$validated['name']}'",
+                                actionUrl: "/admin/leads/{$leadUuid}"
+                            ));
+                        }
+                    } catch (\Throwable) {
+                        // Keep transaction intact if notification fails
+                    }
+                }
 
                 return response()->json([
                     'data' => [
@@ -198,7 +220,7 @@ final class AdminLeadController extends Controller
             'stage' => 'nullable|string|max:40',
             'notes' => 'nullable|string|max:10000',
             'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT',
-            'agent_id' => 'nullable|integer',
+            'agent_id' => 'nullable',
         ]);
 
         $lead = DB::table('leads')
@@ -249,7 +271,30 @@ final class AdminLeadController extends Controller
         }
 
         if (array_key_exists('agent_id', $validated)) {
-            $updates['assigned_user_id'] = $validated['agent_id'];
+            $newAssignedId = $this->resolveUserId($validated['agent_id'], $tenantId);
+            $oldAssignedId = $lead->assigned_user_id ? (int) $lead->assigned_user_id : null;
+
+            $updates['assigned_user_id'] = $newAssignedId;
+
+            if ($newAssignedId && $newAssignedId !== $oldAssignedId) {
+                try {
+                    $assignedUser = User::find($newAssignedId);
+                    if ($assignedUser) {
+                        $contact = DB::table('contacts')->where('id', $lead->contact_id)->first(['display_name']);
+                        $leadName = $contact?->display_name ?: $lead->title;
+                        $assignedUser->notify(new LeadAssignedNotification(
+                            leadPublicId: $lead->public_id,
+                            leadName: $leadName,
+                            eventType: 'LEAD_REASSIGNED',
+                            title: 'Lead reasignado',
+                            message: "Se te ha reasignado el lead '{$leadName}'",
+                            actionUrl: "/admin/leads/{$lead->public_id}"
+                        ));
+                    }
+                } catch (\Throwable) {
+                    // Ignore notification errors
+                }
+            }
         }
 
         DB::table('leads')
@@ -257,5 +302,30 @@ final class AdminLeadController extends Controller
             ->update($updates);
 
         return response()->json(['status' => 'updated']);
+    }
+
+    private function resolveUserId(mixed $agentId, int $tenantId): ?int
+    {
+        if (empty($agentId)) {
+            return null;
+        }
+
+        if (is_numeric($agentId)) {
+            $user = DB::table('users')
+                ->where('tenant_id', $tenantId)
+                ->where('id', (int) $agentId)
+                ->first(['id']);
+            return $user ? (int) $user->id : null;
+        }
+
+        if (is_string($agentId)) {
+            $user = DB::table('users')
+                ->where('tenant_id', $tenantId)
+                ->where('public_id', $agentId)
+                ->first(['id']);
+            return $user ? (int) $user->id : null;
+        }
+
+        return null;
     }
 }

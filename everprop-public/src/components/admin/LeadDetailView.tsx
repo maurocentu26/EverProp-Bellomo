@@ -211,17 +211,33 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success("Visita agendada y sincronizada con la propiedad");
   }
 
-  function handleReassignAgentConfirmed(agentId?: string) {
+  async function handleReassignAgentConfirmed(agentId?: string) {
     if (!lead) return;
     const nextLeads = updateLeadAgent(lead.id, agentId, allLeads, lead.companyId);
     setAllLeads(nextLeads);
     setLead(nextLeads.find((candidate) => candidate.id === lead.id) ?? null);
+
+    if (!isMockDataMode) {
+      try {
+        await updateEverpropLead(lead.id, {
+          agentId: agentId || null,
+        });
+      } catch (err: any) {
+        console.error("Error updating lead agent in backend:", err);
+      }
+    }
+
     if (agentId) {
       try {
         const channel = new BroadcastChannel("everprop_events");
         channel.postMessage({ type: "LEAD_REASSIGNED", targetAgentId: agentId, leadName: lead.name });
         channel.close();
-        createNotification(agentId, `Se te ha reasignado el lead "${lead.name}"`);
+        createNotification(agentId, `Se te ha reasignado el lead "${lead.name}"`, {
+          title: "Lead reasignado",
+          leadId: lead.id,
+          actionUrl: `/admin/leads/${lead.id}`,
+          eventType: "LEAD_REASSIGNED",
+        });
       } catch (error) {
         console.error(error);
       }

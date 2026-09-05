@@ -18,7 +18,7 @@ import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadNotifications, markAllAsRead, type AppNotification } from "@/lib/notifications";
+import { fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, type AppNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -41,27 +41,50 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const prevUnreadRef = useRef(0);
 
   useEffect(() => {
-    if (!isMockDataMode || !user?.id) return;
+    if (!user?.id) return;
 
-    const refreshNotifications = () => {
-      setNotifications(loadNotifications().filter((notification) => notification.targetUserId === user.id));
+    let mounted = true;
+
+    const refresh = async () => {
+      try {
+        const notifs = await fetchNotifications(user.id);
+        if (mounted) {
+          setNotifications(notifs);
+        }
+      } catch (err) {
+        console.error("Error fetching notifications:", err);
+      }
     };
 
-    refreshNotifications();
-    window.addEventListener("everprop_notifications_updated", refreshNotifications);
-    const channel = new BroadcastChannel("everprop_notifications");
-    channel.onmessage = refreshNotifications;
+    void refresh();
+
+    window.addEventListener("everprop_notifications_updated", refresh);
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("everprop_notifications");
+      channel.onmessage = refresh;
+    } catch {
+      // BroadcastChannel may fail in some environments
+    }
+
+    // Polling every 30 seconds to fetch new notifications in real-time
+    const interval = setInterval(refresh, 30_000);
+
+    // Refresh when user returns to window tab
+    window.addEventListener("focus", refresh);
 
     return () => {
-      window.removeEventListener("everprop_notifications_updated", refreshNotifications);
-      channel.close();
+      mounted = false;
+      window.removeEventListener("everprop_notifications_updated", refresh);
+      window.removeEventListener("focus", refresh);
+      clearInterval(interval);
+      channel?.close();
     };
   }, [user?.id]);
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   useEffect(() => {
-    if (!isMockDataMode) return;
     if (unreadCount > prevUnreadRef.current) {
       void bellControls.start({
         rotate: [0, -15, 15, -10, 10, -5, 5, 0],
@@ -81,10 +104,10 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     return () => mobileQuery.removeEventListener("change", closeMenuOnDesktop);
   }, []);
 
-  const handleMarkAsRead = () => {
+  const handleMarkAsRead = async () => {
     if (!user?.id) return;
-    markAllAsRead(user.id);
     setNotifications((current) => current.map((notification) => ({ ...notification, read: true })));
+    await markAllNotificationsAsRead(user.id);
   };
 
   const userInfo = {
@@ -216,14 +239,32 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                     {notifications.map((notification) => (
                       <article
                         key={notification.id}
+                        onClick={async () => {
+                          if (!notification.read) {
+                            void markNotificationAsRead(notification.id);
+                            setNotifications((prev) =>
+                              prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
+                            );
+                          }
+                          const url = notification.actionUrl || (notification.leadId ? `/admin/leads/${notification.leadId}` : null);
+                          if (url) {
+                            setIsNotificationsOpen(false);
+                            router.push(url);
+                          }
+                        }}
                         className={cn(
-                          "min-h-36 rounded-2xl border bg-white p-5 shadow-sm",
-                          notification.read ? "border-slate-200" : "border-blue-200 bg-blue-50/60",
+                          "min-h-36 rounded-2xl border bg-white p-5 shadow-sm transition-all cursor-pointer hover:shadow-md",
+                          notification.read ? "border-slate-200 hover:border-slate-300" : "border-blue-200 bg-blue-50/60 hover:border-blue-300",
                         )}
                       >
                         <div className="flex items-start gap-3">
                           <span className={cn("mt-1 size-3 shrink-0 rounded-full", notification.read ? "bg-slate-300" : "bg-blue-600")} />
                           <div>
+                            {notification.title && (
+                              <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
+                                {notification.title}
+                              </p>
+                            )}
                             <p className="text-base font-semibold leading-7 text-slate-900">{notification.message}</p>
                             <p className="mt-3 text-sm font-medium text-slate-500">
                               {new Date(notification.timestamp).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" })}

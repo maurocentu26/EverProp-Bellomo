@@ -4,6 +4,7 @@ import { useState } from "react";
 import { UserRoundCog, X } from "lucide-react";
 
 import { MOCK_USERS } from "@/data/auth-sample";
+import { isMockDataMode } from "@/lib/data-mode";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +12,27 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+const REAL_ADVISORS = [
+  {
+    id: "b1100000-0000-4000-8000-000000000101",
+    numericId: "1",
+    name: "Lucas Albarracín",
+    role: "Asesor Comercial · Loteos",
+  },
+  {
+    id: "b1100000-0000-4000-8000-000000000102",
+    numericId: "2",
+    name: "Valentina Morales",
+    role: "Asesora Comercial · Locales & Inversiones",
+  },
+  {
+    id: "b1100000-0000-4000-8000-000000000104",
+    numericId: "4",
+    name: "Ing. Sofía Bellomo",
+    role: "Gerente Comercial",
+  },
+];
 
 type LeadAdvisorEditorProps = {
   leadName: string;
@@ -25,9 +47,19 @@ export function LeadAdvisorEditor({
   onClose,
   onSave,
 }: LeadAdvisorEditorProps) {
-  const [selectedAgentId, setSelectedAgentId] = useState(currentAgentId ?? "");
-  const advisors = MOCK_USERS.filter((user) => user.role === "ADVISOR");
-  const selectionChanged = selectedAgentId !== (currentAgentId ?? "");
+  const advisors = isMockDataMode
+    ? MOCK_USERS.filter((user) => user.role === "ADVISOR").map((u) => ({
+        id: u.id,
+        name: u.name,
+      }))
+    : REAL_ADVISORS;
+
+  const normalizedCurrentId =
+    REAL_ADVISORS.find((a) => a.id === currentAgentId || a.numericId === currentAgentId)?.id ??
+    (currentAgentId || "");
+
+  const [selectedAgentId, setSelectedAgentId] = useState(normalizedCurrentId);
+  const selectionChanged = selectedAgentId !== normalizedCurrentId;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

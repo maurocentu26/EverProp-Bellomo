@@ -1,0 +1,16 @@
+-- Forward schema migration: Create standard Laravel notifications table
+-- Engine: MySQL 8.0+
+
+CREATE TABLE IF NOT EXISTS `notifications` (
+    `id` CHAR(36) NOT NULL,
+    `type` VARCHAR(255) NOT NULL,
+    `notifiable_type` VARCHAR(255) NOT NULL,
+    `notifiable_id` BIGINT UNSIGNED NOT NULL,
+    `data` JSON NOT NULL,
+    `read_at` TIMESTAMP NULL DEFAULT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `notifications_notifiable_type_notifiable_id_index` (`notifiable_type`, `notifiable_id`),
+    KEY `notifications_read_at_index` (`read_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

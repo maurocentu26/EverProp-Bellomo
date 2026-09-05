@@ -2,6 +2,7 @@
 
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
 use App\Domain\CRM\Http\Controllers\PublicLeadController;
+use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
 use App\Domain\Inventory\Http\Controllers\AdminProjectController;
@@ -37,6 +38,10 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
             ->parameters(['media' => 'media']);
 
         Route::apiResource('leads', AdminLeadController::class);
+
+        Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/notifications/mark-all-read', [AdminNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+        Route::patch('/notifications/{id}/read', [AdminNotificationController::class, 'markAsRead'])->name('notifications.read');
     });
 });
 

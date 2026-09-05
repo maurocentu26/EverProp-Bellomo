@@ -468,7 +468,7 @@ export async function createEverpropLead(data: {
   budget?: number;
   currency?: "USD" | "ARS";
   notes?: string;
-  agentId?: string | number;
+  agentId?: string | number | null;
 }) {
   const response = await apiFetch<{ data: ApiLead }>("/api/v1/admin/leads", {
     method: "POST",
@@ -481,7 +481,7 @@ export async function createEverpropLead(data: {
       budget: data.budget || null,
       currency: data.currency || "USD",
       notes: data.notes || null,
-      agent_id: data.agentId ? Number(data.agentId) : null,
+      agent_id: data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null,
     }),
   });
 
@@ -497,7 +497,7 @@ export async function updateEverpropLead(
     stage?: string;
     priority?: string;
     notes?: string;
-    agentId?: string | number;
+    agentId?: string | number | null;
   }
 ) {
   const payload: Record<string, any> = {};
@@ -507,7 +507,9 @@ export async function updateEverpropLead(
   if (data.stage !== undefined) payload.stage = data.stage;
   if (data.priority !== undefined) payload.priority = data.priority;
   if (data.notes !== undefined) payload.notes = data.notes || null;
-  if (data.agentId !== undefined) payload.agent_id = data.agentId ? Number(data.agentId) : null;
+  if (data.agentId !== undefined) {
+    payload.agent_id = data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null;
+  }
 
   return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
     method: "PUT",
@@ -625,4 +627,35 @@ export async function generateLotsBatch(payload: GenerateLotsPayload) {
   };
 }
 
+export type ApiNotification = {
+  id: string;
+  targetUserId: string;
+  title: string;
+  message: string;
+  leadId?: string | null;
+  actionUrl?: string | null;
+  eventType?: string | null;
+  timestamp: string;
+  read: boolean;
+};
 
+export async function loadEverpropNotifications(): Promise<{
+  data: ApiNotification[];
+  meta?: { unread_count?: number };
+}> {
+  return apiFetch<{ data: ApiNotification[]; meta?: { unread_count?: number } }>(
+    "/api/v1/admin/notifications"
+  );
+}
+
+export async function markEverpropNotificationRead(id: string): Promise<void> {
+  await apiFetch(`/api/v1/admin/notifications/${id}/read`, {
+    method: "PATCH",
+  });
+}
+
+export async function markAllEverpropNotificationsRead(): Promise<void> {
+  await apiFetch("/api/v1/admin/notifications/mark-all-read", {
+    method: "POST",
+  });
+}
