@@ -40,6 +40,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::apiResource('leads', AdminLeadController::class);
 
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/count', [AdminNotificationController::class, 'count'])->name('notifications.count');
         Route::post('/notifications/mark-all-read', [AdminNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
         Route::patch('/notifications/{id}/read', [AdminNotificationController::class, 'markAsRead'])->name('notifications.read');
     });

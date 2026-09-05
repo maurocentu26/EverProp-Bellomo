@@ -45,6 +45,23 @@ final class AdminNotificationController extends Controller
         ]);
     }
 
+    public function count(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $unreadCount = $user->unreadNotifications()->count();
+        $latest = $user->notifications()->latest()->first(['id', 'created_at']);
+
+        return response()->json([
+            'unread_count' => $unreadCount,
+            'latest_id' => $latest?->id,
+            'latest_timestamp' => $latest?->created_at?->toIso8601String(),
+        ]);
+    }
+
     public function markAsRead(Request $request, string $id): JsonResponse
     {
         $user = $request->user();

@@ -50,7 +50,7 @@ final class AdminLeadController extends Controller
                     'contacts.phone_e164 as contact_phone',
                     'pipeline_stages.code as stage_code',
                     'pipeline_stages.name as stage_name',
-                    'users.id as assigned_user_id',
+                    'users.public_id as assigned_user_id',
                     'users.display_name as assigned_user_name',
                 ])
                 ->orderByDesc('leads.updated_at');
