@@ -147,9 +147,11 @@ export default function AllLeadsPage() {
       ));
     }
 
-    // 5. Auth Filter
-    if (isAdvisor) {
+    // 5. Auth Filter (API mode enforces this at query level; mock mode filters client-side)
+    if (isAdvisor && isMockDataMode) {
       filtered = filtered.filter(l => l.agentId === user?.id);
+    }
+    if (isAdvisor) {
       const now = new Date();
       const priority = { overdue: 0, dueSoon: 1, none: 2, current: 3 } as const;
       filtered = [...filtered].sort((a, b) => {

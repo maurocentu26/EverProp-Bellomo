@@ -8,8 +8,7 @@ import { toast } from "sonner";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +16,6 @@ import { leads as sampleLeads, properties as sampleProperties, type Lead } from 
 import { loadLeadList, loadPropertyList, saveLeadList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { createEverpropLead, loadEverpropCatalog } from "@/lib/everprop-api";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
 
 type Props = {
   companyId?: string;
@@ -46,8 +44,6 @@ const formSchema = z.object({
 export function NewLeadForm({ companyId = "c1" }: Props) {
   const router = useRouter();
   const [propertyOptions, setPropertyOptions] = useState<Array<{ id: string; title: string }>>([]);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [savedLeadName, setSavedLeadName] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -101,18 +97,12 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
     const phone = data.phone?.trim() ?? "";
 
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      form.setError("email", {
-        type: "validate",
-        message: "Ingresá un email válido.",
-      });
+      form.setError("email", { type: "validate", message: "Ingresá un email válido." });
       return;
     }
 
     if (phone && !/^\+?[0-9\s().-]{7,20}$/.test(phone)) {
-      form.setError("phone", {
-        type: "validate",
-        message: "Ingresá un teléfono válido.",
-      });
+      form.setError("phone", { type: "validate", message: "Ingresá un teléfono válido." });
       return;
     }
 
@@ -153,22 +143,11 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
       saveLeadList([...existingLeads, nextLead]);
     }
 
-    setSavedLeadName(trimmedName);
-    setShowSuccessModal(true);
-
     toast.success("Lead creado", {
       description: `${trimmedName} se agregó al pipeline correctamente.`,
     });
 
-    form.reset({
-      name: "",
-      origin: ORIGINS[0],
-      email: "",
-      phone: "",
-      propertyId: propertyOptions[0]?.id ?? "",
-      stage: "new",
-      notes: "",
-    });
+    router.push("/admin/leads");
   }
 
   return (
@@ -359,61 +338,14 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
           type="button"
           variant="outline"
           className="border-slate-300 text-slate-700 hover:bg-slate-100"
-          onClick={() => {
-            form.reset({
-              name: "",
-              origin: ORIGINS[0],
-              email: "",
-              phone: "",
-              propertyId: propertyOptions[0]?.id ?? "",
-              stage: "new",
-              notes: "",
-            });
-          }}
+          onClick={() => router.push("/admin/leads")}
         >
-          Limpiar
+          Cancelar
         </Button>
         <Button type="submit" form="new-lead-form" className="bg-slate-950 text-white shadow-sm transition hover:bg-slate-800">
           Guardar lead
         </Button>
       </CardFooter>
-
-      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Lead agregado con éxito</DialogTitle>
-            <DialogDescription className={"text-black"}>
-              {savedLeadName ? `${savedLeadName} ya está en el pipeline.` : "El lead se agregó correctamente."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowSuccessModal(false);
-                form.reset({
-                  name: "",
-                  origin: ORIGINS[0],
-                  email: "",
-                  phone: "",
-                  propertyId: propertyOptions[0]?.id ?? "",
-                  stage: "new",
-                  notes: "",
-                });
-              }}
-            >
-              Seguir agregando leads
-            </Button>
-            <Button
-              onClick={() => router.push("/admin#leads")}
-              className="bg-slate-950 text-white hover:bg-slate-800"
-            >
-              Volver a la vista de leads
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

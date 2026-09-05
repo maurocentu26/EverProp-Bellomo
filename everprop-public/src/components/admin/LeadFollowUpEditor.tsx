@@ -60,6 +60,10 @@ export function LeadFollowUpEditor({
       ? argentinaDateTimeInputToIso(nextContactAt)
       : undefined;
 
+    if (!lead.agentId) {
+      setError("El lead debe tener un asesor asignado antes de registrar un seguimiento.");
+      return;
+    }
     if (!agentId) {
       setError("Seleccioná el asesor que realizó el seguimiento.");
       return;

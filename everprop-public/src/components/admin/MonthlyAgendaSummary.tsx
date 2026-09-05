@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { loadLeadList, loadPropertyList } from "@/lib/admin-storage";
+import { loadLeadFollowUpList, loadLeadList, loadPropertyList } from "@/lib/admin-storage";
 import { leads as sampleLeads, properties as sampleProperties, type Visit } from "@/data/admin-sample";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,8 +96,29 @@ export default function MonthlyAgendaSummary() {
       }))
     );
 
+    const followUps = loadLeadFollowUpList([], "c1");
+    const fromFollowUps: TimelineVisit[] = followUps
+      .filter((fu) => Boolean(fu.nextContactAt))
+      .map((fu) => {
+        const lead = leads.find((l) => l.id === fu.leadId);
+        return {
+          id: `followup-${fu.id}`,
+          scheduledAt: fu.nextContactAt!,
+          status: "scheduled" as const,
+          leadId: fu.leadId,
+          leadName: lead?.name || "Lead",
+          propertyTitle: "Seguimiento comercial",
+          propertyType: undefined,
+          unitNumber: "Seguimiento",
+          notes: fu.nextAction || `Próximo contacto · ${fu.type}`,
+          phone: lead?.phone,
+          email: lead?.email,
+          agentId: fu.agentId,
+        };
+      });
+
     const map = new Map<string, TimelineVisit>();
-    [...fromLeads, ...fromProps].forEach((it) => {
+    [...fromLeads, ...fromProps, ...fromFollowUps].forEach((it) => {
       if (!map.has(it.id)) map.set(it.id, it);
     });
 
