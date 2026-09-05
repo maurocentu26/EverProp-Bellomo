@@ -37,6 +37,22 @@ export default function LoginPage() {
     }
   };
 
+  const handleQuickApiLogin = async (quickEmail: string) => {
+    setEmail(quickEmail);
+    setPassword("password123");
+    setIsLoading(true);
+    setLoadingLabel(`Iniciando sesión como ${quickEmail}…`);
+    setError("");
+
+    try {
+      await login(quickEmail, "password123");
+      router.push("/admin");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No fue posible iniciar sesión.");
+      setIsLoading(false);
+    }
+  };
+
   const handleDemoLogin = async (demoEmail: string) => {
     setIsLoading(true);
     setLoadingLabel("Iniciando modo demo aislado…");
@@ -139,8 +155,41 @@ export default function LoginPage() {
                 <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" />
                 <div>
                   <h2 className="text-sm font-semibold text-white">Sesión real EverProp</h2>
-                  <p className="mt-1 text-xs leading-5 text-slate-300">Usa Sanctum, tenant Bellomo y las credenciales existentes de la API local.</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-300">Usa Sanctum, tenant Bellomo y las credenciales de la API.</p>
                 </div>
+              </div>
+
+              <div className="mb-5">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Acceso Rápido de Prueba (1 clic)
+                </p>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {MOCK_USERS.map((user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => void handleQuickApiLogin(user.email)}
+                      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition-all hover:border-blue-500/50 hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-slate-800 text-xs font-bold text-white shadow-inner group-hover:from-blue-500 group-hover:to-blue-700">
+                        {user.avatar}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-xs font-semibold text-white group-hover:text-blue-200">{user.name}</h3>
+                        <p className="truncate text-[10px] text-slate-400">{user.title || user.role}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative my-5 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10" />
+                </div>
+                <span className="relative bg-slate-900/90 px-3 text-[11px] uppercase tracking-wider text-slate-400">
+                  O ingresá manualmente
+                </span>
               </div>
 
               <form onSubmit={handleApiLogin} className="space-y-4">
