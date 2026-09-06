@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import type { LeadFollowUp, LeadFollowUpType } from "@/data/admin-sample";
-import { MOCK_USERS } from "@/data/auth-sample";
+import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import { formatArgentinaDateTime, getLeadFollowUps } from "@/lib/lead-follow-up";
 
 const TYPE_META: Record<LeadFollowUpType, { label: string; icon: typeof Phone }> = {
@@ -52,7 +52,7 @@ export function LeadFollowUpTimeline({
       {items.map((item) => {
         const meta = TYPE_META[item.type];
         const Icon = meta.icon;
-        const advisor = MOCK_USERS.find((user) => user.id === item.agentId);
+        const advisor = getAdvisor(item.agentId);
 
         return (
           <li key={item.id} className="relative rounded-3xl border border-slate-200 bg-white p-5 pl-16 shadow-sm sm:p-6 sm:pl-20">

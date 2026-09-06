@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { useDashboardMode } from "@/lib/dashboard-context";
 import { leads as sampleLeads, properties as sampleProperties } from "@/data/admin-sample";
-import { MOCK_USERS } from "@/data/auth-sample";
+import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 
@@ -93,7 +93,7 @@ export default function CalendarAgenda() {
     const fromLeads = leads.flatMap((lead) =>
       (lead.visits ?? []).map((v) => {
         const prop = properties.find((p) => p.id === v.propertyId);
-        const agent = MOCK_USERS.find((u) => u.id === v.agentId);
+        const agent = getAdvisor(v.agentId);
         return {
           ...v,
           leadName: v.leadName || lead.name,
@@ -109,7 +109,7 @@ export default function CalendarAgenda() {
 
     const fromProperties = properties.flatMap((prop) =>
       (prop.visits ?? []).map((v) => {
-        const agent = MOCK_USERS.find((u) => u.id === v.agentId);
+        const agent = getAdvisor(v.agentId);
         return {
           ...v,
           leadName: v.leadName || "Visitante",
@@ -128,7 +128,7 @@ export default function CalendarAgenda() {
       .filter((fu) => Boolean(fu.nextContactAt))
       .map((fu) => {
         const lead = leads.find((l) => l.id === fu.leadId);
-        const agent = MOCK_USERS.find((u) => u.id === fu.agentId);
+        const agent = getAdvisor(fu.agentId);
         return {
           id: `followup-${fu.id}`,
           scheduledAt: fu.nextContactAt!,

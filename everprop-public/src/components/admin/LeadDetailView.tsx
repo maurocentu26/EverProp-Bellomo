@@ -17,7 +17,7 @@ import {
   type Property,
   type Visit,
 } from "@/data/admin-sample";
-import { MOCK_USERS } from "@/data/auth-sample";
+import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import {
   appendLeadFollowUpToStorage,
   loadLeadFollowUpList,
@@ -213,9 +213,16 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
 
   async function handleReassignAgentConfirmed(agentId?: string) {
     if (!lead) return;
-    const nextLeads = updateLeadAgent(lead.id, agentId, allLeads, lead.companyId);
+    const newAdvisor = getAdvisor(agentId);
+    const updatedLead: Lead = {
+      ...lead,
+      agentId,
+      agentName: newAdvisor?.name,
+    };
+    const nextLeads = allLeads.map((candidate) => candidate.id === lead.id ? updatedLead : candidate);
     setAllLeads(nextLeads);
-    setLead(nextLeads.find((candidate) => candidate.id === lead.id) ?? null);
+    setLead(updatedLead);
+    saveLeadList(nextLeads, lead.companyId);
 
     if (!isMockDataMode) {
       try {
@@ -308,9 +315,9 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const primaryProperty = interestAssetIds[0]
     ? propertyById.get(interestAssetIds[0])
     : undefined;
-  const assignedAgent = lead.agentId
-    ? MOCK_USERS.find((user) => user.id === lead.agentId)
-    : undefined;
+  const assignedAgent = useMemo(() => {
+    return getAdvisor(lead.agentId, lead.agentName);
+  }, [lead.agentId, lead.agentName]);
 
   const cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
 
@@ -513,7 +520,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="lead-advisor-title">
             <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500">Asesor responsable</p>
             <p className="mt-1 text-base font-bold text-slate-900">{assignedAgent?.name ?? "Sin asignar"}</p>
-            <p className="mt-0.5 text-xs leading-5 text-slate-500">Cada lead conserva un único asesor responsable.</p>
+            <p className="mt-0.5 text-xs leading-5 text-slate-500">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
             {currentUser?.role === "ADMIN" && (
               <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold">
                 Cambiar asesor

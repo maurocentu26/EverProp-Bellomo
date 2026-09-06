@@ -4,7 +4,8 @@ import { useState, type FormEvent } from "react";
 import { ClipboardCheck, X } from "lucide-react";
 
 import type { Lead, LeadFollowUp, LeadFollowUpType } from "@/data/admin-sample";
-import { MOCK_USERS } from "@/data/auth-sample";
+import { MOCK_USERS, REAL_ADVISORS } from "@/data/auth-sample";
+import { isMockDataMode } from "@/lib/data-mode";
 import { useAuth } from "@/lib/auth-context";
 import {
   argentinaDateTimeInputToIso,
@@ -41,7 +42,9 @@ export function LeadFollowUpEditor({
   onConfirm,
 }: LeadFollowUpEditorProps) {
   const { currentUser } = useAuth();
-  const advisors = MOCK_USERS.filter((user) => user.role === "ADVISOR");
+  const advisors = isMockDataMode
+    ? MOCK_USERS.filter((user) => user.role === "ADVISOR")
+    : REAL_ADVISORS;
   const [agentId, setAgentId] = useState(
     currentUser?.role === "ADVISOR" ? currentUser.id : lead.agentId ?? "",
   );

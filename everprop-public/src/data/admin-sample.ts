@@ -120,6 +120,7 @@ export type Lead = {
   interests?: LeadInterest[];
   visits?: Visit[];
   agentId?: string;
+  agentName?: string;
 };
 
 export function inferLeadInterestCategory(property: Property): LeadInterestCategory {

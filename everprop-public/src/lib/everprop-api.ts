@@ -422,7 +422,7 @@ export type ApiLead = {
   budget?: number;
   currency?: string;
   notes?: string;
-  agent_id?: number;
+  agent_id?: number | string;
   agent_name?: string;
   created_at?: string;
   updated_at?: string;
@@ -451,6 +451,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     email: apiLead.email || undefined,
     notes: cleanText(apiLead.notes) || undefined,
     agentId: apiLead.agent_id ? String(apiLead.agent_id) : undefined,
+    agentName: apiLead.agent_name || undefined,
   };
 }
 

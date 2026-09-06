@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { UserRoundCog, X } from "lucide-react";
 
-import { MOCK_USERS } from "@/data/auth-sample";
+import { MOCK_USERS, REAL_ADVISORS } from "@/data/auth-sample";
 import { isMockDataMode } from "@/lib/data-mode";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,27 +12,6 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const REAL_ADVISORS = [
-  {
-    id: "b1100000-0000-4000-8000-000000000101",
-    numericId: "1",
-    name: "Lucas Albarracín",
-    role: "Asesor Comercial · Loteos",
-  },
-  {
-    id: "b1100000-0000-4000-8000-000000000102",
-    numericId: "2",
-    name: "Valentina Morales",
-    role: "Asesora Comercial · Locales & Inversiones",
-  },
-  {
-    id: "b1100000-0000-4000-8000-000000000104",
-    numericId: "4",
-    name: "Ing. Sofía Bellomo",
-    role: "Gerente Comercial",
-  },
-];
 
 type LeadAdvisorEditorProps = {
   leadName: string;
