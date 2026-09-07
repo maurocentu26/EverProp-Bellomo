@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuth } from "@/lib/auth-context";
+import { canManageInventory } from "@/lib/demo-permissions";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -32,6 +34,7 @@ type Props = {
 };
 
 export default function NewPropertyForm({ companyId = "c1" }: Props) {
+  const { currentUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const paramCategory = searchParams.get("category") as Category | null;
@@ -169,6 +172,8 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     setCategory(cat);
     setStep(2);
   };
+
+  if (isLocalDemo && !canManageInventory(currentUser)) return <p role="alert">Tu perfil no tiene permiso para agregar propiedades.</p>;
 
   if (savedProperty) return <section className="mx-auto max-w-3xl space-y-5 rounded-2xl border border-emerald-200 bg-white p-6">
     <h1 className="text-2xl font-bold text-slate-900">{savedProperty.published ? "Propiedad guardada y publicada" : "Propiedad guardada como oculta"}</h1>

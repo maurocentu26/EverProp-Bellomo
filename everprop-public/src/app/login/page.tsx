@@ -6,6 +6,7 @@ import { AlertCircle, Command, FlaskConical, Loader2, ShieldCheck } from "lucide
 import { MOCK_USERS } from "@/data/auth-sample";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
+import { isLocalDemo } from "@/lib/demo-catalog";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
@@ -122,7 +123,7 @@ export default function LoginPage() {
                 <div>
                   <h2 className="text-sm font-semibold text-white">QA visual mock</h2>
                   <p className="mt-1 text-xs leading-5 text-slate-300">
-                    Usa muestras y localStorage. No crea una sesión ni confirma datos u operaciones en la API.
+                    {isLocalDemo ? "Elegí un perfil para probar sus permisos. Los cambios se guardan solo en esta demo local. Administración: toda la web. Ingeniería: inventario. Asesores: consulta de propiedades." : "Usa muestras y localStorage. No crea una sesión ni confirma datos u operaciones en la API."}
                   </p>
                 </div>
               </div>

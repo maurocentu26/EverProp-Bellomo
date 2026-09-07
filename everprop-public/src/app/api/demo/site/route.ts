@@ -1,3 +1,4 @@
+import { authorizeDemo } from "@/lib/demo-session";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -48,6 +49,7 @@ function validContent(content: WebsiteContent) {
 }
 export function GET(request: Request) {
   if (!enabled(request)) return json({ error: "Demo local deshabilitada." }, 404);
+  if (new URL(request.url).searchParams.get("view") !== "published") { const denied = authorizeDemo(request, "website"); if (denied) return denied; }
   try {
     const state = read(); const view = new URL(request.url).searchParams.get("view");
     return json(view === "published" || view === "preview" ? { content: view === "preview" ? state.draft : state.published, revision: state.revision, publishedAt: state.publishedAt } : state);
@@ -55,6 +57,7 @@ export function GET(request: Request) {
 }
 export async function PUT(request: Request) {
   if (!enabled(request)) return json({ error: "Demo local deshabilitada." }, 404);
+  if (true) { const denied = authorizeDemo(request, "website"); if (denied) return denied; }
   const text = await request.text();
   if (text.length > 15_000_000) return json({ error: "El contenido supera el tamaño permitido. Usá imágenes más pequeñas." }, 413);
   let body: { revision: number; action: string; content?: WebsiteContent };

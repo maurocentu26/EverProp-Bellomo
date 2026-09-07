@@ -9,6 +9,7 @@ import { type Project, type Property, properties as sampleProperties, projects a
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
 import { cn } from "@/lib/utils";
 import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
+import { canManageInventory } from "@/lib/demo-permissions";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
 
@@ -27,7 +28,7 @@ const statusFilters = [
 ] as const;
 
 export default function AllPropertiesPage() {
-  const { invalidateSession } = useAuth();
+  const { invalidateSession, currentUser } = useAuth();
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
@@ -163,8 +164,8 @@ export default function AllPropertiesPage() {
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 pb-10">
       {isLocalDemo && <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-        <strong>Demo local conectada a Bellomito.</strong> Las propiedades nuevas se publican automáticamente. Administrá su publicación desde Web pública.
-        <a className="ml-3 font-semibold underline" href="/admin/web-publica">Abrir Web pública</a>
+        <strong>Demo local conectada a Bellomito.</strong> {canManageInventory(currentUser) ? "Administrá las propiedades y su publicación desde Web pública." : "Tu perfil permite consultar propiedades. Administración e Ingeniería gestionan su publicación."}
+        {canManageInventory(currentUser) && <a className="ml-3 font-semibold underline" href="/admin/web-publica">Abrir Web pública</a>}
       </div>}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -174,12 +175,12 @@ export default function AllPropertiesPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          <Link href="/admin/properties/new">
+          {(!isLocalDemo || canManageInventory(currentUser)) && <Link href="/admin/properties/new">
             <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
                 <Plus className="h-4 w-4" />
                 Nueva Propiedad
             </Button>
-          </Link>
+          </Link>}
         </div>
       </div>
 
@@ -304,7 +305,7 @@ export default function AllPropertiesPage() {
                     {props.length} unidades
                   </span>
                 </div>
-                <PropertyList properties={props} readOnly={false} />
+                <PropertyList properties={props} readOnly={isLocalDemo && !canManageInventory(currentUser)} />
               </div>
             );
           })}
@@ -320,7 +321,7 @@ export default function AllPropertiesPage() {
                   {groupedProperties.individual.length} unidades
                 </span>
               </div>
-              <PropertyList properties={groupedProperties.individual} readOnly={false} />
+              <PropertyList properties={groupedProperties.individual} readOnly={isLocalDemo && !canManageInventory(currentUser)} />
             </div>
           )}
         </div>

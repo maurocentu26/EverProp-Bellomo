@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuth } from "@/lib/auth-context";
+import { canManageInventory } from "@/lib/demo-permissions";
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
@@ -53,6 +55,7 @@ export function GenerateLotsModal({
   defaultProjectId,
   onSuccess,
 }: GenerateLotsModalProps) {
+  const { currentUser } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState<string>(defaultProjectId || "");
   const [sectorName, setSectorName] = useState("Manzana ");
@@ -250,6 +253,7 @@ export function GenerateLotsModal({
 
   const selectedProj = projects.find((p) => p.id === projectId);
 
+  if (isLocalDemo && !canManageInventory(currentUser)) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-6 bg-white rounded-2xl shadow-2xl">

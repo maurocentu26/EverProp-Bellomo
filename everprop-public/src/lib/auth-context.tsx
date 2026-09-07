@@ -15,6 +15,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const localDemo = process.env.NEXT_PUBLIC_LOCAL_DEMO === "1";
 const DEMO_STORAGE_KEY = "everprop:demo-user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -25,6 +26,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     async function restoreSession() {
+      if (localDemo) {
+        localStorage.removeItem(DEMO_STORAGE_KEY);
+        try {
+          const response = await fetch("/api/demo/session", { cache: "no-store" });
+          const data = response.ok ? await response.json() : { user: null };
+          if (active) setCurrentUser(data.user);
+        } catch { if (active) setCurrentUser(null); }
+        return;
+      }
       if (isMockDataMode) {
         const storedDemo = localStorage.getItem(DEMO_STORAGE_KEY);
         if (!storedDemo) return;
@@ -57,7 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (active) setIsLoaded(true);
     });
 
+    const refresh = () => { if (localDemo) void restoreSession(); };
+    window.addEventListener("focus", refresh);
     return () => {
+      window.removeEventListener("focus", refresh);
       active = false;
     };
   }, []);
@@ -73,6 +86,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("El modo mock no está habilitado en este entorno.");
     }
     await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+    if (localDemo) {
+      const response = await fetch("/api/demo/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      const data = await response.json();
+      if (!response.ok) throw Error(data.error || "No se pudo iniciar sesión.");
+      localStorage.removeItem(DEMO_STORAGE_KEY);
+      setCurrentUser(data.user);
+      return;
+    }
     const user = MOCK_USERS.find((candidate) => candidate.email === email);
     if (!user) throw new Error("Perfil demo no encontrado.");
     localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(user));
@@ -80,6 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    if (localDemo) {
+      const response = await fetch("/api/demo/session", { method: "DELETE" });
+      if (!response.ok) throw Error("No se pudo cerrar la sesión. Intentá de nuevo.");
+    }
     if (currentUser?.source === "api") {
       try {
         await logoutEverprop();

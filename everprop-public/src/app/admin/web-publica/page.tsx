@@ -1,4 +1,6 @@
 "use client";
+import { useAuth } from "@/lib/auth-context";
+import { canManageInventory, canManageWebsite } from "@/lib/demo-permissions";
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Eye, ExternalLink, Globe, Save, Upload, Plus, ArrowUp, ArrowDown, Trash2, CheckCircle2 } from "lucide-react";
@@ -56,7 +58,14 @@ function PropertiesManager() {
   </div>;
 }
 
-export default function WebsiteEditor() {
+export default function WebsiteAccess() {
+  const { currentUser, isLoaded } = useAuth();
+  if (!isLoaded) return <p>Cargando permisos…</p>;
+  if (!canManageInventory(currentUser)) return <p role="alert">Tu perfil puede consultar propiedades, pero no administrarlas ni modificar la web.</p>;
+  if (!canManageWebsite(currentUser)) return <div className="space-y-5"><h1 className="text-2xl font-bold">Web pública · Propiedades</h1><p>Tu permiso de inventario permite agregar, editar, publicar y ocultar propiedades. El contenido y Bellomito los administra Administración.</p><PropertiesManager/></div>;
+  return <WebsiteEditor/>;
+}
+function WebsiteEditor() {
   const [state,setState]=useState<WebsiteState|null>(null),[content,setContent]=useState<WebsiteContent>(clone(defaultWebsite)),[tab,setTab]=useState('Propiedades'),[group,setGroup]=useState('heroSlides');
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[preview,setPreview]=useState(false),[textSearch,setTextSearch]=useState('');
   useEffect(()=>{if(!isLocalDemo)return;void fetch('/api/demo/site',{cache:'no-store'}).then(async response=>{const result=await response.json();if(!response.ok)throw Error(result.error);setState(result);setContent(result.draft);}).catch(reason=>setError(String(reason)));},[]);

@@ -37,3 +37,15 @@ Con ambos servidores encendidos: `node scripts/check-cms.mjs`. Comprueba borrado
 También se verificó en el navegador la publicación de una propiedad, su ocultamiento y la vista previa/publicación de una sección. TypeScript pasa en ambas aplicaciones.
 
 Los procesos y registros se muestran al ejecutar el script; los registros están en `work/`. No iniciar otra instancia si los puertos ya están ocupados.
+
+## Roles y permisos en la demo local
+
+- **Administración (Marcos):** agregar, editar, publicar y ocultar propiedades; editar, guardar borradores y publicar todo el contenido de la web y Bellomito.
+- **Ingeniería (Sofía):** conserva `manage_inventory`: agregar, editar, publicar y ocultar propiedades. En Web pública solo accede a Propiedades; no modifica textos, secciones ni Bellomito.
+- **Asesores (Lucas y Valentina):** consulta de propiedades, sin altas, modificaciones ni cambios de visibilidad.
+
+El servidor comprueba cada operación con una sesión opaca en cookie HttpOnly, con vencimiento a las ocho horas y revocación al salir. Los permisos se obtienen de los perfiles definidos en el servidor; no se confía en roles enviados por el navegador ni en localStorage. La vista previa y los borradores requieren Administración, incluso accediendo desde la web pública. El catálogo publicado y el contenido publicado permanecen públicos.
+
+El selector de perfiles sigue disponible deliberadamente para probar la demo: cualquier persona con acceso a esta computadora puede elegir un perfil. No reemplaza el ingreso con credenciales y permisos de la API real. Este control cubre el catálogo compartido y el editor web locales; los restantes módulos mock mantienen su comportamiento anterior. Las sesiones se guardan en `.demo-data/sessions.json`, ignorado por Git. Al actualizar desde la demo anterior hay que elegir el perfil nuevamente una vez.
+
+Prueba de permisos: `node scripts/check-permissions.mjs`. Comprueba rechazos sin sesión y como asesor, inventario de Ingeniería, edición web y vista previa de Administración, intentos de falsificar roles/tokens y cierre de sesión. No agrega propiedades ni altera su visibilidad. `check-cms.mjs` inicia su propia sesión de Administración y la revoca al terminar.

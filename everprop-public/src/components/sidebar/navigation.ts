@@ -61,7 +61,7 @@ export const advisorNavigationGroups: NavGroup[] = [
         href: "/admin/properties", 
         icon: Building2, 
         matchPath: "/admin/properties",
-        children: [{ title: "Nueva Unidad", href: "/admin/properties/new", icon: Plus }]
+        children: process.env.NEXT_PUBLIC_LOCAL_DEMO === "1" ? [] : [{ title: "Nueva Unidad", href: "/admin/properties/new", icon: Plus }]
       },
       { title: "Proyectos & Desarrollos", href: "/admin/desarrollos", icon: HardHat, matchPath: "/admin/desarrollos" },
       { title: "Matriz de Lotes", href: "/admin/inventory-matrix", icon: Map, matchPath: "/admin/inventory-matrix" },

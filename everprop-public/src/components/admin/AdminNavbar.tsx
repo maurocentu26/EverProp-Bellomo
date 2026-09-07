@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
+import { canManageInventory } from "@/lib/demo-permissions";
+import { isLocalDemo } from "@/lib/demo-catalog";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
 import { clearAllNotifications, fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, type AppNotification } from "@/lib/notifications";
@@ -178,14 +180,14 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <Button
+            {(!isLocalDemo || canManageInventory(user)) && <Button
               variant="outline"
               size="sm"
               className="hidden items-center gap-2 xl:inline-flex"
               onClick={() => router.push("/admin/properties/new")}
             >
               <Plus className="h-4 w-4" /> Propiedad
-            </Button>
+            </Button>}
             {!isEngineer && (
               <Button
                 size="sm"

@@ -1,3 +1,4 @@
+import { authorizeDemo } from "@/lib/demo-session";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -47,6 +48,7 @@ function json(value: unknown, status = 200) {
 }
 export function GET(request: Request) {
   if (!enabled(request)) return json({ error: "Demo local deshabilitada." }, 404);
+  if (new URL(request.url).searchParams.get("public") !== "1") { const denied = authorizeDemo(request, "read"); if (denied) return denied; }
   try {
     const list = read();
     if (new URL(request.url).searchParams.get("public") === "1") {
@@ -67,6 +69,7 @@ export function GET(request: Request) {
 }
 export async function POST(request: Request) {
   if (!enabled(request)) return json({ error: "Demo local deshabilitada." }, 404);
+  if (true) { const denied = authorizeDemo(request, "inventory"); if (denied) return denied; }
   const parsed = z.union([schema, z.array(schema).min(1).max(300)]).safeParse(await request.json().catch(() => null));
   if (!parsed.success) return json({ error: "Revisá los datos de la propiedad." }, 400);
   try {
@@ -78,6 +81,7 @@ export async function POST(request: Request) {
 }
 export async function PATCH(request: Request) {
   if (!enabled(request)) return json({ error: "Demo local deshabilitada." }, 404);
+  if (true) { const denied = authorizeDemo(request, "inventory"); if (denied) return denied; }
   const parsed = schema.partial().extend({ id: z.string(), published: z.boolean().optional(), status: z.enum(["available", "reserved", "sold"]).optional() }).refine(value => Object.keys(value).length > 1).safeParse(await request.json().catch(() => null));
   if (!parsed.success) return json({ error: "Cambio de publicación inválido." }, 400);
   try {
