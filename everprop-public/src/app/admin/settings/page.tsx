@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, BellRing, Building2, CheckCircle2, ChevronRight, Globe, Paintbrush, ShieldCheck, SlidersHorizontal, Sparkles, Wifi, Zap } from "lucide-react";
-import Link from "next/link";
+import { BellRing, Building2, CheckCircle2, ChevronRight, Globe, Paintbrush, ShieldCheck, SlidersHorizontal, Sparkles, Wifi, Zap } from "lucide-react";
 
+
+import { isLocalDemo } from "@/lib/demo-catalog";
+import DemoSettings from "@/components/admin/DemoSettings";
 import Badge from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +46,10 @@ function SectionPill({ active, label, icon: Icon }: { active: boolean; label: st
 }
 
 export default function SettingsPage() {
+    return isLocalDemo ? <DemoSettings /> : <LegacySettingsPage />;
+}
+
+function LegacySettingsPage() {
     const [progress, setProgress] = useState(0);
     const [activeSection, setActiveSection] = useState("company");
 

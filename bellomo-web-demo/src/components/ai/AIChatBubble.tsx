@@ -196,7 +196,7 @@ export function AIChatBubble() {
 
   if (isLocalDemo && !content.bot.enabled) return null;
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end pointer-events-auto sm:bottom-6 sm:right-36">
+    <div className="fixed bottom-4 right-4 z-[80] flex flex-col items-end pointer-events-auto sm:bottom-6 sm:right-36">
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -208,7 +208,7 @@ export function AIChatBubble() {
             role="dialog"
             aria-label="Chat con Bellomito"
           >
-            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 p-3.5 text-white">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-950 p-3.5 text-white">
               <div className="flex items-center gap-3">
                 <BellomitoAvatar size="md" showOnlineStatus />
                 <div>
@@ -226,7 +226,7 @@ export function AIChatBubble() {
                 <button
                   type="button"
                   onClick={handleClearChat}
-                  className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   aria-label="Limpiar conversación"
                 >
                   <Trash2 size={16} />
@@ -234,7 +234,7 @@ export function AIChatBubble() {
                 <button
                   type="button"
                   onClick={handleToggleOpen}
-                  className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   aria-label="Cerrar chat"
                 >
                   <X size={18} />
@@ -242,7 +242,7 @@ export function AIChatBubble() {
               </div>
             </div>
 
-            <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-slate-50/50 p-4" aria-live="polite">
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-slate-50/50 p-4" aria-live="polite">
               {messages.map((message) => (
                 <div
                   key={message.id}
