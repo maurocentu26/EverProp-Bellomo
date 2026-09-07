@@ -1,4 +1,5 @@
 "use client";
+import { demoPropertyImage } from "@/lib/demo-property-image";
 import { useEffect, useState } from "react";
 import type { Project } from "@/data/bellomo";
 import type { DemoProperty } from "@/lib/demo-catalog";
@@ -37,7 +38,7 @@ export function usePublicInventory(projects: Project[]) {
     id: `inmueble-${p.id}`, name: p.title, type: p.propertyType, location: [p.neighborhood, p.city].filter(Boolean).join(", "),
     status: p.status === "sold" ? "Vendido" : p.status === "reserved" ? "Reservado" : "Disponible",
     description: p.description || "", inventory: p,
-    media: { src: p.mainImage || "", alt: p.title, intent: "Propiedad", section: "comercializadora", temporarySource: "bellomojujuy.com.ar", temporary: true },
+    media: { src: p.mainImage || demoPropertyImage(p.propertyType), alt: p.mainImage ? p.title : `Imagen ilustrativa de ${p.propertyType.toLowerCase()} · Demo`, intent: "Propiedad", section: "comercializadora", temporarySource: "bellomojujuy.com.ar", temporary: true },
   }));
   const developments = !filtered ? projects : category === "loteos" ? projects.filter(p => /lote|tierra/i.test(p.type)) : [];
   return { cards: [...developments, ...inventory] as CommercialCard[], error };

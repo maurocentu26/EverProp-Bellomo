@@ -1574,6 +1574,7 @@ const whatsappHref = useWhatsAppHref();
             {project.name}
           </h3>
           <p className="mt-3 text-sm leading-6 text-white/80">{project.description}</p>
+          {project.inventory && !project.inventory.mainImage && <p className="mt-2 text-xs text-white/80">Imagen ilustrativa · Demo</p>}
           {project.inventory && <p className="mt-3 text-lg font-semibold text-white">{project.inventory.operation === "sale" ? "Venta" : project.inventory.operation === "temporal" ? "Alquiler temporal" : "Alquiler"} · {project.inventory.currency} {project.inventory.price.toLocaleString("es-AR")}{project.inventory.area_m2 ? ` · ${project.inventory.area_m2} m²` : ""}</p>}
           <a
             aria-label={`Consultar por ${project.name}`}

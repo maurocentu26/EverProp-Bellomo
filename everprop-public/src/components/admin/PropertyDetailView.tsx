@@ -1,5 +1,6 @@
 "use client";
 
+import { demoPropertyImage } from "@/lib/demo-property-image";
 import { useEffect, useState } from "react";
 import PropertyPublication from "./PropertyPublication";
 import Link from "next/link";
@@ -168,6 +169,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
     <Link href="/admin/properties" className="text-blue-700 underline">Volver a Propiedades</Link>
     <p className="text-sm text-slate-500">Ficha demo · {property.published ? "Publicada en la web" : "Oculta en la web"}</p>
     <h1 className="text-3xl font-semibold text-slate-900">{property.title}</h1>
+    <figure><img src={property.mainImage || demoPropertyImage(property.propertyType)} alt={property.mainImage ? property.title : `Imagen ilustrativa de ${property.propertyType}`} className="aspect-[3/2] w-full rounded-xl object-cover"/>{!property.mainImage && <figcaption className="mt-2 text-xs text-slate-500">Imagen ilustrativa generada para la demo. Podés cargar la foto de la propiedad desde Editar.</figcaption>}</figure>
     <p>{property.neighborhood}, {property.city}</p>
     <p className="text-2xl">{property.currency} {property.price.toLocaleString("es-AR")}</p>
     <p>{property.propertyType} · {property.area_m2 || "—"} m² · {property.bedrooms} dormitorios</p>
