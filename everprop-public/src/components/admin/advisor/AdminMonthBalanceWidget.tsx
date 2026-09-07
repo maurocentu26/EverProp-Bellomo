@@ -343,11 +343,15 @@ export function AdminMonthBalanceWidget({
                                   <Phone className="size-3.5" />
                                 </a>
                                 <a
-                                  href={`https://wa.me/${cleanPhone}`}
+                                  href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                                    `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
+                                      propTitle ? ` sobre ${propTitle}` : ""
+                                    }. ¿Cómo estás?`
+                                  )}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="p-1 text-slate-400 hover:text-emerald-600 rounded transition-colors"
-                                  title="Abrir WhatsApp"
+                                  title="Abrir WhatsApp con mensaje personalizado"
                                 >
                                   <MessageCircle className="size-3.5" />
                                 </a>

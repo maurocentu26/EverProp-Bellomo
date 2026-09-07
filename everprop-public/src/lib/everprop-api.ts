@@ -477,8 +477,15 @@ export function mapLead(apiLead: ApiLead): Lead {
       currency: p.currency || "USD",
       category: mappedCategory,
       projectId: p.project_id || undefined,
-      unitId: p.unit_number ? p.id : undefined,
-      status: p.status || "ACTIVE",
+      status: (() => {
+        const raw = (p.status || "").toUpperCase();
+        if (raw === "VISIT_SCHEDULED" || raw === "VISITING") return "visiting";
+        if (raw === "NEGOTIATING" || raw === "NEGOTIATION") return "negotiation";
+        if (raw === "CONVERTED" || raw === "WON" || raw === "CLOSING") return "closing";
+        if (raw === "ACTIVE" || raw === "CONTACTED") return "contacted";
+        if (raw === "NEW") return "new";
+        return "contacted";
+      })(),
       interestLevel: p.interest_level || "MEDIUM",
       notes: p.notes || undefined,
       createdAt: apiLead.created_at || new Date().toISOString(),
@@ -685,6 +692,56 @@ export async function attachEverpropLeadProperty(
       quoted_currency_code: options?.currency ?? null,
     }),
   });
+}
+
+export async function updateEverpropLeadProperty(
+  leadPublicId: string,
+  propertyPublicId: string | number,
+  data: {
+    status?: string;
+    interestLevel?: string;
+    notes?: string;
+  }
+) {
+  const propertyStatusMap: Record<string, string> = {
+    new: "ACTIVE",
+    NEW: "ACTIVE",
+    contacted: "ACTIVE",
+    CONTACTED: "ACTIVE",
+    active: "ACTIVE",
+    ACTIVE: "ACTIVE",
+    visiting: "VISIT_SCHEDULED",
+    VISITING: "VISIT_SCHEDULED",
+    visit_scheduled: "VISIT_SCHEDULED",
+    VISIT_SCHEDULED: "VISIT_SCHEDULED",
+    negotiation: "NEGOTIATING",
+    NEGOTIATION: "NEGOTIATING",
+    negotiating: "NEGOTIATING",
+    NEGOTIATING: "NEGOTIATING",
+    closing: "CONVERTED",
+    CLOSING: "CONVERTED",
+    won: "CONVERTED",
+    WON: "CONVERTED",
+    converted: "CONVERTED",
+    CONVERTED: "CONVERTED",
+    discarded: "DISCARDED",
+    DISCARDED: "DISCARDED",
+  };
+
+  const payload: Record<string, any> = {};
+  if (data.status !== undefined) {
+    payload.status = propertyStatusMap[data.status] || propertyStatusMap[data.status.toUpperCase()] || "ACTIVE";
+  }
+  if (data.interestLevel !== undefined) payload.interest_level = data.interestLevel.toUpperCase();
+  if (data.notes !== undefined) payload.notes = data.notes;
+
+  return apiFetch<{ status: string; data: any }>(
+    `/api/v1/admin/leads/${leadPublicId}/properties/${propertyPublicId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  );
 }
 
 export async function detachEverpropLeadProperty(leadPublicId: string, propertyPublicId: string) {

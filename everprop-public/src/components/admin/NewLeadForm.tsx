@@ -8,11 +8,13 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 import {
+  AlertTriangle,
   ArrowLeft,
   Building2,
   Car,
   Check,
   Home,
+  Lock,
   Mail,
   MapPin,
   Phone,
@@ -116,23 +118,31 @@ const REAL_ADVISORS = [
   },
 ];
 
-const formSchema = z.object({
-  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(60, "El nombre no puede superar 60 caracteres."),
-  origin: z.string().min(1, "Seleccioná un origen."),
-  email: z
-    .string()
-    .trim()
-    .optional()
-    .refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), "Ingresá un email válido."),
-  phone: z
-    .string()
-    .trim()
-    .optional()
-    .refine((value) => !value || /^[+0-9\s().-]{6,30}$/.test(value), "Ingresá un teléfono válido."),
-  stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing"]),
-  notes: z.string().trim().max(5000, "Las notas no pueden superar 5000 caracteres.").optional().or(z.literal("")),
-  agentId: z.string().optional(),
-});
+const formSchema = z
+  .object({
+    name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(60, "El nombre no puede superar 60 caracteres."),
+    origin: z.string().min(1, "Seleccioná un origen."),
+    email: z
+      .string()
+      .trim()
+      .optional()
+      .refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), "Ingresá un email válido."),
+    phone: z
+      .string()
+      .trim()
+      .optional()
+      .refine((value) => !value || /^[+0-9\s().-]{6,30}$/.test(value), "Ingresá un teléfono válido."),
+    stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing"]),
+    notes: z.string().trim().max(5000, "Las notas no pueden superar 5000 caracteres.").optional().or(z.literal("")),
+    agentId: z.string().optional(),
+  })
+  .refine(
+    (data) => Boolean(data.email?.trim() || data.phone?.trim()),
+    {
+      message: "Ingresá al menos un medio de contacto: WhatsApp o Correo electrónico.",
+      path: ["phone"],
+    }
+  );
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -277,10 +287,36 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     }
   }, [activeLead, allProperties, selectedAsset, selectedCategory, selectedProjectId]);
 
+  const watchedPhone = form.watch("phone");
+  const watchedEmail = form.watch("email");
+  const isContactModified = useMemo(() => {
+    if (!isEditing || !activeLead) return false;
+    const phoneChanged = (watchedPhone?.trim() || "") !== (activeLead.phone?.trim() || "");
+    const emailChanged = (watchedEmail?.trim() || "") !== (activeLead.email?.trim() || "");
+    return phoneChanged || emailChanged;
+  }, [isEditing, activeLead, watchedPhone, watchedEmail]);
+
+  const availableProjects = useMemo(() => {
+    const eligibleProps = allProperties.filter(
+      (p) => p.status !== "reserved" && p.status !== "sold"
+    );
+    if (!selectedCategory) {
+      return allProjects.filter((project) =>
+        eligibleProps.some((p) => p.projectId === project.id)
+      );
+    }
+    return allProjects.filter((project) =>
+      eligibleProps.some(
+        (p) => p.projectId === project.id && inferLeadInterestCategory(p) === selectedCategory
+      )
+    );
+  }, [allProjects, allProperties, selectedCategory]);
+
   const availableAssets = useMemo(() => {
     const query = assetSearchQuery.toLowerCase().trim();
 
     return allProperties
+      .filter((property) => property.status !== "reserved" && property.status !== "sold")
       .filter((property) => !selectedCategory || inferLeadInterestCategory(property) === selectedCategory)
       .filter((property) => !selectedProjectId || property.projectId === selectedProjectId)
       .filter((property) => {
@@ -297,6 +333,15 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const handleCategorySelect = (category: AssetCategory) => {
     const nextCategory = selectedCategory === category ? null : category;
     setSelectedCategory(nextCategory);
+
+    if (selectedProjectId && nextCategory) {
+      const projectHasMatchingProps = allProperties.some(
+        (p) => p.status !== "reserved" && p.status !== "sold" && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
+      );
+      if (!projectHasMatchingProps) {
+        setSelectedProjectId("");
+      }
+    }
 
     if (selectedAsset && nextCategory && inferLeadInterestCategory(selectedAsset) !== nextCategory) {
       setSelectedAsset(null);
@@ -564,18 +609,35 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="lead-name" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Nombre completo <span className="text-rose-500">*</span>
-                      </FieldLabel>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel htmlFor="lead-name" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Nombre completo <span className="text-rose-500">*</span>
+                        </FieldLabel>
+                        {isEditing && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            <Lock className="size-3" /> Bloqueado en edición
+                          </span>
+                        )}
+                      </div>
                       <Input
                         {...field}
                         id="lead-name"
                         autoComplete="name"
-                        autoFocus
+                        autoFocus={!isEditing}
+                        disabled={isEditing}
+                        readOnly={isEditing}
                         aria-invalid={fieldState.invalid}
                         placeholder="Ejemplo: Marcos Gallardo"
-                        className="h-10 border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
+                        className={cn(
+                          "h-10 border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500",
+                          isEditing && "bg-slate-100/80 text-slate-600 cursor-not-allowed border-slate-200 dark:bg-slate-900/80 dark:text-slate-400"
+                        )}
                       />
+                      {isEditing && (
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          El nombre del contacto no se puede modificar al completar la ficha.
+                        </p>
+                      )}
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
                     </Field>
                   )}
@@ -634,6 +696,19 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     )}
                   />
                 </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Podés ingresar WhatsApp, correo electrónico o ambos (al menos un medio de contacto es requerido).
+                </p>
+
+                {isContactModified && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 flex items-start gap-2.5 shadow-2xs">
+                    <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Aviso de modificación de contacto:</span> Has editado el teléfono o correo electrónico del lead. La nueva información reemplazará la registrada previamente en el CRM.
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Controller
@@ -783,8 +858,10 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     onChange={(event) => handleProjectSelect(event.target.value)}
                     className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                   >
-                    <option value="">Sin proyecto identificado</option>
-                    {allProjects.map((project) => (
+                    <option value="">
+                      {selectedCategory ? "Todos los proyectos de esta categoría" : "Sin proyecto identificado"}
+                    </option>
+                    {availableProjects.map((project) => (
                       <option key={project.id} value={project.id}>{project.name}</option>
                     ))}
                   </select>
@@ -830,9 +907,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     />
                   </div>
 
-                  <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                  <div className="mt-2 max-h-60 space-y-1.5 overflow-y-auto pr-1">
                     {availableAssets.length > 0 ? (
-                      availableAssets.slice(0, 8).map((asset) => {
+                      availableAssets.slice(0, 50).map((asset) => {
                         const project = asset.projectId ? allProjects.find((candidate) => candidate.id === asset.projectId) : null;
                         const isSelected = selectedAsset?.id === asset.id;
                         return (

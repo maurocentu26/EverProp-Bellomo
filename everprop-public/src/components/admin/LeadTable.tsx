@@ -41,7 +41,15 @@ function LeadActions({ lead, onView, onFollowUp }: LeadActionsProps) {
           variant="ghost"
           size="icon"
           className="h-9 w-9 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-          onClick={() => window.open(`https://wa.me/${whatsappNumber}`, "_blank", "noopener,noreferrer")}
+          onClick={() => {
+            const propTitle = lead.interests?.[0]?.propertyTitle;
+            const msg = encodeURIComponent(
+              `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
+                propTitle ? ` sobre ${propTitle}` : ""
+              }. ¿Cómo estás?`
+            );
+            window.open(`https://wa.me/${whatsappNumber}?text=${msg}`, "_blank", "noopener,noreferrer");
+          }}
           aria-label={`Contactar a ${lead.name} por WhatsApp`}
           title="Contactar por WhatsApp"
         >
