@@ -122,12 +122,12 @@ export function appendLeadFollowUpToStorage(
   return next;
 }
 
-export function updateLeadAgent(leadId: string, agentId: string | undefined, seed: Lead[], companyId: string = "c1") {
+export function updateLeadAgent(leadId: string, agentId: string | undefined, seed: Lead[], companyId: string = "c1", agentName?: string) {
   const stored = readList<Lead>(ADMIN_STORAGE_KEYS.leads);
   const source = stored.length > 0 ? stored : seed;
   const current = source.filter((lead) => lead.companyId === companyId);
   const otherCompanyLeads = source.filter((lead) => lead.companyId !== companyId);
-  const next = current.map(lead => lead.id === leadId ? { ...lead, agentId } : lead);
+  const next = current.map(lead => lead.id === leadId ? { ...lead, agentId, ...(agentName !== undefined ? { agentName } : {}) } : lead);
   window.localStorage.setItem(ADMIN_STORAGE_KEYS.leads, JSON.stringify([...otherCompanyLeads, ...next]));
   return next;
 }

@@ -2,9 +2,11 @@
 
 namespace App\Domain\CRM\Http\Controllers;
 
+use App\Domain\CRM\Notifications\LeadAssignedNotification;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -48,7 +50,7 @@ final class AdminLeadController extends Controller
                     'contacts.phone_e164 as contact_phone',
                     'pipeline_stages.code as stage_code',
                     'pipeline_stages.name as stage_name',
-                    'users.id as assigned_user_id',
+                    'users.public_id as assigned_user_id',
                     'users.display_name as assigned_user_name',
                 ])
                 ->orderByDesc('leads.updated_at');
@@ -60,8 +62,43 @@ final class AdminLeadController extends Controller
 
             $leads = $query->limit(200)->get();
 
+            $leadIds = $leads->pluck('id')->all();
+            $linkedPropertiesMap = [];
+            $linkedPropertyIds = [];
+
+            if (! empty($leadIds)) {
+                $linkedProps = DB::table('lead_properties')
+                    ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
+                    ->where('lead_properties.tenant_id', $tenantId)
+                    ->whereIn('lead_properties.lead_id', $leadIds)
+                    ->select([
+                        'lead_properties.lead_id',
+                        'lead_properties.interest_level',
+                        'lead_properties.notes as interest_notes',
+                        'properties.public_id as property_public_id',
+                        'properties.title as property_title',
+                        'properties.price as property_price',
+                        'properties.currency_code as property_currency',
+                        'properties.category as property_category',
+                    ])
+                    ->get();
+
+                foreach ($linkedProps as $prop) {
+                    $linkedPropertyIds[$prop->lead_id][] = $prop->property_public_id;
+                    $linkedPropertiesMap[$prop->lead_id][] = [
+                        'id' => $prop->property_public_id,
+                        'title' => $prop->property_title,
+                        'price' => $prop->property_price ? (float) $prop->property_price : null,
+                        'currency' => $prop->property_currency,
+                        'category' => $prop->property_category,
+                        'interest_level' => $prop->interest_level,
+                        'notes' => $prop->interest_notes,
+                    ];
+                }
+            }
+
             return response()->json([
-                'data' => $leads->map(function ($lead) {
+                'data' => $leads->map(function ($lead) use ($linkedPropertyIds, $linkedPropertiesMap) {
                     return [
                         'id' => $lead->public_id,
                         'db_id' => $lead->id,
@@ -77,6 +114,10 @@ final class AdminLeadController extends Controller
                         'notes' => $lead->notes,
                         'agent_id' => $lead->assigned_user_id,
                         'agent_name' => $lead->assigned_user_name,
+                        'last_touch_at' => $lead->last_touch_at,
+                        'follow_up_updated_at' => $lead->last_touch_at,
+                        'property_ids' => $linkedPropertyIds[$lead->id] ?? [],
+                        'properties' => $linkedPropertiesMap[$lead->id] ?? [],
                         'created_at' => $lead->created_at,
                         'updated_at' => $lead->updated_at,
                     ];
@@ -106,7 +147,8 @@ final class AdminLeadController extends Controller
                 'budget' => 'nullable|numeric|min:0',
                 'currency' => 'nullable|string|in:USD,ARS',
                 'notes' => 'nullable|string|max:10000',
-                'agent_id' => 'nullable|integer',
+                'agent_id' => 'nullable',
+                'property_id' => 'nullable|string',
             ]);
 
             return DB::transaction(function () use ($tenantId, $user, $validated) {
@@ -142,7 +184,8 @@ final class AdminLeadController extends Controller
                 }
 
                 // 3. Resolve assigned agent
-                $assignedId = $validated['agent_id'] ?? ($user ? $user->id : null);
+                $assignedId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId)
+                    ?? ($user ? $user->id : null);
 
                 // 4. Create lead
                 $leadUuid = (string) Str::uuid();
@@ -166,6 +209,59 @@ final class AdminLeadController extends Controller
                     'updated_at' => $now,
                 ]);
 
+                // 4.1 Attach initial property if provided
+                $linkedPropertyIds = [];
+                if (! empty($validated['property_id'])) {
+                    $propIdentifier = $validated['property_id'];
+                    $property = DB::table('properties')
+                        ->where('tenant_id', $tenantId)
+                        ->where(function ($q) use ($propIdentifier) {
+                            $q->where('public_id', $propIdentifier);
+                            if (is_numeric($propIdentifier)) {
+                                $q->orWhere('id', (int) $propIdentifier);
+                            }
+                        })
+                        ->first();
+
+                    if ($property) {
+                        DB::table('lead_properties')->insert([
+                            'tenant_id' => $tenantId,
+                            'lead_id' => $leadId,
+                            'property_id' => $property->id,
+                            'linked_by_user_id' => $assignedId,
+                            'interest_level' => 'MEDIUM',
+                            'status' => 'ACTIVE',
+                            'notes' => null,
+                            'quoted_price' => $property->price,
+                            'quoted_currency_code' => $property->currency_code,
+                            'linked_at' => $now,
+                            'last_activity_at' => $now,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                        $linkedPropertyIds[] = $property->public_id;
+                    }
+                }
+
+                // 5. Notify assigned agent
+                if ($assignedId) {
+                    try {
+                        $assignedUser = User::find($assignedId);
+                        if ($assignedUser) {
+                            $assignedUser->notify(new LeadAssignedNotification(
+                                leadPublicId: $leadUuid,
+                                leadName: $validated['name'],
+                                eventType: 'LEAD_CREATED',
+                                title: 'Nuevo lead asignado',
+                                message: "Se te ha asignado el nuevo lead '{$validated['name']}'",
+                                actionUrl: "/admin/leads/{$leadUuid}"
+                            ));
+                        }
+                    } catch (\Throwable) {
+                        // Keep transaction intact if notification fails
+                    }
+                }
+
                 return response()->json([
                     'data' => [
                         'id' => $leadUuid,
@@ -175,6 +271,7 @@ final class AdminLeadController extends Controller
                         'stage' => $stage ? $stage->code : 'NEW',
                         'priority' => strtolower($validated['priority'] ?? 'normal'),
                         'agent_id' => $assignedId,
+                        'property_ids' => $linkedPropertyIds,
                     ],
                 ], 201);
             });
@@ -183,6 +280,113 @@ final class AdminLeadController extends Controller
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+            ], 500);
+        }
+    }
+
+    public function show(Request $request, string $leadPublicId): JsonResponse
+    {
+        try {
+            $tenantId = $this->tenantContext->id();
+            $user = $request->user();
+
+            $query = DB::table('leads')
+                ->join('contacts', 'contacts.id', '=', 'leads.contact_id')
+                ->join('pipeline_stages', 'pipeline_stages.id', '=', 'leads.stage_id')
+                ->leftJoin('users', 'users.id', '=', 'leads.assigned_user_id')
+                ->where('leads.tenant_id', $tenantId)
+                ->where('leads.public_id', $leadPublicId)
+                ->whereNull('leads.deleted_at')
+                ->select([
+                    'leads.id',
+                    'leads.public_id',
+                    'leads.title',
+                    'leads.priority',
+                    'leads.qualification',
+                    'leads.budget_min',
+                    'leads.budget_max',
+                    'leads.currency_code',
+                    'leads.is_open',
+                    'leads.first_touch_at',
+                    'leads.last_touch_at',
+                    'leads.notes',
+                    'leads.created_at',
+                    'leads.updated_at',
+                    'contacts.public_id as contact_public_id',
+                    'contacts.display_name as contact_name',
+                    'contacts.email as contact_email',
+                    'contacts.phone_e164 as contact_phone',
+                    'pipeline_stages.code as stage_code',
+                    'pipeline_stages.name as stage_name',
+                    'users.public_id as assigned_user_id',
+                    'users.display_name as assigned_user_name',
+                ]);
+
+            if ($user && isset($user->role_code) && $user->role_code === RoleCode::SALES_ADVISOR) {
+                $query->where('leads.assigned_user_id', $user->id);
+            }
+
+            $lead = $query->first();
+
+            if (! $lead) {
+                return response()->json(['error' => 'Lead not found'], 404);
+            }
+
+            $linkedProps = DB::table('lead_properties')
+                ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
+                ->where('lead_properties.tenant_id', $tenantId)
+                ->where('lead_properties.lead_id', $lead->id)
+                ->select([
+                    'lead_properties.interest_level',
+                    'lead_properties.notes as interest_notes',
+                    'properties.public_id as property_public_id',
+                    'properties.title as property_title',
+                    'properties.price as property_price',
+                    'properties.currency_code as property_currency',
+                    'properties.category as property_category',
+                ])
+                ->get();
+
+            $propertyIds = $linkedProps->pluck('property_public_id')->all();
+            $propertiesList = $linkedProps->map(function ($prop) {
+                return [
+                    'id' => $prop->property_public_id,
+                    'title' => $prop->property_title,
+                    'price' => $prop->property_price ? (float) $prop->property_price : null,
+                    'currency' => $prop->property_currency,
+                    'category' => $prop->property_category,
+                    'interest_level' => $prop->interest_level,
+                    'notes' => $prop->interest_notes,
+                ];
+            })->all();
+
+            return response()->json([
+                'data' => [
+                    'id' => $lead->public_id,
+                    'db_id' => $lead->id,
+                    'name' => $lead->contact_name ?: $lead->title,
+                    'email' => $lead->contact_email,
+                    'phone' => $lead->contact_phone,
+                    'title' => $lead->title,
+                    'stage' => $lead->stage_code,
+                    'stage_label' => $lead->stage_name,
+                    'priority' => strtolower($lead->priority),
+                    'budget' => $lead->budget_max ? (float) $lead->budget_max : null,
+                    'currency' => $lead->currency_code ?: 'USD',
+                    'notes' => $lead->notes,
+                    'agent_id' => $lead->assigned_user_id,
+                    'agent_name' => $lead->assigned_user_name,
+                    'last_touch_at' => $lead->last_touch_at,
+                    'follow_up_updated_at' => $lead->last_touch_at,
+                    'property_ids' => $propertyIds,
+                    'properties' => $propertiesList,
+                    'created_at' => $lead->created_at,
+                    'updated_at' => $lead->updated_at,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -198,7 +402,7 @@ final class AdminLeadController extends Controller
             'stage' => 'nullable|string|max:40',
             'notes' => 'nullable|string|max:10000',
             'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT',
-            'agent_id' => 'nullable|integer',
+            'agent_id' => 'nullable',
         ]);
 
         $lead = DB::table('leads')
@@ -249,7 +453,30 @@ final class AdminLeadController extends Controller
         }
 
         if (array_key_exists('agent_id', $validated)) {
-            $updates['assigned_user_id'] = $validated['agent_id'];
+            $newAssignedId = $this->resolveUserId($validated['agent_id'], $tenantId);
+            $oldAssignedId = $lead->assigned_user_id ? (int) $lead->assigned_user_id : null;
+
+            $updates['assigned_user_id'] = $newAssignedId;
+
+            if ($newAssignedId && $newAssignedId !== $oldAssignedId) {
+                try {
+                    $assignedUser = User::find($newAssignedId);
+                    if ($assignedUser) {
+                        $contact = DB::table('contacts')->where('id', $lead->contact_id)->first(['display_name']);
+                        $leadName = $contact?->display_name ?: $lead->title;
+                        $assignedUser->notify(new LeadAssignedNotification(
+                            leadPublicId: $lead->public_id,
+                            leadName: $leadName,
+                            eventType: 'LEAD_REASSIGNED',
+                            title: 'Lead reasignado',
+                            message: "Se te ha reasignado el lead '{$leadName}'",
+                            actionUrl: "/admin/leads/{$lead->public_id}"
+                        ));
+                    }
+                } catch (\Throwable) {
+                    // Ignore notification errors
+                }
+            }
         }
 
         DB::table('leads')
@@ -257,5 +484,136 @@ final class AdminLeadController extends Controller
             ->update($updates);
 
         return response()->json(['status' => 'updated']);
+    }
+
+    public function attachProperty(Request $request, string $leadPublicId): JsonResponse
+    {
+        $tenantId = $this->tenantContext->id();
+        $user = $request->user();
+
+        $lead = DB::table('leads')
+            ->where('tenant_id', $tenantId)
+            ->where('public_id', $leadPublicId)
+            ->first();
+
+        if (! $lead) {
+            return response()->json(['error' => 'Lead not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'property_id' => 'required|string',
+            'interest_level' => 'nullable|string|in:LOW,MEDIUM,HIGH,HOT,low,medium,high,hot',
+            'notes' => 'nullable|string|max:5000',
+            'quoted_price' => 'nullable|numeric|min:0',
+            'quoted_currency_code' => 'nullable|string|in:USD,ARS',
+        ]);
+
+        $propertyIdentifier = $validated['property_id'];
+        $property = DB::table('properties')
+            ->where('tenant_id', $tenantId)
+            ->where(function ($q) use ($propertyIdentifier) {
+                $q->where('public_id', $propertyIdentifier);
+                if (is_numeric($propertyIdentifier)) {
+                    $q->orWhere('id', (int) $propertyIdentifier);
+                }
+            })
+            ->first();
+
+        if (! $property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $now = Carbon::now('UTC');
+        $interestLevel = strtoupper($validated['interest_level'] ?? 'MEDIUM');
+
+        DB::table('lead_properties')->updateOrInsert(
+            [
+                'tenant_id' => $tenantId,
+                'lead_id' => $lead->id,
+                'property_id' => $property->id,
+            ],
+            [
+                'linked_by_user_id' => $user?->id ?? $lead->assigned_user_id,
+                'interest_level' => $interestLevel,
+                'status' => 'ACTIVE',
+                'notes' => $validated['notes'] ?? null,
+                'quoted_price' => $validated['quoted_price'] ?? $property->price,
+                'quoted_currency_code' => $validated['quoted_currency_code'] ?? $property->currency_code,
+                'last_activity_at' => $now,
+                'updated_at' => $now,
+            ]
+        );
+
+        return response()->json([
+            'status' => 'ok',
+            'data' => [
+                'lead_id' => $leadPublicId,
+                'property_id' => $property->public_id,
+                'title' => $property->title,
+                'interest_level' => $interestLevel,
+                'notes' => $validated['notes'] ?? null,
+            ],
+        ], 200);
+    }
+
+    public function detachProperty(Request $request, string $leadPublicId, string $propertyPublicId): JsonResponse
+    {
+        $tenantId = $this->tenantContext->id();
+
+        $lead = DB::table('leads')
+            ->where('tenant_id', $tenantId)
+            ->where('public_id', $leadPublicId)
+            ->first();
+
+        if (! $lead) {
+            return response()->json(['error' => 'Lead not found'], 404);
+        }
+
+        $property = DB::table('properties')
+            ->where('tenant_id', $tenantId)
+            ->where(function ($q) use ($propertyPublicId) {
+                $q->where('public_id', $propertyPublicId);
+                if (is_numeric($propertyPublicId)) {
+                    $q->orWhere('id', (int) $propertyPublicId);
+                }
+            })
+            ->first();
+
+        if (! $property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        DB::table('lead_properties')
+            ->where('tenant_id', $tenantId)
+            ->where('lead_id', $lead->id)
+            ->where('property_id', $property->id)
+            ->delete();
+
+        return response()->json(['status' => 'ok'], 200);
+    }
+
+    private function resolveUserId(mixed $agentId, int $tenantId): ?int
+    {
+        if (empty($agentId)) {
+            return null;
+        }
+
+        if (is_numeric($agentId)) {
+            $user = DB::table('users')
+                ->where('tenant_id', $tenantId)
+                ->where('id', (int) $agentId)
+                ->first(['id']);
+            return $user ? (int) $user->id : null;
+        }
+
+        if (is_string($agentId)) {
+            $user = DB::table('users')
+                ->where('tenant_id', $tenantId)
+                ->where('public_id', $agentId)
+                ->first(['id']);
+            return $user ? (int) $user->id : null;
+        }
+
+        return null;
     }
 }

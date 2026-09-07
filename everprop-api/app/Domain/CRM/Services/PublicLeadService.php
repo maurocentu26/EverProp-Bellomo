@@ -5,7 +5,9 @@ namespace App\Domain\CRM\Services;
 use App\Domain\CRM\Data\PublicLeadSubmission;
 use App\Domain\CRM\Exceptions\IdempotencyConflict;
 use App\Domain\CRM\Exceptions\PublicLeadRejected;
+use App\Domain\CRM\Notifications\LeadAssignedNotification;
 use App\Domain\CRM\Support\PayloadFingerprint;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -145,6 +147,25 @@ final readonly class PublicLeadService
                     'status' => 'PENDING',
                     'available_at' => CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v'),
                 ]);
+
+                if ($leadRecord->assigned_user_id) {
+                    try {
+                        $assignedUser = User::find($leadRecord->assigned_user_id);
+                        if ($assignedUser) {
+                            $contactName = $contact['display_name'] ?? 'Nuevo Contacto Web';
+                            $assignedUser->notify(new LeadAssignedNotification(
+                                leadPublicId: (string) $leadRecord->public_id,
+                                leadName: $contactName,
+                                eventType: 'LEAD_CREATED',
+                                title: 'Nuevo lead web asignado',
+                                message: "Ha ingresado un nuevo lead web: '{$contactName}'",
+                                actionUrl: "/admin/leads/{$leadRecord->public_id}"
+                            ));
+                        }
+                    } catch (\Throwable) {
+                        // Keep transaction intact
+                    }
+                }
 
                 return new PublicLeadSubmission(
                     leadPublicId: (string) $leadRecord->public_id,

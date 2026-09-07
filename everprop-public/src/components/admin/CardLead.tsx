@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Phone, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MOCK_USERS } from "@/data/auth-sample";
+import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import type { LeadFollowUp } from "@/data/admin-sample";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
 
@@ -65,7 +65,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
   const extraCount = properties.length - 1;
   const op = mainProperty?.operation;
   
-  const assignedAgent = agentId ? MOCK_USERS.find((user) => user.id === agentId) : undefined;
+  const assignedAgent = agentId ? getAdvisor(agentId) : undefined;
 
   return (
     <>

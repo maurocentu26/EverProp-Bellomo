@@ -34,7 +34,39 @@ export interface NavGroup {
 type NavigationAccess = {
   isEngineer: boolean;
   isMockMode: boolean;
+  isAdvisor?: boolean;
 };
+
+export const advisorNavigationGroups: NavGroup[] = [
+  {
+    label: "Mi Gestión",
+    items: [
+      { title: "Mi Día", href: "/admin", icon: Home, matchPath: "/admin" },
+      { 
+        title: "Mis Leads", 
+        href: "/admin/leads", 
+        icon: Users, 
+        matchPath: "/admin/leads",
+        children: [{ title: "Nuevo Lead", href: "/admin/leads/new", icon: Plus }]
+      },
+      { title: "Mi Agenda", href: "/admin/agenda", icon: CalendarDays, matchPath: "/admin/agenda" },
+    ]
+  },
+  {
+    label: "Catálogo & Disponibilidad",
+    items: [
+      { 
+        title: "Propiedades & Unidades", 
+        href: "/admin/properties", 
+        icon: Building2, 
+        matchPath: "/admin/properties",
+        children: [{ title: "Nueva Unidad", href: "/admin/properties/new", icon: Plus }]
+      },
+      { title: "Proyectos & Desarrollos", href: "/admin/desarrollos", icon: HardHat, matchPath: "/admin/desarrollos" },
+      { title: "Matriz de Lotes", href: "/admin/inventory-matrix", icon: Map, matchPath: "/admin/inventory-matrix" },
+    ]
+  }
+];
 
 export const navigationGroups: NavGroup[] = [
   {
@@ -78,16 +110,23 @@ export const navigationConfig: NavItem[] = navigationGroups.flatMap(g => g.items
 
 export function getAvailableNavigationGroups({
   isEngineer,
+  isAdvisor,
 }: NavigationAccess): NavGroup[] {
-  if (!isEngineer) return navigationGroups;
+  if (isAdvisor) {
+    return advisorNavigationGroups;
+  }
 
-  return navigationGroups
-    .map((group) => {
-      if (group.label !== "Activos Comerciales") return group;
-      return {
-        ...group,
-        items: group.items.filter((item) => item.title !== "Agenda"),
-      };
-    })
-    .filter((group) => group.label !== "Comercializadora");
+  if (isEngineer) {
+    return navigationGroups
+      .map((group) => {
+        if (group.label !== "Activos Comerciales") return group;
+        return {
+          ...group,
+          items: group.items.filter((item) => item.title !== "Agenda"),
+        };
+      })
+      .filter((group) => group.label !== "Comercializadora");
+  }
+
+  return navigationGroups;
 }

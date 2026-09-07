@@ -36,7 +36,7 @@ export default function MainLayout({ children }: Props) {
     }, [currentUser, invalidateSession, isLoaded, router]);
 
     useEffect(() => {
-        if (!isMockDataMode || !currentUserId) return;
+        if (!currentUserId) return;
 
         try {
             const channel = new BroadcastChannel("everprop_events");

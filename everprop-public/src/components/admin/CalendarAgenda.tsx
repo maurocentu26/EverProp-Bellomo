@@ -10,12 +10,12 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { Visit } from "@/data/admin-sample";
-import { loadLeadList, loadPropertyList, removeVisitById } from "@/lib/admin-storage";
+import { loadLeadFollowUpList, loadLeadList, loadPropertyList, removeVisitById } from "@/lib/admin-storage";
 import { Button } from "@/components/ui/button";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { useDashboardMode } from "@/lib/dashboard-context";
 import { leads as sampleLeads, properties as sampleProperties } from "@/data/admin-sample";
-import { MOCK_USERS } from "@/data/auth-sample";
+import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 
@@ -93,7 +93,7 @@ export default function CalendarAgenda() {
     const fromLeads = leads.flatMap((lead) =>
       (lead.visits ?? []).map((v) => {
         const prop = properties.find((p) => p.id === v.propertyId);
-        const agent = MOCK_USERS.find((u) => u.id === v.agentId);
+        const agent = getAdvisor(v.agentId);
         return {
           ...v,
           leadName: v.leadName || lead.name,
@@ -109,7 +109,7 @@ export default function CalendarAgenda() {
 
     const fromProperties = properties.flatMap((prop) =>
       (prop.visits ?? []).map((v) => {
-        const agent = MOCK_USERS.find((u) => u.id === v.agentId);
+        const agent = getAdvisor(v.agentId);
         return {
           ...v,
           leadName: v.leadName || "Visitante",
@@ -123,8 +123,30 @@ export default function CalendarAgenda() {
       })
     );
 
+    const followUps = loadLeadFollowUpList([], "c1");
+    const fromFollowUps: AgendaItem[] = followUps
+      .filter((fu) => Boolean(fu.nextContactAt))
+      .map((fu) => {
+        const lead = leads.find((l) => l.id === fu.leadId);
+        const agent = getAdvisor(fu.agentId);
+        return {
+          id: `followup-${fu.id}`,
+          scheduledAt: fu.nextContactAt!,
+          status: "scheduled" as const,
+          leadId: fu.leadId,
+          leadName: lead?.name || "Lead",
+          propertyTitle: "Seguimiento comercial",
+          notes: fu.nextAction || `Próximo contacto · ${fu.type}`,
+          phone: lead?.phone,
+          email: lead?.email,
+          agentId: fu.agentId,
+          agentName: agent?.name,
+          agentAvatar: agent?.avatar,
+        };
+      });
+
     const map = new Map<string, AgendaItem>();
-    [...fromLeads, ...fromProperties].forEach((it) => {
+    [...fromLeads, ...fromProperties, ...fromFollowUps].forEach((it) => {
       if (!map.has(it.id)) map.set(it.id, it);
     });
 

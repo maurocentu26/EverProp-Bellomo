@@ -20,10 +20,11 @@ import { isMockDataMode } from "@/lib/data-mode";
 import { useState, useEffect } from "react";
 import { AdvisorFollowUpPriority } from "@/components/admin/AdvisorFollowUpPriority";
 import { loadEverpropCatalog } from "@/lib/everprop-api";
+import AdvisorCockpit from "@/components/admin/advisor/AdvisorCockpit";
 
 export default function AdminPage() {
   const { mode: dashboardMode, setMode: setDashboardMode } = useDashboardMode();
-  const { isEngineer, isAdmin } = useCurrentSession();
+  const { isEngineer, isAdmin, isAdvisor } = useCurrentSession();
   const [liveProperties, setLiveProperties] = useState<typeof properties>(properties);
 
   useEffect(() => {
@@ -39,6 +40,10 @@ export default function AdminPage() {
       active = false;
     };
   }, []);
+
+  if (isAdvisor) {
+    return <AdvisorCockpit />;
+  }
 
   return (
     <motion.div

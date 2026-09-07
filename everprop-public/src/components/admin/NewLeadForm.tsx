@@ -1,131 +1,282 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import {
+  ArrowLeft,
+  Building2,
+  Car,
+  Check,
+  Home,
+  Mail,
+  MapPin,
+  Phone,
+  Search,
+  Sparkles,
+  Store,
+  User,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { leads as sampleLeads, properties as sampleProperties, type Lead } from "@/data/admin-sample";
-import { loadLeadList, loadPropertyList, saveLeadList } from "@/lib/admin-storage";
+import {
+  inferLeadInterestCategory,
+  leads as sampleLeads,
+  projects as sampleProjects,
+  properties as sampleProperties,
+  type Lead,
+  type LeadInterestCategory,
+  type Project,
+  type Property,
+} from "@/data/admin-sample";
+import { MOCK_USERS } from "@/data/auth-sample";
+import { appendLeadToStorage, loadLeadList, loadProjectList, loadPropertyList, saveLeadList } from "@/lib/admin-storage";
+import { useCurrentSession } from "@/hooks/use-current-session";
 import { isMockDataMode } from "@/lib/data-mode";
 import { createEverpropLead, loadEverpropCatalog } from "@/lib/everprop-api";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { createLeadInterest, isProjectUnit } from "@/lib/lead-interests";
+import { createNotification } from "@/lib/notifications";
+import { cn } from "@/lib/utils";
+
+export type AssetCategory = LeadInterestCategory;
+
+interface AssetCategoryOption {
+  id: AssetCategory;
+  title: string;
+  subtitle: string;
+  icon: LucideIcon;
+  color: string;
+}
+
+const CATEGORIES: AssetCategoryOption[] = [
+  {
+    id: "loteo",
+    title: "Loteos",
+    subtitle: "Lotes en barrios privados y desarrollos",
+    icon: MapPin,
+    color: "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100/70",
+  },
+  {
+    id: "local",
+    title: "Locales",
+    subtitle: "Locales comerciales y espacios gastronómicos",
+    icon: Store,
+    color: "text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100/70",
+  },
+  {
+    id: "cochera",
+    title: "Cocheras",
+    subtitle: "Espacios de estacionamiento por piso o número",
+    icon: Car,
+    color: "text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100/70",
+  },
+  {
+    id: "tradicional",
+    title: "Inmobiliaria tradicional",
+    subtitle: "Casas, departamentos, reventa y alquileres",
+    icon: Home,
+    color: "text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100/70",
+  },
+];
+
+const ORIGINS = ["Web", "WhatsApp", "Portal", "Referido", "Instagram"];
+
+const REAL_ADVISORS = [
+  {
+    id: "b1100000-0000-4000-8000-000000000101",
+    name: "Lucas Albarracín",
+    role: "Asesor Comercial · Loteos",
+  },
+  {
+    id: "b1100000-0000-4000-8000-000000000102",
+    name: "Valentina Morales",
+    role: "Asesora Comercial · Locales & Inversiones",
+  },
+  {
+    id: "b1100000-0000-4000-8000-000000000104",
+    name: "Ing. Sofía Bellomo",
+    role: "Gerente Comercial",
+  },
+];
+
+const formSchema = z.object({
+  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(60, "El nombre no puede superar 60 caracteres."),
+  origin: z.string().min(1, "Seleccioná un origen."),
+  email: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), "Ingresá un email válido."),
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || /^\+?[0-9\s().-]{7,20}$/.test(value), "Ingresá un teléfono válido."),
+  stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing"]),
+  notes: z.string().trim().max(250, "Las notas no pueden superar 250 caracteres.").optional().or(z.literal("")),
+  agentId: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 type Props = {
   companyId?: string;
 };
 
-const ORIGINS = ["Web", "WhatsApp", "Portal", "Referido", "Instagram"];
-const STAGES: Lead["stage"][] = ["new", "contacted", "visiting", "negotiation", "closing"];
-const STAGE_LABELS: Record<Lead["stage"], string> = {
-  new: "Nuevo",
-  contacted: "Contactado",
-  visiting: "Visitando",
-  negotiation: "Negociación",
-  closing: "Cierre",
-};
-
-const formSchema = z.object({
-  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(60, "El nombre no puede superar 60 caracteres."),
-  origin: z.string().min(1, "Seleccioná un origen."),
-  email: z.string().trim().max(100, "El email no puede superar 100 caracteres.").optional().or(z.literal("")),
-  phone: z.string().trim().max(25, "El teléfono no puede superar 25 caracteres.").optional().or(z.literal("")),
-  propertyId: z.string().optional(),
-  stage: z.enum(STAGES as [Lead["stage"], ...Lead["stage"][]]),
-  notes: z.string().trim().max(250, "Las notas no pueden superar 250 caracteres.").optional().or(z.literal("")),
-});
-
 export function NewLeadForm({ companyId = "c1" }: Props) {
   const router = useRouter();
-  const [propertyOptions, setPropertyOptions] = useState<Array<{ id: string; title: string }>>([]);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [savedLeadName, setSavedLeadName] = useState("");
+  const { user, isAdvisor } = useCurrentSession();
+  const [selectedCategory, setSelectedCategory] = useState<AssetCategory | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedAsset, setSelectedAsset] = useState<Property | null>(null);
+  const [assetSearchQuery, setAssetSearchQuery] = useState("");
+  const [allProperties, setAllProperties] = useState<Property[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const advisorList = useMemo(() => {
+    return isMockDataMode
+      ? MOCK_USERS.filter((u) => u.role === "ADVISOR").map((u) => ({ id: u.id, name: u.name }))
+      : REAL_ADVISORS;
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadData() {
+      if (!isMockDataMode) {
+        try {
+          const catalog = await loadEverpropCatalog();
+          if (!active) return;
+          setAllProperties(catalog.properties);
+          setAllProjects(catalog.projects);
+          return;
+        } catch {
+          // fallback to storage
+        }
+      }
+      if (!active) return;
+      setAllProperties(loadPropertyList(sampleProperties, companyId));
+      setAllProjects(loadProjectList(sampleProjects, companyId));
+    }
+    void loadData();
+    return () => {
+      active = false;
+    };
+  }, [companyId]);
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      origin: ORIGINS[0],
+      origin: "WhatsApp",
       email: "",
       phone: "",
-      propertyId: "",
       stage: "new",
       notes: "",
+      agentId: isAdvisor ? user?.id : "",
     },
   });
 
   useEffect(() => {
-    let active = true;
-    async function loadProps() {
-      if (!isMockDataMode) {
-        try {
-          const cat = await loadEverpropCatalog();
-          if (!active) return;
-          const options = cat.properties.map((p) => ({ id: p.id, title: p.title }));
-          setPropertyOptions(options);
-          if (options[0] && !form.getValues("propertyId")) {
-            form.setValue("propertyId", options[0].id, { shouldValidate: true });
-          }
-          return;
-        } catch {
-          // fallback below
-        }
-      }
-      if (!active) return;
-      const nextProperties = loadPropertyList(sampleProperties, companyId);
-      const options = nextProperties.map((property) => ({ id: property.id, title: property.title }));
-      setPropertyOptions(options);
-
-      const currentPropertyId = form.getValues("propertyId");
-      if (!currentPropertyId && options[0]) {
-        form.setValue("propertyId", options[0].id, { shouldValidate: true });
-      }
+    if (isAdvisor && user?.id) {
+      form.setValue("agentId", user.id);
     }
-    void loadProps();
-    return () => {
-      active = false;
-    };
-  }, [companyId, form]);
+  }, [isAdvisor, user?.id, form]);
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
+  const availableAssets = useMemo(() => {
+    const query = assetSearchQuery.toLowerCase().trim();
+
+    return allProperties
+      .filter((property) => !selectedCategory || inferLeadInterestCategory(property) === selectedCategory)
+      .filter((property) => !selectedProjectId || property.projectId === selectedProjectId)
+      .filter((property) => {
+        if (!query) return true;
+        const project = property.projectId ? allProjects.find((candidate) => candidate.id === property.projectId) : null;
+        return [property.title, property.unitNumber, property.sectorName, property.neighborhood, project?.name]
+          .filter((value): value is string => Boolean(value))
+          .some((value) => value.toLowerCase().includes(query));
+      });
+  }, [allProjects, allProperties, assetSearchQuery, selectedCategory, selectedProjectId]);
+
+  const selectedProject = allProjects.find((project) => project.id === selectedProjectId);
+
+  const handleCategorySelect = (category: AssetCategory) => {
+    const nextCategory = selectedCategory === category ? null : category;
+    setSelectedCategory(nextCategory);
+
+    if (selectedAsset && nextCategory && inferLeadInterestCategory(selectedAsset) !== nextCategory) {
+      setSelectedAsset(null);
+    }
+  };
+
+  const handleProjectSelect = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    if (selectedAsset && selectedAsset.projectId !== projectId) setSelectedAsset(null);
+  };
+
+  const handleAssetSelect = (asset: Property) => {
+    setSelectedAsset(asset);
+    setSelectedCategory(inferLeadInterestCategory(asset));
+    setSelectedProjectId(asset.projectId ?? "");
+  };
+
+  const handleReset = () => {
+    setSelectedCategory(null);
+    setSelectedProjectId("");
+    setSelectedAsset(null);
+    setAssetSearchQuery("");
+    form.reset({
+      name: "",
+      origin: "WhatsApp",
+      email: "",
+      phone: "",
+      stage: "new",
+      notes: "",
+      agentId: isAdvisor ? user?.id : "",
+    });
+  };
+
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
     const trimmedName = data.name.trim();
-    const email = data.email?.trim() ?? "";
-    const phone = data.phone?.trim() ?? "";
-
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      form.setError("email", {
-        type: "validate",
-        message: "Ingresá un email válido.",
-      });
-      return;
-    }
-
-    if (phone && !/^\+?[0-9\s().-]{7,20}$/.test(phone)) {
-      form.setError("phone", {
-        type: "validate",
-        message: "Ingresá un teléfono válido.",
-      });
-      return;
-    }
+    const assignedAgentId = isAdvisor ? user?.id : (data.agentId || undefined);
+    const projectId = selectedAsset?.projectId ?? (selectedProjectId || undefined);
+    const selectedAssetIsUnit = isProjectUnit(selectedAsset ?? undefined);
+    const firstInterest = selectedCategory || projectId || selectedAsset
+      ? createLeadInterest(companyId, {
+          category: selectedCategory ?? undefined,
+          projectId,
+          propertyId: selectedAsset && !selectedAssetIsUnit ? selectedAsset.id : undefined,
+          unitId: selectedAsset && selectedAssetIsUnit ? selectedAsset.id : undefined,
+        })
+      : undefined;
 
     const nextLead: Lead = {
       id: crypto.randomUUID(),
       companyId,
       name: trimmedName,
       origin: data.origin,
-      propertyIds: data.propertyId ? [data.propertyId] : [],
+      propertyIds: selectedAsset ? [selectedAsset.id] : [],
+      unitIds: selectedAsset && selectedAssetIsUnit ? [selectedAsset.id] : undefined,
+      projectId,
+      interestCategory: selectedCategory ?? undefined,
       stage: data.stage,
       lastActivity: new Date().toISOString(),
-      phone: phone || undefined,
-      email: email || undefined,
+      phone: data.phone?.trim() || undefined,
+      email: data.email?.trim() || undefined,
+      notes: data.notes?.trim() || undefined,
+      interests: firstInterest ? [firstInterest] : [],
+      agentId: assignedAgentId,
     };
 
     if (!isMockDataMode) {
@@ -137,283 +288,437 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
           negotiation: "NEGOTIATION",
           closing: "WON",
         };
-        await createEverpropLead({
+        const created = await createEverpropLead({
           name: trimmedName,
-          email: email || undefined,
-          phone: phone || undefined,
-          stage: stageApiMap[data.stage] || "NEW",
-          notes: data.notes || undefined,
+          email: nextLead.email,
+          phone: nextLead.phone,
+          stage: stageApiMap[nextLead.stage] || "NEW",
+          notes: nextLead.notes,
+          agentId: nextLead.agentId,
+          propertyId: selectedAsset?.id || null,
         });
+        nextLead.id = created.id;
       } catch (e: any) {
-        toast.error("Error al guardar lead en base de datos: " + (e.message || "Error de red"));
+        toast.error("Error al guardar lead en base de datos: " + (e.message || "Error desconocido"));
+        setIsSubmitting(false);
         return;
       }
-    } else {
-      const existingLeads = loadLeadList(sampleLeads, companyId);
-      saveLeadList([...existingLeads, nextLead]);
     }
 
-    setSavedLeadName(trimmedName);
-    setShowSuccessModal(true);
+    try {
+      appendLeadToStorage(nextLead, sampleLeads, companyId);
 
-    toast.success("Lead creado", {
-      description: `${trimmedName} se agregó al pipeline correctamente.`,
-    });
+      if (nextLead.agentId) {
+        try {
+          const channel = new BroadcastChannel("everprop_events");
+          channel.postMessage({ type: "LEAD_REASSIGNED", targetAgentId: nextLead.agentId, leadName: nextLead.name });
+          channel.close();
+          createNotification(nextLead.agentId, `Se te ha asignado el nuevo lead "${nextLead.name}"`, {
+            title: "Nuevo lead asignado",
+            leadId: nextLead.id,
+            actionUrl: `/admin/leads/${nextLead.id}`,
+            eventType: "LEAD_CREATED",
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      }
 
-    form.reset({
-      name: "",
-      origin: ORIGINS[0],
-      email: "",
-      phone: "",
-      propertyId: propertyOptions[0]?.id ?? "",
-      stage: "new",
-      notes: "",
-    });
-  }
+      toast.success("Lead registrado con éxito", {
+        description: selectedAsset
+          ? `${trimmedName} fue asociado a ${selectedAsset.title}.`
+          : `${trimmedName} se registró correctamente en el pipeline.`,
+      });
+
+      router.push("/admin/leads");
+    } catch {
+      toast.error("No pudimos guardar el lead en almacenamiento local");
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-[0_16px_50px_-24px_rgba(15,23,42,0.35)] max-w-4xl ml-auto mr-auto py-0">
-      <div className="bg-slate-950/95 px-6 py-5 text-white">
-        <CardHeader className="p-0">
-          <CardTitle className="text-xl font-semibold text-white">Agregar nuevo lead</CardTitle>
-          <CardDescription className="mt-2 text-sm text-slate-300">
-            Completá los datos del contacto para incorporarlo al pipeline de ventas.
-          </CardDescription>
-        </CardHeader>
-      </div>
+    <div className="max-w-5xl mx-auto space-y-6">
+      <Link
+        href="/admin/leads"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Volver a la lista de leads
+      </Link>
 
-      <CardContent className="px-6 py-6">
-        <form id="new-lead-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FieldGroup className="grid gap-4 md:grid-cols-2">
-            <Controller
-              name="name"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field className="md:col-span-2" data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="lead-name" className="text-sm font-medium text-slate-800">
-                    Nombre completo <span className="text-rose-500">*</span>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="lead-name"
-                    placeholder="Carla Méndez"
-                    autoComplete="name"
-                    aria-invalid={fieldState.invalid}
-                    className="h-11 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-200"
+      <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-lg rounded-2xl p-0">
+        <div className="bg-slate-950 px-6 py-5 text-white">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+              <Sparkles size={20} aria-hidden="true" />
+            </span>
+            <div>
+              <CardTitle className="text-xl font-bold text-white">Alta de nuevo lead</CardTitle>
+              <CardDescription className="text-xs text-slate-400 mt-0.5">
+                Registrá el contacto y su interés inmobiliario opcional para incorporarlo al pipeline comercial.
+              </CardDescription>
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="p-6 sm:p-8">
+          <form id="new-lead-page-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+              {/* ── Seccion 1: Datos basicos del lead ── */}
+              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm" aria-labelledby="lead-basic-data">
+                <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                    <User size={16} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h2 id="lead-basic-data" className="text-sm font-bold text-slate-900">Datos básicos del lead</h2>
+                  </div>
+                </div>
+
+                <Controller
+                  name="name"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="lead-name" className="text-xs font-semibold text-slate-700">
+                        Nombre completo <span className="text-rose-500">*</span>
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id="lead-name"
+                        autoComplete="name"
+                        autoFocus
+                        aria-invalid={fieldState.invalid}
+                        placeholder="Ejemplo: Marcos Gallardo"
+                        className="h-10 border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
+                    </Field>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Controller
+                    name="phone"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor="lead-phone" className="text-xs font-semibold text-slate-700">
+                          WhatsApp / Teléfono
+                        </FieldLabel>
+                        <div className="relative">
+                          <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                          <Input
+                            {...field}
+                            id="lead-phone"
+                            type="tel"
+                            inputMode="tel"
+                            autoComplete="tel"
+                            aria-invalid={fieldState.invalid}
+                            placeholder="+54 9 11..."
+                            className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                          />
+                        </div>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
+                      </Field>
+                    )}
                   />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
 
-            <Controller
-              name="origin"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="lead-origin" className="text-sm font-medium text-slate-800">
-                    Origen <span className="text-rose-500">*</span>
+                  <Controller
+                    name="email"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor="lead-email" className="text-xs font-semibold text-slate-700">
+                          Email
+                        </FieldLabel>
+                        <div className="relative">
+                          <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                          <Input
+                            {...field}
+                            id="lead-email"
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            aria-invalid={fieldState.invalid}
+                            placeholder="lead@ejemplo.com"
+                            className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                          />
+                        </div>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
+                      </Field>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Controller
+                    name="origin"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor="lead-origin" className="text-xs font-semibold text-slate-700">
+                          Origen del contacto
+                        </FieldLabel>
+                        <select
+                          {...field}
+                          id="lead-origin"
+                          aria-invalid={fieldState.invalid}
+                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        >
+                          {ORIGINS.map((origin) => <option key={origin} value={origin}>{origin}</option>)}
+                        </select>
+                        {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
+                      </Field>
+                    )}
+                  />
+
+                  <Controller
+                    name="stage"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel htmlFor="lead-stage" className="text-xs font-semibold text-slate-700">
+                          Estado comercial
+                        </FieldLabel>
+                        <select
+                          {...field}
+                          id="lead-stage"
+                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="new">Nuevo</option>
+                          <option value="contacted">Contactado</option>
+                          <option value="visiting">Visitando</option>
+                          <option value="negotiation">Negociación</option>
+                          <option value="closing">Cierre</option>
+                        </select>
+                      </Field>
+                    )}
+                  />
+                </div>
+
+                <Controller
+                  name="notes"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="lead-notes" className="text-xs font-semibold text-slate-700">
+                        Notas / Comentarios
+                      </FieldLabel>
+                      <Textarea
+                        {...field}
+                        id="lead-notes"
+                        rows={3}
+                        aria-invalid={fieldState.invalid}
+                        placeholder="Información relevante de la consulta, preferencias, presupuesto estimado..."
+                        className="border-slate-300 bg-white p-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
+                    </Field>
+                  )}
+                />
+
+                {!isAdvisor && (
+                  <Controller
+                    name="agentId"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel htmlFor="lead-agent" className="text-xs font-semibold text-slate-700">
+                          Asesor comercial asignado
+                        </FieldLabel>
+                        <select
+                          {...field}
+                          id="lead-agent"
+                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">Sin asignar (Global)</option>
+                          {advisorList.map((advisor) => (
+                            <option key={advisor.id} value={advisor.id}>{advisor.name}</option>
+                          ))}
+                        </select>
+                      </Field>
+                    )}
+                  />
+                )}
+              </section>
+
+              {/* ── Seccion 2: Interes inmobiliario (Opcional) ── */}
+              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm" aria-labelledby="lead-interest-data">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                      <Building2 size={16} aria-hidden="true" />
+                    </span>
+                    <h2 id="lead-interest-data" className="text-sm font-bold text-slate-900">Interés inmobiliario</h2>
+                  </div>
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                    Opcional
+                  </span>
+                </div>
+
+                <Field>
+                  <FieldLabel className="text-xs font-semibold text-slate-700">Categoría de interés</FieldLabel>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    {CATEGORIES.map((category) => {
+                      const Icon = category.icon;
+                      const isSelected = selectedCategory === category.id;
+                      return (
+                        <button
+                          key={category.id}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => handleCategorySelect(category.id)}
+                          className={cn(
+                            "flex items-center gap-2.5 rounded-lg border p-2.5 text-left transition-all shadow-sm",
+                            isSelected
+                              ? "border-blue-500 bg-blue-50 text-blue-900 ring-2 ring-blue-500/20"
+                              : "border-slate-200 bg-white hover:border-slate-300 text-slate-700",
+                          )}
+                        >
+                          <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md border", category.color)}>
+                            <Icon size={14} aria-hidden="true" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="block text-xs font-bold leading-tight truncate">{category.title}</span>
+                          </div>
+                          {isSelected && <Check size={14} className="shrink-0 text-blue-600" aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="lead-project" className="text-xs font-semibold text-slate-700">
+                    Desarrollo / Proyecto
                   </FieldLabel>
                   <select
-                    {...field}
-                    id="lead-origin"
-                    className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                    aria-invalid={fieldState.invalid}
+                    id="lead-project"
+                    value={selectedProjectId}
+                    onChange={(event) => handleProjectSelect(event.target.value)}
+                    className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   >
-                    {ORIGINS.map((origin) => (
-                      <option key={origin} value={origin}>
-                        {origin}
-                      </option>
+                    <option value="">Sin proyecto identificado</option>
+                    {allProjects.map((project) => (
+                      <option key={project.id} value={project.id}>{project.name}</option>
                     ))}
                   </select>
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
-              )}
-            />
 
-            <Controller
-              name="stage"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="lead-stage" className="text-sm font-medium text-slate-800">
-                    Estado inicial
+                <Field>
+                  <FieldLabel htmlFor="lead-property-search" className="text-xs font-semibold text-slate-700">
+                    Propiedad específica
                   </FieldLabel>
-                  <select
-                    {...field}
-                    id="lead-stage"
-                    className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                    aria-invalid={fieldState.invalid}
-                  >
-                    {STAGES.map((stage) => (
-                      <option key={stage} value={stage}>
-                        {STAGE_LABELS[stage]}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+
+                  {selectedAsset && (
+                    <div className="my-2 flex items-center gap-2.5 rounded-lg border border-blue-300 bg-blue-50 p-2.5 shadow-sm">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
+                        <Building2 size={14} aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 truncate">{selectedAsset.title}</p>
+                        <p className="text-[10px] text-slate-500 truncate">
+                          {selectedProject?.name ?? `${selectedAsset.neighborhood}, ${selectedAsset.city}`}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSelectedAsset(null)}
+                        className="h-7 w-7 shrink-0 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                        aria-label="Quitar propiedad seleccionada"
+                      >
+                        <X size={14} aria-hidden="true" />
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="relative mt-1">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                    <Input
+                      id="lead-property-search"
+                      value={assetSearchQuery}
+                      onChange={(event) => setAssetSearchQuery(event.target.value)}
+                      placeholder="Buscar lote, manzana o barrio..."
+                      className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                    />
+                  </div>
+
+                  <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                    {availableAssets.length > 0 ? (
+                      availableAssets.slice(0, 8).map((asset) => {
+                        const project = asset.projectId ? allProjects.find((candidate) => candidate.id === asset.projectId) : null;
+                        const isSelected = selectedAsset?.id === asset.id;
+                        return (
+                          <button
+                            key={asset.id}
+                            type="button"
+                            onClick={() => handleAssetSelect(asset)}
+                            className={cn(
+                              "flex w-full items-center gap-2.5 rounded-lg border p-2 text-left transition-all",
+                              isSelected
+                                ? "border-blue-400 bg-blue-50/80 shadow-sm"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                            )}
+                          >
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-blue-700 border border-slate-200">
+                              {asset.unitNumber || asset.title.slice(0, 3)}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-xs font-semibold text-slate-900 truncate">{asset.title}</span>
+                              <span className="block text-[10px] text-slate-500 truncate">
+                                {project?.name ? `${project.name} · ` : ""}{asset.neighborhood}
+                              </span>
+                            </span>
+                            {isSelected && <Check size={14} className="shrink-0 text-blue-600" aria-hidden="true" />}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="rounded-lg border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400">
+                        No se encontraron propiedades con esos filtros.
+                      </p>
+                    )}
+                  </div>
                 </Field>
-              )}
-            />
+              </section>
+            </div>
+          </form>
+        </CardContent>
 
-            <Controller
-              name="email"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="lead-email" className="text-sm font-medium text-slate-800">
-                    Email
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="lead-email"
-                    type="email"
-                    placeholder="carla@example.com"
-                    autoComplete="email"
-                    aria-invalid={fieldState.invalid}
-                    className="h-11 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-200"
-                  />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
+        <CardFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/admin/leads")}
+            className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-100"
+          >
+            Cancelar
+          </Button>
 
-            <Controller
-              name="phone"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="lead-phone" className="text-sm font-medium text-slate-800">
-                    Teléfono
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="lead-phone"
-                    placeholder="+54 9 11 1234 5678"
-                    autoComplete="tel"
-                    aria-invalid={fieldState.invalid}
-                    className="h-11 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-200"
-                  />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="propertyId"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="lead-property" className="text-sm font-medium text-slate-800">
-                    Propiedad de interés
-                  </FieldLabel>
-                  <select
-                    {...field}
-                    id="lead-property"
-                    className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                    aria-invalid={fieldState.invalid}
-                  >
-                    <option value="">Sin propiedad asociada</option>
-                    {propertyOptions.map((property) => (
-                      <option key={property.id} value={property.id}>
-                        {property.title}
-                      </option>
-                    ))}
-                  </select>
-                  <FieldDescription className="text-slate-500">
-                    {propertyOptions.length > 0
-                      ? "Podés vincular el lead con una propiedad disponible."
-                      : "No hay propiedades cargadas todavía; podés guardar el lead sin asociarlo."}
-                  </FieldDescription>
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="notes"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field className="md:col-span-2" data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="lead-notes" className="text-sm font-medium text-slate-800">
-                    Notas
-                  </FieldLabel>
-                  <Textarea
-                    {...field}
-                    id="lead-notes"
-                    rows={5}
-                    placeholder="Contexto del contacto, preferencias, próximos pasos..."
-                    aria-invalid={fieldState.invalid}
-                    className="min-h-24 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-slate-500 focus:ring-slate-200"
-                  />
-                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                </Field>
-              )}
-            />
-          </FieldGroup>
-        </form>
-      </CardContent>
-
-      <CardFooter className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          className="border-slate-300 text-slate-700 hover:bg-slate-100"
-          onClick={() => {
-            form.reset({
-              name: "",
-              origin: ORIGINS[0],
-              email: "",
-              phone: "",
-              propertyId: propertyOptions[0]?.id ?? "",
-              stage: "new",
-              notes: "",
-            });
-          }}
-        >
-          Limpiar
-        </Button>
-        <Button type="submit" form="new-lead-form" className="bg-slate-950 text-white shadow-sm transition hover:bg-slate-800">
-          Guardar lead
-        </Button>
-      </CardFooter>
-
-      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Lead agregado con éxito</DialogTitle>
-            <DialogDescription className={"text-black"}>
-              {savedLeadName ? `${savedLeadName} ya está en el pipeline.` : "El lead se agregó correctamente."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="flex gap-2.5">
             <Button
               type="button"
-              variant="outline"
-              onClick={() => {
-                setShowSuccessModal(false);
-                form.reset({
-                  name: "",
-                  origin: ORIGINS[0],
-                  email: "",
-                  phone: "",
-                  propertyId: propertyOptions[0]?.id ?? "",
-                  stage: "new",
-                  notes: "",
-                });
-              }}
+              variant="ghost"
+              onClick={handleReset}
+              className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800"
             >
-              Seguir agregando leads
+              Limpiar formulario
             </Button>
+
             <Button
-              onClick={() => router.push("/admin#leads")}
-              className="bg-slate-950 text-white hover:bg-slate-800"
+              type="submit"
+              form="new-lead-page-form"
+              disabled={isSubmitting}
+              className="h-10 bg-blue-600 px-6 text-xs font-bold text-white hover:bg-blue-700 shadow-sm disabled:opacity-50"
             >
-              Volver a la vista de leads
+              {isSubmitting ? "Guardando..." : "Guardar lead"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }

@@ -22,12 +22,12 @@ export function AdminNavigationMenu({
   collapsed = false,
   onNavigate,
 }: AdminNavigationMenuProps) {
-  const { isEngineer } = useCurrentSession();
+  const { isEngineer, isAdvisor } = useCurrentSession();
   const { isItemActive, isChildActive } = useSidebarActive();
   const fullscreen = surface === "fullscreen";
   const groups = useMemo(
-    () => getAvailableNavigationGroups({ isEngineer, isMockMode: isMockDataMode }),
-    [isEngineer],
+    () => getAvailableNavigationGroups({ isEngineer, isAdvisor, isMockMode: isMockDataMode }),
+    [isEngineer, isAdvisor],
   );
 
   return (

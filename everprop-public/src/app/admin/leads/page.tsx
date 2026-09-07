@@ -1,32 +1,44 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import LeadTable from "@/components/admin/LeadTable";
+import LeadTable, { STAGE_LABELS } from "@/components/admin/LeadTable";
 import { Button } from "@/components/ui/button";
-import { Download, Plus, Filter, Search } from "lucide-react";
+import { Plus, Filter, Search, RotateCcw, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { type Lead, type LeadFollowUp, leads as sampleLeads, properties as sampleProperties } from "@/data/admin-sample";
-import { loadLeadFollowUpList, loadLeadList } from "@/lib/admin-storage";
+import { 
+  type Lead, 
+  type LeadFollowUp, 
+  leads as sampleLeads, 
+  properties as sampleProperties 
+} from "@/data/admin-sample";
+import { 
+  loadLeadFollowUpList, 
+  loadLeadList, 
+  appendLeadFollowUpToStorage, 
+  saveLeadList 
+} from "@/lib/admin-storage";
 import { getLeadFollowUpState } from "@/lib/lead-follow-up";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropLeads } from "@/lib/everprop-api";
+import { loadEverpropLeads, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
-
+import { toast } from "sonner";
 import { useDashboardMode } from "@/lib/dashboard-context";
-import { RotateCcw, AlertTriangle } from "lucide-react";
 import { useCurrentSession } from "@/hooks/use-current-session";
+import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 
-type LeadStageFilter = "all" | "new" | "process" | "closed";
+type LeadStageFilter = "all" | "new" | "contacted" | "visiting" | "negotiation" | "closing";
 type AssetTypeFilter = "all" | "lote" | "departamento" | "comercial" | "tradicional";
 type FollowUpFilter = "all" | "dueSoon" | "overdue";
 
 const LEAD_STAGE_FILTERS: { id: LeadStageFilter; label: string }[] = [
   { id: "all", label: "Todos" },
   { id: "new", label: "Nuevos" },
-  { id: "process", label: "En proceso" },
-  { id: "closed", label: "Cerrados" },
+  { id: "contacted", label: "Contactados" },
+  { id: "visiting", label: "Visitas" },
+  { id: "negotiation", label: "Negociación" },
+  { id: "closing", label: "Cerrados" },
 ];
 
 const FOLLOW_UP_FILTERS: { id: FollowUpFilter; label: string }[] = [
@@ -46,16 +58,21 @@ export default function AllLeadsPage() {
   const [assetType, setAssetType] = useState<AssetTypeFilter>("all");
   const [followUpFilter, setFollowUpFilter] = useState<FollowUpFilter>("all");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
 
   useEffect(() => {
     let active = true;
     async function fetchLeads() {
       if (!isMockDataMode) {
         try {
-          const apiLeads = await loadEverpropLeads();
+          const [apiLeads, apiFollowUps] = await Promise.all([
+            loadEverpropLeads(),
+            loadEverpropAllFollowUps().catch(() => []),
+          ]);
           if (!active) return;
           setAllLeads(apiLeads);
-          setFollowUps(loadLeadFollowUpList([], "c1"));
+          const localFollowUps = loadLeadFollowUpList([], "c1");
+          setFollowUps(apiFollowUps.length > 0 ? apiFollowUps : localFollowUps);
           setIsLoaded(true);
           return;
         } catch (e) {
@@ -73,7 +90,7 @@ export default function AllLeadsPage() {
     };
   }, []);
 
-  // Reset filters when switching workspace modes (Task 3 Bug Fix)
+  // Reset filters when switching workspace modes
   useEffect(() => {
     return deferEffectUpdate(() => {
       if (dashboardMode === "agency") {
@@ -94,6 +111,22 @@ export default function AllLeadsPage() {
     setFollowUpFilter("all");
   };
 
+  // Conteo dinámico para los tabs de etapas
+  const stageCounts = useMemo(() => {
+    const base = isAdvisor && isMockDataMode
+      ? allLeads.filter((l) => l.agentId === user?.id)
+      : allLeads;
+
+    return {
+      all: base.length,
+      new: base.filter((l) => l.stage === "new").length,
+      contacted: base.filter((l) => l.stage === "contacted").length,
+      visiting: base.filter((l) => l.stage === "visiting").length,
+      negotiation: base.filter((l) => l.stage === "negotiation").length,
+      closing: base.filter((l) => l.stage === "closing").length,
+    };
+  }, [allLeads, isAdvisor, user]);
+
   const filteredLeads = useMemo(() => {
     let filtered = allLeads;
     const query = searchQuery.toLowerCase().trim();
@@ -113,12 +146,7 @@ export default function AllLeadsPage() {
 
     // 2. Stage Filter
     if (activeStage !== "all") {
-      filtered = filtered.filter(l => {
-        if (activeStage === "new") return l.stage === "new";
-        if (activeStage === "process") return ["contacted", "visiting", "negotiation"].includes(l.stage);
-        if (activeStage === "closed") return l.stage === "closing";
-        return true;
-      });
+      filtered = filtered.filter(l => l.stage === activeStage);
     }
 
     // 3. Asset Type Filter
@@ -133,7 +161,7 @@ export default function AllLeadsPage() {
       });
     }
 
-    // 4. Follow-up deadline filter. The state is always derived from persisted data.
+    // 4. Follow-up deadline filter
     if (followUpFilter !== "all") {
       const now = new Date();
       filtered = filtered.filter((lead) => (
@@ -147,9 +175,11 @@ export default function AllLeadsPage() {
       ));
     }
 
-    // 5. Auth Filter
-    if (isAdvisor) {
+    // 5. Auth Filter (API mode enforces this at query level; mock mode filters client-side)
+    if (isAdvisor && isMockDataMode) {
       filtered = filtered.filter(l => l.agentId === user?.id);
+    }
+    if (isAdvisor) {
       const now = new Date();
       const priority = { overdue: 0, dueSoon: 1, none: 2, current: 3 } as const;
       filtered = [...filtered].sort((a, b) => {
@@ -161,6 +191,74 @@ export default function AllLeadsPage() {
 
     return filtered;
   }, [allLeads, searchQuery, activeStage, assetType, followUpFilter, followUps, isAdvisor, user]);
+
+  // Actualización de estado en 1 clic
+  async function handleStageChange(leadId: string, newStage: Lead["stage"]) {
+    const prevLeads = [...allLeads];
+    const updated = allLeads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
+    setAllLeads(updated);
+    saveLeadList(updated, "c1");
+
+    const stageMap: Record<Lead["stage"], string> = {
+      new: "NEW",
+      contacted: "CONTACTED",
+      visiting: "VISIT_SCHEDULED",
+      negotiation: "NEGOTIATION",
+      closing: "WON",
+    };
+
+    const stageLabel = STAGE_LABELS[newStage]?.label || newStage;
+    toast.success(`Etapa cambiada a "${stageLabel}"`);
+
+    if (!isMockDataMode) {
+      try {
+        await updateEverpropLead(leadId, { stage: stageMap[newStage] || "NEW" });
+      } catch (err) {
+        console.error("Error updating lead stage in backend:", err);
+        toast.error("Error al sincronizar con el servidor, guardado localmente.");
+        setAllLeads(prevLeads);
+      }
+    }
+  }
+
+  // Guardar seguimiento
+  async function handleConfirmFollowUp(followUp: LeadFollowUp) {
+    if (!followUpLead) return;
+
+    const nextFollowUps = appendLeadFollowUpToStorage(
+      followUp,
+      followUps,
+      followUpLead.companyId
+    );
+    setFollowUps(nextFollowUps);
+    setAllLeads((prev) =>
+      prev.map((l) =>
+        l.id === followUpLead.id
+          ? { ...l, followUpUpdatedAt: followUp.occurredAt, lastActivity: followUp.occurredAt }
+          : l
+      )
+    );
+
+    if (!isMockDataMode) {
+      try {
+        const created = await createEverpropLeadFollowUp(followUpLead.id, {
+          type: followUp.type,
+          occurredAt: followUp.occurredAt,
+          summary: followUp.summary,
+          result: followUp.result,
+          nextAction: followUp.nextAction,
+          nextContactAt: followUp.nextContactAt,
+          agentId: followUp.agentId,
+        });
+        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
+      } catch (e) {
+        console.error("Error saving follow up to API:", e);
+      }
+    }
+
+    toast.success("Seguimiento registrado con éxito.");
+    setFollowUpLead(null);
+  }
 
   if (isEngineer) {
     return (
@@ -179,8 +277,10 @@ export default function AllLeadsPage() {
       {/* Header */}
       <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-center">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Leads</h1>
-          <p className="mt-1 max-w-xl text-base leading-6 text-slate-500">Gestioná y analizá todos los interesados de la comercializadora.</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Leads Comerciales</h1>
+          <p className="mt-1 max-w-xl text-base leading-6 text-slate-500">
+            Gestioná y avanzá rápidamente los interesados en el pipeline de ventas.
+          </p>
         </div>
         
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center xl:w-auto">
@@ -196,40 +296,52 @@ export default function AllLeadsPage() {
           
           <div className="flex w-full gap-2 sm:w-auto">
             <Link href="/admin/leads/new" className="flex-1 sm:flex-none">
-              <Button className="min-h-11 w-full gap-2 bg-blue-600 text-white hover:bg-blue-700">
-                  <Plus className="h-4 w-4" />
-                  Nuevo Lead
+              <Button className="min-h-11 w-full gap-2 bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-sm">
+                <Plus className="h-4 w-4" />
+                Nuevo Lead
               </Button>
             </Link>
           </div>
         </div>
       </div>
 
+      {/* Pipeline Tabs con Contadores en Tiempo Real */}
       <div className="flex flex-col justify-between gap-4 pb-2 xl:flex-row xl:items-center">
-        {/* Status Tabs */}
-        <div className="grid w-full grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-4 xl:w-auto">
-          {LEAD_STAGE_FILTERS.map(tab => (
-            <button 
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveStage(tab.id)}
-              className={cn(
-                "min-h-11 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-all",
-                activeStage === tab.id ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-1.5 rounded-2xl bg-slate-100 p-1.5">
+          {LEAD_STAGE_FILTERS.map(tab => {
+            const count = stageCounts[tab.id];
+            const isActive = activeStage === tab.id;
+            return (
+              <button 
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveStage(tab.id)}
+                className={cn(
+                  "min-h-10 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-2",
+                  isActive 
+                    ? "bg-white text-blue-700 shadow-sm" 
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                )}
+              >
+                <span>{tab.label}</span>
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-extrabold",
+                  isActive ? "bg-blue-100 text-blue-800" : "bg-slate-200 text-slate-600"
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Asset Type Filter & Clear Filters */}
+        {/* Filtro por tipo de activo y botón limpiar */}
         <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center xl:w-auto">
           <div className="flex min-w-0 flex-1 items-center gap-2 xl:flex-none">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:inline-block">Interés en:</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:inline-block">Interés:</span>
             <select 
               aria-label="Filtrar por tipo de interés"
-              className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 xl:min-w-64"
+              className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 xl:min-w-56"
               value={assetType}
               onChange={(e) => setAssetType(e.target.value as AssetTypeFilter)}
             >
@@ -248,17 +360,22 @@ export default function AllLeadsPage() {
               onClick={handleClearFilters}
               className="min-h-11 gap-1.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
             >
-              <RotateCcw className="h-3.5 w-3.5" /> Limpiar filtros
+              <RotateCcw className="h-3.5 w-3.5" /> Limpiar
             </Button>
           )}
         </div>
       </div>
 
+      {/* Barra de Prioridad de Seguimiento */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-labelledby="follow-up-filter-title">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 id="follow-up-filter-title" className="text-base font-bold text-slate-900">Plazo de seguimiento</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">Priorizá los contactos que vencen dentro de dos días o ya superaron el límite de 10 días.</p>
+            <h2 id="follow-up-filter-title" className="text-sm font-bold uppercase tracking-wider text-slate-800">
+              Plazo de Seguimiento
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Filtra leads que requieren contacto urgente (&gt;10 días sin gestión) o vencen próximamente.
+            </p>
           </div>
           <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
             {FOLLOW_UP_FILTERS.map((filter) => (
@@ -267,13 +384,13 @@ export default function AllLeadsPage() {
                 type="button"
                 onClick={() => setFollowUpFilter(filter.id)}
                 className={cn(
-                  "min-h-12 rounded-xl border px-5 py-2 text-base font-semibold transition-colors",
+                  "min-h-10 rounded-xl border px-4 py-1.5 text-xs font-bold transition-colors",
                   followUpFilter === filter.id
                     ? filter.id === "overdue"
-                      ? "border-rose-600 bg-rose-600 text-white"
+                      ? "border-rose-600 bg-rose-600 text-white shadow-sm"
                       : filter.id === "dueSoon"
-                        ? "border-amber-500 bg-amber-500 text-slate-950"
-                        : "border-blue-600 bg-blue-600 text-white"
+                        ? "border-amber-500 bg-amber-500 text-slate-950 shadow-sm"
+                        : "border-blue-600 bg-blue-600 text-white shadow-sm"
                     : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50",
                 )}
               >
@@ -284,10 +401,15 @@ export default function AllLeadsPage() {
         </div>
       </section>
 
-      {/* Table */}
+      {/* Tabla Pro de Leads */}
       <div className="min-h-[500px]">
         {filteredLeads.length > 0 ? (
-          <LeadTable leads={filteredLeads} followUps={followUps} />
+          <LeadTable 
+            leads={filteredLeads} 
+            followUps={followUps} 
+            onStageChange={handleStageChange}
+            onFollowUp={(lead) => setFollowUpLead(lead)}
+          />
         ) : (
           <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50">
             <Filter className="h-8 w-8 text-slate-300 mb-3" />
@@ -295,6 +417,15 @@ export default function AllLeadsPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Registro de Seguimiento In-situ */}
+      {followUpLead && (
+        <LeadFollowUpEditor
+          lead={followUpLead}
+          onClose={() => setFollowUpLead(null)}
+          onConfirm={handleConfirmFollowUp}
+        />
+      )}
     </div>
   );
 }

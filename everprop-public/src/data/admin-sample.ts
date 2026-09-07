@@ -33,6 +33,7 @@ export type LeadFollowUp = {
   companyId: string;
   leadId: string;
   agentId: string;
+  agentName?: string;
   type: LeadFollowUpType;
   occurredAt: string;
   summary: string;
@@ -121,6 +122,7 @@ export type Lead = {
   interests?: LeadInterest[];
   visits?: Visit[];
   agentId?: string;
+  agentName?: string;
 };
 
 export function inferLeadInterestCategory(property: Property): LeadInterestCategory {

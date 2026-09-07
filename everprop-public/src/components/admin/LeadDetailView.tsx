@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Building2, CircleAlert, CircleCheck, Edit3, ExternalLink, Layers3, Plus, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, CircleAlert, CircleCheck, ClipboardCheck, Edit3, ExternalLink, Layers3, Plus, StickyNote, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,7 +17,7 @@ import {
   type Property,
   type Visit,
 } from "@/data/admin-sample";
-import { MOCK_USERS } from "@/data/auth-sample";
+import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import {
   appendLeadFollowUpToStorage,
   loadLeadFollowUpList,
@@ -39,7 +39,15 @@ import { useAuth } from "@/lib/auth-context";
 import { createNotification } from "@/lib/notifications";
 import { isCommercialContact } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropLeads, loadEverpropCatalog, updateEverpropLead } from "@/lib/everprop-api";
+import {
+  loadEverpropLeads,
+  loadEverpropCatalog,
+  updateEverpropLead,
+  loadEverpropLeadFollowUps,
+  createEverpropLeadFollowUp,
+  attachEverpropLeadProperty,
+  detachEverpropLeadProperty,
+} from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { Button } from "@/components/ui/button";
 import Badge from "@/components/ui/badge";
@@ -83,16 +91,18 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const [apiLeads, catalog] = await Promise.all([
+          const [apiLeads, catalog, apiFollowUps] = await Promise.all([
             loadEverpropLeads(),
             loadEverpropCatalog(),
+            loadEverpropLeadFollowUps(leadId).catch(() => []),
           ]);
           if (!active) return;
           const foundLead = apiLeads.find((candidate) => candidate.id === leadId) ?? null;
           setAllLeads(apiLeads);
           setAllProperties(catalog.properties);
           setAllProjects(catalog.projects);
-          setFollowUps([]);
+          const localFollowUps = loadLeadFollowUpList([], foundLead?.companyId ?? "c1").filter((f) => f.leadId === leadId);
+          setFollowUps(apiFollowUps.length > 0 ? apiFollowUps : localFollowUps);
           setLead(foundLead);
           return;
         } catch (e) {
@@ -162,7 +172,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success("Ficha del cliente actualizada");
   }
 
-  function handleSaveInterest(nextInterest: LeadInterest) {
+  async function handleSaveInterest(nextInterest: LeadInterest) {
     if (!lead || nextInterest.companyId !== lead.companyId) {
       toast.error("El interés no pertenece a la empresa activa.");
       return;
@@ -170,15 +180,39 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     const nextInterests = interestEditor?.mode === "edit"
       ? interests.map((interest) => interest.id === nextInterest.id ? nextInterest : interest)
       : [...interests, nextInterest];
-    updateLeadData(syncLeadWithInterests(lead, nextInterests, allProperties));
+    const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
+    updateLeadData(syncedLead);
     setInterestEditor(null);
+
+    const targetPropertyId = nextInterest.unitId || nextInterest.propertyId;
+    if (!isMockDataMode && targetPropertyId) {
+      try {
+        await attachEverpropLeadProperty(lead.id, targetPropertyId, {
+          notes: nextInterest.notes,
+        });
+      } catch (err: any) {
+        console.error("Error linking property in backend:", err);
+      }
+    }
+
     toast.success(interestEditor?.mode === "edit" ? "Interés actualizado" : "Interés agregado");
   }
 
-  function handleDeleteInterest() {
+  async function handleDeleteInterest() {
     if (!lead || !interestToDelete) return;
     const nextInterests = interests.filter((interest) => interest.id !== interestToDelete.id);
-    updateLeadData(syncLeadWithInterests(lead, nextInterests, allProperties));
+    const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
+    updateLeadData(syncedLead);
+
+    const targetPropertyId = interestToDelete.unitId || interestToDelete.propertyId;
+    if (!isMockDataMode && targetPropertyId) {
+      try {
+        await detachEverpropLeadProperty(lead.id, targetPropertyId);
+      } catch (err: any) {
+        console.error("Error unlinking property in backend:", err);
+      }
+    }
+
     setInterestToDelete(null);
     toast.success("Interés eliminado", { description: `${lead.name} continúa registrado y conserva sus demás intereses.` });
   }
@@ -195,7 +229,14 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     let nextInterests = interests;
     if (propertyId && !getInterestAssetIds(interests).includes(propertyId)) {
       const property = allProperties.find((candidate) => candidate.id === propertyId);
-      if (property) nextInterests = [...interests, createInterestForProperty(lead, property)];
+      if (property) {
+        nextInterests = [...interests, createInterestForProperty(lead, property)];
+        if (!isMockDataMode) {
+          attachEverpropLeadProperty(lead.id, propertyId).catch((err) =>
+            console.error("Error linking property on visit:", err)
+          );
+        }
+      }
     }
     const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
     const nextLead: Lead = { ...syncedLead, visits: [...(lead.visits ?? []), finalVisit], lastActivity: new Date().toISOString() };
@@ -211,17 +252,40 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success("Visita agendada y sincronizada con la propiedad");
   }
 
-  function handleReassignAgentConfirmed(agentId?: string) {
+  async function handleReassignAgentConfirmed(agentId?: string) {
     if (!lead) return;
-    const nextLeads = updateLeadAgent(lead.id, agentId, allLeads, lead.companyId);
+    const newAdvisor = getAdvisor(agentId);
+    const updatedLead: Lead = {
+      ...lead,
+      agentId,
+      agentName: newAdvisor?.name,
+    };
+    const nextLeads = allLeads.map((candidate) => candidate.id === lead.id ? updatedLead : candidate);
     setAllLeads(nextLeads);
-    setLead(nextLeads.find((candidate) => candidate.id === lead.id) ?? null);
+    setLead(updatedLead);
+    saveLeadList(nextLeads, lead.companyId);
+
+    if (!isMockDataMode) {
+      try {
+        await updateEverpropLead(lead.id, {
+          agentId: agentId || null,
+        });
+      } catch (err: any) {
+        console.error("Error updating lead agent in backend:", err);
+      }
+    }
+
     if (agentId) {
       try {
         const channel = new BroadcastChannel("everprop_events");
         channel.postMessage({ type: "LEAD_REASSIGNED", targetAgentId: agentId, leadName: lead.name });
         channel.close();
-        createNotification(agentId, `Se te ha reasignado el lead "${lead.name}"`);
+        createNotification(agentId, `Se te ha reasignado el lead "${lead.name}"`, {
+          title: "Lead reasignado",
+          leadId: lead.id,
+          actionUrl: `/admin/leads/${lead.id}`,
+          eventType: "LEAD_REASSIGNED",
+        });
       } catch (error) {
         console.error(error);
       }
@@ -230,7 +294,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success(agentId ? "Asesor responsable actualizado" : "Lead dejado sin asignar");
   }
 
-  function handleSaveFollowUp(followUp: LeadFollowUp) {
+  async function handleSaveFollowUp(followUp: LeadFollowUp) {
     if (!lead || followUp.companyId !== lead.companyId || followUp.leadId !== lead.id) {
       toast.error("El seguimiento no pertenece al lead y la empresa activos.");
       return;
@@ -243,13 +307,52 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     );
     setFollowUps(nextFollowUps);
 
+    if (!isMockDataMode) {
+      try {
+        const created = await createEverpropLeadFollowUp(lead.id, {
+          type: followUp.type,
+          occurredAt: followUp.occurredAt,
+          summary: followUp.summary,
+          result: followUp.result,
+          nextAction: followUp.nextAction,
+          nextContactAt: followUp.nextContactAt,
+          agentId: followUp.agentId,
+        });
+        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
+      } catch (err: any) {
+        console.error("Error saving follow up to API:", err);
+      }
+    }
+
+    // Sync nextContactAt → lead.visits so it appears in Calendar/Agenda
+    let nextLead = lead;
+    if (followUp.nextContactAt) {
+      const syntheticVisit: Visit = {
+        id: `followup-${followUp.id}`,
+        leadId: lead.id,
+        leadName: lead.name,
+        agentId: followUp.agentId,
+        propertyId: undefined,
+        scheduledAt: followUp.nextContactAt,
+        status: "scheduled",
+        notes: followUp.nextAction || `Próximo contacto · ${followUp.type}`,
+        phone: lead.phone,
+        email: lead.email,
+      };
+      nextLead = { ...lead, visits: [...(lead.visits ?? []), syntheticVisit] };
+    }
+
     if (isCommercialContact(followUp)) {
-      const previousTimestamp = lead.followUpUpdatedAt
-        ? new Date(lead.followUpUpdatedAt).getTime()
+      const previousTimestamp = nextLead.followUpUpdatedAt
+        ? new Date(nextLead.followUpUpdatedAt).getTime()
         : Number.NEGATIVE_INFINITY;
       if (new Date(followUp.occurredAt).getTime() > previousTimestamp) {
-        updateLeadData({ ...lead, followUpUpdatedAt: followUp.occurredAt });
+        nextLead = { ...nextLead, followUpUpdatedAt: followUp.occurredAt };
       }
+    }
+
+    if (nextLead !== lead) {
+      updateLeadData(nextLead);
     }
 
     setFollowUpEditorOpen(false);
@@ -270,194 +373,248 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const primaryProperty = interestAssetIds[0]
     ? propertyById.get(interestAssetIds[0])
     : undefined;
-  const assignedAgent = lead.agentId
-    ? MOCK_USERS.find((user) => user.id === lead.agentId)
-    : undefined;
+  const assignedAgent = getAdvisor(lead.agentId, lead.agentName);
+
+  const cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
 
   return (
     <div className="mx-auto w-full max-w-[120rem] space-y-5 pb-12">
-      <Link href="/admin#leads" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-blue-700">
+      <Link href="/admin/leads" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-blue-700">
         <ArrowLeft className="size-4" aria-hidden="true" /> Volver al pipeline
       </Link>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-name">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 flex-col gap-3.5 sm:flex-row sm:items-start">
-            <Avatar className="size-12 shrink-0 rounded-xl bg-blue-600 text-base font-bold text-white">
-              <AvatarFallback className="bg-blue-600 text-white">{lead.name[0]}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <h1 id="lead-name" className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">{lead.name}</h1>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                <Badge variant="default" className="px-2.5 py-0.5 text-xs">{lead.origin}</Badge>
-                <Badge className="border-0 bg-blue-50 px-2.5 py-0.5 text-xs capitalize text-blue-700">{lead.stage}</Badge>
-                <Badge className="border-0 bg-slate-100 px-2.5 py-0.5 text-xs text-slate-700">{interests.length} {interests.length === 1 ? "interés" : "intereses"}</Badge>
-              </div>
-              <div className="mt-3 grid gap-2 text-xs sm:text-sm text-slate-600 sm:grid-cols-2">
-                <p><span className="font-semibold text-slate-900">Teléfono:</span> {lead.phone || "Sin informar"}</p>
-                <p><span className="font-semibold text-slate-900">Email:</span> {lead.email || "Sin informar"}</p>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* ── Main Column (8 cols): Deep content ── */}
+        <div className="space-y-6 lg:col-span-8">
+          {/* Pending Info Alert */}
+          {generalPendingData.length > 0 ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4" role="status">
+              <div className="flex items-start gap-2.5">
+                <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
+                <div>
+                  <p className="text-xs font-bold text-amber-950">Información pendiente</p>
+                  <p className="mt-0.5 text-xs text-amber-800">El cliente ya está registrado. Podés completar estos datos con el botón "Completar ficha".</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {generalPendingData.map((item) => (
+                      <span key={item} className="rounded-md border border-amber-200 bg-white px-2 py-0.5 text-xs font-semibold text-amber-900">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          <Button onClick={() => setCompletingDrawerOpen(true)} className="h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
-            <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
-          </Button>
+          ) : (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-800" role="status">
+              <CircleCheck className="size-4 shrink-0" aria-hidden="true" /> La información general del cliente está completa.
+            </div>
+          )}
+
+          {/* General Notes */}
+          {lead.notes && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <StickyNote className="size-3.5" aria-hidden="true" /> Notas generales
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{lead.notes}</p>
+            </div>
+          )}
+
+          {/* Follow-up Timeline */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-follow-up-timeline-title">
+            <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Historial comercial</p>
+                <h2 id="lead-follow-up-timeline-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950">Línea de tiempo</h2>
+                <p className="mt-0.5 text-xs text-slate-500">Cada contacto conserva su asesor, fecha, tipo, resumen, resultado y próximo paso.</p>
+              </div>
+              <Button onClick={() => setFollowUpEditorOpen(true)} disabled={!lead.agentId} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                <Plus className="size-3.5" aria-hidden="true" /> Nuevo seguimiento
+              </Button>
+            </div>
+            <div className="mt-5">
+              <LeadFollowUpTimeline leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
+            </div>
+          </section>
+
+          {/* Interests Section */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-interests-title">
+            <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Calificación comercial</p>
+                <h2 id="lead-interests-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950">Intereses independientes</h2>
+                <p className="mt-0.5 text-xs text-slate-500">Cada ficha conserva su propio proyecto, propiedad, unidad, preferencias y notas.</p>
+              </div>
+              <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
+                <Plus className="size-3.5" aria-hidden="true" /> Agregar interés
+              </Button>
+            </div>
+
+            {interests.length === 0 ? (
+              <div className="mt-5 flex min-h-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+                <Layers3 className="size-8 text-slate-400" aria-hidden="true" />
+                <h3 className="mt-3 text-base font-bold text-slate-950">Todavía no hay intereses cargados</h3>
+                <p className="mt-1 max-w-md text-xs text-slate-500">Podés registrar una ficha vacía y completarla durante la calificación.</p>
+              </div>
+            ) : (
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                {interests.map((interest, index) => {
+                  const project = interest.projectId ? projectById.get(interest.projectId) : undefined;
+                  const property = interest.propertyId ? propertyById.get(interest.propertyId) : undefined;
+                  const unit = interest.unitId ? propertyById.get(interest.unitId) : undefined;
+                  const pendingFields = getInterestPendingFields(interest);
+                  return (
+                    <article key={interest.id} className="flex min-h-full flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Interés {index + 1}</p>
+                          <h3 className="mt-1 text-base font-bold text-slate-950">{interest.category ? CATEGORY_LABELS[interest.category] : "Sin categoría"}</h3>
+                        </div>
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm border border-slate-100">
+                          <Building2 className="size-4" aria-hidden="true" />
+                        </span>
+                      </div>
+                      <dl className="mt-3.5 space-y-2 text-xs">
+                        <div><dt className="font-semibold text-slate-500">Proyecto</dt><dd className="font-bold text-slate-900">{project?.name || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500">Propiedad</dt><dd className="font-bold text-slate-900">{property?.title || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500">Unidad</dt><dd className="font-bold text-slate-900">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
+                      </dl>
+                      <div className="mt-3.5 space-y-2 border-t border-slate-200 pt-3 text-xs">
+                        <div><p className="font-semibold text-slate-500">Preferencias</p><p className="whitespace-pre-wrap text-slate-700">{interest.preferences || "Sin informar"}</p></div>
+                        <div><p className="font-semibold text-slate-500">Notas</p><p className="whitespace-pre-wrap text-slate-700">{interest.notes || "Sin informar"}</p></div>
+                      </div>
+                      <div className="mt-3">
+                        <p className="text-xs font-bold text-amber-800">Datos sin informar</p>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {pendingFields.length > 0 ? pendingFields.map((field) => (
+                            <span key={field} className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{field}</span>
+                          )) : (
+                            <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">Ficha completa</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+                        <Button variant="outline" size="sm" onClick={() => setInterestEditor({ mode: "edit", interest })} className="h-8 gap-1.5 text-xs font-semibold">
+                          <Edit3 className="size-3" aria-hidden="true" /> Editar
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setInterestToDelete(interest)} className="h-8 gap-1.5 border-rose-200 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800">
+                          <Trash2 className="size-3" aria-hidden="true" /> Eliminar
+                        </Button>
+                      </div>
+                      {(property || unit) && (
+                        <Link href={`/admin/properties/${(unit ?? property)?.id}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors">
+                          Ver activo <ExternalLink className="size-3" aria-hidden="true" />
+                        </Link>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Visits & Agenda */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <VisitManager
+              title="Gestión de visitas y citas"
+              subtitle="Agendá citas para cualquiera de sus activos de interés."
+              visits={lead.visits ?? []}
+              onSchedule={handleScheduleVisit}
+              defaultGuestName={lead.name}
+              defaultPhone={lead.phone}
+              defaultEmail={lead.email}
+              defaultAgentId={lead.agentId}
+              propertyOptions={allProperties.filter((property) => interestAssetIds.includes(property.id))}
+            />
+          </section>
         </div>
 
-        <div className="mt-5 grid gap-3.5 lg:grid-cols-2">
-          <section className="flex flex-col justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4" aria-labelledby="lead-advisor-title">
-            <div>
-              <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500">Asesor responsable</p>
-              <p className="mt-0.5 text-base font-bold text-slate-900">{assignedAgent?.name ?? "Sin asignar"}</p>
-              <p className="mt-0.5 text-xs leading-5 text-slate-500">Cada lead conserva un único asesor responsable.</p>
+        {/* ── Sidebar Column (4 cols): Quick access tools ── */}
+        <div className="space-y-6 lg:col-span-4">
+          {/* Lead Overview Card */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-name">
+            <div className="flex items-start gap-3.5">
+              <Avatar className="size-12 shrink-0 rounded-xl bg-blue-600 text-base font-bold text-white">
+                <AvatarFallback className="bg-blue-600 text-white">{lead.name[0]}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <h1 id="lead-name" className="text-lg font-bold tracking-tight text-slate-950 sm:text-xl truncate">{lead.name}</h1>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <Badge variant="default" className="px-2 py-0.5 text-xs">{lead.origin}</Badge>
+                  <Badge className="border-0 bg-blue-50 px-2 py-0.5 text-xs capitalize text-blue-700">{lead.stage}</Badge>
+                </div>
+              </div>
             </div>
+
+            <div className="mt-4 space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-600">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-900">Teléfono:</span>
+                <span className="text-right">{lead.phone || "Sin informar"}</span>
+              </div>
+              {cleanPhone && (
+                <a
+                  href={`https://wa.me/${cleanPhone}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+                >
+                  Abrir conversación en WhatsApp →
+                </a>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-900">Email:</span>
+                <span className="text-right truncate max-w-44">{lead.email || "Sin informar"}</span>
+              </div>
+            </div>
+
+            <Button onClick={() => setCompletingDrawerOpen(true)} className="mt-4 h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
+              <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
+            </Button>
+          </section>
+
+          {/* Assigned Advisor Card */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="lead-advisor-title">
+            <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500">Asesor responsable</p>
+            <p className="mt-1 text-base font-bold text-slate-900">{assignedAgent?.name ?? "Sin asignar"}</p>
+            <p className="mt-0.5 text-xs leading-5 text-slate-500">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
             {currentUser?.role === "ADMIN" && (
-              <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="h-8 w-full px-3 text-xs font-semibold sm:w-auto sm:self-start">
+              <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold">
                 Cambiar asesor
               </Button>
             )}
           </section>
 
-          <section className="flex flex-col justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4" aria-labelledby="lead-follow-up-title">
-            <div>
-              <p id="lead-follow-up-title" className="text-xs font-semibold text-slate-500">Seguimiento comercial</p>
-              <LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} className="mt-2" />
+          {/* Follow-up Status Card */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="lead-follow-up-title">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                  <ClipboardCheck className="size-4" aria-hidden="true" />
+                </span>
+                <h2 id="lead-follow-up-title" className="text-sm font-bold text-slate-900">Seguimiento Comercial</h2>
+              </div>
             </div>
-            <Button onClick={() => setFollowUpEditorOpen(true)} className="h-8 w-full bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto sm:self-start">
+            <div className="mt-3">
+              <LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
+            </div>
+            {!lead.agentId && (
+              <p className="mt-2 text-xs text-amber-700 font-medium">Asigná un asesor antes de registrar un seguimiento.</p>
+            )}
+            <Button
+              onClick={() => setFollowUpEditorOpen(true)}
+              disabled={!lead.agentId}
+              className="mt-3 h-9 w-full gap-1.5 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              <Plus className="size-3.5" />
               Registrar seguimiento
             </Button>
           </section>
+
+          {/* Financing Calculator Card */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <FinancingCalculator defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "USD"} leadName={lead.name} />
+          </div>
         </div>
-
-        {generalPendingData.length > 0 ? (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3.5" role="status">
-            <div className="flex items-start gap-2.5">
-              <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
-              <div>
-                <p className="text-xs font-bold text-amber-950">Información pendiente</p>
-                <p className="mt-0.5 text-xs text-amber-800">El cliente ya está registrado. Podés completar estos datos con el botón "Completar ficha".</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {generalPendingData.map((item) => (
-                    <span key={item} className="rounded-md border border-amber-200 bg-white px-2 py-0.5 text-xs font-semibold text-amber-900">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800" role="status">
-            <CircleCheck className="size-4 shrink-0" aria-hidden="true" /> La información general del cliente está completa.
-          </div>
-        )}
-
-        {lead.notes && (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
-            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <StickyNote className="size-3.5" aria-hidden="true" /> Notas generales
-            </p>
-            <p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-slate-700">{lead.notes}</p>
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-follow-up-timeline-title">
-        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Historial comercial</p>
-            <h2 id="lead-follow-up-timeline-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950">Línea de tiempo</h2>
-            <p className="mt-0.5 text-xs text-slate-500">Cada contacto conserva su asesor, fecha, tipo, resumen, resultado y próximo paso.</p>
-          </div>
-          <Button onClick={() => setFollowUpEditorOpen(true)} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
-            <Plus className="size-3.5" aria-hidden="true" /> Nuevo seguimiento
-          </Button>
-        </div>
-        <div className="mt-5">
-          <LeadFollowUpTimeline leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-interests-title">
-        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Calificación comercial</p>
-            <h2 id="lead-interests-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950">Intereses independientes</h2>
-            <p className="mt-0.5 text-xs text-slate-500">Cada ficha conserva su propio proyecto, propiedad, unidad, preferencias y notas.</p>
-          </div>
-          <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
-            <Plus className="size-3.5" aria-hidden="true" /> Agregar interés
-          </Button>
-        </div>
-
-        {interests.length === 0 ? (
-          <div className="mt-5 flex min-h-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-            <Layers3 className="size-8 text-slate-400" aria-hidden="true" />
-            <h3 className="mt-3 text-base font-bold text-slate-950">Todavía no hay intereses cargados</h3>
-            <p className="mt-1 max-w-md text-xs text-slate-500">Podés registrar una ficha vacía y completarla durante la calificación.</p>
-          </div>
-        ) : (
-          <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {interests.map((interest, index) => {
-              const project = interest.projectId ? projectById.get(interest.projectId) : undefined;
-              const property = interest.propertyId ? propertyById.get(interest.propertyId) : undefined;
-              const unit = interest.unitId ? propertyById.get(interest.unitId) : undefined;
-              const pendingFields = getInterestPendingFields(interest);
-              return (
-                <article key={interest.id} className="flex min-h-full flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Interés {index + 1}</p>
-                      <h3 className="mt-1 text-base font-bold text-slate-950">{interest.category ? CATEGORY_LABELS[interest.category] : "Sin categoría"}</h3>
-                    </div>
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm border border-slate-100">
-                      <Building2 className="size-4" aria-hidden="true" />
-                    </span>
-                  </div>
-                  <dl className="mt-3.5 space-y-2 text-xs">
-                    <div><dt className="font-semibold text-slate-500">Proyecto</dt><dd className="font-bold text-slate-900">{project?.name || "Sin informar"}</dd></div>
-                    <div><dt className="font-semibold text-slate-500">Propiedad</dt><dd className="font-bold text-slate-900">{property?.title || "Sin informar"}</dd></div>
-                    <div><dt className="font-semibold text-slate-500">Unidad</dt><dd className="font-bold text-slate-900">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
-                  </dl>
-                  <div className="mt-3.5 space-y-2 border-t border-slate-200 pt-3 text-xs">
-                    <div><p className="font-semibold text-slate-500">Preferencias</p><p className="whitespace-pre-wrap text-slate-700">{interest.preferences || "Sin informar"}</p></div>
-                    <div><p className="font-semibold text-slate-500">Notas</p><p className="whitespace-pre-wrap text-slate-700">{interest.notes || "Sin informar"}</p></div>
-                  </div>
-                  <div className="mt-3">
-                    <p className="text-xs font-bold text-amber-800">Datos sin informar</p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {pendingFields.length > 0 ? pendingFields.map((field) => (
-                        <span key={field} className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{field}</span>
-                      )) : (
-                        <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">Ficha completa</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
-                    <Button variant="outline" size="sm" onClick={() => setInterestEditor({ mode: "edit", interest })} className="h-8 gap-1.5 text-xs font-semibold">
-                      <Edit3 className="size-3" aria-hidden="true" /> Editar
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setInterestToDelete(interest)} className="h-8 gap-1.5 border-rose-200 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800">
-                      <Trash2 className="size-3" aria-hidden="true" /> Eliminar
-                    </Button>
-                  </div>
-                  {(property || unit) && (
-                    <Link href={`/admin/properties/${(unit ?? property)?.id}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors">
-                      Ver activo <ExternalLink className="size-3" aria-hidden="true" />
-                    </Link>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      <div className="grid gap-5 xl:grid-cols-2">
-        <FinancingCalculator defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "USD"} leadName={lead.name} />
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <VisitManager title="Gestión de visitas" subtitle="Agendá citas para cualquiera de sus activos de interés." visits={lead.visits ?? []} onSchedule={handleScheduleVisit} defaultGuestName={lead.name} defaultPhone={lead.phone} defaultEmail={lead.email} defaultAgentId={lead.agentId} propertyOptions={allProperties.filter((property) => interestAssetIds.includes(property.id))} />
-        </section>
       </div>
 
       <NewLeadDrawer

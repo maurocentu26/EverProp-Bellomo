@@ -1,4 +1,4 @@
-import type { Project, Property, Lead } from "@/data/admin-sample";
+import type { Project, Property, Lead, LeadFollowUp, LeadFollowUpType } from "@/data/admin-sample";
 import type { UserProfile, UserRole } from "@/data/auth-sample";
 
 const CONFIGURED_API_URL =
@@ -13,18 +13,9 @@ const TENANT =
 
 export function resolveApiUrl(): string {
   if (typeof window !== "undefined") {
-    try {
-      const url = new URL(CONFIGURED_API_URL);
-      if (
-        (window.location.hostname === "localhost" && url.hostname === "127.0.0.1") ||
-        (window.location.hostname === "127.0.0.1" && url.hostname === "localhost")
-      ) {
-        url.hostname = window.location.hostname;
-        return url.origin;
-      }
-    } catch {
-      // ignore
-    }
+    // In the browser, return window.location.origin so requests go through Next.js rewrites.
+    // This makes cookies first-party, resolving CSRF mismatch and cross-domain cookie blocking.
+    return window.location.origin;
   }
   return CONFIGURED_API_URL;
 }
@@ -431,8 +422,20 @@ export type ApiLead = {
   budget?: number;
   currency?: string;
   notes?: string;
-  agent_id?: number;
+  agent_id?: number | string;
   agent_name?: string;
+  last_touch_at?: string;
+  follow_up_updated_at?: string;
+  property_ids?: string[];
+  properties?: Array<{
+    id: string;
+    title: string;
+    price?: number | null;
+    currency?: string | null;
+    category?: string | null;
+    interest_level?: string | null;
+    notes?: string | null;
+  }>;
   created_at?: string;
   updated_at?: string;
 };
@@ -448,18 +451,24 @@ export function mapLead(apiLead: ApiLead): Lead {
     LOST: "closing",
   };
 
+  const propertyIds = apiLead.property_ids && apiLead.property_ids.length > 0
+    ? apiLead.property_ids
+    : (apiLead.properties || []).map((p) => p.id);
+
   return {
     id: apiLead.id,
     companyId: "c1",
     name: cleanText(apiLead.name),
     origin: "Web / Formulario",
-    propertyIds: [],
+    propertyIds,
     stage: stageMap[apiLead.stage?.toUpperCase() || ""] || "new",
     lastActivity: apiLead.updated_at || apiLead.created_at || new Date().toISOString(),
+    followUpUpdatedAt: apiLead.last_touch_at || apiLead.follow_up_updated_at || undefined,
     phone: apiLead.phone || undefined,
     email: apiLead.email || undefined,
     notes: cleanText(apiLead.notes) || undefined,
     agentId: apiLead.agent_id ? String(apiLead.agent_id) : undefined,
+    agentName: apiLead.agent_name || undefined,
   };
 }
 
@@ -477,7 +486,8 @@ export async function createEverpropLead(data: {
   budget?: number;
   currency?: "USD" | "ARS";
   notes?: string;
-  agentId?: string | number;
+  agentId?: string | number | null;
+  propertyId?: string | null;
 }) {
   const response = await apiFetch<{ data: ApiLead }>("/api/v1/admin/leads", {
     method: "POST",
@@ -490,7 +500,8 @@ export async function createEverpropLead(data: {
       budget: data.budget || null,
       currency: data.currency || "USD",
       notes: data.notes || null,
-      agent_id: data.agentId ? Number(data.agentId) : null,
+      agent_id: data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null,
+      property_id: data.propertyId || null,
     }),
   });
 
@@ -506,7 +517,7 @@ export async function updateEverpropLead(
     stage?: string;
     priority?: string;
     notes?: string;
-    agentId?: string | number;
+    agentId?: string | number | null;
   }
 ) {
   const payload: Record<string, any> = {};
@@ -516,13 +527,140 @@ export async function updateEverpropLead(
   if (data.stage !== undefined) payload.stage = data.stage;
   if (data.priority !== undefined) payload.priority = data.priority;
   if (data.notes !== undefined) payload.notes = data.notes || null;
-  if (data.agentId !== undefined) payload.agent_id = data.agentId ? Number(data.agentId) : null;
+  if (data.agentId !== undefined) {
+    payload.agent_id = data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null;
+  }
 
   return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
 }
+
+export async function loadEverpropLeadById(leadPublicId: string): Promise<Lead> {
+  const response = await apiFetch<{ data: ApiLead }>(`/api/v1/admin/leads/${leadPublicId}`);
+  return mapLead(response.data);
+}
+
+export type ApiLeadFollowUp = {
+  id: string;
+  companyId: string;
+  leadId: string;
+  agentId: string;
+  agentName?: string;
+  agentAvatar?: string;
+  type: LeadFollowUpType;
+  occurredAt: string;
+  summary: string;
+  result: string;
+  nextAction?: string;
+  nextContactAt?: string;
+  createdAt?: string;
+};
+
+export async function loadEverpropLeadFollowUps(leadPublicId: string): Promise<LeadFollowUp[]> {
+  const response = await apiFetch<{ data: ApiLeadFollowUp[] }>(`/api/v1/admin/leads/${leadPublicId}/follow-ups`);
+  return (response.data || []).map((item) => ({
+    id: item.id,
+    companyId: item.companyId || "c1",
+    leadId: item.leadId,
+    agentId: item.agentId,
+    agentName: item.agentName || undefined,
+    type: item.type,
+    occurredAt: item.occurredAt,
+    summary: item.summary,
+    result: item.result,
+    nextAction: item.nextAction || undefined,
+    nextContactAt: item.nextContactAt || undefined,
+  }));
+}
+
+export async function createEverpropLeadFollowUp(
+  leadPublicId: string,
+  data: {
+    type: LeadFollowUpType;
+    occurredAt: string;
+    summary: string;
+    result: string;
+    nextAction?: string;
+    nextContactAt?: string;
+    agentId?: string | number | null;
+  }
+): Promise<LeadFollowUp> {
+  const response = await apiFetch<{ data: ApiLeadFollowUp }>(`/api/v1/admin/leads/${leadPublicId}/follow-ups`, {
+    method: "POST",
+    body: JSON.stringify({
+      type: data.type,
+      occurred_at: data.occurredAt,
+      summary: data.summary,
+      result: data.result,
+      next_action: data.nextAction || null,
+      next_contact_at: data.nextContactAt || null,
+      agent_id: data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null,
+    }),
+  });
+
+  const item = response.data;
+  return {
+    id: item.id,
+    companyId: item.companyId || "c1",
+    leadId: item.leadId,
+    agentId: item.agentId,
+    agentName: item.agentName || undefined,
+    type: item.type,
+    occurredAt: item.occurredAt,
+    summary: item.summary,
+    result: item.result,
+    nextAction: item.nextAction || undefined,
+    nextContactAt: item.nextContactAt || undefined,
+  };
+}
+
+export async function loadEverpropAllFollowUps(): Promise<LeadFollowUp[]> {
+  const response = await apiFetch<{ data: ApiLeadFollowUp[] }>("/api/v1/admin/follow-ups");
+  return (response.data || []).map((item) => ({
+    id: item.id,
+    companyId: item.companyId || "c1",
+    leadId: item.leadId,
+    agentId: item.agentId,
+    agentName: item.agentName || undefined,
+    type: item.type,
+    occurredAt: item.occurredAt,
+    summary: item.summary,
+    result: item.result,
+    nextAction: item.nextAction || undefined,
+    nextContactAt: item.nextContactAt || undefined,
+  }));
+}
+
+export async function attachEverpropLeadProperty(
+  leadPublicId: string,
+  propertyPublicId: string,
+  options?: {
+    interestLevel?: string;
+    notes?: string;
+    price?: number;
+    currency?: string;
+  }
+) {
+  return apiFetch<{ status: string; data: any }>(`/api/v1/admin/leads/${leadPublicId}/properties`, {
+    method: "POST",
+    body: JSON.stringify({
+      property_id: propertyPublicId,
+      interest_level: options?.interestLevel || "MEDIUM",
+      notes: options?.notes || null,
+      quoted_price: options?.price ?? null,
+      quoted_currency_code: options?.currency ?? null,
+    }),
+  });
+}
+
+export async function detachEverpropLeadProperty(leadPublicId: string, propertyPublicId: string) {
+  return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}/properties/${propertyPublicId}`, {
+    method: "DELETE",
+  });
+}
+
 
 export type UpdatePropertyPayload = {
   title?: string;
@@ -634,4 +772,42 @@ export async function generateLotsBatch(payload: GenerateLotsPayload) {
   };
 }
 
+export type ApiNotification = {
+  id: string;
+  targetUserId: string;
+  title: string;
+  message: string;
+  leadId?: string | null;
+  actionUrl?: string | null;
+  eventType?: string | null;
+  timestamp: string;
+  read: boolean;
+};
+
+export async function loadEverpropNotifications(): Promise<{
+  data: ApiNotification[];
+  meta?: { unread_count?: number };
+}> {
+  return apiFetch<{ data: ApiNotification[]; meta?: { unread_count?: number } }>(
+    "/api/v1/admin/notifications"
+  );
+}
+
+export async function markEverpropNotificationRead(id: string): Promise<void> {
+  await apiFetch(`/api/v1/admin/notifications/${id}/read`, {
+    method: "PATCH",
+  });
+}
+
+export async function markAllEverpropNotificationsRead(): Promise<void> {
+  await apiFetch("/api/v1/admin/notifications/mark-all-read", {
+    method: "POST",
+  });
+}
+
+export async function clearAllEverpropNotifications(): Promise<void> {
+  await apiFetch("/api/v1/admin/notifications", {
+    method: "DELETE",
+  });
+}
 

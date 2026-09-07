@@ -24,7 +24,7 @@ export function ThemeToggle({ className, compact = false }: ThemeToggleProps) {
       aria-pressed={isDark}
       title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
       className={cn(
-        "h-12 gap-2 border-slate-300 bg-white px-4 text-base font-semibold text-slate-800 shadow-sm hover:bg-slate-100 hover:text-slate-950 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-white",
+        "h-12 gap-2 border-slate-300 bg-white px-4 font-semibold text-slate-800 shadow-sm hover:bg-slate-100 hover:text-slate-950 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-white",
         compact && "w-12 px-0",
         className,
       )}
