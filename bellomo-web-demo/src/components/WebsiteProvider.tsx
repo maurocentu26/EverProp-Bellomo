@@ -52,12 +52,16 @@ export function ManagedPage({ children, className }: { children: ReactNode; clas
       <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-2"><div><h2 className="font-display text-4xl">{section.title}</h2><p className="mt-4 whitespace-pre-line leading-7">{section.body}</p>{section.href && <a className="mt-6 inline-block rounded-full border px-5 py-3" href={section.href}>{section.buttonLabel || "Ver más"}</a>}</div>
       {section.image && <img src={section.image} alt={section.title} className="max-h-96 w-full rounded-2xl object-cover" />}</div>
     </section>);
+  const visibleNodes = nodes.filter(node => content.sections.find(s => s.id === node.id)?.enabled !== false);
+  const promotionAnchor = visibleNodes.find(node => node.id === "inicio") || visibleNodes.find(node => node.id === "menu");
   return <main className={className}>
-    {nodes.filter(node => content.sections.find(s => s.id === node.id)?.enabled !== false).map(node => <div key={node.index} style={{ display: "contents" }}>
-      {node.id === "pie" && <><Promotions/>{customSections}</>}
+    {!promotionAnchor && <Promotions/>}
+    {visibleNodes.map(node => <div key={node.index} style={{ display: "contents" }}>
+      {node.id === "pie" && customSections}
       {node.child}
+      {node.index === promotionAnchor?.index && <Promotions/>}
 
     </div>)}
-    {content.sections.find(s => s.id === "pie")?.enabled === false && <><Promotions/>{customSections}</>}
+    {content.sections.find(s => s.id === "pie")?.enabled === false && customSections}
   </main>;
 }

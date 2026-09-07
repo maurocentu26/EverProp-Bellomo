@@ -4942,26 +4942,31 @@ html.motion-ready
   .selected-developments .development-grid--four .project-card > .relative { padding:20px; }
 }
 /* Promotions managed by the existing website editor. */
-.bellomo-promotions { background:#f3f0e9; color:#12394f; padding:88px 24px; scroll-margin-top:90px; }
+.bellomo-promotions { background:#052b43; color:#fffdf8; padding:64px 24px; border-top:5px solid #d7b775; scroll-margin-top:90px; }
 .promotions-inner { max-width:1366px; margin:auto; }
 .promotions-heading { display:flex; align-items:end; justify-content:space-between; gap:32px; margin-bottom:40px; }
 .promotions-kicker { font-size:12px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
 .promotions-heading h2 { font-size:clamp(38px,5vw,68px); line-height:1.04; margin-top:18px; }
-.promotions-heading > p { max-width:330px; line-height:1.8; color:#536b76; }
+.promotions-heading > p { max-width:330px; line-height:1.8; color:#c1d1d9; }
+.promotions-heading .promotions-kicker { color:#e7d5af; }
 .promotions-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px; }
-.promotion-card { min-width:0; background:#fffdf8; border:1px solid #d7d5cd; display:flex; flex-direction:column; }
+.promotion-card { min-width:0; background:#fffdf8; color:#12394f; border:1px solid #d7b775; display:flex; flex-direction:column; }
 .promotion-photo { position:relative; min-width:0; overflow:hidden; }
 .promotion-photo img { width:100%; height:100%; min-height:280px; aspect-ratio:16/10; object-fit:cover; }
-.promotion-photo > span { position:absolute; top:24px; left:24px; background:#f3f0e9; color:#12394f; padding:10px 14px; font-size:11px; letter-spacing:.12em; font-weight:700; }
+.promotion-photo > span { position:absolute; top:24px; left:24px; background:#e7d5af; color:#052b43; padding:10px 14px; font-size:11px; letter-spacing:.12em; font-weight:700; }
 .promotion-copy { padding:32px; display:flex; flex:1; flex-direction:column; min-width:0; }
 .promotion-copy .promotions-kicker { color:#806b43; }
 .promotion-copy h3 { font-size:clamp(32px,3.5vw,52px); line-height:1.08; margin-top:20px; overflow-wrap:anywhere; }
 .promotion-description { color:#536b76; line-height:1.8; margin-top:22px; white-space:pre-line; overflow-wrap:anywhere; }
 .promotion-bottom { margin-top:auto; padding-top:30px; }
-.promotion-cta { display:inline-flex; min-height:48px; align-items:center; justify-content:space-between; gap:30px; padding:12px 20px; background:#12394f; color:#fffdf8; font-size:13px; font-weight:600; }
-.promotion-cta:hover { background:#20556e; }
+.promotion-cta { display:inline-flex; min-height:48px; align-items:center; justify-content:space-between; gap:30px; padding:12px 20px; background:#e7d5af; color:#052b43; border:1px solid #b69a62; font-size:13px; font-weight:600; }
+.promotion-cta:hover { background:#d7b775; }
 .promotion-cta:focus-visible { outline:3px solid #997d48; outline-offset:4px; }
 .promotion-conditions { margin-top:22px; padding-top:18px; border-top:1px solid #ddd9cf; font-size:12px; line-height:1.65; color:#647078; white-space:pre-line; overflow-wrap:anywhere; }
 .promotion-featured { grid-column:1/-1; display:grid; grid-template-columns:1.15fr 1fr; }
 .promotion-featured .promotion-copy { padding:clamp(28px,4vw,56px); }
 @media(max-width:700px) { .bellomo-promotions { padding:56px 20px; } .promotions-heading { align-items:start; flex-direction:column; gap:20px; } .promotions-list { grid-template-columns:minmax(0,1fr); } .promotion-featured { display:flex; } .promotion-copy { padding:24px; } .promotion-photo img { min-height:220px; } }
+
+.promotion-benefit { position:absolute; bottom:24px; left:24px; display:flex; flex-direction:column; gap:2px; padding:20px 24px; background:#e7d5af; color:#052b43; border:1px solid #fff1cf; }
+.promotion-benefit strong { font-size:clamp(48px,6vw,80px); line-height:1; letter-spacing:-.06em; }
+.promotion-benefit span { font-size:11px; letter-spacing:.12em; font-weight:700; }
