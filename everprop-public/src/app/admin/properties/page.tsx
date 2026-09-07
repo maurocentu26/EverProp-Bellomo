@@ -12,6 +12,8 @@ import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-ap
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
 
+import { isLocalDemo, demoCatalog } from "@/lib/demo-catalog";
+
 type DataState =
   | { status: "loading" }
   | { status: "ready"; source: "admin-api" | "mock" }
@@ -30,6 +32,7 @@ export default function AllPropertiesPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [search, setSearch] = useState("");
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
@@ -40,6 +43,18 @@ export default function AllPropertiesPage() {
     let active = true;
 
     async function loadData() {
+      if (isLocalDemo) {
+        try {
+          const properties = await demoCatalog() as Property[];
+          if (!active) return;
+          setAllProperties(properties);
+          setProjects(sampleProjects);
+          setDataState({ status: "ready", source: "mock" });
+        } catch (reason) {
+          if (active) setDataState({ status: "error", message: reason instanceof Error ? reason.message : "Catálogo demo no disponible." });
+        }
+        return;
+      }
       if (isMockDataMode) {
         await Promise.resolve();
         if (!active) return;
@@ -81,7 +96,7 @@ export default function AllPropertiesPage() {
   };
 
   const filteredProperties = useMemo(() => {
-    let filtered = allProperties;
+    let filtered = allProperties.filter(p => `${p.title} ${p.city} ${p.neighborhood}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
 
     // 1. Project Filter
     if (selectedProjectId !== "all") {
@@ -99,7 +114,7 @@ export default function AllPropertiesPage() {
     }
 
     return filtered;
-  }, [allProperties, selectedProjectId, activeStatus, selectedTypes]);
+  }, [allProperties, selectedProjectId, activeStatus, selectedTypes, search]);
 
   const groupedProperties = useMemo(() => {
     const groups: { projects: Record<string, Property[]>, individual: Property[] } = {
@@ -147,6 +162,10 @@ export default function AllPropertiesPage() {
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 pb-10">
+      {isLocalDemo && <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+        <strong>Demo local conectada a Bellomito.</strong> Las propiedades nuevas se publican automáticamente. Usá Publicar / Ocultar en cada fila.
+        <a className="ml-3 font-semibold underline" href="http://127.0.0.1:3002/#catalogo-demo" target="_blank" rel="noreferrer">Ver web de Bellomito</a>
+      </div>}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -178,11 +197,14 @@ export default function AllPropertiesPage() {
         <p>
           {dataState.source === "admin-api"
             ? `Inventario real conectado a la base de datos (${allProperties.length} activos en cartera). Modo interactivo habilitado: podés abrir cada ficha, consultar datos y actualizar estados.`
-            : "QA visual mock: inventario de muestra local, sin confirmación de la API."}
+            : isLocalDemo ? "Catálogo demo guardado en esta computadora y compartido con la web de Bellomito." : "QA visual mock: inventario de muestra local, sin confirmación de la API."}
         </p>
       </div>
 
       {/* Control Panel / Filtros */}
+      <label className="block max-w-lg text-sm font-medium text-slate-700">Buscar propiedad
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nombre, ciudad o barrio" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" />
+      </label>
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center">
         
         {/* Project Filter */}

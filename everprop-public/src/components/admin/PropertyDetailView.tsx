@@ -10,6 +10,7 @@ import type { Lead, Property, Visit } from "@/data/admin-sample";
 import { leads as sampleLeads, properties as sampleProperties } from "@/data/admin-sample";
 import { loadLeadList, loadPropertyList, saveLeadList, savePropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
+import { isLocalDemo, demoCatalog } from "@/lib/demo-catalog";
 import { loadEverpropCatalog, updateEverpropPropertyStatus } from "@/lib/everprop-api";
 import {
   createInterestForProperty,
@@ -42,6 +43,13 @@ export default function PropertyDetailView({ propertyId }: Props) {
   useEffect(() => {
     let active = true;
     async function loadData() {
+      if (isLocalDemo) {
+        try {
+          const catalog = await demoCatalog() as Property[];
+          if (active) { setAllProperties(catalog); setProperty(catalog.find(item => item.id === propertyId) ?? null); }
+        } catch { toast.error("No se pudo cargar la propiedad demo."); }
+        return;
+      }
       if (!isMockDataMode) {
         try {
           const catalog = await loadEverpropCatalog();
@@ -154,6 +162,17 @@ export default function PropertyDetailView({ propertyId }: Props) {
   }
 
   if (!property) return <div className="p-8 text-center text-slate-500 font-medium">Propiedad no encontrada.</div>;
+
+  if (isLocalDemo) return <section className="mx-auto max-w-3xl space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
+    <Link href="/admin/properties" className="text-blue-700 underline">Volver a Propiedades</Link>
+    <p className="text-sm text-slate-500">Ficha demo · {property.published ? "Publicada en la web" : "Oculta en la web"}</p>
+    <h1 className="text-3xl font-semibold text-slate-900">{property.title}</h1>
+    <p>{property.neighborhood}, {property.city}</p>
+    <p className="text-2xl">{property.currency} {property.price.toLocaleString("es-AR")}</p>
+    <p>{property.propertyType} · {property.area_m2 || "—"} m² · {property.bedrooms} dormitorios</p>
+    <p>{property.description}</p>
+    <p className="text-sm text-slate-500">Podés publicar u ocultar esta propiedad desde la lista de Propiedades.</p>
+  </section>;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20 animate-in fade-in duration-500">

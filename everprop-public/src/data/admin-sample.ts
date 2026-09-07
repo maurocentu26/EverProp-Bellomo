@@ -74,6 +74,7 @@ export type Visit = {
 };
 
 export type Property = {
+  published?: boolean;
   id: string;
   companyId: string;
   title: string;

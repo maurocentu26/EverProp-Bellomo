@@ -1,3 +1,4 @@
+import { isLocalDemo } from "@/lib/demo-catalog";
 import type { Property } from "@/data/admin-sample";
 import PropertyCard from "@/components/admin/PropertyCard";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -43,6 +44,7 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
               <th className="px-4 py-3">Ubicación</th>
               <th className="px-4 py-3">Superficie</th>
               <th className="px-4 py-3">Estado</th>
+              {isLocalDemo && !readOnly && <th className="px-4 py-3">Web de Bellomito</th>}
             </tr>
           </thead>
 

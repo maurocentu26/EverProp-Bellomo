@@ -18,6 +18,8 @@ import { Car, Store, Map, Building2, Home, ArrowLeft, Layers } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 
+import { isLocalDemo, demoCatalog } from "@/lib/demo-catalog";
+
 import CategorySelector from "./property-form/CategorySelector";
 import TraditionalFields from "./property-form/TraditionalFields";
 import LoteFields from "./property-form/LoteFields";
@@ -127,7 +129,9 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
         } : undefined,
       };
 
-      if (!isMockDataMode) {
+      if (isLocalDemo) {
+        await demoCatalog("POST", nextProperty);
+      } else if (!isMockDataMode) {
         await createEverpropProperty({
           title: nextProperty.title,
           operation: nextProperty.operation,
