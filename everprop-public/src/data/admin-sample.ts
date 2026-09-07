@@ -21,6 +21,8 @@ export type LeadInterest = {
   status?: string;
   interestLevel?: string;
   unitId?: string;
+  price?: number;
+  currency?: string;
   preferences?: string;
   notes?: string;
   createdAt: string;

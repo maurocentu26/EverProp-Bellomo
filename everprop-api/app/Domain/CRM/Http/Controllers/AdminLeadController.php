@@ -69,6 +69,7 @@ final class AdminLeadController extends Controller
             if (! empty($leadIds)) {
                 $linkedProps = DB::table('lead_properties')
                     ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
+                    ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
                     ->where('lead_properties.tenant_id', $tenantId)
                     ->whereIn('lead_properties.lead_id', $leadIds)
                     ->select([
@@ -81,6 +82,10 @@ final class AdminLeadController extends Controller
                         'properties.price as property_price',
                         'properties.currency_code as property_currency',
                         'properties.category as property_category',
+                        'properties.unit_number',
+                        'properties.sector_name',
+                        'projects.public_id as project_public_id',
+                        'projects.name as project_name',
                     ])
                     ->get();
 
@@ -92,6 +97,10 @@ final class AdminLeadController extends Controller
                         'price' => $prop->property_price ? (float) $prop->property_price : null,
                         'currency' => $prop->property_currency,
                         'category' => $prop->property_category,
+                        'project_id' => $prop->project_public_id,
+                        'project_name' => $prop->project_name,
+                        'unit_number' => $prop->unit_number,
+                        'sector_name' => $prop->sector_name,
                         'interest_level' => $prop->interest_level,
                         'status' => $prop->interest_status ?: 'ACTIVE',
                         'notes' => $prop->interest_notes,
@@ -336,6 +345,7 @@ final class AdminLeadController extends Controller
 
             $linkedProps = DB::table('lead_properties')
                 ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
+                ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
                 ->where('lead_properties.tenant_id', $tenantId)
                 ->where('lead_properties.lead_id', $lead->id)
                 ->select([
@@ -347,6 +357,10 @@ final class AdminLeadController extends Controller
                     'properties.price as property_price',
                     'properties.currency_code as property_currency',
                     'properties.category as property_category',
+                    'properties.unit_number',
+                    'properties.sector_name',
+                    'projects.public_id as project_public_id',
+                    'projects.name as project_name',
                 ])
                 ->get();
 
@@ -358,6 +372,10 @@ final class AdminLeadController extends Controller
                     'price' => $prop->property_price ? (float) $prop->property_price : null,
                     'currency' => $prop->property_currency,
                     'category' => $prop->property_category,
+                    'project_id' => $prop->project_public_id,
+                    'project_name' => $prop->project_name,
+                    'unit_number' => $prop->unit_number,
+                    'sector_name' => $prop->sector_name,
                     'interest_level' => $prop->interest_level,
                     'status' => $prop->interest_status ?: 'ACTIVE',
                     'notes' => $prop->interest_notes,

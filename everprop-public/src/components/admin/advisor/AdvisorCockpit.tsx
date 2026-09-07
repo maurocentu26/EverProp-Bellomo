@@ -27,8 +27,10 @@ import {
   type Lead, 
   type LeadFollowUp, 
   type Property, 
+  type Project,
   leads as sampleLeads, 
-  properties as sampleProperties 
+  properties as sampleProperties,
+  projects as sampleProjects 
 } from "@/data/admin-sample";
 import { 
   loadLeadFollowUpList, 
@@ -75,6 +77,7 @@ export default function AdvisorCockpit() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [properties, setProperties] = useState<Property[]>(sampleProperties);
+  const [projects, setProjects] = useState<Project[]>(sampleProjects);
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQueueFilter, setActiveQueueFilter] = useState<"all" | "overdue" | "today" | "new">("all");
@@ -90,18 +93,22 @@ export default function AdvisorCockpit() {
       let loadedLeads: Lead[] = [];
       let loadedFollowUps: LeadFollowUp[] = [];
       let loadedProperties: Property[] = sampleProperties;
+      let loadedProjects: Project[] = sampleProjects;
 
       if (!isMockDataMode) {
         try {
           const [apiLeads, catalog, apiFollowUps] = await Promise.all([
             loadEverpropLeads(),
-            loadEverpropCatalog().catch(() => ({ properties: sampleProperties })),
+            loadEverpropCatalog().catch(() => ({ properties: sampleProperties, projects: sampleProjects })),
             loadEverpropAllFollowUps().catch(() => []),
           ]);
           if (active) {
             loadedLeads = apiLeads;
             if (catalog.properties && catalog.properties.length > 0) {
               loadedProperties = catalog.properties;
+            }
+            if (catalog.projects && catalog.projects.length > 0) {
+              loadedProjects = catalog.projects;
             }
             const localFollowUps = loadLeadFollowUpList([], "c1");
             loadedFollowUps = apiFollowUps.length > 0 ? apiFollowUps : localFollowUps;
@@ -120,6 +127,7 @@ export default function AdvisorCockpit() {
         setLeads(loadedLeads);
         setFollowUps(loadedFollowUps);
         setProperties(loadedProperties);
+        setProjects(loadedProjects);
         setIsLoaded(true);
       }
     }
@@ -144,9 +152,9 @@ export default function AdvisorCockpit() {
     });
   }, []);
 
-  // Filtrar leads del asesor comercial
+  // Filtrar leads del asesor comercial (si es admin, ve todos los leads de la empresa)
   const myLeads = useMemo(() => {
-    if (!user) return leads;
+    if (!user || user.role === "ADMIN") return leads;
     const filtered = leads.filter((lead) => {
       if (!lead.agentId) return true; // Mostrar también sin asignar si está en cola
       return String(lead.agentId) === String(user.id);
@@ -254,6 +262,15 @@ export default function AdvisorCockpit() {
     const previousLeads = [...leads];
     const targetLead = leads.find((l) => l.id === leadId);
     if (!targetLead) return;
+
+    // Validación comercial: No se puede cambiar de etapa sin haber realizado al menos un seguimiento previo
+    const leadFollowUps = followUps.filter((f) => f.leadId === leadId);
+    const hasFollowUp = leadFollowUps.length > 0 || Boolean(targetLead.followUpUpdatedAt);
+    if (!hasFollowUp && newStage !== "new") {
+      toast.error("Es obligatorio registrar un seguimiento comercial antes de cambiar la etapa del lead.");
+      setFollowUpLead(targetLead);
+      return;
+    }
 
     // Actualización optimista local
     const updated = leads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
@@ -562,16 +579,30 @@ export default function AdvisorCockpit() {
             ) : (
               priorityQueue.slice(0, 15).map(({ lead, state, isOverdue, isDueToday }) => {
                 const cleanPhone = lead.phone?.replace(/\D/g, "");
-                const activePropId = selectedPropertyByLead[lead.id] || lead.propertyIds?.[0];
-                const matchedProperty = properties.find((p) => p.id === activePropId);
-                const matchedInterest = lead.interests?.find((i) => i.propertyId === activePropId);
+                const candidatePropertyIds = (lead.propertyIds && lead.propertyIds.length > 0)
+                  ? lead.propertyIds
+                  : (lead.interests || []).map((i) => i.propertyId || i.unitId).filter(Boolean) as string[];
+                const activePropId = selectedPropertyByLead[lead.id] || candidatePropertyIds[0];
+                const matchedProperty = activePropId ? properties.find((p) => p.id === activePropId) : undefined;
+                const matchedInterest = activePropId
+                  ? lead.interests?.find((i) => i.propertyId === activePropId || i.unitId === activePropId)
+                  : lead.interests?.[0];
+                const matchedProject = matchedInterest?.projectId ? projects.find((proj) => proj.id === matchedInterest.projectId) : undefined;
+                const displayTitle = matchedProperty?.title || matchedInterest?.propertyTitle || (matchedProject ? `Proyecto ${matchedProject.name}` : undefined);
+                const displayPrice = matchedProperty
+                  ? `${matchedProperty.currency} ${matchedProperty.price.toLocaleString()}`
+                  : matchedInterest?.price
+                  ? `${matchedInterest.currency || "USD"} ${matchedInterest.price.toLocaleString()}`
+                  : undefined;
                 const currentPropStatus = matchedInterest?.status || "ACTIVE";
                 const currentPropStatusObj = PROPERTY_STATUS_OPTIONS.find((s) => s.id === currentPropStatus) || PROPERTY_STATUS_OPTIONS[0];
                 const currentStageObj = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
 
+                const targetPropIdToUpdate = activePropId || matchedInterest?.propertyId || candidatePropertyIds[0];
+
                 const whatsappText = encodeURIComponent(
                   `Hola ${lead.name}, te escribo de Bellomo Inmobiliaria respecto a tu consulta${
-                    matchedProperty ? ` sobre ${matchedProperty.title}` : ""
+                    displayTitle ? ` sobre ${displayTitle}` : ""
                   }. ¿Cómo estás?`
                 );
 
@@ -633,17 +664,18 @@ export default function AdvisorCockpit() {
                     </div>
 
                     {/* Switcher de Propiedades si el lead tiene múltiples intereses */}
-                    {lead.propertyIds && lead.propertyIds.length > 1 && (
+                    {candidatePropertyIds.length > 1 && (
                       <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
-                          Propiedades ({lead.propertyIds.length}):
+                          Propiedades ({candidatePropertyIds.length}):
                         </span>
-                        {lead.propertyIds.map((propId, idx) => {
+                        {candidatePropertyIds.map((propId, idx) => {
                           const prop = properties.find((p) => p.id === propId);
                           const isSelected = activePropId === propId;
-                          const propInterest = lead.interests?.find((i) => i.propertyId === propId);
+                          const propInterest = lead.interests?.find((i) => i.propertyId === propId || i.unitId === propId);
                           const propStatus = propInterest?.status || "ACTIVE";
                           const propStatusObj = PROPERTY_STATUS_OPTIONS.find((s) => s.id === propStatus);
+                          const pillTitle = prop?.title || propInterest?.propertyTitle || `Inmueble #${idx + 1}`;
                           return (
                             <button
                               key={propId}
@@ -656,7 +688,7 @@ export default function AdvisorCockpit() {
                                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
                               )}
                             >
-                              <span className="truncate max-w-[130px]">{prop?.title || `Inmueble #${idx + 1}`}</span>
+                              <span className="truncate max-w-[130px]">{pillTitle}</span>
                               {propStatusObj && propStatus !== "ACTIVE" && (
                                 <span className={cn("text-[9px] px-1.5 py-0.2 rounded font-bold uppercase", propStatusObj.color)}>
                                   {propStatusObj.label}
@@ -671,15 +703,17 @@ export default function AdvisorCockpit() {
                     {/* Fila Intermedia: Propiedad de Interés y Selectores de Estado */}
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {/* Propiedad vinculada */}
-                      {matchedProperty ? (
+                      {displayTitle ? (
                         <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 border border-slate-100 dark:border-slate-800 text-xs">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <Building2 className="size-3.5 text-slate-400 shrink-0" />
-                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{matchedProperty.title}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{displayTitle}</span>
                           </div>
-                          <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                            {matchedProperty.currency} {matchedProperty.price.toLocaleString()}
-                          </span>
+                          {displayPrice && (
+                            <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                              {displayPrice}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
@@ -695,7 +729,7 @@ export default function AdvisorCockpit() {
                           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Lote:</span>
                           <select
                             value={currentPropStatus}
-                            onChange={(e) => activePropId && handlePropertyStatusChange(lead.id, activePropId, e.target.value)}
+                            onChange={(e) => targetPropIdToUpdate && handlePropertyStatusChange(lead.id, targetPropIdToUpdate, e.target.value)}
                             className={cn(
                               "h-7 w-full rounded-lg border px-1 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
                               currentPropStatusObj.color

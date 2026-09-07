@@ -197,6 +197,18 @@ export default function AllLeadsPage() {
   // Actualización de estado en 1 clic
   async function handleStageChange(leadId: string, newStage: Lead["stage"]) {
     const prevLeads = [...allLeads];
+    const targetLead = allLeads.find((l) => l.id === leadId);
+    if (!targetLead) return;
+
+    // Validación comercial: No se puede cambiar de etapa sin haber realizado al menos un seguimiento previo
+    const leadFollowUps = followUps.filter((f) => f.leadId === leadId);
+    const hasFollowUp = leadFollowUps.length > 0 || Boolean(targetLead.followUpUpdatedAt);
+    if (!hasFollowUp && newStage !== "new") {
+      toast.error("Es obligatorio registrar un seguimiento comercial antes de cambiar la etapa del lead.");
+      setFollowUpLead(targetLead);
+      return;
+    }
+
     const updated = allLeads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
     setAllLeads(updated);
     saveLeadList(updated, "c1");
