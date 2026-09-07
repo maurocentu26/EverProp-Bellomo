@@ -1,5 +1,6 @@
 "use client";
 import { isLocalDemo } from "@/lib/demo-catalog";
+import PropertyPublication from "./PropertyPublication";
 import Link from "next/link";
 import Badge from "@/components/ui/badge";
 import type { Property } from "@/data/admin-sample";
@@ -91,8 +92,8 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
             : "Vendido"}
         </span>
       </td>
-      {isLocalDemo && !readOnly && <td className="px-4 py-4 align-middle">
-        <Link className="font-semibold text-blue-700 underline" href="/admin/web-publica">Administrar en Web pública</Link>
+      {isLocalDemo && <td className="px-4 py-4 align-middle">
+        <PropertyPublication key={JSON.stringify(property)} property={property}/>
       </td>}
     </tr>
   );

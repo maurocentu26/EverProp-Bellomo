@@ -15,7 +15,7 @@ function json(data: unknown, status = 200) { return Response.json(data, { status
 function read(): WebsiteState {
   if (existsSync(file)) {
     const state = JSON.parse(readFileSync(file, "utf8")) as WebsiteState;
-    const merge = (content: WebsiteContent): WebsiteContent => ({ ...defaultWebsite, ...content, texts: Object.fromEntries(Object.keys(defaultWebsite.texts).map(key => [key, content.texts[key as keyof typeof content.texts] || defaultWebsite.texts[key as keyof typeof defaultWebsite.texts]])) as typeof content.texts, links: Object.fromEntries(Object.keys(defaultWebsite.links).map(key => [key, content.links[key as keyof typeof content.links] || defaultWebsite.links[key as keyof typeof defaultWebsite.links]])) as typeof content.links, data: { ...defaultWebsite.data, ...content.data } });
+    const merge = (content: WebsiteContent): WebsiteContent => ({ ...defaultWebsite, ...content, texts: Object.fromEntries(Object.keys(defaultWebsite.texts).map(key => [key, content.texts[key as keyof typeof content.texts] || defaultWebsite.texts[key as keyof typeof defaultWebsite.texts]])) as typeof content.texts, links: Object.fromEntries(Object.keys(defaultWebsite.links).map(key => [key, content.links[key as keyof typeof content.links] || defaultWebsite.links[key as keyof typeof defaultWebsite.links]])) as typeof content.links, sections: content.sections.filter(s => s.id !== "catalogo-demo"), data: { ...defaultWebsite.data, ...content.data, navigation: content.data.navigation.filter(item => item.href !== "#catalogo-demo") } });
     return { ...state, draft: merge(state.draft), published: merge(state.published) };
   }
   return { revision: 0, publishedAt: null, draft: defaultWebsite, published: defaultWebsite };

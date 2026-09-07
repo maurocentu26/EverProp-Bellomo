@@ -605,7 +605,6 @@ export const bellomoProjects: Project[] = [
 ];
 
 export const navigation = [
-  ...(process.env.NEXT_PUBLIC_LOCAL_DEMO === "1" ? [{ label: "Propiedades", href: "#catalogo-demo" }] : []),
   { label: "Inicio", href: "#inicio" },
   { label: "Bellomo", href: "#bellomo" },
   { label: "Comercializadora", href: "#comercializadora" },

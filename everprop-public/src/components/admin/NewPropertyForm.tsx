@@ -179,8 +179,8 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     <h1 className="text-2xl font-bold text-slate-900">{savedProperty.published ? "Propiedad guardada y publicada" : "Propiedad guardada como oculta"}</h1>
     <p className="text-slate-600"><strong>{savedProperty.title}</strong> {savedProperty.published ? "ya está en la web de Bellomo y Bellomito puede mostrarla." : "quedó guardada en el panel. No aparece en la web ni en Bellomito hasta que la publiques."} La cargaste una sola vez.</p>
     <div className="flex flex-wrap gap-3">
-      <a href={`http://127.0.0.1:3002/?propiedad=${encodeURIComponent(savedProperty.id)}#catalogo-demo`} target="_blank" rel="noreferrer" className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white">Ver propiedad en la web</a>
-      <button type="button" onClick={() => router.push("/admin/web-publica")} className="rounded-xl border border-slate-300 px-5 py-3 font-semibold">Administrar en Web pública</button>
+      <a href={`http://127.0.0.1:3002/?propiedad=${encodeURIComponent(savedProperty.id)}#inmueble-${encodeURIComponent(savedProperty.id)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white">Ver propiedad en la web</a>
+      <button type="button" onClick={() => router.push("/admin/properties")} className="rounded-xl border border-slate-300 px-5 py-3 font-semibold">Volver al inventario</button>
       <button type="button" onClick={() => { setSavedProperty(null); reset(); setStep(1); }} className="rounded-xl border border-slate-300 px-5 py-3 font-semibold">Cargar otra propiedad</button>
     </div>
     <p className="text-sm text-slate-500">Podés ocultarla o volver a publicarla desde el panel. Esta es una demostración local.</p>

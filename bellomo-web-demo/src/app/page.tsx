@@ -1,6 +1,6 @@
 "use client";
 
-import DemoCatalog from "@/components/DemoCatalog";
+import { usePublicInventory, type CommercialCard } from "@/components/use-public-inventory";
 import { SiteText, ManagedPage, useWebsite, useSiteData } from "@/components/WebsiteProvider";
 import Image from "next/image";
 import {
@@ -1548,7 +1548,7 @@ function SectionReveal({
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project }: { project: CommercialCard }) {
 const whatsappHref = useWhatsAppHref();
 
   return (
@@ -1556,11 +1556,11 @@ const whatsappHref = useWhatsAppHref();
       className="project-card rail-card group relative min-h-[390px] shrink-0 snap-start overflow-hidden sm:min-h-[460px]"
       id={project.id}
     >
-      <ResilientMedia
+      {project.media.src && <ResilientMedia
         className="project-image absolute inset-0"
         decorative
         media={project.media}
-      />
+      />}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,24,36,0.08)_5%,rgba(2,27,42,0.93)_100%)]" />
       <div className="relative flex min-h-[390px] flex-col justify-between p-6 sm:min-h-[460px] sm:p-9">
         <p className="self-end border-b border-white/40 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/85">
@@ -1574,6 +1574,7 @@ const whatsappHref = useWhatsAppHref();
             {project.name}
           </h3>
           <p className="mt-3 text-sm leading-6 text-white/80">{project.description}</p>
+          {project.inventory && <p className="mt-3 text-lg font-semibold text-white">{project.inventory.operation === "sale" ? "Venta" : project.inventory.operation === "temporal" ? "Alquiler temporal" : "Alquiler"} · {project.inventory.currency} {project.inventory.price.toLocaleString("es-AR")}{project.inventory.area_m2 ? ` · ${project.inventory.area_m2} m²` : ""}</p>}
           <a
             aria-label={`Consultar por ${project.name}`}
             className="project-card-cta mt-7 inline-flex items-center gap-4 border-b border-white/45 pb-2 text-[11px] font-bold uppercase tracking-[0.13em] text-white"
@@ -1583,7 +1584,7 @@ const whatsappHref = useWhatsAppHref();
             rel="noreferrer"
             target="_blank"
           >
-            <SiteText id="texto-15" /><ArrowIcon className="h-5 w-5" />
+            {project.inventory ? "Consultar propiedad" : <SiteText id="texto-15" />}<ArrowIcon className="h-5 w-5" />
           </a>
         </div>
       </div>
@@ -1591,7 +1592,7 @@ const whatsappHref = useWhatsAppHref();
   );
 }
 
-function DevelopmentRail({ projects }: { projects: Project[] }) {
+function DevelopmentRail({ projects }: { projects: CommercialCard[] }) {
   const railRef = useRef<HTMLDivElement>(null);
 
   const moveRail = (direction: -1 | 1) => {
@@ -1615,7 +1616,7 @@ function DevelopmentRail({ projects }: { projects: Project[] }) {
           <p className="text-[10px] font-bold uppercase tracking-[0.19em] text-[#e7d5af]">
             <SiteText id="texto-16" /></p>
           <p className="mt-2 text-sm text-white/55">
-            {projects.length} <SiteText id="texto-17" /></p>
+            {projects.length} {projects.some(p => p.inventory) ? "opciones para consultar." : <SiteText id="texto-17" />}</p>
         </div>
         <div className="hidden gap-2 sm:flex">
           <button
@@ -1998,7 +1999,7 @@ const whatsappHref = useWhatsAppHref();
 
 const { content: website } = useWebsite();
 
-  const selectedProjects = bellomoProjects;
+  const { cards: selectedProjects, error: inventoryError } = usePublicInventory(bellomoProjects);
 const phones = bellomoContact.commercialPhones.split("·").map(phone => phone.trim()).filter(Boolean);
 const phoneHref = (phone: string) => "tel:" + phone.replace(/[^+0-9]/g, "");
   const footerRef = useRef<HTMLElement>(null);
@@ -2334,7 +2335,6 @@ const phoneHref = (phone: string) => "tel:" + phone.replace(/[^+0-9]/g, "");
         </SectionReveal>
       </section>
 
-      {process.env.NEXT_PUBLIC_LOCAL_DEMO === "1" && <DemoCatalog />}
       <BusinessFocus />
 
       <section
@@ -2374,6 +2374,8 @@ const phoneHref = (phone: string) => "tel:" + phone.replace(/[^+0-9]/g, "");
               <SiteText id="texto-28" /></p>
           </SectionReveal>
           <SectionReveal className="mt-12 sm:mt-14" delay={80} replay variant="stagger">
+            {inventoryError && <p role="alert">{inventoryError}</p>}
+            {!selectedProjects.length && <p>No hay opciones publicadas en esta categoría.</p>}
             <DevelopmentRail projects={selectedProjects} />
           </SectionReveal>
         </div>

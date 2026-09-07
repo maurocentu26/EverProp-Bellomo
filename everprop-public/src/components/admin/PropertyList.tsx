@@ -44,7 +44,7 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
               <th className="px-4 py-3">Ubicación</th>
               <th className="px-4 py-3">Superficie</th>
               <th className="px-4 py-3">Estado</th>
-              {isLocalDemo && !readOnly && <th className="px-4 py-3">Web de Bellomito</th>}
+              {isLocalDemo && <th className="px-4 py-3">Web pública</th>}
             </tr>
           </thead>
 

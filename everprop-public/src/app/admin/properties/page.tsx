@@ -87,7 +87,14 @@ export default function AllPropertiesPage() {
     }
 
     void loadData();
+    const refresh = () => { void loadData(); };
+    window.addEventListener("demo-inventory-updated", refresh);
+    window.addEventListener("focus", refresh);
+    const timer = isLocalDemo ? window.setInterval(refresh, 3000) : null;
     return () => {
+      window.removeEventListener("demo-inventory-updated", refresh);
+      window.removeEventListener("focus", refresh);
+      if (timer) clearInterval(timer);
       active = false;
     };
   }, [attempt, invalidateSession]);
@@ -164,8 +171,8 @@ export default function AllPropertiesPage() {
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 pb-10">
       {isLocalDemo && <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-        <strong>Demo local conectada a Bellomito.</strong> {canManageInventory(currentUser) ? "Administrá las propiedades y su publicación desde Web pública." : "Tu perfil permite consultar propiedades. Administración e Ingeniería gestionan su publicación."}
-        {canManageInventory(currentUser) && <a className="ml-3 font-semibold underline" href="/admin/web-publica">Abrir Web pública</a>}
+        <strong>Demo local conectada a Bellomito.</strong> {canManageInventory(currentUser) ? "Publicá, ocultá o editá cada propiedad desde su fila. Aparece en la sección existente de Comercializadora." : "Tu perfil permite consultar propiedades. Administración e Ingeniería gestionan su publicación."}
+        
       </div>}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

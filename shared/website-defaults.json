@@ -396,11 +396,6 @@
     ],
     "navigation": [
       {
-        "label": "Propiedades",
-        "href": "#catalogo-demo",
-        "enabled": true
-      },
-      {
         "label": "Inicio",
         "href": "#inicio",
         "enabled": true
@@ -774,11 +769,6 @@
     {
       "id": "bellomo",
       "title": "Sobre Bellomo",
-      "enabled": true
-    },
-    {
-      "id": "catalogo-demo",
-      "title": "Propiedades",
       "enabled": true
     },
     {

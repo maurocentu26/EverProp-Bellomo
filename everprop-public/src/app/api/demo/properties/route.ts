@@ -55,9 +55,11 @@ export function GET(request: Request) {
       const siteFile = path.join(process.cwd(), ".demo-data", "website.json");
       if (existsSync(siteFile)) {
         const site = JSON.parse(readFileSync(siteFile, "utf8"));
-        if (site.published.sections.some((section: { id: string; enabled: boolean }) => section.id === "catalogo-demo" && !section.enabled)) return json([]);
+        if (site.published.sections.some((section: { id: string; enabled: boolean }) => section.id === "desarrollos-seleccionados" && !section.enabled)) return json([]);
       }
-      return json(list.filter(p => p.published).map(p => ({
+      const site = existsSync(siteFile) ? JSON.parse(readFileSync(siteFile, "utf8")).published : null;
+      const category = (p: Listing) => p.propertyType === "Lote" ? "loteos" : p.propertyType === "Local" ? "locales-comerciales" : p.propertyType === "Cochera" ? "cocheras" : "propiedades";
+      return json(list.filter(p => p.published && site?.data?.propertyCategories?.find((c: {id: string; enabled: boolean}) => c.id === category(p))?.enabled !== false).map(p => ({
         id: p.id, title: p.title, operation: p.operation, propertyType: p.propertyType,
         price: p.price, currency: p.currency, city: p.city, neighborhood: p.neighborhood,
         bedrooms: p.bedrooms, bathrooms: p.bathrooms, area_m2: p.area_m2,

@@ -16,7 +16,7 @@ try {
   assert.equal((await read(pub+'?preview=1')).content.texts['texto-24'].value,'Prueba controlada del editor','Preview reads draft');
   await change('publish',draft);
   assert.equal((await read(pub)).content.texts['texto-24'].value,'Prueba controlada del editor','Publish changes public website');
-  const hidden=clone(draft);hidden.sections.find(s=>s.id==='catalogo-demo').enabled=false;
+  const hidden=clone(draft);hidden.sections.find(s=>s.id==='desarrollos-seleccionados').enabled=false;
   await change('publish',hidden);
   assert.deepEqual(await read('http://127.0.0.1:3002/api/demo/properties'),[],'Hidden catalog exposes no listings to web or bot');
   const chat=await readChat('Casa');assert.ok(chat.text.includes('No hay propiedades publicadas'));

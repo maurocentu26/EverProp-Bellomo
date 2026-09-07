@@ -9,6 +9,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { toast } from "sonner";
 import { Building2, Save } from "lucide-react";
 import type { Property } from "@/data/admin-sample";
+import { isLocalDemo, demoCatalog } from "@/lib/demo-catalog";
 import { isMockDataMode } from "@/lib/data-mode";
 import { updateEverpropProperty } from "@/lib/everprop-api";
 
@@ -39,6 +40,7 @@ export function EditPropertyModal({
     city: property.city || "",
     neighborhood: property.neighborhood || "",
     description: property.description || "",
+    mainImage: property.mainImage || "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,8 +61,13 @@ export function EditPropertyModal({
         city: formData.city.trim() || property.city || "Sin ciudad",
         neighborhood: formData.neighborhood.trim() || property.neighborhood || "",
         description: formData.description.trim() || undefined,
+        ...(isLocalDemo ? { mainImage: formData.mainImage } : {}),
       };
 
+      if (isLocalDemo) {
+        const saved = await demoCatalog("PATCH", updatedData) as Property;
+        onSuccess(saved); onOpenChange(false); toast.success("Propiedad guardada. La web se actualiza automáticamente."); return;
+      }
       if (!isMockDataMode) {
         await updateEverpropProperty(property.id, {
           title: updatedData.title,
@@ -244,6 +251,7 @@ export function EditPropertyModal({
             </Field>
           </div>
 
+          {isLocalDemo && <div className="space-y-3"><label className="block text-sm font-semibold">Foto de la propiedad<input className="mt-2 block w-full" type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>2_000_000||!['image/png','image/jpeg','image/webp'].includes(file.type)){toast.error("Usá una imagen PNG, JPG o WebP de hasta 2 MB.");return;}const reader=new FileReader();reader.onload=()=>setFormData(old=>({...old,mainImage:String(reader.result)}));reader.readAsDataURL(file);}}/></label>{formData.mainImage&&<><img src={formData.mainImage} alt="Foto de la propiedad" className="max-h-40 rounded-lg"/><Button type="button" variant="outline" onClick={()=>setFormData({...formData,mainImage:""})}>Quitar foto</Button></>}</div>}
           <DialogFooter className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
             <Button
               type="button"

@@ -40,8 +40,7 @@ export function useSiteData(): Data {
 export function SiteText({ id }: { id: string }) { const { content } = useWebsite(); return <>{content.texts[id as keyof typeof content.texts]?.value}</>; }
 export function ManagedPage({ children, className }: { children: ReactNode; className?: string }) {
   const { content } = useWebsite();
-  const { constructionHighlights } = useSiteData();
-  const componentIds: Record<string, string> = { Header: "menu", HeroSlider: "inicio", BellomoIntro: "presentacion", DemoCatalog: "catalogo-demo", BusinessFocus: "comercializadora", SocialRail: "redes" };
+  const componentIds: Record<string, string> = { Header: "menu", HeroSlider: "inicio", BellomoIntro: "presentacion", BusinessFocus: "comercializadora", SocialRail: "redes" };
   const nodes = Children.toArray(children).map((child, index) => {
     if (!isValidElement<{ id?: string; className?: string }>(child)) return { child, index, id: "" };
     const name = typeof child.type === "function" ? child.type.name : "";
@@ -56,9 +55,7 @@ export function ManagedPage({ children, className }: { children: ReactNode; clas
     {nodes.filter(node => content.sections.find(s => s.id === node.id)?.enabled !== false).map(node => <div key={node.index} style={{ display: "contents" }}>
       {node.id === "pie" && customSections}
       {node.child}
-      {node.id === "comercializadora" && constructionHighlights.length > 0 && <section className="bg-[#f4f1ea] px-6 py-12 text-[#12394f]"><div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">{constructionHighlights.map(item=><article key={item.id} id={item.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <img src={item.media.src} alt={item.media.alt} className="h-48 w-full object-cover"/><div className="p-5"><p className="text-xs uppercase tracking-widest">{item.eyebrow}</p><h2 className="font-display mt-3 text-3xl">{item.title}</h2><p className="mt-3 text-sm leading-6">{item.description}</p><ul className="mt-3 space-y-1 text-sm">{item.focusAreas.map(area=><li key={area}>{area}</li>)}</ul><a className="mt-5 inline-block underline" href={`https://wa.me/${content.data.bellomoContact.whatsappPhone}?text=${encodeURIComponent(item.cta)}`}>{item.cta}</a></div>
-      </article>)}</div></section>}
+
     </div>)}
     {content.sections.find(s => s.id === "pie")?.enabled === false && customSections}
   </main>;

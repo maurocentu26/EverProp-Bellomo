@@ -12,9 +12,9 @@ Ejecutar `./start-demo.ps1` desde PowerShell en la raíz. Si faltan dependencias
 
 La pantalla existente **Propiedades → Nueva Unidad** sigue siendo el lugar para cargar casas, departamentos, lotes, locales y cocheras. Al guardar se publica la propiedad y aparece una confirmación con el botón **Ver propiedad en la web**. La generación de lotes en grupo también usa el catálogo compartido.
 
-## Web pública: todo junto
+## Contenido de la web e inventario existente
 
-- **Propiedades:** las mismas del formulario existente; editar datos y foto, vista previa, publicar/ocultar y abrir la propiedad exacta en la web. Estos cambios son inmediatos.
+- **Propiedades:** acceso a la pantalla de inventario existente. Cada fila y ficha permiten editar datos/foto, publicar u ocultar y abrir la propiedad exacta en la web. No hay un segundo catálogo administrativo.
 - **Secciones:** mostrar u ocultar portada, información institucional, catálogo, áreas comerciales, desarrollos, contacto, pie, menú, redes y elementos flotantes. Agregar secciones con texto, imagen y enlace.
 - **Contenido:** editar, agregar, quitar, ordenar y ocultar diapositivas, desarrollos, áreas de construcción, categorías, cifras e ítems de navegación.
 - **Textos:** editar los textos de títulos, botones y párrafos, con buscador.
@@ -41,7 +41,7 @@ Los procesos y registros se muestran al ejecutar el script; los registros están
 ## Roles y permisos en la demo local
 
 - **Administración (Marcos):** agregar, editar, publicar y ocultar propiedades; editar, guardar borradores y publicar todo el contenido de la web y Bellomito.
-- **Ingeniería (Sofía):** conserva `manage_inventory`: agregar, editar, publicar y ocultar propiedades. En Web pública solo accede a Propiedades; no modifica textos, secciones ni Bellomito.
+- **Ingeniería (Sofía):** conserva `manage_inventory`: agregar, editar, publicar y ocultar propiedades. En Web pública solo accede al enlace al inventario; no modifica textos, secciones ni Bellomito.
 - **Asesores (Lucas y Valentina):** consulta de propiedades, sin altas, modificaciones ni cambios de visibilidad.
 
 El servidor comprueba cada operación con una sesión opaca en cookie HttpOnly, con vencimiento a las ocho horas y revocación al salir. Los permisos se obtienen de los perfiles definidos en el servidor; no se confía en roles enviados por el navegador ni en localStorage. La vista previa y los borradores requieren Administración, incluso accediendo desde la web pública. El catálogo publicado y el contenido publicado permanecen públicos.
@@ -49,3 +49,9 @@ El servidor comprueba cada operación con una sesión opaca en cookie HttpOnly, 
 El selector de perfiles sigue disponible deliberadamente para probar la demo: cualquier persona con acceso a esta computadora puede elegir un perfil. No reemplaza el ingreso con credenciales y permisos de la API real. Este control cubre el catálogo compartido y el editor web locales; los restantes módulos mock mantienen su comportamiento anterior. Las sesiones se guardan en `.demo-data/sessions.json`, ignorado por Git. Al actualizar desde la demo anterior hay que elegir el perfil nuevamente una vez.
 
 Prueba de permisos: `node scripts/check-permissions.mjs`. Comprueba rechazos sin sesión y como asesor, inventario de Ingeniería, edición web y vista previa de Administración, intentos de falsificar roles/tokens y cierre de sesión. No agrega propiedades ni altera su visibilidad. `check-cms.mjs` inicia su propia sesión de Administración y la revoca al terminar.
+
+## Integración con la estructura original
+
+Se retiraron el menú superior agregado «Propiedades», la sección «catalogo-demo» y las tarjetas de construcción adicionales. Los inmuebles publicados usan las tarjetas y el carrusel existentes de Comercializadora. Las categorías originales Loteos, Propiedades, Locales comerciales y Cocheras filtran esas opciones. Los desarrollos originales conservan sus tarjetas y se editan desde Contenido → Desarrollos. No se asocian proyectos mock con desarrollos reales por semejanza de nombre.
+
+El listado original /admin/properties y su ficha usan la misma fuente que la web y Bellomito. Ocultar la sección de desarrollos o una categoría también excluye sus inmuebles de la respuesta pública. El contenido publicado anterior se conserva, eliminando solo los enlaces y la sección añadidos al catálogo independiente.
