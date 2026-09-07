@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
+use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
 use App\Domain\CRM\Http\Controllers\PublicLeadController;
 use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AuthController;
@@ -38,6 +39,11 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
             ->parameters(['media' => 'media']);
 
         Route::apiResource('leads', AdminLeadController::class);
+        Route::post('/leads/{lead}/properties', [AdminLeadController::class, 'attachProperty'])->name('leads.properties.attach');
+        Route::delete('/leads/{lead}/properties/{property}', [AdminLeadController::class, 'detachProperty'])->name('leads.properties.detach');
+        Route::get('/follow-ups', [AdminLeadFollowUpController::class, 'indexAll'])->name('follow-ups.index-all');
+        Route::get('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'index'])->name('leads.follow-ups.index');
+        Route::post('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'store'])->name('leads.follow-ups.store');
 
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/count', [AdminNotificationController::class, 'count'])->name('notifications.count');

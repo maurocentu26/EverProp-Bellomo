@@ -56,8 +56,13 @@ class SetupSimulationDatabaseCommand extends Command
             $part2 = $parts[1] ?? '';
 
             // Execute Part 1 (Initial tables and structures)
-            DB::unprepared($part1);
-            $this->info('   ✓ Baseline Part 1 (CRM & core tables) created.');
+            try {
+                DB::unprepared($part1);
+                $this->info('   ✓ Baseline Part 1 (CRM & core tables) created.');
+            } catch (\Throwable $e) {
+                $this->error('Error in Baseline Part 1: ' . $e->getMessage());
+                return Command::FAILURE;
+            }
 
             // Execute Stored Procedures individually
             $procStatements = preg_split('/\$\$/', $procsRaw);

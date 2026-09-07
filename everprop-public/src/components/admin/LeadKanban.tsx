@@ -24,7 +24,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropLeads, loadEverpropCatalog } from "@/lib/everprop-api";
+import { loadEverpropLeads, loadEverpropCatalog, updateEverpropLead } from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 
 // --- Componente Principal ---
@@ -66,7 +66,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
           if (!active) return;
           setLeads(apiLeads);
           setProjects(catalog.projects);
-          setFollowUps([]);
+          setFollowUps(loadLeadFollowUpList([], companyId));
           setHydrated(true);
           return;
         } catch (e) {
@@ -129,6 +129,20 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
     setLeads((prev) => 
       prev.map((lead) => (lead.id === leadId ? { ...lead, stage: targetStage } : lead))
     );
+
+    if (!isMockDataMode) {
+      const STAGE_API_MAP: Record<string, string> = {
+        new: "NEW",
+        contacted: "CONTACTED",
+        visiting: "VISIT_SCHEDULED",
+        negotiation: "NEGOTIATION",
+        closing: "WON",
+      };
+      const stageCode = STAGE_API_MAP[targetStage] || targetStage.toUpperCase();
+      updateEverpropLead(leadId, { stage: stageCode }).catch((err) => {
+        console.error("Error updating lead stage in API:", err);
+      });
+    }
   };
 
   const activeLead = leads.find((l) => l.id === activeDragId) ?? null;

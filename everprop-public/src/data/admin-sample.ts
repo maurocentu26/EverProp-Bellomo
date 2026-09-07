@@ -33,6 +33,7 @@ export type LeadFollowUp = {
   companyId: string;
   leadId: string;
   agentId: string;
+  agentName?: string;
   type: LeadFollowUpType;
   occurredAt: string;
   summary: string;

@@ -295,6 +295,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
           stage: stageApiMap[nextLead.stage] || "NEW",
           notes: nextLead.notes,
           agentId: nextLead.agentId,
+          propertyId: selectedAsset?.id || null,
         });
         nextLead.id = created.id;
       } catch (e: any) {

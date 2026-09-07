@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Building2, CircleAlert, CircleCheck, Edit3, ExternalLink, Layers3, Plus, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, CircleAlert, CircleCheck, ClipboardCheck, Edit3, ExternalLink, Layers3, Plus, StickyNote, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -39,7 +39,15 @@ import { useAuth } from "@/lib/auth-context";
 import { createNotification } from "@/lib/notifications";
 import { isCommercialContact } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropLeads, loadEverpropCatalog, updateEverpropLead } from "@/lib/everprop-api";
+import {
+  loadEverpropLeads,
+  loadEverpropCatalog,
+  updateEverpropLead,
+  loadEverpropLeadFollowUps,
+  createEverpropLeadFollowUp,
+  attachEverpropLeadProperty,
+  detachEverpropLeadProperty,
+} from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { Button } from "@/components/ui/button";
 import Badge from "@/components/ui/badge";
@@ -83,16 +91,18 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const [apiLeads, catalog] = await Promise.all([
+          const [apiLeads, catalog, apiFollowUps] = await Promise.all([
             loadEverpropLeads(),
             loadEverpropCatalog(),
+            loadEverpropLeadFollowUps(leadId).catch(() => []),
           ]);
           if (!active) return;
           const foundLead = apiLeads.find((candidate) => candidate.id === leadId) ?? null;
           setAllLeads(apiLeads);
           setAllProperties(catalog.properties);
           setAllProjects(catalog.projects);
-          setFollowUps([]);
+          const localFollowUps = loadLeadFollowUpList([], foundLead?.companyId ?? "c1").filter((f) => f.leadId === leadId);
+          setFollowUps(apiFollowUps.length > 0 ? apiFollowUps : localFollowUps);
           setLead(foundLead);
           return;
         } catch (e) {
@@ -162,7 +172,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success("Ficha del cliente actualizada");
   }
 
-  function handleSaveInterest(nextInterest: LeadInterest) {
+  async function handleSaveInterest(nextInterest: LeadInterest) {
     if (!lead || nextInterest.companyId !== lead.companyId) {
       toast.error("El interés no pertenece a la empresa activa.");
       return;
@@ -170,15 +180,39 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     const nextInterests = interestEditor?.mode === "edit"
       ? interests.map((interest) => interest.id === nextInterest.id ? nextInterest : interest)
       : [...interests, nextInterest];
-    updateLeadData(syncLeadWithInterests(lead, nextInterests, allProperties));
+    const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
+    updateLeadData(syncedLead);
     setInterestEditor(null);
+
+    const targetPropertyId = nextInterest.unitId || nextInterest.propertyId;
+    if (!isMockDataMode && targetPropertyId) {
+      try {
+        await attachEverpropLeadProperty(lead.id, targetPropertyId, {
+          notes: nextInterest.notes,
+        });
+      } catch (err: any) {
+        console.error("Error linking property in backend:", err);
+      }
+    }
+
     toast.success(interestEditor?.mode === "edit" ? "Interés actualizado" : "Interés agregado");
   }
 
-  function handleDeleteInterest() {
+  async function handleDeleteInterest() {
     if (!lead || !interestToDelete) return;
     const nextInterests = interests.filter((interest) => interest.id !== interestToDelete.id);
-    updateLeadData(syncLeadWithInterests(lead, nextInterests, allProperties));
+    const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
+    updateLeadData(syncedLead);
+
+    const targetPropertyId = interestToDelete.unitId || interestToDelete.propertyId;
+    if (!isMockDataMode && targetPropertyId) {
+      try {
+        await detachEverpropLeadProperty(lead.id, targetPropertyId);
+      } catch (err: any) {
+        console.error("Error unlinking property in backend:", err);
+      }
+    }
+
     setInterestToDelete(null);
     toast.success("Interés eliminado", { description: `${lead.name} continúa registrado y conserva sus demás intereses.` });
   }
@@ -195,7 +229,14 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     let nextInterests = interests;
     if (propertyId && !getInterestAssetIds(interests).includes(propertyId)) {
       const property = allProperties.find((candidate) => candidate.id === propertyId);
-      if (property) nextInterests = [...interests, createInterestForProperty(lead, property)];
+      if (property) {
+        nextInterests = [...interests, createInterestForProperty(lead, property)];
+        if (!isMockDataMode) {
+          attachEverpropLeadProperty(lead.id, propertyId).catch((err) =>
+            console.error("Error linking property on visit:", err)
+          );
+        }
+      }
     }
     const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
     const nextLead: Lead = { ...syncedLead, visits: [...(lead.visits ?? []), finalVisit], lastActivity: new Date().toISOString() };
@@ -253,7 +294,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success(agentId ? "Asesor responsable actualizado" : "Lead dejado sin asignar");
   }
 
-  function handleSaveFollowUp(followUp: LeadFollowUp) {
+  async function handleSaveFollowUp(followUp: LeadFollowUp) {
     if (!lead || followUp.companyId !== lead.companyId || followUp.leadId !== lead.id) {
       toast.error("El seguimiento no pertenece al lead y la empresa activos.");
       return;
@@ -265,6 +306,23 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       lead.companyId,
     );
     setFollowUps(nextFollowUps);
+
+    if (!isMockDataMode) {
+      try {
+        const created = await createEverpropLeadFollowUp(lead.id, {
+          type: followUp.type,
+          occurredAt: followUp.occurredAt,
+          summary: followUp.summary,
+          result: followUp.result,
+          nextAction: followUp.nextAction,
+          nextContactAt: followUp.nextContactAt,
+          agentId: followUp.agentId,
+        });
+        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
+      } catch (err: any) {
+        console.error("Error saving follow up to API:", err);
+      }
+    }
 
     // Sync nextContactAt → lead.visits so it appears in Calendar/Agenda
     let nextLead = lead;
@@ -315,9 +373,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const primaryProperty = interestAssetIds[0]
     ? propertyById.get(interestAssetIds[0])
     : undefined;
-  const assignedAgent = useMemo(() => {
-    return getAdvisor(lead.agentId, lead.agentName);
-  }, [lead.agentId, lead.agentName]);
+  const assignedAgent = getAdvisor(lead.agentId, lead.agentName);
 
   const cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
 
@@ -530,16 +586,26 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
 
           {/* Follow-up Status Card */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="lead-follow-up-title">
-            <p id="lead-follow-up-title" className="text-xs font-semibold text-slate-500">Seguimiento comercial</p>
-            <LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} className="mt-2" />
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                  <ClipboardCheck className="size-4" aria-hidden="true" />
+                </span>
+                <h2 id="lead-follow-up-title" className="text-sm font-bold text-slate-900">Seguimiento Comercial</h2>
+              </div>
+            </div>
+            <div className="mt-3">
+              <LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
+            </div>
             {!lead.agentId && (
               <p className="mt-2 text-xs text-amber-700 font-medium">Asigná un asesor antes de registrar un seguimiento.</p>
             )}
             <Button
               onClick={() => setFollowUpEditorOpen(true)}
               disabled={!lead.agentId}
-              className="mt-3 h-8 w-full bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-3 h-9 w-full gap-1.5 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
+              <Plus className="size-3.5" />
               Registrar seguimiento
             </Button>
           </section>
