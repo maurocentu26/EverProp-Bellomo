@@ -4925,3 +4925,19 @@ html.motion-ready
     display: none;
   }
 }
+
+/* View controls for the existing developments section. */
+.property-view-selector { display:flex; flex-wrap:wrap; gap:4px; padding:4px; border:1px solid rgba(231,213,175,.4); }
+.property-view-selector button { min-height:44px; padding:8px 14px; color:#e7d5af; font-size:13px; font-weight:600; }
+.property-view-selector button[aria-pressed="true"] { background:#e7d5af; color:#052b43; }
+.property-view-selector button:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+.development-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; }
+.selected-developments .development-grid .rail-card { width:100%; min-width:0; }
+.selected-developments .development-grid .project-card h3 { font-size:clamp(1.8rem,3vw,2.8rem); overflow-wrap:anywhere; }
+.selected-developments .development-grid .project-card > .relative { padding:24px; }
+@media(min-width:640px) { .development-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(min-width:1200px) {
+  .development-grid--four { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .selected-developments .development-grid--four .project-card h3 { font-size:1.9rem; }
+  .selected-developments .development-grid--four .project-card > .relative { padding:20px; }
+}

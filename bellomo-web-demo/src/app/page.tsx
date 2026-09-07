@@ -1594,6 +1594,7 @@ const whatsappHref = useWhatsAppHref();
 }
 
 function DevelopmentRail({ projects }: { projects: CommercialCard[] }) {
+  const [view, setView] = useState<"carousel" | "two" | "four">("carousel");
   const railRef = useRef<HTMLDivElement>(null);
 
   const moveRail = (direction: -1 | 1) => {
@@ -1612,14 +1613,18 @@ function DevelopmentRail({ projects }: { projects: CommercialCard[] }) {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between gap-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.19em] text-[#e7d5af]">
             <SiteText id="texto-16" /></p>
           <p className="mt-2 text-sm text-white/55">
             {projects.length} {projects.some(p => p.inventory) ? "opciones para consultar." : <SiteText id="texto-17" />}</p>
         </div>
-        <div className="hidden gap-2 sm:flex">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="property-view-selector" role="group" aria-label="Vista de propiedades">
+            {([['carousel', 'Carrusel'], ['two', '2 por fila'], ['four', '4 por fila']] as const).map(([value, label]) => <button type="button" key={value} aria-pressed={view === value} onClick={() => setView(value)}>{label}</button>)}
+          </div>
+          {view === 'carousel' && <div className="flex gap-2">
           <button
             aria-label="Ver desarrollos anteriores"
             className="rail-button"
@@ -1636,12 +1641,14 @@ function DevelopmentRail({ projects }: { projects: CommercialCard[] }) {
           >
             <ChevronIcon />
           </button>
+          </div>}
         </div>
       </div>
       <div
         aria-label="Otros desarrollos Bellomo"
-        className="development-rail"
+        className={view === "carousel" ? "development-rail" : `development-grid development-grid--${view}`}
         onKeyDown={(event) => {
+          if (view !== "carousel") return;
           if (event.key === "ArrowLeft") {
             event.preventDefault();
             moveRail(-1);
