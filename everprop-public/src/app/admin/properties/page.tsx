@@ -19,9 +19,9 @@ type DataState =
 
 const statusFilters = [
   { id: "all", label: "Todos" },
-  { id: "available", label: "Disponible" },
-  { id: "reserved", label: "Reservado" },
-  { id: "sold", label: "Vendido" },
+  { id: "available", label: "Disponibles" },
+  { id: "reserved", label: "No Vendibles / Reserva" },
+  { id: "sold", label: "Vendidos" },
 ] as const;
 
 export default function AllPropertiesPage() {
@@ -34,7 +34,7 @@ export default function AllPropertiesPage() {
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [activeStatus, setActiveStatus] = useState<"all" | "available" | "reserved" | "sold">("all");
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedManzana, setSelectedManzana] = useState<string>("all");
 
   useEffect(() => {
     let active = true;
@@ -76,9 +76,16 @@ export default function AllPropertiesPage() {
     };
   }, [attempt, invalidateSession]);
 
-  const toggleType = (type: string) => {
-    setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
-  };
+  const availableManzanas = useMemo(() => {
+    const pool = selectedProjectId === "all"
+      ? allProperties
+      : allProperties.filter(p => p.projectId === selectedProjectId);
+    const set = new Set<string>();
+    pool.forEach(p => {
+      if (p.sectorName) set.add(p.sectorName);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [allProperties, selectedProjectId]);
 
   const filteredProperties = useMemo(() => {
     let filtered = allProperties;
@@ -93,13 +100,13 @@ export default function AllPropertiesPage() {
       filtered = filtered.filter(p => p.status === activeStatus || (!p.status && activeStatus === "available"));
     }
 
-    // 3. Type Filter
-    if (selectedTypes.length > 0) {
-      filtered = filtered.filter(p => selectedTypes.includes(p.propertyType));
+    // 3. Manzana Filter
+    if (selectedManzana !== "all") {
+      filtered = filtered.filter(p => p.sectorName === selectedManzana);
     }
 
     return filtered;
-  }, [allProperties, selectedProjectId, activeStatus, selectedTypes]);
+  }, [allProperties, selectedProjectId, activeStatus, selectedManzana]);
 
   const groupedProperties = useMemo(() => {
     const groups: { projects: Record<string, Property[]>, individual: Property[] } = {
@@ -223,30 +230,43 @@ export default function AllPropertiesPage() {
 
         <div className="hidden xl:block w-px h-8 bg-slate-200" />
 
-        {/* Type Multi-select & Clear Filters */}
+        {/* Manzana Filter & Clear Filters */}
         <div className="flex items-center gap-2 overflow-x-auto w-full xl:w-auto">
-          <Building2 className="h-4 w-4 text-slate-400 mr-2 hidden sm:block" />
-          {["Lote", "Departamento", "Local", "Cochera", "Casa"].map(type => (
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:block">
+            Manzana:
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedManzana("all")}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
+              selectedManzana === "all" ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            Todas
+          </button>
+          {availableManzanas.map(m => (
             <button
-              key={type}
-              onClick={() => toggleType(type)}
+              key={m}
+              type="button"
+              onClick={() => setSelectedManzana(m === selectedManzana ? "all" : m)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
-                selectedTypes.includes(type) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border whitespace-nowrap",
+                selectedManzana === m ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               )}
             >
-              {type}
+              {m.replace(/manzana\s*/i, "Mz ")}
             </button>
           ))}
 
-          {(selectedProjectId !== "all" || activeStatus !== "all" || selectedTypes.length > 0) && (
+          {(selectedProjectId !== "all" || activeStatus !== "all" || selectedManzana !== "all") && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 setSelectedProjectId("all");
                 setActiveStatus("all");
-                setSelectedTypes([]);
+                setSelectedManzana("all");
               }}
               className="text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold gap-1.5 ml-2"
             >

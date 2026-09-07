@@ -97,9 +97,8 @@ export const navigationGroups: NavGroup[] = [
     ]
   },
   {
-    label: "Activos Comerciales",
+    label: "Gestión",
     items: [
-      { title: "Locales y Cocheras", href: "/admin/comercial", icon: Store, matchPath: "/admin/comercial" },
       { title: "Agenda", href: "/admin/agenda", icon: CalendarDays, matchPath: "/admin/agenda" },
       { title: "Configuración", href: "/admin/settings", icon: Settings, matchPath: "/admin/settings" },
     ]
@@ -119,7 +118,7 @@ export function getAvailableNavigationGroups({
   if (isEngineer) {
     return navigationGroups
       .map((group) => {
-        if (group.label !== "Activos Comerciales") return group;
+        if (group.label !== "Gestión") return group;
         return {
           ...group,
           items: group.items.filter((item) => item.title !== "Agenda"),

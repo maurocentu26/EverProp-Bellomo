@@ -25,21 +25,20 @@ type Props = {
 };
 
 export default function PropertyCard({ property, readOnly = false }: Props) {
-  const isSale = property.operation === "sale";
-  const isLot = property.propertyType === "Lote" || !!property.sectorName;
+  const ochavaMatch = property.description?.match(/OCH\.?\s*([0-9.,]+)\s*M2?/i);
+  const ochavaText = ochavaMatch ? `Ochava ${ochavaMatch[1]} m²` : null;
 
   const identity = (
     <>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
-        {isLot ? <Trees className="h-5 w-5 text-emerald-600" /> : <Building2 className="h-5 w-5" />}
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+        <Trees className="h-5 w-5" />
       </div>
 
       <div className="min-w-0">
         <h3 className="truncate text-base font-semibold text-slate-900">
-          {property.sectorName ? `${property.sectorName} · ${property.unitNumber}` : property.title}
+          {property.unitNumber || property.title}
         </h3>
         <p className="mt-0.5 truncate text-xs text-slate-500">
-          {property.sectorName ? `${property.title} · ` : ""}
           {property.neighborhood || property.city || "Jujuy"}
         </p>
       </div>
@@ -56,20 +55,23 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
         )}
       </td>
 
-      <td className="px-4 py-4 align-middle sm:px-5">
-        <Badge variant={isSale ? "positive" : "default"}>{getOperationLabel(property.operation)}</Badge>
+      <td className="px-4 py-4 align-middle sm:px-5 font-medium text-slate-900">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+          {property.sectorName || "Manzana Única"}
+        </span>
+      </td>
+
+      <td className="px-4 py-4 align-middle font-medium text-slate-700 sm:px-5">
+        <div className="flex flex-col">
+          <span className="font-semibold text-slate-900">{property.area_m2 ? `${property.area_m2} m²` : "-"}</span>
+          {ochavaText && (
+            <span className="text-[11px] text-amber-700 font-medium">{ochavaText}</span>
+          )}
+        </div>
       </td>
 
       <td className="px-4 py-4 align-middle font-semibold text-slate-900 sm:px-5">
         {formatPropertyPrice(property.price, property.currency)}
-      </td>
-
-      <td className="px-4 py-4 align-middle text-slate-600 sm:px-5">
-        {property.neighborhood || property.city}, {property.city}
-      </td>
-
-      <td className="px-4 py-4 align-middle font-medium text-slate-700 sm:px-5">
-        {property.area_m2 ? `${property.area_m2} m²` : (property.bedrooms ? `${property.bedrooms} dorm.` : "-")}
       </td>
 
       <td className="px-4 py-4 align-middle sm:px-5">
@@ -78,14 +80,14 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
             property.status === "available"
               ? "bg-emerald-100 text-emerald-700"
               : property.status === "reserved"
-              ? "bg-amber-100 text-amber-700"
+              ? "bg-amber-100 text-amber-800"
               : "bg-slate-100 text-slate-500"
           }`}
         >
           {property.status === "available"
             ? "Disponible"
             : property.status === "reserved"
-            ? "Reservado"
+            ? "No Vendible / Reserva"
             : "Vendido"}
         </span>
       </td>
