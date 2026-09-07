@@ -1,6 +1,5 @@
 "use client";
-import { useState } from "react";
-import { isLocalDemo, demoCatalog } from "@/lib/demo-catalog";
+import { isLocalDemo } from "@/lib/demo-catalog";
 import Link from "next/link";
 import Badge from "@/components/ui/badge";
 import type { Property } from "@/data/admin-sample";
@@ -28,17 +27,6 @@ type Props = {
 };
 
 export default function PropertyCard({ property, readOnly = false }: Props) {
-  const [published, setPublished] = useState(property.published !== false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  async function togglePublication() {
-    setSaving(true); setError("");
-    try {
-      await demoCatalog("PATCH", { id: property.id, published: !published });
-      setPublished(!published);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "No se pudo guardar."); }
-    finally { setSaving(false); }
-  }
   const isSale = property.operation === "sale";
   const isLot = property.propertyType === "Lote" || !!property.sectorName;
 
@@ -104,9 +92,7 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
         </span>
       </td>
       {isLocalDemo && !readOnly && <td className="px-4 py-4 align-middle">
-        <span className="block whitespace-nowrap text-xs font-medium">{published ? "Publicada" : "Oculta"}</span>
-        <button type="button" disabled={saving} onClick={togglePublication} aria-label={(published ? "Ocultar " : "Publicar ") + property.title} className="mt-2 rounded-lg border border-slate-300 px-3 py-2 font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{saving ? "Guardando…" : published ? "Ocultar" : "Publicar"}</button>
-        {error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}
+        <Link className="font-semibold text-blue-700 underline" href="/admin/web-publica">Administrar en Web pública</Link>
       </td>}
     </tr>
   );

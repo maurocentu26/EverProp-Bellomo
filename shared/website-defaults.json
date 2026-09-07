@@ -1,0 +1,840 @@
+{
+  "data": {
+    "bellomoContact": {
+      "address": "Gral. Belgrano 1383",
+      "city": "San Salvador de Jujuy",
+      "commercialPhones": "388 422 8755 · 388 433 1981",
+      "constructionPhone": "388 423 4010",
+      "weekdayHours": "Lunes a viernes · 08:00–20:00",
+      "saturdayHours": "Sábados · 09:00–12:00",
+      "location": "Jujuy · Argentina",
+      "whatsappDisplay": "+54 9 388 433 1981",
+      "whatsappPhone": "5493884331981"
+    },
+    "bellomoEditorialImages": {
+      "about": {
+        "alt": "Interior residencial contemporáneo con materiales cálidos y luz natural",
+        "intent": "Representar calidad material y habitabilidad sin atribuir la obra a Bellomo",
+        "position": "center",
+        "section": "Nosotros",
+        "src": "/images/site/about.jpg",
+        "temporary": true,
+        "temporarySource": "Unsplash"
+      },
+      "commercial": {
+        "alt": "Referencia conceptual para asesoramiento y decisión inmobiliaria",
+        "intent": "Introducir el servicio comercial sin afirmar disponibilidad concreta",
+        "position": "center",
+        "section": "Comercializadora",
+        "src": "/images/site/commercial.jpg",
+        "temporary": true,
+        "temporarySource": "Unsplash"
+      },
+      "contact": {
+        "alt": "Detalle de arquitectura contemporánea con terminaciones cálidas",
+        "intent": "Cerrar el recorrido con una atmósfera arquitectónica sobria",
+        "position": "center",
+        "section": "Contacto",
+        "src": "/images/site/contact.jpg",
+        "temporary": true,
+        "temporarySource": "Unsplash"
+      },
+      "team": {
+        "alt": "Espacio de trabajo contemporáneo para coordinación profesional",
+        "intent": "Acompañar la presentación del equipo sin simular integrantes reales",
+        "position": "center",
+        "section": "Equipo",
+        "src": "/images/site/team.jpg",
+        "temporary": true,
+        "temporarySource": "Unsplash"
+      }
+    },
+    "bellomoProjects": [
+      {
+        "id": "quintas-san-antonio",
+        "name": "Quintas de San Antonio",
+        "type": "Loteo residencial",
+        "location": "La Toma, San Antonio",
+        "status": "En desarrollo",
+        "description": "Hectáreas destinadas a quintas de fin de semana, en una zona residencial de descanso y contacto con la naturaleza.",
+        "media": {
+          "alt": "Extensión de tierra abierta bajo luz de atardecer",
+          "intent": "Comunicar tierra, proyección y horizonte de inversión",
+          "position": "center",
+          "section": "Loteos",
+          "src": "/images/site/land-field.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": true
+      },
+      {
+        "id": "la-arbolada",
+        "name": "La Arbolada",
+        "type": "Loteo",
+        "location": "Jujuy",
+        "status": "Consultar disponibilidad",
+        "description": "Una propuesta para proyectar el hogar y resguardar la inversión en un entorno de crecimiento.",
+        "media": {
+          "alt": "Entorno natural arbolado como referencia paisajística",
+          "intent": "Acompañar propuestas residenciales vinculadas al entorno",
+          "position": "center",
+          "section": "Loteos",
+          "src": "/images/site/land-forest.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": true
+      },
+      {
+        "id": "las-colinas",
+        "name": "Las Colinas",
+        "type": "Desarrollo residencial",
+        "location": "Jujuy",
+        "status": "Consultar disponibilidad",
+        "description": "Tierra, entorno y proyección urbana para quienes buscan construir una nueva etapa.",
+        "media": {
+          "alt": "Paisaje montañoso del norte argentino como referencia territorial",
+          "intent": "Vincular la propuesta con territorio, escala y horizonte",
+          "position": "center 52%",
+          "section": "Hero y loteos",
+          "src": "/images/hero/territorio-jujuy.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": false
+      },
+      {
+        "id": "edificios-huasi",
+        "name": "Edificios Huasi",
+        "type": "Desarrollo urbano",
+        "location": "San Salvador de Jujuy",
+        "status": "En desarrollo",
+        "description": "Edificios que integran diseño contemporáneo, conectividad urbana y calidad constructiva.",
+        "media": {
+          "alt": "Fachada de un Edificio Huasi publicada en el sitio de Bellomo",
+          "intent": "Representar la línea Huasi con material actualmente publicado",
+          "position": "center",
+          "section": "Edificios Huasi",
+          "src": "/images/site/official-huasi-facade.jpg",
+          "temporary": true,
+          "temporarySource": "bellomojujuy.com.ar"
+        },
+        "enabled": true
+      },
+      {
+        "id": "san-pablo",
+        "name": "San Pablo",
+        "type": "Loteo",
+        "location": "Jujuy",
+        "status": "Consultar disponibilidad",
+        "description": "Una propuesta residencial con proyección, conectividad y entorno para construir.",
+        "media": {
+          "alt": "Camino de montaña del norte argentino",
+          "intent": "Representar conectividad territorial sin atribuir ubicación exacta",
+          "position": "center",
+          "section": "Loteos",
+          "src": "/images/site/land-san-pablo.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": true
+      },
+      {
+        "id": "valle-verde",
+        "name": "Valle Verde",
+        "type": "Loteo residencial",
+        "location": "Jujuy",
+        "status": "Consultar disponibilidad",
+        "description": "Naturaleza y expansión urbana para una inversión pensada a largo plazo.",
+        "media": {
+          "alt": "Valle del norte argentino con paisaje abierto",
+          "intent": "Representar entorno y expansión territorial",
+          "position": "center",
+          "section": "Loteos",
+          "src": "/images/site/land-valle-verde.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": false
+      },
+      {
+        "id": "los-cardinales",
+        "name": "Los Cardinales",
+        "type": "Desarrollo residencial",
+        "location": "Jujuy",
+        "status": "Consultar disponibilidad",
+        "description": "Un entorno para proyectar vivienda propia con tranquilidad y respaldo.",
+        "media": {
+          "alt": "Paisaje de escala residencial y horizonte abierto",
+          "intent": "Acompañar la idea de vivienda y tranquilidad",
+          "position": "center",
+          "section": "Loteos",
+          "src": "/images/site/land-cardinales.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": false
+      },
+      {
+        "id": "el-rocio",
+        "name": "El Rocío",
+        "type": "Loteo",
+        "location": "Jujuy",
+        "status": "Consultar disponibilidad",
+        "description": "Tierra y paisaje reunidos en una oportunidad residencial de escala humana.",
+        "media": {
+          "alt": "Paisaje rural bajo luz cálida de amanecer",
+          "intent": "Representar tierra y escala humana",
+          "position": "center",
+          "section": "Loteos",
+          "src": "/images/site/land-rocio.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": false
+      },
+      {
+        "id": "santa-emilia",
+        "name": "Santa Emilia",
+        "type": "Loteo residencial",
+        "location": "Jujuy",
+        "status": "Consultar disponibilidad",
+        "description": "Una propuesta de crecimiento familiar en un sector con proyección urbana.",
+        "media": {
+          "alt": "Entorno natural abierto con luz cálida",
+          "intent": "Acompañar una propuesta de crecimiento familiar",
+          "position": "center",
+          "section": "Loteos",
+          "src": "/images/site/land-emilia.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": false
+      },
+      {
+        "id": "los-arenales",
+        "name": "Los Arenales",
+        "type": "Desarrollo de tierra",
+        "location": "Jujuy",
+        "status": "Consultar disponibilidad",
+        "description": "Una alternativa para invertir en suelo y acompañar el desarrollo de la ciudad.",
+        "media": {
+          "alt": "Terreno abierto de paisaje árido y horizonte amplio",
+          "intent": "Representar inversión en suelo sin indicar una parcela concreta",
+          "position": "center",
+          "section": "Loteos",
+          "src": "/images/site/land-arenales.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": false
+      }
+    ],
+    "bellomoStats": [
+      {
+        "label": "Años de trayectoria",
+        "value": 48,
+        "suffix": "+",
+        "enabled": true
+      },
+      {
+        "label": "Obras públicas",
+        "value": 200,
+        "suffix": "+",
+        "enabled": true
+      },
+      {
+        "label": "Familias acompañadas",
+        "value": 2,
+        "suffix": "k+",
+        "enabled": true
+      },
+      {
+        "label": "Proyectos desarrollados",
+        "value": 100,
+        "suffix": "+",
+        "enabled": true
+      }
+    ],
+    "constructionHighlights": [
+      {
+        "id": "obras-publicas",
+        "title": "Obras públicas",
+        "eyebrow": "Comunidad e infraestructura",
+        "description": "Viviendas, caminos, redes de servicios y espacios comunitarios ejecutados con planificación, durabilidad y una mirada de impacto regional.",
+        "media": {
+          "alt": "Profesional revisando documentación técnica de una obra",
+          "intent": "Representar planificación técnica sin atribuir la escena a Bellomo",
+          "position": "center",
+          "section": "Obras públicas",
+          "src": "/images/site/public-works.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "imageLabel": "Imagen de referencia",
+        "referenceMedia": {
+          "alt": "Archivo de obra publicado en el sitio de Bellomo",
+          "intent": "Aportar evidencia histórica de obra pública como referencia temporal",
+          "position": "center",
+          "section": "Obras públicas",
+          "src": "/images/site/official-public-works.jpg",
+          "temporary": true,
+          "temporarySource": "bellomojujuy.com.ar"
+        },
+        "referenceLabel": "Archivo publicado en bellomojujuy.com.ar",
+        "icon": "land",
+        "focusAreas": [
+          "Vivienda e infraestructura",
+          "Caminos y redes de servicios",
+          "Impacto regional y durabilidad"
+        ],
+        "cta": "Consultar por obra pública",
+        "enabled": true
+      },
+      {
+        "id": "obras-privadas",
+        "title": "Obras privadas",
+        "eyebrow": "Ejecución a medida",
+        "description": "Viviendas familiares y espacios comerciales desarrollados desde la planificación hasta los acabados, con soluciones ajustadas a cada proyecto.",
+        "media": {
+          "alt": "Arquitectura urbana contemporánea vista desde nivel peatonal",
+          "intent": "Representar escala y ejecución de obra privada",
+          "position": "center",
+          "section": "Obras privadas",
+          "src": "/images/site/private-works.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "imageLabel": "Imagen de referencia",
+        "icon": "store",
+        "focusAreas": [
+          "Viviendas y comercios",
+          "Planificación y acabados",
+          "Diseño a medida"
+        ],
+        "cta": "Consultar una obra privada",
+        "enabled": true
+      },
+      {
+        "id": "edificios-huasi",
+        "title": "Edificios Huasi",
+        "eyebrow": "Proyectos entregados",
+        "description": "Arquitectura residencial contemporánea que combina ubicación, confort y calidad constructiva, con torres entregadas como respaldo y disponibilidad a confirmar.",
+        "media": {
+          "alt": "Edificio residencial Huasi publicado en el sitio de Bellomo",
+          "intent": "Representar trayectoria residencial urbana",
+          "position": "center",
+          "section": "Edificios Huasi",
+          "src": "/images/site/official-huasi-residential.jpg",
+          "temporary": true,
+          "temporarySource": "bellomojujuy.com.ar"
+        },
+        "imageLabel": "Referencia publicada en bellomojujuy.com.ar",
+        "icon": "building",
+        "focusAreas": [
+          "Ubicación y confort",
+          "Inversión residencial",
+          "Entregados y nuevas opciones"
+        ],
+        "cta": "Conocer la línea Huasi",
+        "enabled": true
+      }
+    ],
+    "heroSlides": [
+      {
+        "id": "futuro",
+        "title": "Construimos",
+        "emphasis": "lugares que perduran.",
+        "description": "Tierra, arquitectura y ejecución reunidas por una misma idea: crear espacios con respaldo y valor a largo plazo.",
+        "eyebrow": "Desarrollos inmobiliarios · Jujuy",
+        "media": {
+          "alt": "Vivienda contemporánea integrada a un entorno arbolado",
+          "intent": "Comunicar arquitectura residencial y permanencia",
+          "position": "58% center",
+          "section": "Hero",
+          "src": "/images/hero/lugares-que-perduran.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": true
+      },
+      {
+        "id": "territorio",
+        "title": "Tierra, obra y",
+        "emphasis": "futuro en Jujuy.",
+        "description": "Desarrollo urbano con conocimiento del territorio. Proyectos para vivir, invertir y acompañar el crecimiento de la provincia.",
+        "eyebrow": "Bellomo · Desarrollo urbano",
+        "media": {
+          "alt": "Paisaje montañoso del norte argentino como referencia territorial",
+          "intent": "Vincular la propuesta con territorio, escala y horizonte",
+          "position": "center 52%",
+          "section": "Hero y loteos",
+          "src": "/images/hero/territorio-jujuy.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": true
+      },
+      {
+        "id": "calidad",
+        "title": "Diseño y calidad",
+        "emphasis": "que se sienten.",
+        "description": "Arquitectura contemporánea, materiales seleccionados y decisiones que sostienen el valor de cada proyecto.",
+        "eyebrow": "Calidad que se proyecta",
+        "media": {
+          "alt": "Volumen arquitectónico contemporáneo de líneas precisas",
+          "intent": "Representar diseño y calidad constructiva",
+          "position": "center",
+          "section": "Hero",
+          "src": "/images/hero/diseno-calidad.jpg",
+          "temporary": true,
+          "temporarySource": "Unsplash"
+        },
+        "enabled": true
+      }
+    ],
+    "navigation": [
+      {
+        "label": "Propiedades",
+        "href": "#catalogo-demo",
+        "enabled": true
+      },
+      {
+        "label": "Inicio",
+        "href": "#inicio",
+        "enabled": true
+      },
+      {
+        "label": "Bellomo",
+        "href": "#bellomo",
+        "enabled": true
+      },
+      {
+        "label": "Comercializadora",
+        "href": "#comercializadora",
+        "enabled": true
+      },
+      {
+        "label": "Constructora",
+        "href": "#constructora",
+        "enabled": true
+      },
+      {
+        "label": "Contacto",
+        "href": "#contacto",
+        "enabled": true
+      }
+    ],
+    "propertyCategories": [
+      {
+        "id": "loteos",
+        "title": "Loteos",
+        "description": "Tierra con proyección para construir, invertir y crecer.",
+        "icon": "land",
+        "enabled": true
+      },
+      {
+        "id": "propiedades",
+        "title": "Propiedades",
+        "description": "Opciones residenciales con calidad, ubicación y respaldo.",
+        "icon": "home",
+        "enabled": true
+      },
+      {
+        "id": "locales-comerciales",
+        "title": "Locales comerciales",
+        "description": "Espacios preparados para impulsar nuevos negocios.",
+        "icon": "store",
+        "enabled": true
+      },
+      {
+        "id": "cocheras",
+        "title": "Cocheras",
+        "description": "Soluciones urbanas prácticas y oportunidades de inversión.",
+        "icon": "garage",
+        "enabled": true
+      },
+      {
+        "id": "proyectos-futuros",
+        "title": "Proyectos futuros",
+        "description": "Nuevas oportunidades urbanas para anticiparse, invertir y proyectar.",
+        "icon": "building",
+        "enabled": true
+      }
+    ]
+  },
+  "texts": {
+    "texto-2": {
+      "label": "BELLOMO",
+      "group": "Elementos generales",
+      "value": "BELLOMO"
+    },
+    "texto-3": {
+      "label": "Contactar",
+      "group": "Menú",
+      "value": "Contactar"
+    },
+    "texto-4": {
+      "label": "Navegación",
+      "group": "Menú",
+      "value": "Navegación"
+    },
+    "texto-5": {
+      "label": "Contactar",
+      "group": "Menú",
+      "value": "Contactar"
+    },
+    "texto-6": {
+      "label": "Desarrollos inmobiliarios en Jujuy",
+      "group": "Menú",
+      "value": "Desarrollos inmobiliarios en Jujuy"
+    },
+    "texto-7": {
+      "label": "Presentación de Bellomo",
+      "group": "Presentación",
+      "value": "Presentación de Bellomo"
+    },
+    "texto-12": {
+      "label": "Ver desarrollos",
+      "group": "Portada",
+      "value": "Ver desarrollos"
+    },
+    "texto-13": {
+      "label": "Contactar a Bellomo",
+      "group": "Portada",
+      "value": "Contactar a Bellomo"
+    },
+    "texto-14": {
+      "label": "Descubrir",
+      "group": "Portada",
+      "value": "Descubrir"
+    },
+    "texto-15": {
+      "label": "Ver desarrollo",
+      "group": "Desarrollos",
+      "value": "Ver desarrollo"
+    },
+    "texto-16": {
+      "label": "Explorar desarrollos",
+      "group": "Desarrollos",
+      "value": "Explorar desarrollos"
+    },
+    "texto-17": {
+      "label": "desarrollos reales para explorar.",
+      "group": "Desarrollos",
+      "value": "desarrollos reales para explorar."
+    },
+    "texto-18": {
+      "label": "Dos áreas, una visión",
+      "group": "Áreas de trabajo",
+      "value": "Dos áreas, una visión"
+    },
+    "texto-19": {
+      "label": "Desarrollamos oportunidades. Construimos futuro.",
+      "group": "Áreas de trabajo",
+      "value": "Desarrollamos oportunidades. Construimos futuro."
+    },
+    "texto-20": {
+      "label": "Saltar al contenido",
+      "group": "Página principal",
+      "value": "Saltar al contenido"
+    },
+    "texto-21": {
+      "label": "Bellomo · Jujuy",
+      "group": "Página principal",
+      "value": "Bellomo · Jujuy"
+    },
+    "texto-22": {
+      "label": "Bellomo en síntesis",
+      "group": "Página principal",
+      "value": "Bellomo en síntesis"
+    },
+    "texto-23": {
+      "label": "Experiencia que se construye.",
+      "group": "Página principal",
+      "value": "Experiencia que se construye."
+    },
+    "texto-24": {
+      "label": "Casi 50 años desarrollando espacios para vivir, invertir y crecer",
+      "group": "Página principal",
+      "value": "Casi 50 años desarrollando espacios para vivir, invertir y crecer."
+    },
+    "texto-25": {
+      "label": "Desde Jujuy, Bellomo integra desarrollo, comercialización y capac",
+      "group": "Página principal",
+      "value": "Desde Jujuy, Bellomo integra desarrollo, comercialización y capacidad constructiva con conocimiento del territorio y visión de largo plazo."
+    },
+    "texto-26": {
+      "label": "Desarrollos seleccionados",
+      "group": "Página principal",
+      "value": "Desarrollos seleccionados"
+    },
+    "texto-27": {
+      "label": "Proyectos con respaldo Bellomo.",
+      "group": "Página principal",
+      "value": "Proyectos con respaldo Bellomo."
+    },
+    "texto-28": {
+      "label": "Una selección breve de desarrollos presentes en el archivo local.",
+      "group": "Página principal",
+      "value": "Una selección breve de desarrollos presentes en el archivo local. Estado y disponibilidad se confirman con el equipo."
+    },
+    "texto-29": {
+      "label": "Contacto",
+      "group": "Página principal",
+      "value": "Contacto"
+    },
+    "texto-30": {
+      "label": "Hablemos de tu próximo paso.",
+      "group": "Página principal",
+      "value": "Hablemos de tu próximo paso."
+    },
+    "texto-31": {
+      "label": "Conocé un desarrollo o consultanos por una obra.",
+      "group": "Página principal",
+      "value": "Conocé un desarrollo o consultanos por una obra."
+    },
+    "texto-32": {
+      "label": "WhatsApp",
+      "group": "Página principal",
+      "value": "WhatsApp"
+    },
+    "texto-34": {
+      "label": "Llamar",
+      "group": "Página principal",
+      "value": "Llamar"
+    },
+    "texto-36": {
+      "label": "Ubicación",
+      "group": "Página principal",
+      "value": "Ubicación"
+    },
+    "texto-37": {
+      "label": "Desarrollos inmobiliarios y construcción en Jujuy.",
+      "group": "Página principal",
+      "value": "Desarrollos inmobiliarios y construcción en Jujuy."
+    },
+    "texto-38": {
+      "label": "Ubicación",
+      "group": "Página principal",
+      "value": "Ubicación"
+    },
+    "texto-39": {
+      "label": "Contacto",
+      "group": "Página principal",
+      "value": "Contacto"
+    },
+    "texto-40": {
+      "label": "Comercializadora",
+      "group": "Página principal",
+      "value": "Comercializadora"
+    },
+    "texto-43": {
+      "label": "Constructora",
+      "group": "Página principal",
+      "value": "Constructora"
+    },
+    "texto-45": {
+      "label": "Horarios",
+      "group": "Página principal",
+      "value": "Horarios"
+    },
+    "texto-48": {
+      "label": "©",
+      "group": "Página principal",
+      "value": "©"
+    },
+    "texto-49": {
+      "label": "Bellomo. Todos los derechos reservados.",
+      "group": "Página principal",
+      "value": "Bellomo. Todos los derechos reservados."
+    },
+    "texto-51": {
+      "label": "Powered by",
+      "group": "Página principal",
+      "value": "Powered by"
+    },
+    "texto-53": {
+      "label": "EverSys Solutions",
+      "group": "Página principal",
+      "value": "EverSys Solutions"
+    },
+    "texto-54": {
+      "label": "Consultar",
+      "group": "Página principal",
+      "value": "Consultar"
+    },
+    "texto-100": {
+      "label": "Oportunidades inmobiliarias",
+      "group": "Menú y redes",
+      "value": "Oportunidades inmobiliarias"
+    },
+    "texto-101": {
+      "label": "Desarrollos actuales",
+      "group": "Menú y redes",
+      "value": "Desarrollos actuales"
+    },
+    "texto-102": {
+      "label": "Nuevos proyectos",
+      "group": "Menú y redes",
+      "value": "Nuevos proyectos"
+    },
+    "texto-103": {
+      "label": "Capacidad constructiva",
+      "group": "Menú y redes",
+      "value": "Capacidad constructiva"
+    },
+    "texto-104": {
+      "label": "Proyectos entregados",
+      "group": "Menú y redes",
+      "value": "Proyectos entregados"
+    },
+    "texto-105": {
+      "label": "Áreas de obra",
+      "group": "Menú y redes",
+      "value": "Áreas de obra"
+    },
+    "texto-106": {
+      "label": "Explorar desarrollos",
+      "group": "Áreas de trabajo",
+      "value": "Explorar desarrollos"
+    },
+    "texto-107": {
+      "label": "Loteos, propiedades, locales y cocheras.",
+      "group": "Áreas de trabajo",
+      "value": "Loteos, propiedades, locales y cocheras."
+    },
+    "texto-108": {
+      "label": "Oportunidades para vivir e invertir.",
+      "group": "Áreas de trabajo",
+      "value": "Oportunidades para vivir e invertir."
+    },
+    "texto-109": {
+      "label": "Consultar una obra",
+      "group": "Áreas de trabajo",
+      "value": "Consultar una obra"
+    },
+    "texto-110": {
+      "label": "Desarrollos privados, edificios y obra pública.",
+      "group": "Áreas de trabajo",
+      "value": "Desarrollos privados, edificios y obra pública."
+    },
+    "texto-111": {
+      "label": "Obras pensadas para durar.",
+      "group": "Áreas de trabajo",
+      "value": "Obras pensadas para durar."
+    },
+    "texto-112": {
+      "label": "Instagram",
+      "group": "Menú y redes",
+      "value": "Instagram"
+    },
+    "texto-113": {
+      "label": "Facebook",
+      "group": "Menú y redes",
+      "value": "Facebook"
+    }
+  },
+  "links": {
+    "enlace-46": {
+      "label": "https://instagram.com/bellomojujuy",
+      "group": "Página principal",
+      "value": "https://instagram.com/bellomojujuy"
+    },
+    "enlace-47": {
+      "label": "https://facebook.com/bellomojujuy",
+      "group": "Página principal",
+      "value": "https://facebook.com/bellomojujuy"
+    },
+    "enlace-50": {
+      "label": "https://www.instagram.com/eversys.solutions/",
+      "group": "Página principal",
+      "value": "https://www.instagram.com/eversys.solutions/"
+    }
+  },
+  "assets": {
+    "imagen-1": {
+      "label": "/brand/logo-bellomo-isotipo.png",
+      "group": "Marca",
+      "value": "/brand/logo-bellomo-isotipo.png"
+    },
+    "imagen-52": {
+      "label": "/brand/eversys-isotipo-oficial-blanco.png",
+      "group": "Página principal",
+      "value": "/brand/eversys-isotipo-oficial-blanco.png"
+    }
+  },
+  "sections": [
+    {
+      "id": "inicio",
+      "title": "Portada",
+      "enabled": true
+    },
+    {
+      "id": "bellomo",
+      "title": "Sobre Bellomo",
+      "enabled": true
+    },
+    {
+      "id": "catalogo-demo",
+      "title": "Propiedades",
+      "enabled": true
+    },
+    {
+      "id": "comercializadora",
+      "title": "Comercializadora y constructora",
+      "enabled": true
+    },
+    {
+      "id": "desarrollos-seleccionados",
+      "title": "Desarrollos",
+      "enabled": true
+    },
+    {
+      "id": "contacto",
+      "title": "Contacto",
+      "enabled": true
+    },
+    {
+      "id": "pie",
+      "title": "Pie de página",
+      "enabled": true
+    },
+    {
+      "id": "redes",
+      "title": "Redes sociales",
+      "enabled": true
+    },
+    {
+      "id": "flotantes",
+      "title": "Botones flotantes",
+      "enabled": true
+    },
+    {
+      "id": "presentacion",
+      "title": "Animación de entrada",
+      "enabled": true
+    },
+    {
+      "id": "menu",
+      "title": "Menú principal",
+      "enabled": true
+    }
+  ],
+  "customSections": [],
+  "bot": {
+    "enabled": true,
+    "name": "Bellomito",
+    "greeting": "Hola, soy Bellomito. Te ayudo a encontrar propiedades publicadas por Bellomo. ¿Buscás una casa, un departamento o un lote?",
+    "subtitle": "Asistente de Bellomo",
+    "suggestions": [
+      "Ver propiedades",
+      "Casas",
+      "Departamentos",
+      "Lotes"
+    ],
+    "knowledge": "Los precios y las disponibilidades de este sitio son datos de demostración.",
+    "showContact": false
+  }
+}

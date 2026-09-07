@@ -28,6 +28,7 @@ import {
   type GenerateLotsPayload,
 } from "@/lib/everprop-api";
 import { isMockDataMode } from "@/lib/data-mode";
+import { isLocalDemo, demoCatalog } from "@/lib/demo-catalog";
 import { projects as sampleProjects } from "@/data/admin-sample";
 import type { Property, Project } from "@/data/admin-sample";
 
@@ -229,8 +230,14 @@ export function GenerateLotsModal({
             bathrooms: 0,
           });
         }
-        toast.success(`¡Modo Mock! ${mockCreated.length} lotes generados localmente.`);
-        onSuccess?.(mockCreated);
+        if (isLocalDemo) {
+          const saved = await demoCatalog("POST", mockCreated.map(property => ({ ...property, projectId }))) as Property[];
+          toast.success(`${saved.length} lotes guardados y publicados en la web de Bellomo.`);
+          onSuccess?.(saved);
+        } else {
+          toast.success(`¡Modo Mock! ${mockCreated.length} lotes generados localmente.`);
+          onSuccess?.(mockCreated);
+        }
       }
 
       onOpenChange(false);

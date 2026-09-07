@@ -163,8 +163,8 @@ export default function AllPropertiesPage() {
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 pb-10">
       {isLocalDemo && <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-        <strong>Demo local conectada a Bellomito.</strong> Las propiedades nuevas se publican automáticamente. Usá Publicar / Ocultar en cada fila.
-        <a className="ml-3 font-semibold underline" href="http://127.0.0.1:3002/#catalogo-demo" target="_blank" rel="noreferrer">Ver web de Bellomito</a>
+        <strong>Demo local conectada a Bellomito.</strong> Las propiedades nuevas se publican automáticamente. Administrá su publicación desde Web pública.
+        <a className="ml-3 font-semibold underline" href="/admin/web-publica">Abrir Web pública</a>
       </div>}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

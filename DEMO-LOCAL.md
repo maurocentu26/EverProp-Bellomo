@@ -1,22 +1,39 @@
-# Demo local: panel y web de Bellomito
+# Demo local: panel, web de Bellomo y Bellomito
 
-Todo el código está en `trabajo/continuacion-everprop`. `bellomo-web-demo/` es una copia de la web encontrada en `Desktop/everprop-bellomo`, incorporada al mismo repositorio para mantener una sola branch. El proyecto del escritorio conserva sus archivos originales.
+Una sola web pública: Bellomo, con su asistente Bellomito. Un único catálogo, administrado desde el panel. Todo está en `trabajo/continuacion-everprop`, con los cambios de Mauro hasta el 6 de septiembre incorporados. La carpeta `bellomo-web-demo` conserva la base visual de la web encontrada en el escritorio; esa copia original no se modificó.
 
-## Iniciar
+## Usar la demo
 
-Con Node instalado, ejecutar `./start-demo.ps1` desde PowerShell en la raíz. Si faltan dependencias, ejecutar `npm ci` dentro de `everprop-public` y `bellomo-web-demo`.
+Ejecutar `./start-demo.ps1` desde PowerShell en la raíz. Si faltan dependencias, ejecutar `npm ci` en `everprop-public` y `bellomo-web-demo`.
 
-1. Abrir http://127.0.0.1:3001/login y elegir Marcos Bellomo en el acceso demo.
-2. Entrar a Propiedades: http://127.0.0.1:3001/admin/properties.
-3. Abrir http://127.0.0.1:3002/#catalogo-demo en otra pestaña.
-4. Crear una propiedad usando Nueva Propiedad. Al guardar, se publica en la web.
-5. Usar Ocultar / Publicar en la fila. La web consulta cambios cada dos segundos, sin recarga manual.
-6. Preguntar a Bellomito por propiedades: responde usando solo las publicadas en el catálogo demo, sin clave de IA.
+- Panel: http://127.0.0.1:3001/login (elegir Marcos Bellomo).
+- Administración central: http://127.0.0.1:3001/admin/web-publica.
+- Web de Bellomo con Bellomito: http://127.0.0.1:3002/.
 
-Las propiedades se guardan en `everprop-public/.demo-data/properties.json` y sobreviven al reinicio del servidor y al cierre del navegador. El archivo está ignorado por Git. El resto del CRM conserva el modo mock existente; esta integración conecta la lista de Propiedades y el formulario de alta, no todas las pantallas del ERP.
+La pantalla existente **Propiedades → Nueva Unidad** sigue siendo el lugar para cargar casas, departamentos, lotes, locales y cocheras. Al guardar se publica la propiedad y aparece una confirmación con el botón **Ver propiedad en la web**. La generación de lotes en grupo también usa el catálogo compartido.
 
-El catálogo público entrega solo campos comerciales. Los proyectos institucionales de la web siguen siendo contenido editorial; no son anuncios del inventario. El envío de consultas desde Bellomito está deshabilitado en esta demo y muestra un mensaje explícito. No hay conexión con producción, MySQL ni servicios de IA en este recorrido.
+## Web pública: todo junto
 
-Los servidores escuchan únicamente en 127.0.0.1. Las rutas de catálogo requieren LOCAL_DEMO=1 y están deshabilitadas en producción. Para implementar una integración real se necesitará autenticación de administración y persistencia en el backend.
+- **Propiedades:** las mismas del formulario existente; editar datos y foto, vista previa, publicar/ocultar y abrir la propiedad exacta en la web. Estos cambios son inmediatos.
+- **Secciones:** mostrar u ocultar portada, información institucional, catálogo, áreas comerciales, desarrollos, contacto, pie, menú, redes y elementos flotantes. Agregar secciones con texto, imagen y enlace.
+- **Contenido:** editar, agregar, quitar, ordenar y ocultar diapositivas, desarrollos, áreas de construcción, categorías, cifras e ítems de navegación.
+- **Textos:** editar los textos de títulos, botones y párrafos, con buscador.
+- **Imágenes y enlaces:** logos, imágenes y enlaces externos. Las fotos de cada sección se editan también en Contenido. Se aceptan PNG, JPG y WebP de hasta 2 MB por archivo.
+- **Contacto:** dirección, horarios, teléfonos y WhatsApp.
+- **Bellomito:** visibilidad, nombre, saludo, subtítulo, preguntas sugeridas e información adicional. Consulta exclusivamente el catálogo publicado y los datos de contacto guardados.
 
-El script muestra los PID de los procesos y deja registros en `work/`. Para detenerlos, cerrar esos procesos Node. No iniciar otra instancia si los puertos ya están ocupados.
+Los cambios de contenido se guardan como **borrador**. **Vista previa** guarda el borrador y lo abre dentro del panel. **Publicar cambios** actualiza la web pública, que comprueba novedades cada dos segundos. **Descartar borrador** recupera la última versión publicada. Las propiedades se guardan directamente, independientemente de ese borrador.
+
+## Persistencia y límites de la demo
+
+`everprop-public/.demo-data/properties.json` guarda el catálogo y `website.json` guarda borrador y publicación. Sobreviven al cierre del navegador y al reinicio del servidor; están ignorados por Git. Las revisiones evitan sobrescribir cambios desde un editor que quedó abierto con una versión anterior.
+
+Es una demo local: servidores enlazados a 127.0.0.1, sin modificar producción ni requerir MySQL o claves de IA. Las rutas de edición están deshabilitadas en producción. El envío de consultas comerciales permanece deshabilitado y lo indica al intentar enviar. El resto de las pantallas del ERP conserva su comportamiento mock; el catálogo de la web no representa una integración productiva de todos los módulos del CRM.
+
+## Verificación
+
+Con ambos servidores encendidos: `node scripts/check-cms.mjs`. Comprueba borrador, vista previa, publicación, ocultamiento de catálogo y asistente, validación de enlaces y protección frente a revisiones antiguas. Restaura el contenido que encontró al iniciar. Ejecutar sin editar simultáneamente durante la prueba.
+
+También se verificó en el navegador la publicación de una propiedad, su ocultamiento y la vista previa/publicación de una sección. TypeScript pasa en ambas aplicaciones.
+
+Los procesos y registros se muestran al ejecutar el script; los registros están en `work/`. No iniciar otra instancia si los puertos ya están ocupados.

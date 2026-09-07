@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AIChatBubble } from "@/components/ai/AIChatBubble";
+import { WebsiteProvider } from "@/components/WebsiteProvider";
 
 const manrope = localFont({
   display: "swap",
@@ -44,8 +45,10 @@ export default function RootLayout({
       lang="es-AR"
     >
       <body>
+        <WebsiteProvider>
         {children}
         <AIChatBubble />
+        </WebsiteProvider>
       </body>
     </html>
   );

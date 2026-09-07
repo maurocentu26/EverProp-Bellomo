@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { DemoProperty } from "@/lib/demo-catalog";
 import { Building2, MapPin } from "lucide-react";
 
@@ -9,6 +10,10 @@ export default function DemoCatalog() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(9);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (loaded && selectedId) document.getElementById("catalogo-demo")?.scrollIntoView({ block: "start" });
+  }, [loaded, selectedId]);
   useEffect(() => {
     let active = true;
     let busy = false;
@@ -20,7 +25,7 @@ export default function DemoCatalog() {
         const response = await fetch("/api/demo/properties", { cache: "no-store", signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error);
-        if (active) { setProperties(data); setError(""); setLoaded(true); }
+        if (active) { setSelectedId(new URLSearchParams(window.location.search).get("propiedad")); setProperties(data); setError(""); setLoaded(true); }
       } catch (reason) {
         if (active) { setError(reason instanceof Error ? reason.message : "Catálogo no disponible."); setProperties([]); }
       } finally { busy = false; }
@@ -30,8 +35,8 @@ export default function DemoCatalog() {
     window.addEventListener("focus", refresh);
     return () => { active = false; controller.abort(); clearInterval(interval); window.removeEventListener("focus", refresh); };
   }, []);
-  const visible = properties.filter(p => `${p.title} ${p.city} ${p.neighborhood} ${p.propertyType}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
-  return <section id="catalogo-demo" className="bg-[#f4f1e9] px-5 py-20 text-[#123c4d] sm:px-8">
+  const visible = properties.filter(p => (!selectedId || p.id === selectedId) && `${p.title} ${p.city} ${p.neighborhood} ${p.propertyType}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
+  return <section id="catalogo-demo" className="scroll-mt-24 bg-[#f4f1e9] px-5 py-20 text-[#123c4d] sm:px-8">
     <div className="mx-auto max-w-[86rem]">
       <p className="text-xs font-semibold uppercase tracking-[0.2em]">Demo local · conectada al panel</p>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-6">
@@ -43,9 +48,11 @@ export default function DemoCatalog() {
       </label>
       {error ? <p role="alert" className="mt-6 text-red-700">{error}</p> : !loaded ? <p role="status" className="mt-6">Cargando catálogo…</p> : <>
         <p role="status" className="mt-5 text-sm">{visible.length} propiedades publicadas · Datos de demostración</p>
-        {visible.length === 0 && <p className="mt-8">No hay propiedades publicadas que coincidan con tu búsqueda.</p>}
+        {selectedId && <Link href="/#catalogo-demo" className="mt-4 inline-block underline" onClick={()=>setSelectedId(null)}>Ver todas las propiedades</Link>}
+        {visible.length === 0 && <p className="mt-8">{selectedId ? "Esta propiedad no está publicada. Cuando se publique desde el panel, aparecerá acá." : "No hay propiedades publicadas que coincidan con tu búsqueda."}</p>}
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {visible.slice(0, limit).map(p => <article key={p.id} className="rounded-2xl border border-slate-200 bg-white p-6" data-property-id={p.id}>
+            {p.mainImage && <img src={p.mainImage} alt={p.title} className="mb-4 h-48 w-full rounded-xl object-cover" />}
             <div className="flex items-center justify-between gap-2"><Building2 className="h-6 w-6" /><span className="text-xs uppercase">{p.operation === "sale" ? "Venta" : p.operation === "rent" ? "Alquiler" : "Temporal"} · {p.status === "reserved" ? "Reservado" : p.status === "sold" ? "Vendido" : "Disponible"}</span></div>
             <h3 className="mt-5 text-xl font-semibold">{p.title}</h3>
             <p className="mt-2 flex items-center gap-1 text-sm"><MapPin className="h-4 w-4" />{p.neighborhood}, {p.city}</p>

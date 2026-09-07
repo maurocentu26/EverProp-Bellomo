@@ -1,4 +1,4 @@
-import { readDemoCatalog } from "@/lib/demo-catalog";
+import { readDemoCatalog, readPublishedWebsite } from "@/lib/demo-catalog";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { bellomoKnowledge } from "@/lib/ai/knowledge";
@@ -133,11 +133,17 @@ export async function POST(request: Request) {
 
   if (process.env.LOCAL_DEMO === "1") {
     try {
+      const website = await readPublishedWebsite();
+      if (!website.bot.enabled) return json({ error: "El asistente está oculto en esta web." }, 404);
+      if (/horario|tel[eé]fono|direcci[oó]n|contacto/i.test(latestQuestion)) {
+        const contact = website.data.bellomoContact;
+        return json({ text: `${contact.address}, ${contact.city}. ${contact.weekdayHours}; ${contact.saturdayHours}. Teléfonos: ${contact.commercialPhones}.`, mode: "demo" });
+      }
       const catalog = await readDemoCatalog();
       const words = latestQuestion.toLocaleLowerCase("es-AR").split(/\s+/).filter(word => word.length > 3);
       const matches = catalog.filter(p => words.some(word => (p.title + " " + p.propertyType + " " + p.city).toLocaleLowerCase("es-AR").includes(word)));
       const selection = matches.length ? matches : catalog;
-      const summary = selection.slice(0, 5).map(p => "• **" + p.title + "** — " + (p.price > 0 ? p.currency + " " + p.price.toLocaleString("es-AR") : "Consultar precio") + " · " + (p.status === "reserved" ? "Reservado" : p.status === "sold" ? "Vendido" : "Disponible")).join("\n");
+      const summary = selection.slice(0, 5).map(p => "• **" + p.title + "** — " + (p.price > 0 ? p.currency + " " + p.price.toLocaleString("es-AR") : "Consultar precio") + " · " + (p.status === "reserved" ? "Reservado" : p.status === "sold" ? "Vendido" : "Disponible")).join("\n") + (website.bot.knowledge ? "\n\n" + website.bot.knowledge : "");
       return json({ text: catalog.length ? "**Demo local.** Estas son propiedades publicadas ahora en el panel:\n\n" + summary + "\n\nPodés ver el catálogo completo en la sección Propiedades publicadas. Los datos son de demostración." : "**Demo local.** No hay propiedades publicadas en este momento. Podés publicar una desde el panel.", mode: "demo" });
     } catch { return json({ text: "No puedo consultar el catálogo demo ahora. Revisá que el panel local esté encendido.", mode: "demo" }); }
   }

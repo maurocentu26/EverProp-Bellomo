@@ -8,6 +8,7 @@ import {
   HardHat,
   Map,
   Store,
+  Globe,
   type LucideIcon 
 } from "lucide-react";
 
@@ -69,6 +70,7 @@ export const advisorNavigationGroups: NavGroup[] = [
 ];
 
 export const navigationGroups: NavGroup[] = [
+  ...(process.env.NEXT_PUBLIC_LOCAL_DEMO === "1" ? [{ label: "Sitio Bellomo", items: [{ title: "Web pública", href: "/admin/web-publica", icon: Globe, matchPath: "/admin/web-publica" }] }] : []),
   {
     label: "Desarrollos",
     items: [

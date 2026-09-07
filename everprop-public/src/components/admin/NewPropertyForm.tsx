@@ -39,6 +39,8 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
 
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [savedProperty, setSavedProperty] = useState<Property | null>(null);
+  const [publishOnSave, setPublishOnSave] = useState(true);
   
   // Stepper State
   const [step, setStep] = useState<1 | 2>(() => (paramCategory ? 2 : 1));
@@ -105,6 +107,7 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
       const nextProperty: Property = {
         id: crypto.randomUUID(),
         companyId,
+        published: publishOnSave,
         title: data.title.trim(),
         operation: data.operation || "sale",
         propertyType: data.propertyType,
@@ -130,7 +133,10 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
       };
 
       if (isLocalDemo) {
-        await demoCatalog("POST", nextProperty);
+        const saved = await demoCatalog("POST", nextProperty) as Property;
+        setSavedProperty(saved);
+        setIsSaving(false);
+        return;
       } else if (!isMockDataMode) {
         await createEverpropProperty({
           title: nextProperty.title,
@@ -164,12 +170,26 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     setStep(2);
   };
 
+  if (savedProperty) return <section className="mx-auto max-w-3xl space-y-5 rounded-2xl border border-emerald-200 bg-white p-6">
+    <h1 className="text-2xl font-bold text-slate-900">{savedProperty.published ? "Propiedad guardada y publicada" : "Propiedad guardada como oculta"}</h1>
+    <p className="text-slate-600"><strong>{savedProperty.title}</strong> {savedProperty.published ? "ya está en la web de Bellomo y Bellomito puede mostrarla." : "quedó guardada en el panel. No aparece en la web ni en Bellomito hasta que la publiques."} La cargaste una sola vez.</p>
+    <div className="flex flex-wrap gap-3">
+      <a href={`http://127.0.0.1:3002/?propiedad=${encodeURIComponent(savedProperty.id)}#catalogo-demo`} target="_blank" rel="noreferrer" className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white">Ver propiedad en la web</a>
+      <button type="button" onClick={() => router.push("/admin/web-publica")} className="rounded-xl border border-slate-300 px-5 py-3 font-semibold">Administrar en Web pública</button>
+      <button type="button" onClick={() => { setSavedProperty(null); reset(); setStep(1); }} className="rounded-xl border border-slate-300 px-5 py-3 font-semibold">Cargar otra propiedad</button>
+    </div>
+    <p className="text-sm text-slate-500">Podés ocultarla o volver a publicarla desde el panel. Esta es una demostración local.</p>
+  </section>;
+
+  const connectionNotice = isLocalDemo && <div className="mx-auto mb-6 max-w-4xl rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950"><strong>Conectado con la web de Bellomo y Bellomito.</strong> Cargás la propiedad una sola vez y elegís si se muestra en la web.<label className="mt-3 flex items-center gap-2 font-semibold"><input type="checkbox" checked={publishOnSave} onChange={e=>setPublishOnSave(e.target.checked)}/>Mostrar en la web al guardar</label></div>;
+
   if (step === 1) {
-    return <CategorySelector onSelect={handleCategorySelect} />;
+    return <>{connectionNotice}<CategorySelector onSelect={handleCategorySelect} /></>;
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {connectionNotice}
       <button onClick={() => setStep(1)} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Volver a categorías
       </button>

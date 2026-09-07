@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import { AnimatePresence, motion } from "framer-motion";
 import { Send, Sparkles, Trash2, UserRound, X } from "lucide-react";
 import { BellomitoAvatar } from "./BellomitoAvatar";
+import { useWebsite } from "@/components/WebsiteProvider";
 
 const isLocalDemo = process.env.NEXT_PUBLIC_LOCAL_DEMO === "1";
 const INITIAL_GREETING = isLocalDemo ? "Hola, soy Bellomito en modo demo local. Puedo mostrarte las propiedades publicadas desde el panel. ¿Buscás una casa, un departamento o un lote?" :
@@ -53,6 +54,7 @@ const welcomeMessage: ChatMessage = {
 };
 
 export function AIChatBubble() {
+  const { content } = useWebsite();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
@@ -192,6 +194,7 @@ export function AIChatBubble() {
     }
   };
 
+  if (isLocalDemo && !content.bot.enabled) return null;
   return (
     <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end pointer-events-auto sm:bottom-6 sm:right-36">
       <AnimatePresence>
@@ -210,12 +213,12 @@ export function AIChatBubble() {
                 <BellomitoAvatar size="md" showOnlineStatus />
                 <div>
                   <h2 className="flex items-center gap-1.5 text-sm font-semibold leading-tight text-white">
-                    Bellomito
+                    {isLocalDemo ? content.bot.name : "Bellomito"}
                     <Sparkles size={13} className="fill-amber-400 text-amber-400" aria-hidden="true" />
                   </h2>
                   <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-300">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
-                    Asistente de Bellomo
+                    {isLocalDemo ? content.bot.subtitle : "Asistente de Bellomo"}
                   </p>
                 </div>
               </div>
@@ -252,14 +255,14 @@ export function AIChatBubble() {
                         : "rounded-tl-xs bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80 [&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-blue-700"
                     }`}
                   >
-                    <ReactMarkdown>{message.text}</ReactMarkdown>
+                    <ReactMarkdown>{isLocalDemo && message.id === "welcome-message" ? content.bot.greeting : message.text}</ReactMarkdown>
                   </div>
                 </div>
               ))}
 
               {messages.length <= 2 && !isLoading && (
                 <div className="mt-1 flex flex-wrap gap-1.5 pt-1">
-                  {QUICK_CHIPS.map((chip) => (
+                  {(isLocalDemo ? content.bot.suggestions.map(text => ({ label: text, text })) : QUICK_CHIPS).map((chip) => (
                     <button
                       key={chip.label}
                       type="button"
@@ -272,7 +275,7 @@ export function AIChatBubble() {
                 </div>
               )}
 
-              {!showLeadForm && leadStatus !== "success" && (
+              {(!isLocalDemo || content.bot.showContact) && !showLeadForm && leadStatus !== "success" && (
                 <button
                   type="button"
                   onClick={() => {

@@ -171,7 +171,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
     <p className="text-2xl">{property.currency} {property.price.toLocaleString("es-AR")}</p>
     <p>{property.propertyType} · {property.area_m2 || "—"} m² · {property.bedrooms} dormitorios</p>
     <p>{property.description}</p>
-    <p className="text-sm text-slate-500">Podés publicar u ocultar esta propiedad desde la lista de Propiedades.</p>
+    <p className="text-sm text-slate-500">Podés editar, publicar u ocultar esta propiedad desde Web pública.</p>
   </section>;
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import DemoCatalog from "@/components/DemoCatalog";
+import { SiteText, ManagedPage, useWebsite, useSiteData } from "@/components/WebsiteProvider";
 import Image from "next/image";
 import {
   type CSSProperties,
@@ -12,14 +13,6 @@ import {
   useState,
 } from "react";
 import {
-  bellomoContact,
-  bellomoEditorialImages,
-  bellomoProjects,
-  bellomoStats,
-  constructionHighlights,
-  heroSlides,
-  navigation,
-  propertyCategories,
   type BellomoImage,
   type HeroSlide,
   type Project,
@@ -51,8 +44,9 @@ type BellomoScrollDetail = {
   scrollY: number;
 };
 
-function whatsappHref(message: string) {
-  return `https://wa.me/${bellomoContact.whatsappPhone}?text=${encodeURIComponent(message)}`;
+function useWhatsAppHref() {
+const { bellomoContact } = useSiteData();
+return (message: string) => `https://wa.me/${bellomoContact.whatsappPhone}?text=${encodeURIComponent(message)}`;
 }
 
 function ArrowIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -229,6 +223,10 @@ const navIconByHref: Record<string, NavIconType> = {
   "#bellomo": "people",
 };
 
+function useSiteNavigation() {
+const { content: website } = useWebsite();
+
+const { navigation, propertyCategories, constructionHighlights } = useSiteData();
 const desktopNavigationHrefs = navigation
   .filter((item) => item.href !== "#contacto")
   .map((item) => item.href);
@@ -237,7 +235,7 @@ const navigationSectionHrefs = navigation.map((item) => item.href);
 
 const navDropdownByHref = {
   "#comercializadora": {
-    eyebrow: "Oportunidades inmobiliarias",
+    eyebrow: website.texts["texto-100"].value,
     items: [
       {
         children: propertyCategories.slice(0, 4).map((category) => ({
@@ -248,7 +246,7 @@ const navDropdownByHref = {
         href: "#desarrollos-seleccionados",
         icon: "land" as const,
         id: "desarrollos-actuales",
-        label: "Desarrollos actuales",
+        label: website.texts["texto-101"].value,
       },
       {
         children: propertyCategories.slice(4).map((category) => ({
@@ -259,12 +257,12 @@ const navDropdownByHref = {
         href: "#proyectos-futuros",
         icon: "building" as const,
         id: "nuevos-proyectos",
-        label: "Nuevos proyectos",
+        label: website.texts["texto-102"].value,
       },
     ],
   },
   "#constructora": {
-    eyebrow: "Capacidad constructiva",
+    eyebrow: website.texts["texto-103"].value,
     items: [
       {
         children: constructionHighlights
@@ -277,7 +275,7 @@ const navDropdownByHref = {
         href: "#edificios-huasi",
         icon: "building" as const,
         id: "proyectos-entregados",
-        label: "Proyectos entregados",
+        label: website.texts["texto-104"].value,
       },
       {
         children: constructionHighlights
@@ -290,7 +288,7 @@ const navDropdownByHref = {
         href: "#constructora",
         icon: "building" as const,
         id: "areas-de-obra",
-        label: "Áreas de obra",
+        label: website.texts["texto-105"].value,
       },
     ],
   },
@@ -311,6 +309,9 @@ const navDropdownByHref = {
     }[];
   }
 >;
+
+return { desktopNavigationHrefs, navigationSectionHrefs, navDropdownByHref };
+}
 
 function NavMicroIcon({ href }: { href: string }) {
   const paths: Record<NavIconType, ReactNode> = {
@@ -423,13 +424,15 @@ function Brand({
   className?: string;
   eager?: boolean;
 }) {
+const { content: website } = useWebsite();
+
   return (
-    <Image
+    <Image unoptimized
       alt="Bellomo Desarrollos Inmobiliarios"
       className={className}
       height={50}
       loading={eager ? "eager" : "lazy"}
-      src="/brand/logo-bellomo-isotipo.png"
+      src={website.assets["imagen-1"].value}
       width={190}
     />
   );
@@ -502,7 +505,7 @@ function ResilientMedia({
     >
       <div aria-hidden="true" className="media-fallback">
         <PropertyIcon className="h-10 w-10" type="building" />
-        <span>BELLOMO</span>
+        <span><SiteText id="texto-2" /></span>
       </div>
       <div
         aria-hidden="true"
@@ -521,6 +524,10 @@ function ResilientMedia({
 }
 
 function Header() {
+const { navigation } = useSiteData();
+
+const { desktopNavigationHrefs, navigationSectionHrefs, navDropdownByHref } = useSiteNavigation();
+
   const [activeSection, setActiveSection] = useState("inicio");
   const [headerHasFocus, setHeaderHasFocus] = useState(false);
   const [headerState, setHeaderState] = useState<HeaderState>("top");
@@ -1114,8 +1121,7 @@ function Header() {
               closeDesktopDropdown(activeDesktopMenu ?? "#contacto");
             }}
           >
-            Contactar
-            <ArrowIcon />
+            <SiteText id="texto-3" /><ArrowIcon />
           </a>
         </nav>
 
@@ -1155,7 +1161,7 @@ function Header() {
             role="dialog"
           >
             <div className="mobile-menu-header">
-              <p id="mobile-menu-title">Navegación</p>
+              <p id="mobile-menu-title"><SiteText id="texto-4" /></p>
               <button
                 aria-label="Cerrar menú"
                 className="mobile-menu-close"
@@ -1232,13 +1238,11 @@ function Header() {
                 href="#contacto"
                 onClick={() => closeMobileMenu()}
               >
-                Contactar
-                <ArrowIcon />
+                <SiteText id="texto-5" /><ArrowIcon />
               </a>
             </nav>
             <p className="mobile-menu-footnote">
-              Desarrollos inmobiliarios en Jujuy
-            </p>
+              <SiteText id="texto-6" /></p>
           </div>
         </div>
       ) : null}
@@ -1310,7 +1314,7 @@ function BellomoIntro({ onComplete }: { onComplete: () => void }) {
           </div>
         </div>
       </div>
-      <span className="sr-only">Presentación de Bellomo</span>
+      <span className="sr-only"><SiteText id="texto-7" /></span>
     </div>
   );
 }
@@ -1322,13 +1326,15 @@ function HeroSlider({
   introReady: boolean;
   slides: HeroSlide[];
 }) {
+const whatsappHref = useWhatsAppHref();
+
   const [activeSlide, setActiveSlide] = useState(0);
   const [focusPaused, setFocusPaused] = useState(false);
   const [hoverPaused, setHoverPaused] = useState(false);
   const [manualPaused, setManualPaused] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
   const manualPauseTimerRef = useRef<number | null>(null);
-  const slide = slides[activeSlide];
+  const slide = slides[activeSlide % slides.length];
 
   useEffect(() => {
     const updatePageVisibility = () => setPageVisible(!document.hidden);
@@ -1427,23 +1433,18 @@ function HeroSlider({
       >
         <div className="hero-slide-copy max-w-4xl" key={slide.id}>
           <p className="eyebrow text-[11px] font-bold uppercase tracking-[0.25em] text-white/78 sm:text-xs">
-            Bellomo · Jujuy
-          </p>
+            {slide.eyebrow}</p>
           <h1 className="hero-title font-display mt-6 max-w-5xl text-[clamp(3.25rem,14vw,4.25rem)] leading-[0.88] tracking-[-0.055em] text-white sm:text-[5.9rem] lg:text-[7.35rem] xl:text-[8.15rem]">
-            Construimos futuro
-            <span className="block text-[#e7d5af]">en Jujuy.</span>
+            {slide.title}<span className="block text-[#e7d5af]">{slide.emphasis}</span>
           </h1>
           <p className="hero-description mt-7 max-w-xl text-base leading-7 text-white/82 sm:mt-8 sm:text-lg sm:leading-8">
-            Desarrollamos, comercializamos y construimos proyectos con visión de
-            largo plazo.
-          </p>
+            {slide.description}</p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <a
               className="primary-cta group inline-flex items-center justify-between gap-8 bg-white px-6 py-4 text-[12px] font-bold uppercase tracking-[0.13em] text-[#07334d] sm:justify-start sm:px-7"
               href="#desarrollos-seleccionados"
             >
-              Ver desarrollos
-              <ArrowIcon className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              <SiteText id="texto-12" /><ArrowIcon className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </a>
             <a
               className="secondary-cta inline-flex items-center justify-center gap-3 border-0 px-0 py-3 text-[12px] font-bold uppercase tracking-[0.13em] text-white sm:border sm:border-white/45 sm:px-6 sm:py-4"
@@ -1454,8 +1455,7 @@ function HeroSlider({
               target="_blank"
             >
               <WhatsAppIcon />
-              Contactar a Bellomo
-            </a>
+              <SiteText id="texto-13" /></a>
           </div>
         </div>
       </div>
@@ -1487,7 +1487,7 @@ function HeroSlider({
         className="hero-scroll-cue"
         href="#bellomo"
       >
-        <span>Descubrir</span>
+        <span><SiteText id="texto-14" /></span>
         <span aria-hidden="true" className="hero-scroll-line" />
       </a>
     </section>
@@ -1549,6 +1549,8 @@ function SectionReveal({
 }
 
 function ProjectCard({ project }: { project: Project }) {
+const whatsappHref = useWhatsAppHref();
+
   return (
     <article
       className="project-card rail-card group relative min-h-[390px] shrink-0 snap-start overflow-hidden sm:min-h-[460px]"
@@ -1571,6 +1573,7 @@ function ProjectCard({ project }: { project: Project }) {
           <h3 className="font-display mt-3 text-4xl leading-[0.94] tracking-[-0.035em] text-white sm:text-5xl">
             {project.name}
           </h3>
+          <p className="mt-3 text-sm leading-6 text-white/80">{project.description}</p>
           <a
             aria-label={`Consultar por ${project.name}`}
             className="project-card-cta mt-7 inline-flex items-center gap-4 border-b border-white/45 pb-2 text-[11px] font-bold uppercase tracking-[0.13em] text-white"
@@ -1580,8 +1583,7 @@ function ProjectCard({ project }: { project: Project }) {
             rel="noreferrer"
             target="_blank"
           >
-            Ver desarrollo
-            <ArrowIcon className="h-5 w-5" />
+            <SiteText id="texto-15" /><ArrowIcon className="h-5 w-5" />
           </a>
         </div>
       </div>
@@ -1611,11 +1613,9 @@ function DevelopmentRail({ projects }: { projects: Project[] }) {
       <div className="mb-6 flex items-center justify-between gap-6">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.19em] text-[#e7d5af]">
-            Explorar desarrollos
-          </p>
+            <SiteText id="texto-16" /></p>
           <p className="mt-2 text-sm text-white/55">
-            {projects.length} desarrollos reales para explorar.
-          </p>
+            {projects.length} <SiteText id="texto-17" /></p>
         </div>
         <div className="hidden gap-2 sm:flex">
           <button
@@ -1747,6 +1747,12 @@ function ScrollBatteryButton() {
 type BusinessAreaId = "commercial" | "construction";
 
 function BusinessFocus() {
+const { content: website } = useWebsite();
+
+const { bellomoEditorialImages, constructionHighlights } = useSiteData();
+
+const whatsappHref = useWhatsAppHref();
+
   const priorityUntilRef = useRef(0);
   const interactionPausedRef = useRef(false);
   const [activeArea, setActiveArea] = useState<BusinessAreaId>("commercial");
@@ -1760,22 +1766,22 @@ function BusinessFocus() {
     title: string;
   }[] = [
     {
-      action: "Explorar desarrollos",
-      description: "Loteos, propiedades, locales y cocheras.",
+      action: website.texts["texto-106"].value,
+      description: website.texts["texto-107"].value,
       href: "#desarrollos-seleccionados",
       icon: "land",
       id: "commercial",
       media: bellomoEditorialImages.commercial,
-      title: "Oportunidades para vivir e invertir.",
+      title: website.texts["texto-108"].value,
     },
     {
-      action: "Consultar una obra",
-      description: "Desarrollos privados, edificios y obra pública.",
+      action: website.texts["texto-109"].value,
+      description: website.texts["texto-110"].value,
       href: whatsappHref("Hola Bellomo, quiero consultar por una obra."),
       icon: "building",
       id: "construction",
       media: constructionHighlights[1]?.media ?? bellomoEditorialImages.about,
-      title: "Obras pensadas para durar.",
+      title: website.texts["texto-111"].value,
     },
   ];
   const currentArea =
@@ -1863,14 +1869,12 @@ function BusinessFocus() {
             className="section-label section-label-light"
             data-motion-item="eyebrow"
           >
-            Dos áreas, una visión
-          </p>
+            <SiteText id="texto-18" /></p>
           <h2
             className="font-display mt-5 max-w-xl text-4xl leading-[0.98] tracking-[-0.04em] text-white sm:text-5xl"
             data-motion-item="heading"
           >
-            Desarrollamos oportunidades. Construimos futuro.
-          </h2>
+            <SiteText id="texto-19" /></h2>
           <div
             aria-label="Áreas Bellomo"
             className="business-tabs"
@@ -1950,16 +1954,18 @@ function BusinessFocus() {
 }
 
 function SocialRail({ footerVisible }: { footerVisible: boolean }) {
+const { content: website } = useWebsite();
+
   const links = [
     {
-      href: "https://instagram.com/bellomojujuy",
+      href: website.links["enlace-46"].value,
       icon: <InstagramIcon />,
-      label: "Instagram",
+      label: website.texts["texto-112"].value,
     },
     {
-      href: "https://facebook.com/bellomojujuy",
+      href: website.links["enlace-47"].value,
       icon: <FacebookIcon />,
-      label: "Facebook",
+      label: website.texts["texto-113"].value,
     },
   ];
 
@@ -1985,16 +1991,16 @@ function SocialRail({ footerVisible }: { footerVisible: boolean }) {
   );
 }
 
-export default function Home() {
-  const selectedProjectIds = [
-    "edificios-huasi",
-    "quintas-san-antonio",
-    "la-arbolada",
-    "san-pablo",
-  ];
-  const selectedProjects = selectedProjectIds
-    .map((id) => bellomoProjects.find((project) => project.id === id))
-    .filter((project): project is Project => project !== undefined);
+function HomeContent() {
+const { bellomoContact, bellomoEditorialImages, bellomoProjects, bellomoStats, heroSlides, propertyCategories } = useSiteData();
+
+const whatsappHref = useWhatsAppHref();
+
+const { content: website } = useWebsite();
+
+  const selectedProjects = bellomoProjects;
+const phones = bellomoContact.commercialPhones.split("·").map(phone => phone.trim()).filter(Boolean);
+const phoneHref = (phone: string) => "tel:" + phone.replace(/[^+0-9]/g, "");
   const footerRef = useRef<HTMLElement>(null);
   const footerVisibleRef = useRef(false);
   const [footerVisible, setFooterVisible] = useState(false);
@@ -2263,20 +2269,19 @@ export default function Home() {
       runningCounters.clear();
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [website]);
 
   return (
-    <main className="overflow-x-clip bg-[#f4f1ea] text-[#102a3a]">
+    <ManagedPage className="overflow-x-clip bg-[#f4f1ea] text-[#102a3a]">
       <a
         className="sr-only z-[100] bg-white p-3 text-[#07334d] focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
         href="#contenido"
       >
-        Saltar al contenido
-      </a>
+        <SiteText id="texto-20" /></a>
 
       <BellomoIntro onComplete={handleIntroComplete} />
       <Header />
-      <HeroSlider introReady={introComplete} slides={heroSlides} />
+      {heroSlides.length > 0 && <HeroSlider key={heroSlides.map(s => s.id).join(",")} introReady={introComplete || website.sections.find(s => s.id === "presentacion")?.enabled === false} slides={heroSlides} />}
 
       <section
         className="synthesis-section bg-white px-5 py-20 sm:px-8 sm:py-24 lg:px-12 lg:py-28"
@@ -2296,38 +2301,32 @@ export default function Home() {
               media={bellomoEditorialImages.about}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(3,38,58,0.72))]" />
-            <p className="synthesis-image-note">Bellomo · Jujuy</p>
+            <p className="synthesis-image-note"><SiteText id="texto-21" /></p>
           </div>
           <div className="motion-copy">
             <p className="section-label" data-motion-item="eyebrow">
-              Bellomo en síntesis
-            </p>
+              <SiteText id="texto-22" /></p>
             <h2
               className="font-display mt-5 max-w-2xl text-5xl leading-[0.96] tracking-[-0.04em] text-[#12394f] sm:text-6xl"
               data-motion-item="heading"
             >
-              Experiencia que se construye.
-            </h2>
+              <SiteText id="texto-23" /></h2>
             <p
               className="font-display mt-6 max-w-xl text-2xl leading-snug text-[#9a7542] sm:text-3xl"
               data-motion-item="body"
             >
-              Casi 50 años desarrollando espacios para vivir, invertir y crecer.
-            </p>
+              <SiteText id="texto-24" /></p>
             <p
               className="mt-6 max-w-xl text-sm leading-7 text-[#536875] sm:text-base"
               data-motion-item="body"
             >
-              Desde Jujuy, Bellomo integra desarrollo, comercialización y
-              capacidad constructiva con conocimiento del territorio y visión de
-              largo plazo.
-            </p>
+              <SiteText id="texto-25" /></p>
             <dl
               aria-label="Trayectoria Bellomo"
               className="synthesis-metrics mt-9"
               data-motion-item="action"
             >
-              {bellomoStats.slice(0, 3).map((stat) => (
+              {bellomoStats.map((stat) => (
                 <MetricCounter key={stat.label} metric={stat} />
               ))}
             </dl>
@@ -2361,22 +2360,18 @@ export default function Home() {
                 className="section-label section-label-light"
                 data-motion-item="eyebrow"
               >
-                Desarrollos seleccionados
-              </p>
+                <SiteText id="texto-26" /></p>
               <h2
                 className="font-display mt-5 max-w-3xl text-5xl leading-[0.96] tracking-[-0.04em] sm:text-6xl"
                 data-motion-item="heading"
               >
-                Proyectos con respaldo Bellomo.
-              </h2>
+                <SiteText id="texto-27" /></h2>
             </div>
             <p
               className="max-w-md text-sm leading-7 text-white/62"
               data-motion-item="body"
             >
-              Una selección breve de desarrollos presentes en el archivo local.
-              Estado y disponibilidad se confirman con el equipo.
-            </p>
+              <SiteText id="texto-28" /></p>
           </SectionReveal>
           <SectionReveal className="mt-12 sm:mt-14" delay={80} replay variant="stagger">
             <DevelopmentRail projects={selectedProjects} />
@@ -2403,22 +2398,19 @@ export default function Home() {
             className="section-label section-label-light"
             data-motion-item="eyebrow"
           >
-            Contacto
-          </p>
+            <SiteText id="texto-29" /></p>
           <div className="compact-contact-layout mt-5">
             <div className="motion-copy">
               <h2
                 className="font-display max-w-3xl text-5xl leading-[0.96] tracking-[-0.04em] sm:text-6xl"
                 data-motion-item="heading"
               >
-                Hablemos de tu próximo paso.
-              </h2>
+                <SiteText id="texto-30" /></h2>
               <p
                 className="mt-5 text-base leading-7 text-white/70"
                 data-motion-item="body"
               >
-                Conocé un desarrollo o consultanos por una obra.
-              </p>
+                <SiteText id="texto-31" /></p>
             </div>
             <div className="compact-contact-actions" data-motion-item="action">
               <a
@@ -2429,20 +2421,17 @@ export default function Home() {
                 target="_blank"
               >
                 <WhatsAppIcon />
-                WhatsApp
-              </a>
-              <a href="tel:+543884228755">
+                <SiteText id="texto-32" /></a>
+              <a href={phoneHref(phones[0] || "")}>
                 <PhoneIcon />
-                Llamar
-              </a>
+                <SiteText id="texto-34" /></a>
               <a
-                href="https://www.google.com/maps/search/?api=1&query=Gral.%20Belgrano%201383%2C%20San%20Salvador%20de%20Jujuy"
+                href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(bellomoContact.address + ", " + bellomoContact.city)}
                 rel="noopener noreferrer"
                 target="_blank"
               >
                 <LocationIcon />
-                Ubicación
-              </a>
+                <SiteText id="texto-36" /></a>
             </div>
           </div>
         </SectionReveal>
@@ -2460,10 +2449,10 @@ export default function Home() {
           <div className="compact-footer-grid">
             <div className="compact-footer-brand">
               <Brand className="h-auto w-[190px]" />
-              <p>Desarrollos inmobiliarios y construcción en Jujuy.</p>
+              <p><SiteText id="texto-37" /></p>
             </div>
             <div>
-              <h2>Ubicación</h2>
+              <h2><SiteText id="texto-38" /></h2>
               <address>
                 {bellomoContact.address}
                 <br />
@@ -2471,21 +2460,21 @@ export default function Home() {
               </address>
             </div>
             <div>
-              <h2>Contacto</h2>
-              <p>Comercializadora</p>
-              <a href="tel:+543884228755">+388 4228755</a>
-              <a href="tel:+543884331981">+388 4331981</a>
-              <p className="mt-3">Constructora</p>
-              <a href="tel:+543884234010">+388 4234010</a>
+              <h2><SiteText id="texto-39" /></h2>
+              <p><SiteText id="texto-40" /></p>
+              <a href={phoneHref(phones[0] || "")}>{phones[0]}</a>
+              <a href={phoneHref(phones[1] || phones[0] || "")}>{phones[1]}</a>
+              <p className="mt-3"><SiteText id="texto-43" /></p>
+              <a href={phoneHref(bellomoContact.constructionPhone)}>{bellomoContact.constructionPhone}</a>
             </div>
             <div>
-              <h2>Horarios</h2>
+              <h2><SiteText id="texto-45" /></h2>
               <p>{bellomoContact.weekdayHours}</p>
               <p>{bellomoContact.saturdayHours}</p>
               <div className="compact-footer-socials" aria-label="Redes sociales">
                 <a
                   aria-label="Bellomo en Instagram"
-                  href="https://instagram.com/bellomojujuy"
+                  href={website.links["enlace-46"].value}
                   rel="noopener noreferrer"
                   target="_blank"
                 >
@@ -2493,7 +2482,7 @@ export default function Home() {
                 </a>
                 <a
                   aria-label="Bellomo en Facebook"
-                  href="https://facebook.com/bellomojujuy"
+                  href={website.links["enlace-47"].value}
                   rel="noopener noreferrer"
                   target="_blank"
                 >
@@ -2503,25 +2492,25 @@ export default function Home() {
             </div>
           </div>
           <div className="compact-footer-legal">
-            <p>© {currentYear} Bellomo. Todos los derechos reservados.</p>
+            <p><SiteText id="texto-48" />{currentYear} <SiteText id="texto-49" /></p>
             <a
               aria-label="Sitio desarrollado por EverSys Solutions. Visitar Instagram"
               className="eversys-attribution"
-              href="https://www.instagram.com/eversys.solutions/"
+              href={website.links["enlace-50"].value}
               rel="noopener noreferrer"
               target="_blank"
             >
-              <span>Powered by</span>
-              <Image
+              <span><SiteText id="texto-51" /></span>
+              <Image unoptimized
                 alt=""
                 aria-hidden="true"
                 className="eversys-attribution-logo"
                 height={772}
                 sizes="24px"
-                src="/brand/eversys-isotipo-oficial-blanco.png"
+                src={website.assets["imagen-52"].value}
                 width={1467}
               />
-              <span>EverSys Solutions</span>
+              <span><SiteText id="texto-53" /></span>
             </a>
           </div>
         </SectionReveal>
@@ -2546,9 +2535,11 @@ export default function Home() {
           target="_blank"
         >
           <WhatsAppIcon className="h-6 w-6" />
-          <span className="hidden sm:inline">Consultar</span>
+          <span className="hidden sm:inline"><SiteText id="texto-54" /></span>
         </a>
       </div>
-    </main>
+    </ManagedPage>
   );
 }
+
+export default function Home() { return <HomeContent />; }
