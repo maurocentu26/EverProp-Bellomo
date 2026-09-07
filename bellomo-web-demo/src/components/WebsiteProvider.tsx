@@ -1,6 +1,7 @@
 "use client";
 import { Children, createContext, isValidElement, useContext, useEffect, useState, type ReactNode } from "react";
 import { defaultWebsite } from "@/lib/website-content";
+import Promotions from "./Promotions";
 import * as original from "@/data/bellomo";
 const Context = createContext({ content: defaultWebsite, preview: false });
 export function WebsiteProvider({ children }: { children: ReactNode }) {
@@ -53,10 +54,10 @@ export function ManagedPage({ children, className }: { children: ReactNode; clas
     </section>);
   return <main className={className}>
     {nodes.filter(node => content.sections.find(s => s.id === node.id)?.enabled !== false).map(node => <div key={node.index} style={{ display: "contents" }}>
-      {node.id === "pie" && customSections}
+      {node.id === "pie" && <><Promotions/>{customSections}</>}
       {node.child}
 
     </div>)}
-    {content.sections.find(s => s.id === "pie")?.enabled === false && customSections}
+    {content.sections.find(s => s.id === "pie")?.enabled === false && <><Promotions/>{customSections}</>}
   </main>;
 }

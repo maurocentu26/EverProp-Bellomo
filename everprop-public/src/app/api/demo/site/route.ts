@@ -43,6 +43,8 @@ function valid(value: unknown, sample: unknown, key = ""): boolean {
 function validContent(content: WebsiteContent) {
   if (!valid(content, defaultWebsite)) return false;
   if (!content.customSections.every(section => valid(section, { id: "", title: "", body: "", image: "", buttonLabel: "", href: "", enabled: true }))) return false;
+  if (!content.promotions.every(promo => valid(promo, { id: "", title: "", eyebrow: "", description: "", image: "", conditions: "", buttonLabel: "", href: "", enabled: true }) && promo.title.trim().length > 0 && promo.title.length <= 140 && promo.conditions.length <= 1200)) return false;
+  if (new Set(content.promotions.map(promo => promo.id)).size !== content.promotions.length) return false;
   return Object.values(content.links).every(item => valid(item.value, "", "href"))
     && Object.values(content.assets).every(item => valid(item.value, "", "src"))
     && new Set(content.sections.map(s => s.id)).size === content.sections.length;

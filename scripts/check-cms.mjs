@@ -25,6 +25,17 @@ try {
   const invalid=clone(draft);invalid.links[Object.keys(invalid.links)[0]].value='javascript:alert(1)';
   assert.equal((await fetchAsAdmin(api,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:current.revision,action:'publish',content:invalid})})).status,400,'Reject unsafe link');
   assert.equal((await fetchAsAdmin(api,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:0,action:'save',content:draft})})).status,409,'Prevent overwrite by stale editor');
+  const promoContent=clone(original.published);
+  promoContent.promotions=[{id:'qa-promo',title:'Promoción de prueba',eyebrow:'Demo',description:'Prueba',image:'/images/demo-generated/casa.webp',conditions:'Solo demo',buttonLabel:'Consultar',href:'#contacto',enabled:true}];
+  await change('save',promoContent);
+  assert.ok(!(await read(pub)).content.promotions.some(p=>p.id==='qa-promo'),'Promo draft stays private');
+  await change('publish',promoContent);
+  assert.equal((await read(pub)).content.promotions[0].enabled,true,'Promotion published');
+  promoContent.promotions[0].enabled=false;await change('publish',promoContent);
+  assert.equal((await read(pub)).content.promotions[0].enabled,false,'Promotion hidden');
+  promoContent.promotions[0].href='javascript:alert(1)';
+  assert.equal((await fetchAsAdmin(api,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:current.revision,action:'publish',content:promoContent})})).status,400,'Reject unsafe promotion link');
+  console.log('PASS: promotions draft, publish, hide and safe links.');
   console.log('PASS: draft isolation, preview, publish, catalog visibility, bot visibility, URL validation, stale revision protection.');
 } finally {
   await change('publish',original.published);
