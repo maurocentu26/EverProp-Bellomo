@@ -64,28 +64,28 @@ const CATEGORIES: AssetCategoryOption[] = [
     title: "Loteos",
     subtitle: "Lotes en barrios privados y desarrollos",
     icon: MapPin,
-    color: "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100/70",
+    color: "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100/70 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60",
   },
   {
     id: "local",
     title: "Locales",
     subtitle: "Locales comerciales y espacios gastronómicos",
     icon: Store,
-    color: "text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100/70",
+    color: "text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100/70 dark:text-indigo-400 dark:border-indigo-800 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60",
   },
   {
     id: "cochera",
     title: "Cocheras",
     subtitle: "Espacios de estacionamiento por piso o número",
     icon: Car,
-    color: "text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100/70",
+    color: "text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100/70 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-950/60",
   },
   {
     id: "tradicional",
     title: "Inmobiliaria tradicional",
     subtitle: "Casas, departamentos, reventa y alquileres",
     icon: Home,
-    color: "text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100/70",
+    color: "text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100/70 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-950/60",
   },
 ];
 
@@ -341,13 +341,13 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
     <div className="max-w-5xl mx-auto space-y-6">
       <Link
         href="/admin/leads"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-100"
       >
         <ArrowLeft className="h-4 w-4" /> Volver a la lista de leads
       </Link>
 
-      <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-lg rounded-2xl p-0">
-        <div className="bg-slate-950 px-6 py-5 text-white">
+      <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-lg rounded-2xl p-0 dark:border-slate-800 dark:bg-card">
+        <div className="bg-slate-950 px-6 py-5 text-white border-b border-slate-800">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
               <Sparkles size={20} aria-hidden="true" />
@@ -365,13 +365,13 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
           <form id="new-lead-page-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
               {/* ── Seccion 1: Datos basicos del lead ── */}
-              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm" aria-labelledby="lead-basic-data">
-                <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-basic-data">
+                <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-slate-800 pb-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300">
                     <User size={16} aria-hidden="true" />
                   </span>
                   <div>
-                    <h2 id="lead-basic-data" className="text-sm font-bold text-slate-900">Datos básicos del lead</h2>
+                    <h2 id="lead-basic-data" className="text-sm font-bold text-slate-900 dark:text-slate-100">Datos básicos del lead</h2>
                   </div>
                 </div>
 
@@ -380,7 +380,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="lead-name" className="text-xs font-semibold text-slate-700">
+                      <FieldLabel htmlFor="lead-name" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Nombre completo <span className="text-rose-500">*</span>
                       </FieldLabel>
                       <Input
@@ -390,7 +390,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                         autoFocus
                         aria-invalid={fieldState.invalid}
                         placeholder="Ejemplo: Marcos Gallardo"
-                        className="h-10 border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                        className="h-10 border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
                     </Field>
@@ -403,7 +403,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                     control={form.control}
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel htmlFor="lead-phone" className="text-xs font-semibold text-slate-700">
+                        <FieldLabel htmlFor="lead-phone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                           WhatsApp / Teléfono
                         </FieldLabel>
                         <div className="relative">
@@ -416,7 +416,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                             autoComplete="tel"
                             aria-invalid={fieldState.invalid}
                             placeholder="+54 9 11..."
-                            className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                            className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                           />
                         </div>
                         {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
@@ -429,7 +429,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                     control={form.control}
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel htmlFor="lead-email" className="text-xs font-semibold text-slate-700">
+                        <FieldLabel htmlFor="lead-email" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                           Email
                         </FieldLabel>
                         <div className="relative">
@@ -442,7 +442,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                             autoComplete="email"
                             aria-invalid={fieldState.invalid}
                             placeholder="lead@ejemplo.com"
-                            className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                            className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                           />
                         </div>
                         {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
@@ -457,14 +457,14 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                     control={form.control}
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel htmlFor="lead-origin" className="text-xs font-semibold text-slate-700">
+                        <FieldLabel htmlFor="lead-origin" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                           Origen del contacto
                         </FieldLabel>
                         <select
                           {...field}
                           id="lead-origin"
                           aria-invalid={fieldState.invalid}
-                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                         >
                           {ORIGINS.map((origin) => <option key={origin} value={origin}>{origin}</option>)}
                         </select>
@@ -478,13 +478,13 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                     control={form.control}
                     render={({ field }) => (
                       <Field>
-                        <FieldLabel htmlFor="lead-stage" className="text-xs font-semibold text-slate-700">
+                        <FieldLabel htmlFor="lead-stage" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                           Estado comercial
                         </FieldLabel>
                         <select
                           {...field}
                           id="lead-stage"
-                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                         >
                           <option value="new">Nuevo</option>
                           <option value="contacted">Contactado</option>
@@ -502,7 +502,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="lead-notes" className="text-xs font-semibold text-slate-700">
+                      <FieldLabel htmlFor="lead-notes" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Notas / Comentarios
                       </FieldLabel>
                       <Textarea
@@ -511,7 +511,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                         rows={3}
                         aria-invalid={fieldState.invalid}
                         placeholder="Información relevante de la consulta, preferencias, presupuesto estimado..."
-                        className="border-slate-300 bg-white p-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                        className="border-slate-300 bg-white p-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                       />
                       {fieldState.invalid && <FieldError errors={[fieldState.error]} className="text-xs font-medium text-rose-600" />}
                     </Field>
@@ -524,13 +524,13 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                     control={form.control}
                     render={({ field }) => (
                       <Field>
-                        <FieldLabel htmlFor="lead-agent" className="text-xs font-semibold text-slate-700">
+                        <FieldLabel htmlFor="lead-agent" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                           Asesor comercial asignado
                         </FieldLabel>
                         <select
                           {...field}
                           id="lead-agent"
-                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                          className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                         >
                           <option value="">Sin asignar (Global)</option>
                           {advisorList.map((advisor) => (
@@ -544,21 +544,21 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
               </section>
 
               {/* ── Seccion 2: Interes inmobiliario (Opcional) ── */}
-              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm" aria-labelledby="lead-interest-data">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-interest-data">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/80 dark:text-violet-300">
                       <Building2 size={16} aria-hidden="true" />
                     </span>
-                    <h2 id="lead-interest-data" className="text-sm font-bold text-slate-900">Interés inmobiliario</h2>
+                    <h2 id="lead-interest-data" className="text-sm font-bold text-slate-900 dark:text-slate-100">Interés inmobiliario</h2>
                   </div>
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
                     Opcional
                   </span>
                 </div>
 
                 <Field>
-                  <FieldLabel className="text-xs font-semibold text-slate-700">Categoría de interés</FieldLabel>
+                  <FieldLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">Categoría de interés</FieldLabel>
                   <div className="grid grid-cols-2 gap-2 mt-1">
                     {CATEGORIES.map((category) => {
                       const Icon = category.icon;
@@ -572,8 +572,8 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                           className={cn(
                             "flex items-center gap-2.5 rounded-lg border p-2.5 text-left transition-all shadow-sm",
                             isSelected
-                              ? "border-blue-500 bg-blue-50 text-blue-900 ring-2 ring-blue-500/20"
-                              : "border-slate-200 bg-white hover:border-slate-300 text-slate-700",
+                              ? "border-blue-500 bg-blue-50 text-blue-900 ring-2 ring-blue-500/20 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-500"
+                              : "border-slate-200 bg-white hover:border-slate-300 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-900",
                           )}
                         >
                           <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md border", category.color)}>
@@ -582,7 +582,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                           <div className="min-w-0 flex-1">
                             <span className="block text-xs font-bold leading-tight truncate">{category.title}</span>
                           </div>
-                          {isSelected && <Check size={14} className="shrink-0 text-blue-600" aria-hidden="true" />}
+                          {isSelected && <Check size={14} className="shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />}
                         </button>
                       );
                     })}
@@ -590,14 +590,14 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="lead-project" className="text-xs font-semibold text-slate-700">
+                  <FieldLabel htmlFor="lead-project" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Desarrollo / Proyecto
                   </FieldLabel>
                   <select
                     id="lead-project"
                     value={selectedProjectId}
                     onChange={(event) => handleProjectSelect(event.target.value)}
-                    className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                   >
                     <option value="">Sin proyecto identificado</option>
                     {allProjects.map((project) => (
@@ -607,18 +607,18 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="lead-property-search" className="text-xs font-semibold text-slate-700">
+                  <FieldLabel htmlFor="lead-property-search" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Propiedad específica
                   </FieldLabel>
 
                   {selectedAsset && (
-                    <div className="my-2 flex items-center gap-2.5 rounded-lg border border-blue-300 bg-blue-50 p-2.5 shadow-sm">
+                    <div className="my-2 flex items-center gap-2.5 rounded-lg border border-blue-300 bg-blue-50 p-2.5 shadow-sm dark:border-blue-900 dark:bg-blue-950/40">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
                         <Building2 size={14} aria-hidden="true" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 truncate">{selectedAsset.title}</p>
-                        <p className="text-[10px] text-slate-500 truncate">
+                        <p className="text-xs font-bold text-slate-900 truncate dark:text-slate-100">{selectedAsset.title}</p>
+                        <p className="text-[10px] text-slate-500 truncate dark:text-slate-400">
                           {selectedProject?.name ?? `${selectedAsset.neighborhood}, ${selectedAsset.city}`}
                         </p>
                       </div>
@@ -627,7 +627,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                         variant="ghost"
                         size="icon"
                         onClick={() => setSelectedAsset(null)}
-                        className="h-7 w-7 shrink-0 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                        className="h-7 w-7 shrink-0 text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                         aria-label="Quitar propiedad seleccionada"
                       >
                         <X size={14} aria-hidden="true" />
@@ -642,7 +642,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                       value={assetSearchQuery}
                       onChange={(event) => setAssetSearchQuery(event.target.value)}
                       placeholder="Buscar lote, manzana o barrio..."
-                      className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm"
+                      className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                     />
                   </div>
 
@@ -659,25 +659,25 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
                             className={cn(
                               "flex w-full items-center gap-2.5 rounded-lg border p-2 text-left transition-all",
                               isSelected
-                                ? "border-blue-400 bg-blue-50/80 shadow-sm"
-                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                                ? "border-blue-400 bg-blue-50/80 dark:border-blue-700 dark:bg-blue-950/50"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:bg-slate-900",
                             )}
                           >
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-blue-700 border border-slate-200">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-blue-700 border border-slate-200 dark:bg-slate-900 dark:text-blue-400 dark:border-slate-800">
                               {asset.unitNumber || asset.title.slice(0, 3)}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block text-xs font-semibold text-slate-900 truncate">{asset.title}</span>
-                              <span className="block text-[10px] text-slate-500 truncate">
+                              <span className="block text-xs font-semibold text-slate-900 truncate dark:text-slate-100">{asset.title}</span>
+                              <span className="block text-[10px] text-slate-500 truncate dark:text-slate-400">
                                 {project?.name ? `${project.name} · ` : ""}{asset.neighborhood}
                               </span>
                             </span>
-                            {isSelected && <Check size={14} className="shrink-0 text-blue-600" aria-hidden="true" />}
+                            {isSelected && <Check size={14} className="shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />}
                           </button>
                         );
                       })
                     ) : (
-                      <p className="rounded-lg border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400">
+                      <p className="rounded-lg border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
                         No se encontraron propiedades con esos filtros.
                       </p>
                     )}
@@ -688,12 +688,12 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
           </form>
         </CardContent>
 
-        <CardFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <CardFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/60">
           <Button
             type="button"
             variant="outline"
             onClick={() => router.push("/admin/leads")}
-            className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-100"
+            className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Cancelar
           </Button>
@@ -703,7 +703,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
               type="button"
               variant="ghost"
               onClick={handleReset}
-              className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800"
+              className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
             >
               Limpiar formulario
             </Button>

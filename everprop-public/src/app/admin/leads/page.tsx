@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useDashboardMode } from "@/lib/dashboard-context";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
+import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 
 type LeadStageFilter = "all" | "new" | "contacted" | "visiting" | "negotiation" | "closing";
 type AssetTypeFilter = "all" | "lote" | "departamento" | "comercial" | "tradicional";
@@ -59,6 +60,7 @@ export default function AllLeadsPage() {
   const [followUpFilter, setFollowUpFilter] = useState<FollowUpFilter>("all");
   const [isLoaded, setIsLoaded] = useState(false);
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
+  const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -257,7 +259,15 @@ export default function AllLeadsPage() {
     }
 
     toast.success("Seguimiento registrado con éxito.");
+    const recordedLead = followUpLead;
     setFollowUpLead(null);
+    setStageUpdateLead(recordedLead);
+  }
+
+  async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
+    if (!stageUpdateLead) return;
+    await handleStageChange(stageUpdateLead.id, newStage);
+    setStageUpdateLead(null);
   }
 
   if (isEngineer) {
@@ -424,6 +434,17 @@ export default function AllLeadsPage() {
           lead={followUpLead}
           onClose={() => setFollowUpLead(null)}
           onConfirm={handleConfirmFollowUp}
+        />
+      )}
+
+      {/* Modal de Actualización de Etapa Post-Seguimiento */}
+      {stageUpdateLead && (
+        <LeadStageUpdateModal
+          open={Boolean(stageUpdateLead)}
+          leadName={stageUpdateLead.name}
+          currentStage={stageUpdateLead.stage}
+          onClose={() => setStageUpdateLead(null)}
+          onConfirm={handleConfirmStageUpdate}
         />
       )}
     </div>

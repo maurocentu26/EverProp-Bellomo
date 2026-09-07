@@ -17,6 +17,9 @@ export type LeadInterest = {
   category?: LeadInterestCategory;
   projectId?: string;
   propertyId?: string;
+  propertyTitle?: string;
+  status?: string;
+  interestLevel?: string;
   unitId?: string;
   preferences?: string;
   notes?: string;

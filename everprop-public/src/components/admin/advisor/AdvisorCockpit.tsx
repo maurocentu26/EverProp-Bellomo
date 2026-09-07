@@ -42,11 +42,13 @@ import {
   loadEverpropLeads, 
   loadEverpropCatalog, 
   updateEverpropLead, 
+  updateEverpropLeadPropertyStatus,
   createEverpropLeadFollowUp,
   loadEverpropAllFollowUps,
 } from "@/lib/everprop-api";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
+import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Badge from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,6 +62,14 @@ const STAGE_OPTIONS: { id: Lead["stage"]; label: string; apiCode: string; color:
   { id: "closing", label: "Cerrado / Ganado", apiCode: "WON", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
 ];
 
+const PROPERTY_STATUS_OPTIONS = [
+  { id: "ACTIVE", label: "Interesado", color: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300" },
+  { id: "VISITING", label: "En Visita", color: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300" },
+  { id: "NEGOTIATION", label: "Negociando", color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300" },
+  { id: "WON", label: "Reservado", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" },
+  { id: "LOST", label: "Descartado", color: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-300" },
+];
+
 export default function AdvisorCockpit() {
   const { user } = useCurrentSession();
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -69,6 +79,8 @@ export default function AdvisorCockpit() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQueueFilter, setActiveQueueFilter] = useState<"all" | "overdue" | "today" | "new">("all");
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
+  const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
+  const [selectedPropertyByLead, setSelectedPropertyByLead] = useState<Record<string, string>>({});
 
   // Carga de datos inicial
   useEffect(() => {
@@ -297,7 +309,43 @@ export default function AdvisorCockpit() {
     }
 
     toast.success("Seguimiento registrado con éxito.");
+    const recordedLead = followUpLead;
     setFollowUpLead(null);
+    setStageUpdateLead(recordedLead);
+  }
+
+  // Confirmación de nueva etapa post-seguimiento
+  async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
+    if (!stageUpdateLead) return;
+    await handleStageChange(stageUpdateLead.id, newStage);
+    setStageUpdateLead(null);
+  }
+
+  // Cambio de estado específico de una propiedad vinculada
+  async function handlePropertyStatusChange(leadId: string, propertyId: string, newStatus: string) {
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id !== leadId) return l;
+        const currentInterests = l.interests || [];
+        const exists = currentInterests.some((i) => i.propertyId === propertyId);
+        const updatedInterests = exists
+          ? currentInterests.map((i) => (i.propertyId === propertyId ? { ...i, status: newStatus } : i))
+          : [...currentInterests, { id: propertyId, companyId: "c1", propertyId, status: newStatus, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }];
+        return { ...l, interests: updatedInterests };
+      })
+    );
+
+    const statusObj = PROPERTY_STATUS_OPTIONS.find((s) => s.id === newStatus);
+    toast.success(`Estado del lote actualizado a "${statusObj?.label || newStatus}"`);
+
+    if (!isMockDataMode) {
+      try {
+        await updateEverpropLeadPropertyStatus(leadId, propertyId, newStatus);
+      } catch (err) {
+        console.error("Error al actualizar estado de la propiedad:", err);
+        toast.error("Error al sincronizar estado de la propiedad con el servidor.");
+      }
+    }
   }
 
   if (!isLoaded) {
@@ -514,7 +562,11 @@ export default function AdvisorCockpit() {
             ) : (
               priorityQueue.slice(0, 15).map(({ lead, state, isOverdue, isDueToday }) => {
                 const cleanPhone = lead.phone?.replace(/\D/g, "");
-                const matchedProperty = properties.find((p) => lead.propertyIds?.includes(p.id));
+                const activePropId = selectedPropertyByLead[lead.id] || lead.propertyIds?.[0];
+                const matchedProperty = properties.find((p) => p.id === activePropId);
+                const matchedInterest = lead.interests?.find((i) => i.propertyId === activePropId);
+                const currentPropStatus = matchedInterest?.status || "ACTIVE";
+                const currentPropStatusObj = PROPERTY_STATUS_OPTIONS.find((s) => s.id === currentPropStatus) || PROPERTY_STATUS_OPTIONS[0];
                 const currentStageObj = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
 
                 const whatsappText = encodeURIComponent(
@@ -527,19 +579,19 @@ export default function AdvisorCockpit() {
                   <article
                     key={lead.id}
                     className={cn(
-                      "rounded-2xl border bg-white p-4 shadow-sm transition-all sm:p-5",
+                      "rounded-2xl border bg-white p-4 shadow-sm transition-all sm:p-5 dark:bg-card dark:border-border",
                       isOverdue
-                        ? "border-rose-200 hover:border-rose-400"
+                        ? "border-rose-200 hover:border-rose-400 dark:border-rose-900/60"
                         : isDueToday
-                        ? "border-amber-200 hover:border-amber-400"
-                        : "border-slate-200 hover:border-blue-300"
+                        ? "border-amber-200 hover:border-amber-400 dark:border-amber-900/60"
+                        : "border-slate-200 hover:border-blue-300 dark:border-border"
                     )}
                   >
                     {/* Cabecera de la Card: Cliente, Avatar y Prioridad */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className="size-10 shrink-0 border border-slate-200">
-                          <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-700">
+                        <Avatar className="size-10 shrink-0 border border-slate-200 dark:border-slate-800">
+                          <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                             {lead.name.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -547,11 +599,11 @@ export default function AdvisorCockpit() {
                         <div className="min-w-0">
                           <Link
                             href={`/admin/leads/${lead.id}`}
-                            className="truncate text-base font-bold text-slate-900 hover:text-blue-600 block leading-snug"
+                            className="truncate text-base font-bold text-slate-900 hover:text-blue-600 block leading-snug dark:text-slate-100 dark:hover:text-blue-400"
                           >
                             {lead.name}
                           </Link>
-                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500">
+                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                             <MapPin className="size-3 text-slate-400 shrink-0" />
                             <span className="truncate">{lead.origin}</span>
                           </div>
@@ -561,62 +613,122 @@ export default function AdvisorCockpit() {
                       {/* Badge de Urgencia / Estado */}
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {isOverdue && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300">
                             <AlertTriangle className="size-3 text-rose-600 shrink-0" />
                             Vencido ({state.elapsedDays}d)
                           </span>
                         )}
                         {isDueToday && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
                             <Clock3 className="size-3 text-amber-600 shrink-0" />
                             Para Hoy
                           </span>
                         )}
                         {lead.stage === "new" && !isOverdue && !isDueToday && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300">
                             Nuevo
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Fila Intermedia: Propiedad de Interés y Selector de Etapa */}
+                    {/* Switcher de Propiedades si el lead tiene múltiples intereses */}
+                    {lead.propertyIds && lead.propertyIds.length > 1 && (
+                      <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
+                          Propiedades ({lead.propertyIds.length}):
+                        </span>
+                        {lead.propertyIds.map((propId, idx) => {
+                          const prop = properties.find((p) => p.id === propId);
+                          const isSelected = activePropId === propId;
+                          const propInterest = lead.interests?.find((i) => i.propertyId === propId);
+                          const propStatus = propInterest?.status || "ACTIVE";
+                          const propStatusObj = PROPERTY_STATUS_OPTIONS.find((s) => s.id === propStatus);
+                          return (
+                            <button
+                              key={propId}
+                              type="button"
+                              onClick={() => setSelectedPropertyByLead((prev) => ({ ...prev, [lead.id]: propId }))}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all border shadow-2xs",
+                                isSelected
+                                  ? "border-blue-500 bg-blue-50 text-blue-900 font-bold dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-700"
+                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                              )}
+                            >
+                              <span className="truncate max-w-[130px]">{prop?.title || `Inmueble #${idx + 1}`}</span>
+                              {propStatusObj && propStatus !== "ACTIVE" && (
+                                <span className={cn("text-[9px] px-1.5 py-0.2 rounded font-bold uppercase", propStatusObj.color)}>
+                                  {propStatusObj.label}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Fila Intermedia: Propiedad de Interés y Selectores de Estado */}
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {/* Propiedad vinculada */}
                       {matchedProperty ? (
-                        <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 border border-slate-100 text-xs">
+                        <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 border border-slate-100 dark:border-slate-800 text-xs">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <Building2 className="size-3.5 text-slate-400 shrink-0" />
-                            <span className="font-semibold text-slate-800 truncate">{matchedProperty.title}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{matchedProperty.title}</span>
                           </div>
-                          <span className="font-bold text-blue-600 shrink-0">
+                          <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">
                             {matchedProperty.currency} {matchedProperty.price.toLocaleString()}
                           </span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 px-3 py-2 border border-slate-100 text-xs text-slate-400">
+                        <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
                           <Building2 className="size-3.5 text-slate-300 shrink-0" />
                           <span>Sin propiedad vinculada</span>
                         </div>
                       )}
 
-                      {/* Selector de Etapa Inline */}
-                      <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-1.5 border border-slate-100 text-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Etapa:</span>
-                        <select
-                          value={lead.stage}
-                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"])}
-                          className={cn(
-                            "h-7 rounded-lg border px-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs",
-                            currentStageObj.color
-                          )}
-                        >
-                          {STAGE_OPTIONS.map((opt) => (
-                            <option key={opt.id} value={opt.id}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                      {/* Selectores de Estado: Estado del Lote y Etapa del Lead */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {/* Selector de Estado de la Propiedad */}
+                        <div className="flex items-center justify-between gap-1 rounded-xl bg-slate-50 dark:bg-slate-900 px-2 py-1.5 border border-slate-100 dark:border-slate-800 text-xs">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Lote:</span>
+                          <select
+                            value={currentPropStatus}
+                            onChange={(e) => activePropId && handlePropertyStatusChange(lead.id, activePropId, e.target.value)}
+                            className={cn(
+                              "h-7 w-full rounded-lg border px-1 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
+                              currentPropStatusObj.color
+                            )}
+                            title="Estado comercial de este lote"
+                          >
+                            {PROPERTY_STATUS_OPTIONS.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Selector de Etapa del Lead */}
+                        <div className="flex items-center justify-between gap-1 rounded-xl bg-slate-50 dark:bg-slate-900 px-2 py-1.5 border border-slate-100 dark:border-slate-800 text-xs">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Lead:</span>
+                          <select
+                            value={lead.stage}
+                            onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"])}
+                            className={cn(
+                              "h-7 w-full rounded-lg border px-1 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
+                              currentStageObj.color
+                            )}
+                            title="Etapa general del lead"
+                          >
+                            {STAGE_OPTIONS.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
 
@@ -828,6 +940,17 @@ export default function AdvisorCockpit() {
           lead={followUpLead}
           onClose={() => setFollowUpLead(null)}
           onConfirm={handleConfirmFollowUp}
+        />
+      )}
+
+      {/* Modal de Actualización de Etapa Post-Seguimiento */}
+      {stageUpdateLead && (
+        <LeadStageUpdateModal
+          open={Boolean(stageUpdateLead)}
+          leadName={stageUpdateLead.name}
+          currentStage={stageUpdateLead.stage}
+          onClose={() => setStageUpdateLead(null)}
+          onConfirm={handleConfirmStageUpdate}
         />
       )}
     </div>

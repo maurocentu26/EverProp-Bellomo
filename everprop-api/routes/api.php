@@ -40,6 +40,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
 
         Route::apiResource('leads', AdminLeadController::class);
         Route::post('/leads/{lead}/properties', [AdminLeadController::class, 'attachProperty'])->name('leads.properties.attach');
+        Route::patch('/leads/{lead}/properties/{property}', [AdminLeadController::class, 'updateProperty'])->name('leads.properties.update');
         Route::delete('/leads/{lead}/properties/{property}', [AdminLeadController::class, 'detachProperty'])->name('leads.properties.detach');
         Route::get('/follow-ups', [AdminLeadFollowUpController::class, 'indexAll'])->name('follow-ups.index-all');
         Route::get('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'index'])->name('leads.follow-ups.index');

@@ -434,6 +434,7 @@ export type ApiLead = {
     currency?: string | null;
     category?: string | null;
     interest_level?: string | null;
+    status?: string | null;
     notes?: string | null;
   }>;
   created_at?: string;
@@ -455,6 +456,18 @@ export function mapLead(apiLead: ApiLead): Lead {
     ? apiLead.property_ids
     : (apiLead.properties || []).map((p) => p.id);
 
+  const interests = (apiLead.properties || []).map((p) => ({
+    id: p.id,
+    companyId: "c1",
+    propertyId: p.id,
+    propertyTitle: p.title,
+    status: p.status || "ACTIVE",
+    interestLevel: p.interest_level || "MEDIUM",
+    notes: p.notes || undefined,
+    createdAt: apiLead.created_at || new Date().toISOString(),
+    updatedAt: apiLead.updated_at || new Date().toISOString(),
+  }));
+
   return {
     id: apiLead.id,
     companyId: "c1",
@@ -467,6 +480,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     phone: apiLead.phone || undefined,
     email: apiLead.email || undefined,
     notes: cleanText(apiLead.notes) || undefined,
+    interests,
     agentId: apiLead.agent_id ? String(apiLead.agent_id) : undefined,
     agentName: apiLead.agent_name || undefined,
   };
@@ -810,4 +824,36 @@ export async function clearAllEverpropNotifications(): Promise<void> {
     method: "DELETE",
   });
 }
+
+export const STAGE_FRONTEND_TO_API: Record<string, string> = {
+  new: "NEW",
+  contacted: "CONTACTED",
+  visiting: "VISIT_SCHEDULED",
+  negotiation: "NEGOTIATION",
+  closing: "WON",
+};
+
+export async function updateEverpropLeadStage(leadPublicId: string, stage: string) {
+  const apiStage = STAGE_FRONTEND_TO_API[stage] || stage.toUpperCase();
+  return apiFetch<{ status: string; data: any }>(`/api/v1/admin/leads/${leadPublicId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ stage: apiStage }),
+  });
+}
+
+export async function updateEverpropLeadPropertyStatus(
+  leadPublicId: string,
+  propertyPublicId: string,
+  status: string
+) {
+  return apiFetch<{ status: string; data: any }>(
+    `/api/v1/admin/leads/${leadPublicId}/properties/${propertyPublicId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }
+  );
+}
+
+
 

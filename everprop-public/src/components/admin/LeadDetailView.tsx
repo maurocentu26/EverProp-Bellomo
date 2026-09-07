@@ -61,6 +61,7 @@ import { LeadAdvisorEditor } from "@/components/admin/LeadAdvisorEditor";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
 import { LeadFollowUpTimeline } from "@/components/admin/LeadFollowUpTimeline";
+import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 import { NewLeadDrawer } from "@/components/admin/NewLeadDrawer";
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
@@ -85,6 +86,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const [completingDrawerOpen, setCompletingDrawerOpen] = useState(false);
   const [interestEditor, setInterestEditor] = useState<InterestEditorState>(null);
   const [interestToDelete, setInterestToDelete] = useState<LeadInterest | null>(null);
+  const [stageUpdateModalOpen, setStageUpdateModalOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -359,6 +361,42 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success(
       followUp.type === "note" ? "Nota agregada al historial" : "Seguimiento comercial registrado",
     );
+    setStageUpdateModalOpen(true);
+  }
+
+  async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
+    if (!lead) return;
+    const stageApiMap: Record<string, string> = {
+      contacted: "CONTACTED",
+      visiting: "VISIT_SCHEDULED",
+      negotiation: "NEGOTIATION",
+      closing: "WON",
+    };
+    const stageLabels: Record<string, string> = {
+      contacted: "Contactado",
+      visiting: "Visita Agendada",
+      negotiation: "Negociación",
+      closing: "Cierre / Ganado",
+    };
+
+    const updatedLead: Lead = {
+      ...lead,
+      stage: newStage,
+      lastActivity: new Date().toISOString(),
+    };
+    updateLeadData(updatedLead);
+    setStageUpdateModalOpen(false);
+    toast.success(`Etapa comercial actualizada a "${stageLabels[newStage] || newStage}"`);
+
+    if (!isMockDataMode) {
+      try {
+        await updateEverpropLead(lead.id, {
+          stage: stageApiMap[newStage] || "CONTACTED",
+        });
+      } catch (err) {
+        console.error("Error al actualizar etapa en backend:", err);
+      }
+    }
   }
 
   if (!lead) return null;
@@ -632,6 +670,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       {profileEditorOpen && <LeadProfileEditor key={lead.lastActivity} lead={lead} onClose={() => setProfileEditorOpen(false)} onSave={handleSaveProfile} />}
       {interestEditor && <LeadInterestEditor key={interestEditor.mode === "edit" ? interestEditor.interest.id : "new-interest"} companyId={lead.companyId} interest={interestEditor.mode === "edit" ? interestEditor.interest : undefined} projects={allProjects} properties={allProperties} onClose={() => setInterestEditor(null)} onSave={handleSaveInterest} />}
       {followUpEditorOpen && <LeadFollowUpEditor lead={lead} onClose={() => setFollowUpEditorOpen(false)} onConfirm={handleSaveFollowUp} />}
+      {lead && (
+        <LeadStageUpdateModal
+          open={stageUpdateModalOpen}
+          leadName={lead.name}
+          currentStage={lead.stage}
+          onClose={() => setStageUpdateModalOpen(false)}
+          onConfirm={handleConfirmStageUpdate}
+        />
+      )}
       {advisorEditorOpen && currentUser?.role === "ADMIN" && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
 
       <Dialog open={Boolean(interestToDelete)} onOpenChange={(open) => !open && setInterestToDelete(null)}>
