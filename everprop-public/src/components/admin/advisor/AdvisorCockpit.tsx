@@ -20,15 +20,18 @@ import {
   ArrowRight,
   Mail,
   Lightbulb,
-  Building2
+  Building2,
+  BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
   type Lead, 
   type LeadFollowUp, 
   type Property, 
+  type Project,
   leads as sampleLeads, 
-  properties as sampleProperties 
+  properties as sampleProperties,
+  projects as sampleProjects 
 } from "@/data/admin-sample";
 import { 
   loadLeadFollowUpList, 
@@ -47,6 +50,8 @@ import {
 } from "@/lib/everprop-api";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
+import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
+import { AdminMonthBalanceWidget } from "@/components/admin/advisor/AdminMonthBalanceWidget";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Badge from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,10 +70,14 @@ export default function AdvisorCockpit() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [properties, setProperties] = useState<Property[]>(sampleProperties);
+  const [projects, setProjects] = useState<Project[]>(sampleProjects);
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQueueFilter, setActiveQueueFilter] = useState<"all" | "overdue" | "today" | "new">("all");
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
+  const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
+  const [selectedPropertyByLead, setSelectedPropertyByLead] = useState<Record<string, string>>({});
+  const [showMonthBalance, setShowMonthBalance] = useState(false);
 
   // Carga de datos inicial
   useEffect(() => {
@@ -78,18 +87,22 @@ export default function AdvisorCockpit() {
       let loadedLeads: Lead[] = [];
       let loadedFollowUps: LeadFollowUp[] = [];
       let loadedProperties: Property[] = sampleProperties;
+      let loadedProjects: Project[] = sampleProjects;
 
       if (!isMockDataMode) {
         try {
           const [apiLeads, catalog, apiFollowUps] = await Promise.all([
             loadEverpropLeads(),
-            loadEverpropCatalog().catch(() => ({ properties: sampleProperties })),
+            loadEverpropCatalog().catch(() => ({ properties: sampleProperties, projects: sampleProjects })),
             loadEverpropAllFollowUps().catch(() => []),
           ]);
           if (active) {
             loadedLeads = apiLeads;
             if (catalog.properties && catalog.properties.length > 0) {
               loadedProperties = catalog.properties;
+            }
+            if (catalog.projects && catalog.projects.length > 0) {
+              loadedProjects = catalog.projects;
             }
             const localFollowUps = loadLeadFollowUpList([], "c1");
             loadedFollowUps = apiFollowUps.length > 0 ? apiFollowUps : localFollowUps;
@@ -108,6 +121,7 @@ export default function AdvisorCockpit() {
         setLeads(loadedLeads);
         setFollowUps(loadedFollowUps);
         setProperties(loadedProperties);
+        setProjects(loadedProjects);
         setIsLoaded(true);
       }
     }
@@ -132,9 +146,9 @@ export default function AdvisorCockpit() {
     });
   }, []);
 
-  // Filtrar leads del asesor comercial
+  // Filtrar leads del asesor comercial (si es admin, ve todos los leads de la empresa)
   const myLeads = useMemo(() => {
-    if (!user) return leads;
+    if (!user || user.role === "ADMIN") return leads;
     const filtered = leads.filter((lead) => {
       if (!lead.agentId) return true; // Mostrar también sin asignar si está en cola
       return String(lead.agentId) === String(user.id);
@@ -243,6 +257,15 @@ export default function AdvisorCockpit() {
     const targetLead = leads.find((l) => l.id === leadId);
     if (!targetLead) return;
 
+    // Validación comercial: No se puede cambiar de etapa sin haber realizado al menos un seguimiento previo
+    const leadFollowUps = followUps.filter((f) => f.leadId === leadId);
+    const hasFollowUp = leadFollowUps.length > 0 || Boolean(targetLead.followUpUpdatedAt);
+    if (!hasFollowUp && newStage !== "new") {
+      toast.error("Es obligatorio registrar un seguimiento comercial antes de cambiar la etapa del lead.");
+      setFollowUpLead(targetLead);
+      return;
+    }
+
     // Actualización optimista local
     const updated = leads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
     setLeads(updated);
@@ -297,7 +320,16 @@ export default function AdvisorCockpit() {
     }
 
     toast.success("Seguimiento registrado con éxito.");
+    const recordedLead = followUpLead;
     setFollowUpLead(null);
+    setStageUpdateLead(recordedLead);
+  }
+
+  // Confirmación de nueva etapa post-seguimiento
+  async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
+    if (!stageUpdateLead) return;
+    await handleStageChange(stageUpdateLead.id, newStage);
+    setStageUpdateLead(null);
   }
 
   if (!isLoaded) {
@@ -327,7 +359,21 @@ export default function AdvisorCockpit() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant={showMonthBalance ? "default" : "outline"}
+            onClick={() => setShowMonthBalance(!showMonthBalance)}
+            className={cn(
+              "min-h-11 gap-2 rounded-xl px-4 text-sm font-semibold shadow-xs transition-colors",
+              showMonthBalance
+                ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+            )}
+          >
+            <BarChart3 className="size-4" />
+            {showMonthBalance ? "Ocultar Balance" : "Balance del Mes & Números"}
+          </Button>
           <Link href="/admin/leads/new">
             <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs">
               <Plus className="size-4" />
@@ -342,6 +388,16 @@ export default function AdvisorCockpit() {
           </Link>
         </div>
       </div>
+
+      {/* ── BALANCE DEL MES & NÚMEROS DE LEADS (AUDITORÍA COMERCIAL) ── */}
+      {showMonthBalance && (
+        <AdminMonthBalanceWidget
+          leads={leads}
+          followUps={followUps}
+          properties={properties}
+          projects={projects}
+        />
+      )}
 
       {/* ── 4 TARJETAS DE ENFOQUE DIARIO (KPIS ACCIONABLES) ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -514,12 +570,26 @@ export default function AdvisorCockpit() {
             ) : (
               priorityQueue.slice(0, 15).map(({ lead, state, isOverdue, isDueToday }) => {
                 const cleanPhone = lead.phone?.replace(/\D/g, "");
-                const matchedProperty = properties.find((p) => lead.propertyIds?.includes(p.id));
+                const candidatePropertyIds = (lead.propertyIds && lead.propertyIds.length > 0)
+                  ? lead.propertyIds
+                  : (lead.interests || []).map((i) => i.propertyId || i.unitId).filter(Boolean) as string[];
+                const activePropId = selectedPropertyByLead[lead.id] || candidatePropertyIds[0];
+                const matchedProperty = activePropId ? properties.find((p) => p.id === activePropId) : undefined;
+                const matchedInterest = activePropId
+                  ? lead.interests?.find((i) => i.propertyId === activePropId || i.unitId === activePropId)
+                  : lead.interests?.[0];
+                const matchedProject = matchedInterest?.projectId ? projects.find((proj) => proj.id === matchedInterest.projectId) : undefined;
+                const displayTitle = matchedProperty?.title || matchedInterest?.propertyTitle || (matchedProject ? `Proyecto ${matchedProject.name}` : undefined);
+                const displayPrice = matchedProperty
+                  ? `${matchedProperty.currency} ${matchedProperty.price.toLocaleString()}`
+                  : matchedInterest?.price
+                  ? `${matchedInterest.currency || "USD"} ${matchedInterest.price.toLocaleString()}`
+                  : undefined;
                 const currentStageObj = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
 
                 const whatsappText = encodeURIComponent(
                   `Hola ${lead.name}, te escribo de Bellomo Inmobiliaria respecto a tu consulta${
-                    matchedProperty ? ` sobre ${matchedProperty.title}` : ""
+                    displayTitle ? ` sobre ${displayTitle}` : ""
                   }. ¿Cómo estás?`
                 );
 
@@ -527,19 +597,19 @@ export default function AdvisorCockpit() {
                   <article
                     key={lead.id}
                     className={cn(
-                      "rounded-2xl border bg-white p-4 shadow-sm transition-all sm:p-5",
+                      "rounded-2xl border bg-white p-4 shadow-sm transition-all sm:p-5 dark:bg-card dark:border-border",
                       isOverdue
-                        ? "border-rose-200 hover:border-rose-400"
+                        ? "border-rose-200 hover:border-rose-400 dark:border-rose-900/60"
                         : isDueToday
-                        ? "border-amber-200 hover:border-amber-400"
-                        : "border-slate-200 hover:border-blue-300"
+                        ? "border-amber-200 hover:border-amber-400 dark:border-amber-900/60"
+                        : "border-slate-200 hover:border-blue-300 dark:border-border"
                     )}
                   >
                     {/* Cabecera de la Card: Cliente, Avatar y Prioridad */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className="size-10 shrink-0 border border-slate-200">
-                          <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-700">
+                        <Avatar className="size-10 shrink-0 border border-slate-200 dark:border-slate-800">
+                          <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                             {lead.name.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -547,11 +617,11 @@ export default function AdvisorCockpit() {
                         <div className="min-w-0">
                           <Link
                             href={`/admin/leads/${lead.id}`}
-                            className="truncate text-base font-bold text-slate-900 hover:text-blue-600 block leading-snug"
+                            className="truncate text-base font-bold text-slate-900 hover:text-blue-600 block leading-snug dark:text-slate-100 dark:hover:text-blue-400"
                           >
                             {lead.name}
                           </Link>
-                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500">
+                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                             <MapPin className="size-3 text-slate-400 shrink-0" />
                             <span className="truncate">{lead.origin}</span>
                           </div>
@@ -561,55 +631,88 @@ export default function AdvisorCockpit() {
                       {/* Badge de Urgencia / Estado */}
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {isOverdue && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300">
                             <AlertTriangle className="size-3 text-rose-600 shrink-0" />
                             Vencido ({state.elapsedDays}d)
                           </span>
                         )}
                         {isDueToday && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
                             <Clock3 className="size-3 text-amber-600 shrink-0" />
                             Para Hoy
                           </span>
                         )}
                         {lead.stage === "new" && !isOverdue && !isDueToday && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300">
                             Nuevo
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Fila Intermedia: Propiedad de Interés y Selector de Etapa */}
+                    {/* Switcher de Propiedades si el lead tiene múltiples intereses */}
+                    {candidatePropertyIds.length > 1 && (
+                      <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
+                          Propiedades ({candidatePropertyIds.length}):
+                        </span>
+                        {candidatePropertyIds.map((propId, idx) => {
+                          const prop = properties.find((p) => p.id === propId);
+                          const isSelected = activePropId === propId;
+                          const propInterest = lead.interests?.find((i) => i.propertyId === propId || i.unitId === propId);
+                          const pillTitle = prop?.title || propInterest?.propertyTitle || `Inmueble #${idx + 1}`;
+                          return (
+                            <button
+                              key={propId}
+                              type="button"
+                              onClick={() => setSelectedPropertyByLead((prev) => ({ ...prev, [lead.id]: propId }))}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all border shadow-2xs",
+                                isSelected
+                                  ? "border-blue-500 bg-blue-50 text-blue-900 font-bold dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-700"
+                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                              )}
+                            >
+                              <span className="truncate max-w-[150px]">{pillTitle}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Fila Intermedia: Propiedad de Interés y Selectores de Estado */}
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {/* Propiedad vinculada */}
-                      {matchedProperty ? (
-                        <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 border border-slate-100 text-xs">
+                      {displayTitle ? (
+                        <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 border border-slate-100 dark:border-slate-800 text-xs">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <Building2 className="size-3.5 text-slate-400 shrink-0" />
-                            <span className="font-semibold text-slate-800 truncate">{matchedProperty.title}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{displayTitle}</span>
                           </div>
-                          <span className="font-bold text-blue-600 shrink-0">
-                            {matchedProperty.currency} {matchedProperty.price.toLocaleString()}
-                          </span>
+                          {displayPrice && (
+                            <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                              {displayPrice}
+                            </span>
+                          )}
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 px-3 py-2 border border-slate-100 text-xs text-slate-400">
+                        <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
                           <Building2 className="size-3.5 text-slate-300 shrink-0" />
                           <span>Sin propiedad vinculada</span>
                         </div>
                       )}
 
-                      {/* Selector de Etapa Inline */}
-                      <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-1.5 border border-slate-100 text-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Etapa:</span>
+                      {/* Selector Unificado de Etapa del Lead */}
+                      <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-1.5 border border-slate-100 dark:border-slate-800 text-xs">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">Etapa Lead:</span>
                         <select
                           value={lead.stage}
                           onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"])}
                           className={cn(
-                            "h-7 rounded-lg border px-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs",
+                            "h-7 w-full rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
                             currentStageObj.color
                           )}
+                          title="Etapa comercial unificada del lead"
                         >
                           {STAGE_OPTIONS.map((opt) => (
                             <option key={opt.id} value={opt.id}>
@@ -828,6 +931,17 @@ export default function AdvisorCockpit() {
           lead={followUpLead}
           onClose={() => setFollowUpLead(null)}
           onConfirm={handleConfirmFollowUp}
+        />
+      )}
+
+      {/* Modal de Actualización de Etapa Post-Seguimiento */}
+      {stageUpdateLead && (
+        <LeadStageUpdateModal
+          open={Boolean(stageUpdateLead)}
+          leadName={stageUpdateLead.name}
+          currentStage={stageUpdateLead.stage}
+          onClose={() => setStageUpdateLead(null)}
+          onConfirm={handleConfirmStageUpdate}
         />
       )}
     </div>

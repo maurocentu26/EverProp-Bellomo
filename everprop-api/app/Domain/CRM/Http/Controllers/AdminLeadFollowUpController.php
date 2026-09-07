@@ -64,12 +64,12 @@ final class AdminLeadFollowUpController extends Controller
                     'agentName' => $item->user_name,
                     'agentAvatar' => null,
                     'type' => $item->type,
-                    'occurredAt' => $item->occurred_at,
+                    'occurredAt' => $item->occurred_at ? Carbon::parse($item->occurred_at, 'UTC')->toISOString() : null,
                     'summary' => $item->summary,
                     'result' => $item->result,
                     'nextAction' => $item->next_action,
-                    'nextContactAt' => $item->next_contact_at,
-                    'createdAt' => $item->created_at,
+                    'nextContactAt' => $item->next_contact_at ? Carbon::parse($item->next_contact_at, 'UTC')->toISOString() : null,
+                    'createdAt' => $item->created_at ? Carbon::parse($item->created_at, 'UTC')->toISOString() : null,
                 ];
             }),
         ]);
@@ -121,12 +121,12 @@ final class AdminLeadFollowUpController extends Controller
                     'agentName' => $item->user_name,
                     'agentAvatar' => null,
                     'type' => $item->type,
-                    'occurredAt' => $item->occurred_at,
+                    'occurredAt' => $item->occurred_at ? Carbon::parse($item->occurred_at, 'UTC')->toISOString() : null,
                     'summary' => $item->summary,
                     'result' => $item->result,
                     'nextAction' => $item->next_action,
-                    'nextContactAt' => $item->next_contact_at,
-                    'createdAt' => $item->created_at,
+                    'nextContactAt' => $item->next_contact_at ? Carbon::parse($item->next_contact_at, 'UTC')->toISOString() : null,
+                    'createdAt' => $item->created_at ? Carbon::parse($item->created_at, 'UTC')->toISOString() : null,
                 ];
             }),
         ]);

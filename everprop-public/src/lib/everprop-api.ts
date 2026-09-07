@@ -1,4 +1,4 @@
-import type { Project, Property, Lead, LeadFollowUp, LeadFollowUpType } from "@/data/admin-sample";
+import type { Project, Property, Lead, LeadFollowUp, LeadFollowUpType, LeadInterestCategory } from "@/data/admin-sample";
 import type { UserProfile, UserRole } from "@/data/auth-sample";
 
 const CONFIGURED_API_URL =
@@ -433,7 +433,12 @@ export type ApiLead = {
     price?: number | null;
     currency?: string | null;
     category?: string | null;
+    project_id?: string | null;
+    project_name?: string | null;
+    unit_number?: string | null;
+    sector_name?: string | null;
     interest_level?: string | null;
+    status?: string | null;
     notes?: string | null;
   }>;
   created_at?: string;
@@ -455,6 +460,32 @@ export function mapLead(apiLead: ApiLead): Lead {
     ? apiLead.property_ids
     : (apiLead.properties || []).map((p) => p.id);
 
+  const interests = (apiLead.properties || []).map((p) => {
+    const rawCat = (p.category || "").toUpperCase();
+    let mappedCategory: LeadInterestCategory | undefined = undefined;
+    if (rawCat === "LOT" || rawCat === "LOTEO") mappedCategory = "loteo";
+    else if (rawCat === "LOCAL" || rawCat === "COMMERCIAL") mappedCategory = "local";
+    else if (rawCat === "GARAGE" || rawCat === "COCHERA") mappedCategory = "cochera";
+    else if (rawCat === "APARTMENT" || rawCat === "HOUSE" || rawCat === "TRADITIONAL") mappedCategory = "tradicional";
+
+    return {
+      id: p.id,
+      companyId: "c1",
+      propertyId: p.id,
+      propertyTitle: p.title,
+      price: p.price ? Number(p.price) : undefined,
+      currency: p.currency || "USD",
+      category: mappedCategory,
+      projectId: p.project_id || undefined,
+      unitId: p.unit_number ? p.id : undefined,
+      status: p.status || "ACTIVE",
+      interestLevel: p.interest_level || "MEDIUM",
+      notes: p.notes || undefined,
+      createdAt: apiLead.created_at || new Date().toISOString(),
+      updatedAt: apiLead.updated_at || new Date().toISOString(),
+    };
+  });
+
   return {
     id: apiLead.id,
     companyId: "c1",
@@ -467,6 +498,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     phone: apiLead.phone || undefined,
     email: apiLead.email || undefined,
     notes: cleanText(apiLead.notes) || undefined,
+    interests,
     agentId: apiLead.agent_id ? String(apiLead.agent_id) : undefined,
     agentName: apiLead.agent_name || undefined,
   };
@@ -810,4 +842,36 @@ export async function clearAllEverpropNotifications(): Promise<void> {
     method: "DELETE",
   });
 }
+
+export const STAGE_FRONTEND_TO_API: Record<string, string> = {
+  new: "NEW",
+  contacted: "CONTACTED",
+  visiting: "VISIT_SCHEDULED",
+  negotiation: "NEGOTIATION",
+  closing: "WON",
+};
+
+export async function updateEverpropLeadStage(leadPublicId: string, stage: string) {
+  const apiStage = STAGE_FRONTEND_TO_API[stage] || stage.toUpperCase();
+  return apiFetch<{ status: string; data: any }>(`/api/v1/admin/leads/${leadPublicId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ stage: apiStage }),
+  });
+}
+
+export async function updateEverpropLeadPropertyStatus(
+  leadPublicId: string,
+  propertyPublicId: string,
+  status: string
+) {
+  return apiFetch<{ status: string; data: any }>(
+    `/api/v1/admin/leads/${leadPublicId}/properties/${propertyPublicId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }
+  );
+}
+
+
 

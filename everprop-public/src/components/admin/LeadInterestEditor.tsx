@@ -8,6 +8,7 @@ import {
   type LeadInterestCategory,
   type Project,
   type Property,
+  inferLeadInterestCategory,
 } from "@/data/admin-sample";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,33 +62,64 @@ export function LeadInterestEditor({
     notes: interest?.notes ?? "",
   }));
 
+  const availableProjects = useMemo(() => {
+    if (!draft.category) return projects;
+    return projects.filter((project) =>
+      properties.some(
+        (p) => p.projectId === project.id && inferLeadInterestCategory(p) === draft.category
+      )
+    );
+  }, [draft.category, projects, properties]);
+
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
       if (draft.projectId && property.projectId !== draft.projectId) return false;
-      if (draft.category === "local" && property.propertyType !== "Local") return false;
-      if (draft.category === "cochera" && property.propertyType !== "Cochera") return false;
-      if (draft.category === "loteo" && property.propertyType !== "Lote") return false;
-      if (draft.category === "tradicional" && !["Casa", "Departamento", "Propiedad"].includes(property.propertyType)) return false;
+      if (draft.category && inferLeadInterestCategory(property) !== draft.category) return false;
       return true;
     });
   }, [draft.category, draft.projectId, properties]);
 
   const unitOptions = useMemo(() => {
-    if (!draft.propertyId) return [];
-    return properties.filter((property) => property.id === draft.propertyId && property.unitNumber);
-  }, [draft.propertyId, properties]);
+    let list: Property[] = [];
+    if (draft.projectId) {
+      list = properties.filter((p) => p.projectId === draft.projectId && (p.unitNumber || p.sectorName));
+    } else if (draft.propertyId) {
+      const p = properties.find((item) => item.id === draft.propertyId);
+      if (p?.projectId) {
+        list = properties.filter((item) => item.projectId === p.projectId && (item.unitNumber || item.sectorName));
+      } else if (p && (p.unitNumber || p.sectorName)) {
+        list = [p];
+      }
+    }
+    if (draft.category) {
+      list = list.filter((p) => inferLeadInterestCategory(p) === draft.category);
+    }
+    return list;
+  }, [draft.projectId, draft.propertyId, draft.category, properties]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const now = new Date().toISOString();
 
+    const targetId = draft.unitId || draft.propertyId;
+    const targetProp = targetId ? properties.find((p) => p.id === targetId) : undefined;
+    const targetProject = draft.projectId ? projects.find((p) => p.id === draft.projectId) : undefined;
+
+    const resolvedCategory = draft.category || (targetProp ? inferLeadInterestCategory(targetProp) : undefined);
+    const resolvedProjectId = draft.projectId || targetProp?.projectId || undefined;
+    const resolvedPropertyId = draft.propertyId || draft.unitId || undefined;
+    const resolvedUnitId = draft.unitId || (targetProp && targetProp.unitNumber ? targetProp.id : undefined);
+
     onSave({
       id: interest?.id ?? crypto.randomUUID(),
       companyId,
-      category: draft.category || undefined,
-      projectId: draft.projectId || undefined,
-      propertyId: draft.propertyId || undefined,
-      unitId: draft.unitId || undefined,
+      category: resolvedCategory,
+      projectId: resolvedProjectId,
+      propertyId: resolvedPropertyId,
+      unitId: resolvedUnitId,
+      propertyTitle: targetProp?.title || (resolvedUnitId && targetProp?.unitNumber ? `Unidad ${targetProp.unitNumber}` : targetProject?.name),
+      price: targetProp?.price || undefined,
+      currency: targetProp?.currency || undefined,
       preferences: draft.preferences?.trim() || undefined,
       notes: draft.notes?.trim() || undefined,
       createdAt: interest?.createdAt ?? now,
@@ -142,7 +174,23 @@ export function LeadInterestEditor({
                   Categoría
                   <select
                     value={draft.category}
-                    onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value as LeadInterestCategory | "" }))}
+                    onChange={(event) => {
+                      const nextCat = event.target.value as LeadInterestCategory | "";
+                      setDraft((current) => {
+                        const curProp = properties.find((p) => p.id === current.propertyId);
+                        const keepProp = curProp && (!nextCat || inferLeadInterestCategory(curProp) === nextCat);
+                        const curUnit = properties.find((p) => p.id === current.unitId);
+                        const keepUnit = curUnit && (!nextCat || inferLeadInterestCategory(curUnit) === nextCat);
+                        const keepProj = current.projectId && (!nextCat || properties.some((p) => p.projectId === current.projectId && inferLeadInterestCategory(p) === nextCat));
+                        return {
+                          ...current,
+                          category: nextCat,
+                          projectId: keepProj ? current.projectId : "",
+                          propertyId: keepProp ? current.propertyId : "",
+                          unitId: keepUnit ? current.unitId : "",
+                        };
+                      });
+                    }}
                     className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">Sin categoría definida</option>
@@ -156,11 +204,23 @@ export function LeadInterestEditor({
                   Proyecto / Desarrollo
                   <select
                     value={draft.projectId}
-                    onChange={(event) => setDraft((current) => ({ ...current, projectId: event.target.value }))}
+                    onChange={(event) => {
+                      const newProjId = event.target.value;
+                      setDraft((current) => {
+                        const curProp = properties.find((p) => p.id === current.propertyId);
+                        const keepProp = curProp && (!newProjId || curProp.projectId === newProjId);
+                        return {
+                          ...current,
+                          projectId: newProjId,
+                          propertyId: keepProp ? current.propertyId : "",
+                          unitId: keepProp ? current.unitId : "",
+                        };
+                      });
+                    }}
                     className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">Cualquier proyecto o sin desarrollo</option>
-                    {projects.map((project) => (
+                    {availableProjects.map((project) => (
                       <option key={project.id} value={project.id}>{project.name}</option>
                     ))}
                   </select>
@@ -170,7 +230,17 @@ export function LeadInterestEditor({
                   Propiedad
                   <select
                     value={draft.propertyId}
-                    onChange={(event) => setDraft((current) => ({ ...current, propertyId: event.target.value }))}
+                    onChange={(event) => {
+                      const propId = event.target.value;
+                      const prop = properties.find((p) => p.id === propId);
+                      setDraft((current) => ({
+                        ...current,
+                        propertyId: propId,
+                        projectId: prop?.projectId || current.projectId,
+                        category: prop ? inferLeadInterestCategory(prop) : current.category,
+                        unitId: prop && prop.unitNumber ? prop.id : current.unitId,
+                      }));
+                    }}
                     className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">Seleccionar propiedad</option>
@@ -185,12 +255,24 @@ export function LeadInterestEditor({
                     Unidad / Lote específico
                     <select
                       value={draft.unitId}
-                      onChange={(event) => setDraft((current) => ({ ...current, unitId: event.target.value }))}
+                      onChange={(event) => {
+                        const uId = event.target.value;
+                        const uProp = properties.find((p) => p.id === uId);
+                        setDraft((current) => ({
+                          ...current,
+                          unitId: uId,
+                          propertyId: uId || current.propertyId,
+                          projectId: uProp?.projectId || current.projectId,
+                          category: uProp ? inferLeadInterestCategory(uProp) : current.category,
+                        }));
+                      }}
                       className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="">Sin unidad específica</option>
                       {unitOptions.map((unit) => (
-                        <option key={unit.id} value={unit.id}>Unidad {unit.unitNumber}</option>
+                        <option key={unit.id} value={unit.id}>
+                          {unit.unitNumber ? `Lote / Unidad ${unit.unitNumber}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : unit.title}
+                        </option>
                       ))}
                     </select>
                   </label>

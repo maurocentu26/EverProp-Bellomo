@@ -41,7 +41,7 @@ export default function AdminPage() {
     };
   }, []);
 
-  if (isAdvisor) {
+  if (!isEngineer) {
     return <AdvisorCockpit />;
   }
 

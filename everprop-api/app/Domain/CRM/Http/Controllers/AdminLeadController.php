@@ -69,17 +69,23 @@ final class AdminLeadController extends Controller
             if (! empty($leadIds)) {
                 $linkedProps = DB::table('lead_properties')
                     ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
+                    ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
                     ->where('lead_properties.tenant_id', $tenantId)
                     ->whereIn('lead_properties.lead_id', $leadIds)
                     ->select([
                         'lead_properties.lead_id',
                         'lead_properties.interest_level',
+                        'lead_properties.status as interest_status',
                         'lead_properties.notes as interest_notes',
                         'properties.public_id as property_public_id',
                         'properties.title as property_title',
                         'properties.price as property_price',
                         'properties.currency_code as property_currency',
                         'properties.category as property_category',
+                        'properties.unit_number',
+                        'properties.sector_name',
+                        'projects.public_id as project_public_id',
+                        'projects.name as project_name',
                     ])
                     ->get();
 
@@ -91,7 +97,12 @@ final class AdminLeadController extends Controller
                         'price' => $prop->property_price ? (float) $prop->property_price : null,
                         'currency' => $prop->property_currency,
                         'category' => $prop->property_category,
+                        'project_id' => $prop->project_public_id,
+                        'project_name' => $prop->project_name,
+                        'unit_number' => $prop->unit_number,
+                        'sector_name' => $prop->sector_name,
                         'interest_level' => $prop->interest_level,
+                        'status' => $prop->interest_status ?: 'ACTIVE',
                         'notes' => $prop->interest_notes,
                     ];
                 }
@@ -114,12 +125,12 @@ final class AdminLeadController extends Controller
                         'notes' => $lead->notes,
                         'agent_id' => $lead->assigned_user_id,
                         'agent_name' => $lead->assigned_user_name,
-                        'last_touch_at' => $lead->last_touch_at,
-                        'follow_up_updated_at' => $lead->last_touch_at,
+                        'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
+                        'follow_up_updated_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
                         'property_ids' => $linkedPropertyIds[$lead->id] ?? [],
                         'properties' => $linkedPropertiesMap[$lead->id] ?? [],
-                        'created_at' => $lead->created_at,
-                        'updated_at' => $lead->updated_at,
+                        'created_at' => $lead->created_at ? Carbon::parse($lead->created_at, 'UTC')->toISOString() : null,
+                        'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                     ];
                 }),
             ]);
@@ -334,16 +345,22 @@ final class AdminLeadController extends Controller
 
             $linkedProps = DB::table('lead_properties')
                 ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
+                ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
                 ->where('lead_properties.tenant_id', $tenantId)
                 ->where('lead_properties.lead_id', $lead->id)
                 ->select([
                     'lead_properties.interest_level',
+                    'lead_properties.status as interest_status',
                     'lead_properties.notes as interest_notes',
                     'properties.public_id as property_public_id',
                     'properties.title as property_title',
                     'properties.price as property_price',
                     'properties.currency_code as property_currency',
                     'properties.category as property_category',
+                    'properties.unit_number',
+                    'properties.sector_name',
+                    'projects.public_id as project_public_id',
+                    'projects.name as project_name',
                 ])
                 ->get();
 
@@ -355,7 +372,12 @@ final class AdminLeadController extends Controller
                     'price' => $prop->property_price ? (float) $prop->property_price : null,
                     'currency' => $prop->property_currency,
                     'category' => $prop->property_category,
+                    'project_id' => $prop->project_public_id,
+                    'project_name' => $prop->project_name,
+                    'unit_number' => $prop->unit_number,
+                    'sector_name' => $prop->sector_name,
                     'interest_level' => $prop->interest_level,
+                    'status' => $prop->interest_status ?: 'ACTIVE',
                     'notes' => $prop->interest_notes,
                 ];
             })->all();
@@ -376,12 +398,12 @@ final class AdminLeadController extends Controller
                     'notes' => $lead->notes,
                     'agent_id' => $lead->assigned_user_id,
                     'agent_name' => $lead->assigned_user_name,
-                    'last_touch_at' => $lead->last_touch_at,
-                    'follow_up_updated_at' => $lead->last_touch_at,
+                    'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
+                    'follow_up_updated_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
                     'property_ids' => $propertyIds,
                     'properties' => $propertiesList,
-                    'created_at' => $lead->created_at,
-                    'updated_at' => $lead->updated_at,
+                    'created_at' => $lead->created_at ? Carbon::parse($lead->created_at, 'UTC')->toISOString() : null,
+                    'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -525,6 +547,7 @@ final class AdminLeadController extends Controller
 
         $now = Carbon::now('UTC');
         $interestLevel = strtoupper($validated['interest_level'] ?? 'MEDIUM');
+        $status = strtoupper($validated['status'] ?? 'ACTIVE');
 
         DB::table('lead_properties')->updateOrInsert(
             [
@@ -535,7 +558,7 @@ final class AdminLeadController extends Controller
             [
                 'linked_by_user_id' => $user?->id ?? $lead->assigned_user_id,
                 'interest_level' => $interestLevel,
-                'status' => 'ACTIVE',
+                'status' => $status,
                 'notes' => $validated['notes'] ?? null,
                 'quoted_price' => $validated['quoted_price'] ?? $property->price,
                 'quoted_currency_code' => $validated['quoted_currency_code'] ?? $property->currency_code,
@@ -551,7 +574,72 @@ final class AdminLeadController extends Controller
                 'property_id' => $property->public_id,
                 'title' => $property->title,
                 'interest_level' => $interestLevel,
+                'status' => $status,
                 'notes' => $validated['notes'] ?? null,
+            ],
+        ], 200);
+    }
+
+    public function updateProperty(Request $request, string $leadPublicId, string $propertyPublicId): JsonResponse
+    {
+        $tenantId = $this->tenantContext->id();
+
+        $lead = DB::table('leads')
+            ->where('tenant_id', $tenantId)
+            ->where('public_id', $leadPublicId)
+            ->first();
+
+        if (! $lead) {
+            return response()->json(['error' => 'Lead not found'], 404);
+        }
+
+        $property = DB::table('properties')
+            ->where('tenant_id', $tenantId)
+            ->where(function ($q) use ($propertyPublicId) {
+                $q->where('public_id', $propertyPublicId);
+                if (is_numeric($propertyPublicId)) {
+                    $q->orWhere('id', (int) $propertyPublicId);
+                }
+            })
+            ->first();
+
+        if (! $property) {
+            return response()->json(['error' => 'Property not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'status' => 'nullable|string|max:24',
+            'interest_level' => 'nullable|string|max:16',
+            'notes' => 'nullable|string|max:5000',
+        ]);
+
+        $updates = [
+            'updated_at' => Carbon::now('UTC'),
+            'last_activity_at' => Carbon::now('UTC'),
+        ];
+
+        if (array_key_exists('status', $validated)) {
+            $updates['status'] = strtoupper($validated['status']);
+        }
+        if (array_key_exists('interest_level', $validated)) {
+            $updates['interest_level'] = strtoupper($validated['interest_level']);
+        }
+        if (array_key_exists('notes', $validated)) {
+            $updates['notes'] = $validated['notes'];
+        }
+
+        DB::table('lead_properties')
+            ->where('tenant_id', $tenantId)
+            ->where('lead_id', $lead->id)
+            ->where('property_id', $property->id)
+            ->update($updates);
+
+        return response()->json([
+            'status' => 'ok',
+            'data' => [
+                'lead_id' => $leadPublicId,
+                'property_id' => $propertyPublicId,
+                'status' => $updates['status'] ?? null,
             ],
         ], 200);
     }

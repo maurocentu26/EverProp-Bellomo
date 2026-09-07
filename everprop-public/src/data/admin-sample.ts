@@ -17,7 +17,12 @@ export type LeadInterest = {
   category?: LeadInterestCategory;
   projectId?: string;
   propertyId?: string;
+  propertyTitle?: string;
+  status?: string;
+  interestLevel?: string;
   unitId?: string;
+  price?: number;
+  currency?: string;
   preferences?: string;
   notes?: string;
   createdAt: string;
@@ -125,19 +130,25 @@ export type Lead = {
 };
 
 export function inferLeadInterestCategory(property: Property): LeadInterestCategory {
+  const type = (property.propertyType || '').toLowerCase();
+  const sector = (property.sectorName || '').toLowerCase();
+  const title = (property.title || '').toLowerCase();
+
   if (
-    property.propertyType === 'Lote' ||
-    property.sectorName?.toLowerCase().includes('manzana') ||
-    property.title.toLowerCase().includes('lote')
+    type === 'lote' ||
+    type === 'loteo' ||
+    sector.includes('manzana') ||
+    sector.includes('lote') ||
+    title.includes('lote')
   ) {
     return 'loteo';
   }
 
-  if (property.propertyType === 'Local' || property.commercialFeatures !== undefined) {
+  if (type === 'local' || title.includes('local') || property.commercialFeatures !== undefined) {
     return 'local';
   }
 
-  if (property.propertyType === 'Cochera' || property.isCovered !== undefined) {
+  if (type === 'cochera' || title.includes('cochera') || property.isCovered !== undefined) {
     return 'cochera';
   }
 
