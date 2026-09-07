@@ -687,6 +687,29 @@ export async function attachEverpropLeadProperty(
   });
 }
 
+export async function updateEverpropLeadProperty(
+  leadPublicId: string,
+  propertyPublicId: string | number,
+  data: {
+    status?: string;
+    interestLevel?: string;
+    notes?: string;
+  }
+) {
+  const payload: Record<string, any> = {};
+  if (data.status !== undefined) payload.status = data.status;
+  if (data.interestLevel !== undefined) payload.interest_level = data.interestLevel;
+  if (data.notes !== undefined) payload.notes = data.notes;
+
+  return apiFetch<{ status: string; data: any }>(
+    `/api/v1/admin/leads/${leadPublicId}/properties/${propertyPublicId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
 export async function detachEverpropLeadProperty(leadPublicId: string, propertyPublicId: string) {
   return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}/properties/${propertyPublicId}`, {
     method: "DELETE",

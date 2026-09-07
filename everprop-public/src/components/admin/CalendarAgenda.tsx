@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, CalendarDays, Clock, MapPin,
   User, Phone, Mail, Trash2, MessageCircle, CheckCircle2,
-  AlertCircle, Building2, Users
+  AlertCircle, Building2, Users, Plus
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { leads as sampleLeads, properties as sampleProperties } from "@/data/adm
 import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { NewVisitModal } from "@/components/admin/NewVisitModal";
 
 type AgendaItem = Visit & {
   leadName: string;
@@ -80,6 +81,7 @@ export default function CalendarAgenda() {
   const [items, setItems] = useState<AgendaItem[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "scheduled" | "completed">("all");
+  const [showNewVisitModal, setShowNewVisitModal] = useState(false);
 
   const loadItems = useCallback(() => {
     let leads = loadLeadList(sampleLeads, "c1");
@@ -160,7 +162,14 @@ export default function CalendarAgenda() {
     setItems(merged);
   }, [isAdvisor, isAdmin, user, globalSelectedAgentId]);
 
-  useEffect(() => deferEffectUpdate(loadItems), [loadItems]);
+  useEffect(() => {
+    deferEffectUpdate(loadItems);
+    const handleUpdated = () => deferEffectUpdate(loadItems);
+    window.addEventListener("everprop_leads_updated", handleUpdated);
+    return () => {
+      window.removeEventListener("everprop_leads_updated", handleUpdated);
+    };
+  }, [loadItems]);
 
   // ─── Derived data ────────────────────────────────────────────────────────
   const grid = useMemo(() => getMonthGrid(viewDate), [viewDate]);
@@ -222,8 +231,8 @@ export default function CalendarAgenda() {
           </p>
         </div>
 
-        {/* Month stats pills */}
-        <div className="flex items-center gap-2">
+        {/* Month stats pills and Action Button */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full">
             <Clock className="h-3.5 w-3.5 text-blue-600" />
             <span className="text-xs font-bold text-blue-700">{monthStats.scheduled} pendientes</span>
@@ -232,6 +241,13 @@ export default function CalendarAgenda() {
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
             <span className="text-xs font-bold text-emerald-700">{monthStats.completed} realizadas</span>
           </div>
+          <Button
+            onClick={() => setShowNewVisitModal(true)}
+            className="min-h-10 gap-2 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700 shadow-xs"
+          >
+            <Plus className="size-4" />
+            Nueva Cita
+          </Button>
         </div>
       </div>
 
@@ -544,6 +560,13 @@ export default function CalendarAgenda() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Modal Nueva Cita Desktop ── */}
+      <NewVisitModal
+        open={showNewVisitModal}
+        onOpenChange={setShowNewVisitModal}
+        onVisitCreated={loadItems}
+      />
     </div>
   );
 }

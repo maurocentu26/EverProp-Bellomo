@@ -134,24 +134,47 @@ export function inferLeadInterestCategory(property: Property): LeadInterestCateg
   const sector = (property.sectorName || '').toLowerCase();
   const title = (property.title || '').toLowerCase();
 
+  // 1. Cocheras / Estacionamientos
+  if (
+    type === 'cochera' ||
+    type === 'garage' ||
+    title.includes('cochera') ||
+    title.includes('garage') ||
+    title.includes('estacionamiento') ||
+    property.isCovered !== undefined
+  ) {
+    return 'cochera';
+  }
+
+  // 2. Locales comerciales / Showrooms / Espacios gastronómicos u oficinas
+  if (
+    type === 'local' ||
+    title.includes('local') ||
+    title.includes('showroom') ||
+    title.includes('comercial') ||
+    title.includes('gastronóm') ||
+    title.includes('oficina')
+  ) {
+    return 'local';
+  }
+
+  // 3. Loteos / Terrenos en barrios privados y loteos abiertos
   if (
     type === 'lote' ||
     type === 'loteo' ||
+    type === 'lot' ||
+    type === 'terreno' ||
     sector.includes('manzana') ||
     sector.includes('lote') ||
-    title.includes('lote')
+    sector.includes('etapa') ||
+    title.includes('lote') ||
+    title.includes('terreno') ||
+    Boolean(property.sectorName && property.unitNumber && !title.includes('depto') && !title.includes('departamento') && !title.includes('casa'))
   ) {
     return 'loteo';
   }
 
-  if (type === 'local' || title.includes('local') || property.commercialFeatures !== undefined) {
-    return 'local';
-  }
-
-  if (type === 'cochera' || title.includes('cochera') || property.isCovered !== undefined) {
-    return 'cochera';
-  }
-
+  // 4. Inmobiliaria Tradicional (Departamentos, Casas, Dúplex, etc.)
   return 'tradicional';
 }
 

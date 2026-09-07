@@ -205,11 +205,29 @@ export function NewLeadDrawer({
       });
   }, [allProjects, allProperties, assetSearchQuery, selectedCategory, selectedProjectId]);
 
+  const availableProjects = useMemo(() => {
+    if (!selectedCategory) return allProjects;
+    return allProjects.filter((project) =>
+      allProperties.some(
+        (p) => p.projectId === project.id && inferLeadInterestCategory(p) === selectedCategory
+      )
+    );
+  }, [allProjects, allProperties, selectedCategory]);
+
   const selectedProject = allProjects.find((project) => project.id === selectedProjectId);
 
   const handleCategorySelect = (category: AssetCategory) => {
     const nextCategory = selectedCategory === category ? null : category;
     setSelectedCategory(nextCategory);
+
+    if (selectedProjectId && nextCategory) {
+      const projectHasMatchingProps = allProperties.some(
+        (p) => p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
+      );
+      if (!projectHasMatchingProps) {
+        setSelectedProjectId("");
+      }
+    }
 
     if (selectedAsset && nextCategory && inferLeadInterestCategory(selectedAsset) !== nextCategory) {
       setSelectedAsset(null);
@@ -702,8 +720,10 @@ export function NewLeadDrawer({
                     onChange={(event) => handleProjectSelect(event.target.value)}
                     className="mt-1 h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
                   >
-                    <option value="">Sin proyecto identificado</option>
-                    {allProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                    <option value="">
+                      {selectedCategory ? "Todos los proyectos de esta categoría" : "Sin proyecto identificado"}
+                    </option>
+                    {availableProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
                   </select>
                 </Field>
 

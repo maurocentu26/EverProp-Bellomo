@@ -591,7 +591,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </div>
               {cleanPhone && (
                 <a
-                  href={`https://wa.me/${cleanPhone}`}
+                  href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                    `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
+                      interests[0]?.propertyTitle ? ` sobre ${interests[0].propertyTitle}` : ""
+                    }. ¿Cómo estás?`
+                  )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"

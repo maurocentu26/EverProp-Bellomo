@@ -45,6 +45,7 @@ import {
   loadEverpropLeads, 
   loadEverpropCatalog, 
   updateEverpropLead, 
+  updateEverpropLeadProperty,
   createEverpropLeadFollowUp,
   loadEverpropAllFollowUps,
 } from "@/lib/everprop-api";
@@ -79,7 +80,7 @@ export default function AdvisorCockpit() {
   const [selectedPropertyByLead, setSelectedPropertyByLead] = useState<Record<string, string>>({});
   const [showMonthBalance, setShowMonthBalance] = useState(false);
 
-  // Carga de datos inicial
+  // Carga de datos inicial y sincronización en tiempo real
   useEffect(() => {
     let active = true;
 
@@ -127,8 +128,24 @@ export default function AdvisorCockpit() {
     }
 
     void loadData();
+
+    const handleLeadsUpdated = () => {
+      void loadData();
+    };
+
+    window.addEventListener("everprop_leads_updated", handleLeadsUpdated);
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("everprop_leads");
+      channel.onmessage = handleLeadsUpdated;
+    } catch {
+      // ignore
+    }
+
     return () => {
       active = false;
+      window.removeEventListener("everprop_leads_updated", handleLeadsUpdated);
+      channel?.close();
     };
   }, []);
 
@@ -251,8 +268,8 @@ export default function AdvisorCockpit() {
     return queue.sort((a, b) => b.priorityWeight - a.priorityWeight);
   }, [myLeads, followUps, activeQueueFilter, searchQuery, todayStr]);
 
-  // Manejo de cambio de etapa en 1 clic
-  async function handleStageChange(leadId: string, newStage: Lead["stage"]) {
+  // Manejo de cambio de etapa en 1 clic (por propiedad o general)
+  async function handleStageChange(leadId: string, newStage: Lead["stage"], propertyId?: string) {
     const previousLeads = [...leads];
     const targetLead = leads.find((l) => l.id === leadId);
     if (!targetLead) return;
@@ -266,10 +283,40 @@ export default function AdvisorCockpit() {
       return;
     }
 
+    const targetPropId = propertyId || selectedPropertyByLead[leadId] || targetLead.propertyIds?.[0] || targetLead.interests?.[0]?.propertyId || targetLead.interests?.[0]?.unitId;
+
     // Actualización optimista local
-    const updated = leads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
+    const updated = leads.map((l) => {
+      if (l.id !== leadId) return l;
+
+      let updatedInterests = l.interests;
+      if (targetPropId && l.interests && l.interests.length > 0) {
+        updatedInterests = l.interests.map((interest) => {
+          if (interest.propertyId === targetPropId || interest.unitId === targetPropId) {
+            return { ...interest, status: newStage };
+          }
+          return interest;
+        });
+      }
+
+      return {
+        ...l,
+        stage: newStage,
+        interests: updatedInterests,
+      };
+    });
+
     setLeads(updated);
     saveLeadList(updated, "c1");
+
+    try {
+      window.dispatchEvent(new Event("everprop_leads_updated"));
+      const ch = new BroadcastChannel("everprop_leads");
+      ch.postMessage({ type: "LEADS_UPDATED" });
+      ch.close();
+    } catch {
+      // ignore
+    }
 
     const stageConfig = STAGE_OPTIONS.find((s) => s.id === newStage);
     toast.success(`Etapa cambiada a "${stageConfig?.label || newStage}"`);
@@ -277,9 +324,23 @@ export default function AdvisorCockpit() {
     // Sincronización API
     if (!isMockDataMode) {
       try {
-        await updateEverpropLead(leadId, {
-          stage: stageConfig?.apiCode || "NEW",
-        });
+        const promises: Promise<unknown>[] = [
+          updateEverpropLead(leadId, {
+            stage: stageConfig?.apiCode || "NEW",
+          }),
+        ];
+
+        if (targetPropId) {
+          promises.push(
+            updateEverpropLeadProperty(leadId, targetPropId, {
+              status: stageConfig?.apiCode || "NEW",
+            }).catch((err) => {
+              console.warn("Could not update property interest status on backend:", err);
+            })
+          );
+        }
+
+        await Promise.all(promises);
       } catch (err) {
         console.error("Error al actualizar etapa en backend:", err);
         toast.error("Error al sincronizar con el servidor, guardado localmente.");
@@ -328,7 +389,8 @@ export default function AdvisorCockpit() {
   // Confirmación de nueva etapa post-seguimiento
   async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
     if (!stageUpdateLead) return;
-    await handleStageChange(stageUpdateLead.id, newStage);
+    const activePropId = selectedPropertyByLead[stageUpdateLead.id] || stageUpdateLead.propertyIds?.[0] || stageUpdateLead.interests?.[0]?.propertyId;
+    await handleStageChange(stageUpdateLead.id, newStage, activePropId);
     setStageUpdateLead(null);
   }
 
@@ -585,7 +647,8 @@ export default function AdvisorCockpit() {
                   : matchedInterest?.price
                   ? `${matchedInterest.currency || "USD"} ${matchedInterest.price.toLocaleString()}`
                   : undefined;
-                const currentStageObj = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
+                const activePropStage = (matchedInterest?.status as Lead["stage"]) || lead.stage;
+                const currentStageObj = STAGE_OPTIONS.find((s) => s.id === activePropStage) || STAGE_OPTIONS[0];
 
                 const whatsappText = encodeURIComponent(
                   `Hola ${lead.name}, te escribo de Bellomo Inmobiliaria respecto a tu consulta${
@@ -650,7 +713,7 @@ export default function AdvisorCockpit() {
                       </div>
                     </div>
 
-                    {/* Switcher de Propiedades si el lead tiene múltiples intereses */}
+                    {/* Switcher de Propiedades si el lead tiene múltiples intereses con estados independientes */}
                     {candidatePropertyIds.length > 1 && (
                       <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
@@ -661,6 +724,8 @@ export default function AdvisorCockpit() {
                           const isSelected = activePropId === propId;
                           const propInterest = lead.interests?.find((i) => i.propertyId === propId || i.unitId === propId);
                           const pillTitle = prop?.title || propInterest?.propertyTitle || `Inmueble #${idx + 1}`;
+                          const pillStage = (propInterest?.status as Lead["stage"]) || lead.stage;
+                          const pillStageObj = STAGE_OPTIONS.find((s) => s.id === pillStage);
                           return (
                             <button
                               key={propId}
@@ -673,7 +738,15 @@ export default function AdvisorCockpit() {
                                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
                               )}
                             >
-                              <span className="truncate max-w-[150px]">{pillTitle}</span>
+                              <span className="truncate max-w-[140px]">{pillTitle}</span>
+                              {pillStageObj && (
+                                <span className={cn(
+                                  "text-[9px] font-bold px-1.5 py-0.5 rounded border leading-none",
+                                  pillStageObj.color
+                                )}>
+                                  {pillStageObj.label}
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -702,17 +775,19 @@ export default function AdvisorCockpit() {
                         </div>
                       )}
 
-                      {/* Selector Unificado de Etapa del Lead */}
+                      {/* Selector de Etapa: Vinculado dinámicamente a la propiedad seleccionada */}
                       <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-1.5 border border-slate-100 dark:border-slate-800 text-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">Etapa Lead:</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">
+                          {candidatePropertyIds.length > 1 ? "Etapa Inmueble:" : "Etapa Lead:"}
+                        </span>
                         <select
-                          value={lead.stage}
-                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"])}
+                          value={activePropStage}
+                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
                           className={cn(
                             "h-7 w-full rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
                             currentStageObj.color
                           )}
-                          title="Etapa comercial unificada del lead"
+                          title={matchedProperty ? `Etapa comercial para ${matchedProperty.title}` : "Etapa comercial del lead"}
                         >
                           {STAGE_OPTIONS.map((opt) => (
                             <option key={opt.id} value={opt.id}>
@@ -939,7 +1014,11 @@ export default function AdvisorCockpit() {
         <LeadStageUpdateModal
           open={Boolean(stageUpdateLead)}
           leadName={stageUpdateLead.name}
-          currentStage={stageUpdateLead.stage}
+          currentStage={(() => {
+            const activePropId = selectedPropertyByLead[stageUpdateLead.id] || stageUpdateLead.propertyIds?.[0] || stageUpdateLead.interests?.[0]?.propertyId;
+            const interest = stageUpdateLead.interests?.find((i) => i.propertyId === activePropId || i.unitId === activePropId);
+            return interest?.status || stageUpdateLead.stage;
+          })()}
           onClose={() => setStageUpdateLead(null)}
           onConfirm={handleConfirmStageUpdate}
         />

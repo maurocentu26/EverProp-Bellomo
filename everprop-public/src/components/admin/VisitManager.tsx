@@ -128,17 +128,17 @@ export default function VisitManager({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        {/* Formulario de Agendamiento */}
-        <div className="xl:col-span-1">
-          <form onSubmit={handleSubmit} className="space-y-4 p-6 rounded-2xl border border-slate-100 bg-slate-50/50">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Formulario de Agendamiento Amplio y Cómodo en Desktop */}
+        <div className="lg:col-span-5">
+          <form onSubmit={handleSubmit} className="space-y-4 p-6 sm:p-7 rounded-2xl border border-slate-200 bg-white shadow-xs dark:bg-card dark:border-border">
             {propertyOptions && propertyOptions.length > 0 && (
-              <div className="space-y-1.5 mb-4">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase">¿Qué propiedad van a visitar?</label>
+              <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">¿Qué propiedad van a visitar?</label>
                   <select 
                       value={selectedPropertyId} 
                       onChange={(e) => setSelectedPropertyId(e.target.value)}
-                      className="w-full p-2 rounded-lg border border-slate-200 text-sm bg-white"
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
                   >
                       <option value="">Seleccionar propiedad...</option>
                       {propertyOptions.map(p => (
@@ -147,10 +147,9 @@ export default function VisitManager({
                   </select>
               </div>
             )}
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Nueva Cita</h3>
             
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Visitante</label>
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Visitante / Interesado</label>
               <div className="relative">
                 <Input
                   value={guestName}
@@ -160,11 +159,11 @@ export default function VisitManager({
                   }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  placeholder="Nombre completo"
-                  className="bg-white border-slate-200"
+                  placeholder="Nombre y apellido"
+                  className="h-11 bg-white border-slate-200 rounded-xl px-3.5 shadow-2xs focus-visible:ring-blue-500 dark:border-slate-800 dark:bg-slate-900"
                 />
                 {leadOptions && showSuggestions && guestName.length > 2 && (
-                  <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl animate-in fade-in zoom-in-95">
+                  <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl animate-in fade-in zoom-in-95 dark:border-slate-800 dark:bg-slate-900">
                     {leadOptions
                       .filter((l) => l.name.toLowerCase().includes(guestName.toLowerCase()))
                       .map((l) => (
@@ -178,10 +177,10 @@ export default function VisitManager({
                             setEmail(l.email ?? "");
                             setShowSuggestions(false);
                           }}
-                          className="flex w-full items-center justify-between px-4 py-3 text-sm hover:bg-slate-50 transition-colors border-b last:border-0 border-slate-50"
+                          className="flex w-full items-center justify-between px-4 py-3 text-sm hover:bg-slate-50 transition-colors border-b last:border-0 border-slate-100 dark:border-slate-800 dark:hover:bg-slate-800"
                         >
-                          <span className="font-semibold text-slate-700">{l.name}</span>
-                          <span className="text-[10px] text-slate-400">{l.phone || l.email}</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{l.name}</span>
+                          <span className="text-xs text-slate-400">{l.phone || l.email}</span>
                         </button>
                       ))}
                   </div>
@@ -189,30 +188,40 @@ export default function VisitManager({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Teléfono</label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp" className="bg-white border-slate-200" />
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Teléfono / WhatsApp</label>
+                <Input 
+                  value={phone} 
+                  onChange={(e) => setPhone(e.target.value)} 
+                  placeholder="Ej: +54 9 11..." 
+                  className="h-11 bg-white border-slate-200 rounded-xl px-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900" 
+                />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Fecha y Hora</label>
-                <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="bg-white border-slate-200" />
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Fecha y Hora</label>
+                <Input 
+                  type="datetime-local" 
+                  value={scheduledAt} 
+                  onChange={(e) => setScheduledAt(e.target.value)} 
+                  className="h-11 bg-white border-slate-200 rounded-xl px-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900" 
+                />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Notas u Observaciones</label>
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Notas u Observaciones</label>
               <Textarea 
                 value={notes} 
                 onChange={(e) => setNotes(e.target.value)} 
-                placeholder="Ej: Trae seña, viene con arquitecto..." 
-                className="bg-white border-slate-200 min-h-[80px]"
+                placeholder="Ej: Trae seña de reserva, viene con arquitecto, interesado en financiación..." 
+                className="min-h-[90px] bg-white border-slate-200 rounded-xl p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900 text-sm"
               />
             </div>
 
-            {error && <p className="text-xs text-red-500 font-medium px-1">{error}</p>}
+            {error && <p className="text-xs text-rose-600 font-medium px-1">{error}</p>}
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 py-6 rounded-xl">
+            <Button type="submit" className="min-h-11 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition-colors">
               <Plus className="mr-2 h-4 w-4" />
               Confirmar Visita
             </Button>
@@ -220,7 +229,7 @@ export default function VisitManager({
         </div>
 
         {/* Lista de Visitas (Timeline) */}
-        <div className="xl:col-span-2 space-y-4">
+        <div className="lg:col-span-7 space-y-4">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Cronograma de Visitas</h3>
           
           {sortedVisits.length === 0 ? (
