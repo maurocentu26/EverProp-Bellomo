@@ -37,11 +37,11 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
         {isLot ? <Trees className="h-5 w-5 text-emerald-600" /> : <Building2 className="h-5 w-5" />}
       </div>
 
-      <div className="min-w-0">
-        <h3 className="truncate text-base font-semibold text-slate-900">
+      <div className="min-w-52 max-w-80">
+        <h3 className="break-words text-base font-semibold text-slate-900">
           {property.sectorName ? `${property.sectorName} · ${property.unitNumber}` : property.title}
         </h3>
-        <p className="mt-0.5 truncate text-xs text-slate-500">
+        <p className="mt-1 text-xs text-slate-500">
           {property.sectorName ? `${property.title} · ` : ""}
           {property.neighborhood || property.city || "Jujuy"}
         </p>
@@ -50,8 +50,8 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
   );
 
   return (
-    <tr className="group border-t border-slate-200 text-sm text-slate-700 hover:bg-slate-50/70">
-      <td className="px-4 py-4 align-middle first:rounded-l-2xl last:rounded-r-2xl sm:px-5">
+    <tr className="group border-t border-slate-200 text-sm text-slate-700 transition-colors hover:bg-muted/60 focus-within:bg-muted/60">
+      <td className="px-4 py-4 align-middle">
         {readOnly ? (
           <div className="flex min-w-0 items-center gap-4">{identity}</div>
         ) : (
@@ -63,15 +63,15 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
         <Badge variant={isSale ? "positive" : "default"}>{getOperationLabel(property.operation)}</Badge>
       </td>
 
-      <td className="px-4 py-4 align-middle font-semibold text-slate-900 sm:px-5">
+      <td className="px-4 py-4 align-middle whitespace-nowrap font-semibold text-slate-900 sm:px-5">
         {formatPropertyPrice(property.price, property.currency)}
       </td>
 
       <td className="px-4 py-4 align-middle text-slate-600 sm:px-5">
-        {property.neighborhood || property.city}, {property.city}
+        <div className="min-w-32 max-w-48 leading-5">{property.neighborhood && <span className="block">{property.neighborhood}</span>}<span className="block">{property.city}</span></div>
       </td>
 
-      <td className="px-4 py-4 align-middle font-medium text-slate-700 sm:px-5">
+      <td className="px-4 py-4 align-middle whitespace-nowrap font-medium text-slate-700 sm:px-5">
         {property.area_m2 ? `${property.area_m2} m²` : (property.bedrooms ? `${property.bedrooms} dorm.` : "-")}
       </td>
 

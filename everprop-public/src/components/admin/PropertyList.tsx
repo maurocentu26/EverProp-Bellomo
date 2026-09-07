@@ -25,20 +25,13 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
         </span>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full table-fixed border-separate border-spacing-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6 sm:pt-4">
-          <colgroup>
-            <col className="w-[38%]" />
-            <col className="w-[12%]" />
-            <col className="w-[16%]" />
-            <col className="w-[16%]" />
-            <col className="w-[10%]" />
-            <col className="w-[8%]" />
-          </colgroup>
+      <div className="overflow-x-auto rounded-b-2xl">
+        <table className="w-full table-auto border-separate border-spacing-0 pb-2">
+
 
           <thead>
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <th className="px-4 py-3">Lote / Propiedad</th>
+              <th scope="col" className="whitespace-nowrap px-4 py-3">Lote / Propiedad</th>
               <th className="px-4 py-3">Operación</th>
               <th className="px-4 py-3">Precio</th>
               <th className="px-4 py-3">Ubicación</th>
