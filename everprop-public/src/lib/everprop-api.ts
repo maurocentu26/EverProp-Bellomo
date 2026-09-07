@@ -667,7 +667,7 @@ export async function loadEverpropAllFollowUps(): Promise<LeadFollowUp[]> {
 
 export async function attachEverpropLeadProperty(
   leadPublicId: string,
-  propertyPublicId: string,
+  propertyPublicId: string | number,
   options?: {
     interestLevel?: string;
     notes?: string;
@@ -678,7 +678,7 @@ export async function attachEverpropLeadProperty(
   return apiFetch<{ status: string; data: any }>(`/api/v1/admin/leads/${leadPublicId}/properties`, {
     method: "POST",
     body: JSON.stringify({
-      property_id: propertyPublicId,
+      property_id: String(propertyPublicId),
       interest_level: options?.interestLevel || "MEDIUM",
       notes: options?.notes || null,
       quoted_price: options?.price ?? null,
