@@ -140,11 +140,13 @@ export async function POST(request: Request) {
         return json({ text: `${contact.address}, ${contact.city}. ${contact.weekdayHours}; ${contact.saturdayHours}. Teléfonos: ${contact.commercialPhones}.`, mode: "demo" });
       }
       const catalog = await readDemoCatalog();
-      const words = latestQuestion.toLocaleLowerCase("es-AR").split(/\s+/).filter(word => word.length > 3);
-      const matches = catalog.filter(p => words.some(word => (p.title + " " + p.propertyType + " " + p.city).toLocaleLowerCase("es-AR").includes(word)));
-      const selection = matches.length ? matches : catalog;
+      const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-AR");
+      const ignored = new Set(["quiero", "informacion", "sobre", "busco", "buscando", "tenes", "tienen", "mostrar", "mostrame", "publicada", "publicadas", "propiedades", "propiedad", "precio", "cuanto", "cuesta", "saber", "disponibles", "disponible", "hola", "ahora", "esta", "sigue", "tengo", "puedo", "para", "necesito", "datos"]);
+      const words = normalize(latestQuestion).split(/[^a-z0-9]+/).filter(word => word.length > 3 && !ignored.has(word)).map(word => word.endsWith("s") ? word.slice(0, -1) : word);
+      const selection = words.length ? catalog.filter(p => words.every(word => normalize(p.title + " " + p.propertyType + " " + p.city + " " + p.neighborhood).includes(word))) : catalog;
+      if (catalog.length && !selection.length) return json({ text: "No encontré una propiedad publicada que coincida con esa consulta. Podés revisar las opciones de Comercializadora o consultar al equipo de Bellomo.", mode: "demo" });
       const summary = selection.slice(0, 5).map(p => "• **" + p.title + "** — " + (p.price > 0 ? p.currency + " " + p.price.toLocaleString("es-AR") : "Consultar precio") + " · " + (p.status === "reserved" ? "Reservado" : p.status === "sold" ? "Vendido" : "Disponible")).join("\n") + (website.bot.knowledge ? "\n\n" + website.bot.knowledge : "");
-      return json({ text: catalog.length ? "**Demo local.** Estas son propiedades publicadas ahora en el panel:\n\n" + summary + "\n\nPodés ver el catálogo completo en la sección Propiedades publicadas. Los datos son de demostración." : "**Demo local.** No hay propiedades publicadas en este momento. Podés publicar una desde el panel.", mode: "demo" });
+      return json({ text: catalog.length ? "**Demo local.** Estas son propiedades publicadas ahora en el panel:\n\n" + summary + "\n\nPodés ver el catálogo completo en Comercializadora. Los datos son de demostración." : "**Demo local.** No hay propiedades publicadas en este momento. Podés publicar una desde el panel.", mode: "demo" });
     } catch { return json({ text: "No puedo consultar el catálogo demo ahora. Revisá que el panel local esté encendido.", mode: "demo" }); }
   }
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;

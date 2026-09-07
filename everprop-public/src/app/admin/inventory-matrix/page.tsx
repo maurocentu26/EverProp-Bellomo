@@ -6,12 +6,17 @@ import { type Property, properties as sampleProperties, projects as sampleProjec
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropCatalog } from "@/lib/everprop-api";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { demoCatalog, isLocalDemo } from "@/lib/demo-catalog";
+import { useAuth } from "@/lib/auth-context";
+import { canManageInventory } from "@/lib/demo-permissions";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
 import { Button } from "@/components/ui/button";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
 
 export default function GlobalInventoryMatrixPage() {
+  const { currentUser } = useAuth();
+  const canEdit = !isLocalDemo || canManageInventory(currentUser);
+  const [error, setError] = useState("");
   const [properties, setProperties] = useState<Property[]>([]);
   const [projects, setProjects] = useState<typeof sampleProjects>([]);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -23,6 +28,21 @@ export default function GlobalInventoryMatrixPage() {
   useEffect(() => {
     let active = true;
     async function loadData() {
+      if (isLocalDemo) {
+        try {
+          const catalog = await demoCatalog() as Property[];
+          if (!active) return;
+          setProperties(catalog);
+          setProjects(sampleProjects);
+          setError("");
+        } catch (reason) {
+          if (!active) return;
+          setProperties([]);
+          setError(reason instanceof Error ? reason.message : "No se pudo cargar el inventario.");
+        }
+        if (active) setIsLoaded(true);
+        return;
+      }
       if (!isMockDataMode) {
         try {
           const catalog = await loadEverpropCatalog();
@@ -42,7 +62,14 @@ export default function GlobalInventoryMatrixPage() {
       setIsLoaded(true);
     }
     void loadData();
+    const refresh = () => { void loadData(); };
+    const timer = isLocalDemo ? window.setInterval(refresh, 3000) : undefined;
+    window.addEventListener("demo-inventory-updated", refresh);
+    window.addEventListener("focus", refresh);
     return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("demo-inventory-updated", refresh);
+      window.removeEventListener("focus", refresh);
       active = false;
     };
   }, []);
@@ -62,6 +89,8 @@ export default function GlobalInventoryMatrixPage() {
     });
     return groups;
   }, [filteredProperties]);
+
+  if (error) return <div role="alert" className="rounded-xl border p-6">{error} Intentá recargar la página.</div>;
 
   if (!isLoaded) return (
     <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
@@ -96,13 +125,13 @@ export default function GlobalInventoryMatrixPage() {
             </select>
           </div>
 
-          <Button
+          {canEdit && <Button
             size="sm"
             onClick={() => setIsGenerateLotsOpen(true)}
             className="h-10 px-4 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm rounded-xl"
           >
             <Layers className="h-4 w-4" /> + Cargar Manzana / Lotes
-          </Button>
+          </Button>}
         </div>
       </div>
 

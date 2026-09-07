@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import PropertyList from "@/components/admin/PropertyList";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Download, Plus, Map, Building2, RotateCcw, Database, FlaskConical } from "lucide-react";
+import { AlertTriangle, Plus, Map, Building2, RotateCcw, Database, FlaskConical } from "lucide-react";
 import Link from "next/link";
 import { type Project, type Property, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
@@ -172,7 +172,7 @@ export default function AllPropertiesPage() {
     <div className="max-w-[1400px] mx-auto space-y-8 pb-10">
       {isLocalDemo && <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
         <strong>Demo local conectada a Bellomito.</strong> {canManageInventory(currentUser) ? "Publicá, ocultá o editá cada propiedad desde su fila. Aparece en la sección existente de Comercializadora." : "Tu perfil permite consultar propiedades. Administración e Ingeniería gestionan su publicación."}
-        
+
       </div>}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -180,7 +180,7 @@ export default function AllPropertiesPage() {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Propiedades e Inventario</h1>
           <p className="mt-1 text-slate-500 text-sm">Gestioná todos los activos, lotes y proyectos en cartera.</p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           {(!isLocalDemo || canManageInventory(currentUser)) && <Link href="/admin/properties/new">
             <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
@@ -213,15 +213,16 @@ export default function AllPropertiesPage() {
       <label className="block max-w-lg text-sm font-medium text-slate-700">Buscar propiedad
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nombre, ciudad o barrio" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" />
       </label>
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center">
-        
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center">
+
         {/* Project Filter */}
-        <div className="flex items-center gap-3 w-full xl:w-auto">
-          <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
+        <div className="flex min-w-0 items-center gap-3 w-full sm:w-auto sm:min-w-60">
+          <div className="h-10 w-10 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
             <Map className="h-5 w-5 text-slate-500" />
           </div>
-          <select 
-            className="text-sm font-semibold border-none bg-transparent focus:ring-0 cursor-pointer p-0 w-full xl:w-48 text-slate-700"
+          <select
+            className="text-sm font-semibold border-none bg-transparent focus:ring-0 cursor-pointer p-0 min-w-0 w-full sm:w-48 text-slate-700"
+            aria-label="Filtrar por desarrollo"
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
           >
@@ -231,18 +232,19 @@ export default function AllPropertiesPage() {
             ))}
           </select>
         </div>
-        <div className="hidden xl:block w-px h-8 bg-slate-200" />
+
 
         {/* Status Filter */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full xl:w-auto p-1 bg-slate-50 rounded-xl border border-slate-100">
+        <div className="flex flex-wrap items-center gap-2 max-w-full p-1 bg-slate-50 rounded-xl border border-slate-100">
           {statusFilters.map(tab => (
-            <button 
+            <button
+              aria-pressed={activeStatus === tab.id}
               key={tab.id}
               onClick={() => setActiveStatus(tab.id)}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap uppercase tracking-wider",
-                activeStatus === tab.id 
-                  ? (tab.id === 'available' ? "bg-emerald-100 text-emerald-700" : tab.id === 'reserved' ? "bg-amber-100 text-amber-700" : tab.id === 'sold' ? "bg-rose-100 text-rose-700" : "bg-white text-slate-800 shadow-sm border border-slate-200") 
+                "min-h-11 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap uppercase tracking-wider",
+                activeStatus === tab.id
+                  ? (tab.id === 'available' ? "bg-emerald-100 text-emerald-700" : tab.id === 'reserved' ? "bg-amber-100 text-amber-700" : tab.id === 'sold' ? "bg-rose-100 text-rose-700" : "bg-white text-slate-800 shadow-sm border border-slate-200")
                   : "text-slate-500 hover:text-slate-700"
               )}
             >
@@ -251,17 +253,18 @@ export default function AllPropertiesPage() {
           ))}
         </div>
 
-        <div className="hidden xl:block w-px h-8 bg-slate-200" />
+
 
         {/* Type Multi-select & Clear Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full xl:w-auto">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           <Building2 className="h-4 w-4 text-slate-400 mr-2 hidden sm:block" />
           {["Lote", "Departamento", "Local", "Cochera", "Casa"].map(type => (
             <button
+              aria-pressed={selectedTypes.includes(type)}
               key={type}
               onClick={() => toggleType(type)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
+                "min-h-11 px-3 py-2 rounded-lg text-xs font-semibold transition-all border",
                 selectedTypes.includes(type) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               )}
             >
@@ -316,7 +319,7 @@ export default function AllPropertiesPage() {
               </div>
             );
           })}
-          
+
           {/* Individual properties */}
           {groupedProperties.individual.length > 0 && (
             <div className="space-y-4 pt-4">

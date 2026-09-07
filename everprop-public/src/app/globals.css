@@ -322,3 +322,27 @@ body {
     @apply font-sans;
   }
 }
+
+/* The inventory follows the panel width, including when a sidebar is open. */
+.inventory-responsive { container-type: inline-size; }
+@container (max-width: 1180px) {
+  .inventory-table, .inventory-table tbody { display: block; width: 100%; }
+  .inventory-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .inventory-table tbody { padding: 12px; }
+  .inventory-table tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
+  .inventory-table tr:last-child { margin-bottom: 0; }
+  .inventory-table td { display: block; min-width: 0; padding: 0; white-space: normal; overflow-wrap: anywhere; }
+  .inventory-table td::before { content: attr(data-label); display: block; margin-bottom: 6px; color: var(--muted-foreground); font-size: 12px; font-weight: 600; }
+  .inventory-table td:first-child, .inventory-table td:last-child { grid-column: 1 / -1; }
+  .inventory-table td:first-child::before { display: none; }
+  .inventory-table .inventory-identity { min-width: 0; max-width: none; }
+  .inventory-table td:nth-child(4) > div { min-width: 0; max-width: none; }
+  .inventory-table td:last-child { border-top: 1px solid var(--border); padding-top: 16px; }
+  .inventory-table td:last-child > div { width: 100%; }
+  .inventory-table td:last-child > div > div { display: flex; flex-wrap: wrap; }
+  .inventory-table td:last-child button { flex: 0 1 auto; }
+}
+@container (max-width: 480px) {
+  .inventory-table tr { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px; }
+  .inventory-table td:last-child button { flex: 1 1 auto; }
+}

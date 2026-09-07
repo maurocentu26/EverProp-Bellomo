@@ -16,9 +16,9 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
       if (busy) return; busy = true;
       try {
         const response = await fetch(`/api/demo/site${isPreview ? "?preview=1" : ""}`, { cache: "no-store", signal: controller.signal });
-        const data = await response.json(); if (!response.ok) throw new Error(data.error);
+        const data = await response.json(); if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "La vista previa es privada. Ingresá al panel con un perfil autorizado." : "No se pudo actualizar la web. Revisá que el panel esté abierto.");
         if (active) { setContent(previous => JSON.stringify(previous) === JSON.stringify(data.content) ? previous : data.content); setLoaded(true); setPreview(isPreview); setError(""); }
-      } catch { if (active) setError("No se pudo actualizar la web. Revisá que el panel esté abierto."); }
+      } catch (reason) { if (active) setError(reason instanceof Error ? reason.message : "No se pudo actualizar la web. Revisá que el panel esté abierto."); }
       finally { busy = false; }
     }
     void refresh(); const timer = setInterval(refresh, 2000);

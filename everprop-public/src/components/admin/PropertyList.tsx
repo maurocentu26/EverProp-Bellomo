@@ -12,8 +12,8 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
   const totalProperties = properties.length;
 
   return (
-    <div className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6">
+    <div className="inventory-responsive min-w-0 mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-6">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Inventario de Lotes y Propiedades</h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -26,18 +26,18 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
       </div>
 
       <div className="overflow-x-auto rounded-b-2xl">
-        <table className="w-full table-auto border-separate border-spacing-0 pb-2">
+        <table className="inventory-table w-full table-auto border-separate border-spacing-0 pb-2">
 
 
           <thead>
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <th scope="col" className="whitespace-nowrap px-4 py-3">Lote / Propiedad</th>
-              <th className="px-4 py-3">Operación</th>
-              <th className="px-4 py-3">Precio</th>
-              <th className="px-4 py-3">Ubicación</th>
-              <th className="px-4 py-3">Superficie</th>
-              <th className="px-4 py-3">Estado</th>
-              {isLocalDemo && <th className="px-4 py-3">Web pública</th>}
+              <th scope="col" className="px-4 py-3">Operación</th>
+              <th scope="col" className="px-4 py-3">Precio</th>
+              <th scope="col" className="px-4 py-3">Ubicación</th>
+              <th scope="col" className="px-4 py-3">Superficie</th>
+              <th scope="col" className="px-4 py-3">Estado</th>
+              {isLocalDemo && <th scope="col" className="px-4 py-3">Web pública</th>}
             </tr>
           </thead>
 

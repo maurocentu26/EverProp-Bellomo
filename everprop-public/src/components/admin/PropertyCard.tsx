@@ -37,7 +37,7 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
         {isLot ? <Trees className="h-5 w-5 text-emerald-600" /> : <Building2 className="h-5 w-5" />}
       </div>
 
-      <div className="min-w-52 max-w-80">
+      <div className="inventory-identity min-w-52 max-w-80">
         <h3 className="break-words text-base font-semibold text-slate-900">
           {property.sectorName ? `${property.sectorName} · ${property.unitNumber}` : property.title}
         </h3>
@@ -51,7 +51,7 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
 
   return (
     <tr className="group border-t border-slate-200 text-sm text-slate-700 transition-colors hover:bg-muted/60 focus-within:bg-muted/60">
-      <td className="px-4 py-4 align-middle">
+      <td data-label="Propiedad" className="px-4 py-4 align-middle">
         {readOnly ? (
           <div className="flex min-w-0 items-center gap-4">{identity}</div>
         ) : (
@@ -59,23 +59,23 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
         )}
       </td>
 
-      <td className="px-4 py-4 align-middle sm:px-5">
+      <td data-label="Operación" className="px-4 py-4 align-middle sm:px-5">
         <Badge variant={isSale ? "positive" : "default"}>{getOperationLabel(property.operation)}</Badge>
       </td>
 
-      <td className="px-4 py-4 align-middle whitespace-nowrap font-semibold text-slate-900 sm:px-5">
+      <td data-label="Precio" className="px-4 py-4 align-middle whitespace-nowrap font-semibold text-slate-900 sm:px-5">
         {formatPropertyPrice(property.price, property.currency)}
       </td>
 
-      <td className="px-4 py-4 align-middle text-slate-600 sm:px-5">
+      <td data-label="Ubicación" className="px-4 py-4 align-middle text-slate-600 sm:px-5">
         <div className="min-w-32 max-w-48 leading-5">{property.neighborhood && <span className="block">{property.neighborhood}</span>}<span className="block">{property.city}</span></div>
       </td>
 
-      <td className="px-4 py-4 align-middle whitespace-nowrap font-medium text-slate-700 sm:px-5">
+      <td data-label="Superficie" className="px-4 py-4 align-middle whitespace-nowrap font-medium text-slate-700 sm:px-5">
         {property.area_m2 ? `${property.area_m2} m²` : (property.bedrooms ? `${property.bedrooms} dorm.` : "-")}
       </td>
 
-      <td className="px-4 py-4 align-middle sm:px-5">
+      <td data-label="Estado" className="px-4 py-4 align-middle sm:px-5">
         <span
           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
             property.status === "available"
@@ -92,7 +92,7 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
             : "Vendido"}
         </span>
       </td>
-      {isLocalDemo && <td className="px-4 py-4 align-middle">
+      {isLocalDemo && <td data-label="Web pública" className="px-4 py-4 align-middle">
         <PropertyPublication key={JSON.stringify(property)} property={property}/>
       </td>}
     </tr>

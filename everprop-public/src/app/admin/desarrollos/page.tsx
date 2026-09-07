@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
+import { demoCatalog, isLocalDemo } from "@/lib/demo-catalog";
 import { cn } from "@/lib/utils";
 
 type DataState =
@@ -107,6 +108,18 @@ export default function DesarrollosPage() {
     let active = true;
 
     async function loadData() {
+      if (isLocalDemo) {
+        try {
+          const catalog = await demoCatalog() as Property[];
+          if (!active) return;
+          setProperties(catalog);
+          setProjects(sampleProjects.filter(project => project.type !== "commercial"));
+          setDataState({ status: "ready", source: "mock" });
+        } catch (reason) {
+          if (active) setDataState({ status: "error", message: reason instanceof Error ? reason.message : "No se pudo cargar el inventario." });
+        }
+        return;
+      }
       if (isMockDataMode) {
         await Promise.resolve();
         if (!active) return;
@@ -138,7 +151,12 @@ export default function DesarrollosPage() {
     }
 
     void loadData();
+    const refresh = () => { void loadData(); };
+    const timer = isLocalDemo ? window.setInterval(refresh, 3000) : undefined;
+    window.addEventListener("focus", refresh);
     return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
       active = false;
     };
   }, [attempt, invalidateSession]);

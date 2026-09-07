@@ -7,17 +7,37 @@ import { type Property, properties as sampleProperties } from "@/data/admin-samp
 import { loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropCatalog } from "@/lib/everprop-api";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { demoCatalog, isLocalDemo } from "@/lib/demo-catalog";
+import { useAuth } from "@/lib/auth-context";
+import { canManageInventory } from "@/lib/demo-permissions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 export default function CommercialAssetsPage() {
+  const { currentUser } = useAuth();
+  const canEdit = !isLocalDemo || canManageInventory(currentUser);
+  const [error, setError] = useState("");
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
     async function loadData() {
+      if (isLocalDemo) {
+        try {
+          const catalog = await demoCatalog() as Property[];
+          if (!active) return;
+          setProperties(catalog);
+
+          setError("");
+        } catch (reason) {
+          if (!active) return;
+          setProperties([]);
+          setError(reason instanceof Error ? reason.message : "No se pudo cargar el inventario.");
+        }
+        if (active) setIsLoaded(true);
+        return;
+      }
       if (!isMockDataMode) {
         try {
           const cat = await loadEverpropCatalog();
@@ -34,10 +54,19 @@ export default function CommercialAssetsPage() {
       setIsLoaded(true);
     }
     void loadData();
+    const refresh = () => { void loadData(); };
+    const timer = isLocalDemo ? window.setInterval(refresh, 3000) : undefined;
+    window.addEventListener("demo-inventory-updated", refresh);
+    window.addEventListener("focus", refresh);
     return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("demo-inventory-updated", refresh);
+      window.removeEventListener("focus", refresh);
       active = false;
     };
   }, []);
+
+  if (error) return <div role="alert" className="rounded-xl border p-6">{error} Intentá recargar la página.</div>;
 
   if (!isLoaded) {
     return (
@@ -56,22 +85,22 @@ export default function CommercialAssetsPage() {
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <Store className="h-7 w-7 sm:h-8 sm:w-8 text-indigo-600" /> 
+            <Store className="h-7 w-7 sm:h-8 sm:w-8 text-indigo-600" />
             Activos Comerciales
           </h1>
           <p className="text-slate-500 text-sm mt-1">Heatmap de Locales y Cocheras, rentabilidad y ocupación.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/admin/properties/new?category=comercial&type=Local">
+          {canEdit && <Link href="/admin/properties/new?category=comercial&type=Local">
             <Button size="sm" className="h-9 px-3.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm">
               <Plus className="h-3.5 w-3.5" /> + Nuevo Local Comercial
             </Button>
-          </Link>
-          <Link href="/admin/properties/new?category=comercial&type=Cochera">
+          </Link>}
+          {canEdit && <Link href="/admin/properties/new?category=comercial&type=Cochera">
             <Button size="sm" variant="outline" className="h-9 px-3.5 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-50 gap-1.5">
               <Car className="h-3.5 w-3.5 text-amber-600" /> + Nueva Cochera
             </Button>
-          </Link>
+          </Link>}
         </div>
       </header>
 
@@ -83,13 +112,13 @@ export default function CommercialAssetsPage() {
             <h2 className="text-base sm:text-lg font-bold text-slate-800">Locales Comerciales</h2>
             <span className="ml-2 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold">{locals.length}</span>
           </div>
-          <Link href="/admin/properties/new?category=comercial&type=Local">
+          {canEdit && <Link href="/admin/properties/new?category=comercial&type=Local">
             <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-semibold border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-1">
               <Plus className="h-3 w-3" /> + Nuevo Local
             </Button>
-          </Link>
+          </Link>}
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="bg-slate-50/80 text-xs uppercase font-bold text-slate-500 border-b border-slate-100">
@@ -151,13 +180,13 @@ export default function CommercialAssetsPage() {
             <h2 className="text-base sm:text-lg font-bold text-slate-800">Cocheras</h2>
             <span className="ml-2 bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">{garages.length}</span>
           </div>
-          <Link href="/admin/properties/new?category=comercial&type=Cochera">
+          {canEdit && <Link href="/admin/properties/new?category=comercial&type=Cochera">
             <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-semibold border-amber-200 text-amber-700 hover:bg-amber-50 gap-1">
               <Plus className="h-3 w-3" /> + Nueva Cochera
             </Button>
-          </Link>
+          </Link>}
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="bg-slate-50/80 text-xs uppercase font-bold text-slate-500 border-b border-slate-100">
