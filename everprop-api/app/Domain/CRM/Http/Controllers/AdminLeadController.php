@@ -635,20 +635,51 @@ final class AdminLeadController extends Controller
             ];
 
             if (array_key_exists('status', $validated)) {
-                $updates['status'] = strtoupper($validated['status']);
+                $rawStatus = strtoupper(trim((string) $validated['status']));
+                $statusMap = [
+                    'NEW' => 'ACTIVE',
+                    'CONTACTED' => 'ACTIVE',
+                    'QUALIFIED' => 'ACTIVE',
+                    'ACTIVE' => 'ACTIVE',
+                    'VISIT_SCHEDULED' => 'VISIT_SCHEDULED',
+                    'VISITING' => 'VISIT_SCHEDULED',
+                    'NEGOTIATION' => 'NEGOTIATING',
+                    'NEGOTIATING' => 'NEGOTIATING',
+                    'IN_NEGOTIATION' => 'NEGOTIATING',
+                    'WON' => 'CONVERTED',
+                    'CLOSING' => 'CONVERTED',
+                    'CONVERTED' => 'CONVERTED',
+                    'DISCARDED' => 'DISCARDED',
+                    'LOST' => 'DISCARDED',
+                ];
+                $updates['status'] = $statusMap[$rawStatus] ?? 'ACTIVE';
             }
             if (array_key_exists('interest_level', $validated)) {
-                $updates['interest_level'] = strtoupper($validated['interest_level']);
+                $rawLevel = strtoupper(trim((string) $validated['interest_level']));
+                $levelMap = [
+                    'LOW' => 'LOW',
+                    'BAJO' => 'LOW',
+                    'MEDIUM' => 'MEDIUM',
+                    'MEDIO' => 'MEDIUM',
+                    'HIGH' => 'HIGH',
+                    'ALTO' => 'HIGH',
+                    'HOT' => 'HOT',
+                ];
+                $updates['interest_level'] = $levelMap[$rawLevel] ?? 'MEDIUM';
             }
             if (array_key_exists('notes', $validated)) {
                 $updates['notes'] = $validated['notes'];
             }
 
             DB::table('lead_properties')
-                ->where('tenant_id', $tenantId)
-                ->where('lead_id', $lead->id)
-                ->where('property_id', $property->id)
-                ->update($updates);
+                ->updateOrInsert(
+                    [
+                        'tenant_id' => $tenantId,
+                        'lead_id' => $lead->id,
+                        'property_id' => $property->id,
+                    ],
+                    $updates
+                );
 
             return response()->json([
                 'status' => 'ok',
