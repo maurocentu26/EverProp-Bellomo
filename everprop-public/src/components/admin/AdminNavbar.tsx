@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
-import { Bell, Check, Menu, Plus } from "lucide-react";
+import { Bell, Check, Menu, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
-import { fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, type AppNotification } from "@/lib/notifications";
+import { clearAllNotifications, fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, type AppNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -124,6 +124,11 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     await markAllNotificationsAsRead(user.id);
   };
 
+  const handleClearAll = async () => {
+    setNotifications([]);
+    await clearAllNotifications(user?.id);
+  };
+
   const handleNotificationClick = async (n: AppNotification) => {
     if (!n.read) {
       void markNotificationAsRead(n.id);
@@ -214,15 +219,27 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               <PopoverContent align="end" className="w-80 p-0 shadow-xl" sideOffset={8}>
                 <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                   <p className="text-sm font-bold text-slate-900">Notificaciones</p>
-                  {unreadCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleMarkAllAsRead}
-                      className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50"
-                    >
-                      <Check className="h-3 w-3" /> Marcar leídas
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllAsRead}
+                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                      >
+                        <Check className="h-3 w-3" /> Marcar leídas
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAll}
+                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                        title="Borrar todas las notificaciones"
+                      >
+                        <Trash2 className="h-3 w-3" /> Limpiar
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                   {notifications.length === 0 ? (

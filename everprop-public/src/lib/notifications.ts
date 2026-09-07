@@ -3,6 +3,7 @@ import {
   loadEverpropNotifications,
   markAllEverpropNotificationsRead,
   markEverpropNotificationRead,
+  clearAllEverpropNotifications,
   type ApiNotification,
 } from "./everprop-api";
 
@@ -121,4 +122,27 @@ export function markAllAsRead(targetUserId: string) {
   );
   saveNotifications(updated);
 }
+
+export async function clearAllNotifications(targetUserId?: string): Promise<void> {
+  if (!isMockDataMode) {
+    try {
+      await clearAllEverpropNotifications();
+    } catch (err) {
+      console.error("Error clearing notifications via API:", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(STORAGE_KEY);
+    try {
+      const channel = new BroadcastChannel("everprop_notifications");
+      channel.postMessage({ type: "NOTIFICATIONS_UPDATED" });
+      channel.close();
+      window.dispatchEvent(new Event("everprop_notifications_updated"));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+
 

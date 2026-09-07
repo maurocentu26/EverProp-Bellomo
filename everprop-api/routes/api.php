@@ -49,6 +49,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/notifications/count', [AdminNotificationController::class, 'count'])->name('notifications.count');
         Route::post('/notifications/mark-all-read', [AdminNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
         Route::patch('/notifications/{id}/read', [AdminNotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::delete('/notifications', [AdminNotificationController::class, 'destroyAll'])->name('notifications.destroy-all');
     });
 });
 

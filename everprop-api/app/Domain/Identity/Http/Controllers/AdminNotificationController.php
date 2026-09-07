@@ -93,4 +93,19 @@ final class AdminNotificationController extends Controller
             'status' => 'all_marked_read',
         ]);
     }
+
+    public function destroyAll(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $user->notifications()->delete();
+
+        return response()->json([
+            'status' => 'all_deleted',
+        ]);
+    }
 }
+

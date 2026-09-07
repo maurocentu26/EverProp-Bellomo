@@ -804,3 +804,10 @@ export async function markAllEverpropNotificationsRead(): Promise<void> {
     method: "POST",
   });
 }
+
+export async function clearAllEverpropNotifications(): Promise<void> {
+  await apiFetch("/api/v1/admin/notifications", {
+    method: "DELETE",
+  });
+}
+
