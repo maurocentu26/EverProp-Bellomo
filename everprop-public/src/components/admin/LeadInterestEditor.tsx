@@ -62,30 +62,40 @@ export function LeadInterestEditor({
     notes: interest?.notes ?? "",
   }));
 
+  const availableProjects = useMemo(() => {
+    if (!draft.category) return projects;
+    return projects.filter((project) =>
+      properties.some(
+        (p) => p.projectId === project.id && inferLeadInterestCategory(p) === draft.category
+      )
+    );
+  }, [draft.category, projects, properties]);
+
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
       if (draft.projectId && property.projectId !== draft.projectId) return false;
-      if (draft.category === "local" && property.propertyType !== "Local") return false;
-      if (draft.category === "cochera" && property.propertyType !== "Cochera") return false;
-      if (draft.category === "loteo" && property.propertyType !== "Lote") return false;
-      if (draft.category === "tradicional" && !["Casa", "Departamento", "Propiedad"].includes(property.propertyType)) return false;
+      if (draft.category && inferLeadInterestCategory(property) !== draft.category) return false;
       return true;
     });
   }, [draft.category, draft.projectId, properties]);
 
   const unitOptions = useMemo(() => {
+    let list: Property[] = [];
     if (draft.projectId) {
-      return properties.filter((p) => p.projectId === draft.projectId && (p.unitNumber || p.sectorName));
-    }
-    if (draft.propertyId) {
+      list = properties.filter((p) => p.projectId === draft.projectId && (p.unitNumber || p.sectorName));
+    } else if (draft.propertyId) {
       const p = properties.find((item) => item.id === draft.propertyId);
       if (p?.projectId) {
-        return properties.filter((item) => item.projectId === p.projectId && (item.unitNumber || item.sectorName));
+        list = properties.filter((item) => item.projectId === p.projectId && (item.unitNumber || item.sectorName));
+      } else if (p && (p.unitNumber || p.sectorName)) {
+        list = [p];
       }
-      return p && (p.unitNumber || p.sectorName) ? [p] : [];
     }
-    return [];
-  }, [draft.projectId, draft.propertyId, properties]);
+    if (draft.category) {
+      list = list.filter((p) => inferLeadInterestCategory(p) === draft.category);
+    }
+    return list;
+  }, [draft.projectId, draft.propertyId, draft.category, properties]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -164,7 +174,23 @@ export function LeadInterestEditor({
                   Categoría
                   <select
                     value={draft.category}
-                    onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value as LeadInterestCategory | "" }))}
+                    onChange={(event) => {
+                      const nextCat = event.target.value as LeadInterestCategory | "";
+                      setDraft((current) => {
+                        const curProp = properties.find((p) => p.id === current.propertyId);
+                        const keepProp = curProp && (!nextCat || inferLeadInterestCategory(curProp) === nextCat);
+                        const curUnit = properties.find((p) => p.id === current.unitId);
+                        const keepUnit = curUnit && (!nextCat || inferLeadInterestCategory(curUnit) === nextCat);
+                        const keepProj = current.projectId && (!nextCat || properties.some((p) => p.projectId === current.projectId && inferLeadInterestCategory(p) === nextCat));
+                        return {
+                          ...current,
+                          category: nextCat,
+                          projectId: keepProj ? current.projectId : "",
+                          propertyId: keepProp ? current.propertyId : "",
+                          unitId: keepUnit ? current.unitId : "",
+                        };
+                      });
+                    }}
                     className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">Sin categoría definida</option>
@@ -194,7 +220,7 @@ export function LeadInterestEditor({
                     className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">Cualquier proyecto o sin desarrollo</option>
-                    {projects.map((project) => (
+                    {availableProjects.map((project) => (
                       <option key={project.id} value={project.id}>{project.name}</option>
                     ))}
                   </select>

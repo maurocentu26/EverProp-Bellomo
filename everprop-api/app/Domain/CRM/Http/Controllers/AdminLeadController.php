@@ -125,12 +125,12 @@ final class AdminLeadController extends Controller
                         'notes' => $lead->notes,
                         'agent_id' => $lead->assigned_user_id,
                         'agent_name' => $lead->assigned_user_name,
-                        'last_touch_at' => $lead->last_touch_at,
-                        'follow_up_updated_at' => $lead->last_touch_at,
+                        'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
+                        'follow_up_updated_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
                         'property_ids' => $linkedPropertyIds[$lead->id] ?? [],
                         'properties' => $linkedPropertiesMap[$lead->id] ?? [],
-                        'created_at' => $lead->created_at,
-                        'updated_at' => $lead->updated_at,
+                        'created_at' => $lead->created_at ? Carbon::parse($lead->created_at, 'UTC')->toISOString() : null,
+                        'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                     ];
                 }),
             ]);
@@ -398,12 +398,12 @@ final class AdminLeadController extends Controller
                     'notes' => $lead->notes,
                     'agent_id' => $lead->assigned_user_id,
                     'agent_name' => $lead->assigned_user_name,
-                    'last_touch_at' => $lead->last_touch_at,
-                    'follow_up_updated_at' => $lead->last_touch_at,
+                    'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
+                    'follow_up_updated_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
                     'property_ids' => $propertyIds,
                     'properties' => $propertiesList,
-                    'created_at' => $lead->created_at,
-                    'updated_at' => $lead->updated_at,
+                    'created_at' => $lead->created_at ? Carbon::parse($lead->created_at, 'UTC')->toISOString() : null,
+                    'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                 ],
             ]);
         } catch (\Throwable $e) {

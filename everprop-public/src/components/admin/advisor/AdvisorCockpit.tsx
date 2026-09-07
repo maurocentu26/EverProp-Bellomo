@@ -20,7 +20,8 @@ import {
   ArrowRight,
   Mail,
   Lightbulb,
-  Building2
+  Building2,
+  BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -44,13 +45,13 @@ import {
   loadEverpropLeads, 
   loadEverpropCatalog, 
   updateEverpropLead, 
-  updateEverpropLeadPropertyStatus,
   createEverpropLeadFollowUp,
   loadEverpropAllFollowUps,
 } from "@/lib/everprop-api";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
+import { AdminMonthBalanceWidget } from "@/components/admin/advisor/AdminMonthBalanceWidget";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Badge from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,14 +63,6 @@ const STAGE_OPTIONS: { id: Lead["stage"]; label: string; apiCode: string; color:
   { id: "visiting", label: "Visita Agendada", apiCode: "VISIT_SCHEDULED", color: "bg-purple-100 text-purple-700 border-purple-200" },
   { id: "negotiation", label: "Negociación", apiCode: "NEGOTIATION", color: "bg-amber-100 text-amber-700 border-amber-200" },
   { id: "closing", label: "Cerrado / Ganado", apiCode: "WON", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-];
-
-const PROPERTY_STATUS_OPTIONS = [
-  { id: "ACTIVE", label: "Interesado", color: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300" },
-  { id: "VISITING", label: "En Visita", color: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300" },
-  { id: "NEGOTIATION", label: "Negociando", color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300" },
-  { id: "WON", label: "Reservado", color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" },
-  { id: "LOST", label: "Descartado", color: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-300" },
 ];
 
 export default function AdvisorCockpit() {
@@ -84,6 +77,7 @@ export default function AdvisorCockpit() {
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
   const [selectedPropertyByLead, setSelectedPropertyByLead] = useState<Record<string, string>>({});
+  const [showMonthBalance, setShowMonthBalance] = useState(false);
 
   // Carga de datos inicial
   useEffect(() => {
@@ -338,33 +332,6 @@ export default function AdvisorCockpit() {
     setStageUpdateLead(null);
   }
 
-  // Cambio de estado específico de una propiedad vinculada
-  async function handlePropertyStatusChange(leadId: string, propertyId: string, newStatus: string) {
-    setLeads((prev) =>
-      prev.map((l) => {
-        if (l.id !== leadId) return l;
-        const currentInterests = l.interests || [];
-        const exists = currentInterests.some((i) => i.propertyId === propertyId);
-        const updatedInterests = exists
-          ? currentInterests.map((i) => (i.propertyId === propertyId ? { ...i, status: newStatus } : i))
-          : [...currentInterests, { id: propertyId, companyId: "c1", propertyId, status: newStatus, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }];
-        return { ...l, interests: updatedInterests };
-      })
-    );
-
-    const statusObj = PROPERTY_STATUS_OPTIONS.find((s) => s.id === newStatus);
-    toast.success(`Estado del lote actualizado a "${statusObj?.label || newStatus}"`);
-
-    if (!isMockDataMode) {
-      try {
-        await updateEverpropLeadPropertyStatus(leadId, propertyId, newStatus);
-      } catch (err) {
-        console.error("Error al actualizar estado de la propiedad:", err);
-        toast.error("Error al sincronizar estado de la propiedad con el servidor.");
-      }
-    }
-  }
-
   if (!isLoaded) {
     return (
       <div className="space-y-6">
@@ -392,7 +359,21 @@ export default function AdvisorCockpit() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant={showMonthBalance ? "default" : "outline"}
+            onClick={() => setShowMonthBalance(!showMonthBalance)}
+            className={cn(
+              "min-h-11 gap-2 rounded-xl px-4 text-sm font-semibold shadow-xs transition-colors",
+              showMonthBalance
+                ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+            )}
+          >
+            <BarChart3 className="size-4" />
+            {showMonthBalance ? "Ocultar Balance" : "Balance del Mes & Números"}
+          </Button>
           <Link href="/admin/leads/new">
             <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs">
               <Plus className="size-4" />
@@ -407,6 +388,16 @@ export default function AdvisorCockpit() {
           </Link>
         </div>
       </div>
+
+      {/* ── BALANCE DEL MES & NÚMEROS DE LEADS (AUDITORÍA COMERCIAL) ── */}
+      {showMonthBalance && (
+        <AdminMonthBalanceWidget
+          leads={leads}
+          followUps={followUps}
+          properties={properties}
+          projects={projects}
+        />
+      )}
 
       {/* ── 4 TARJETAS DE ENFOQUE DIARIO (KPIS ACCIONABLES) ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -594,11 +585,7 @@ export default function AdvisorCockpit() {
                   : matchedInterest?.price
                   ? `${matchedInterest.currency || "USD"} ${matchedInterest.price.toLocaleString()}`
                   : undefined;
-                const currentPropStatus = matchedInterest?.status || "ACTIVE";
-                const currentPropStatusObj = PROPERTY_STATUS_OPTIONS.find((s) => s.id === currentPropStatus) || PROPERTY_STATUS_OPTIONS[0];
                 const currentStageObj = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
-
-                const targetPropIdToUpdate = activePropId || matchedInterest?.propertyId || candidatePropertyIds[0];
 
                 const whatsappText = encodeURIComponent(
                   `Hola ${lead.name}, te escribo de Bellomo Inmobiliaria respecto a tu consulta${
@@ -673,8 +660,6 @@ export default function AdvisorCockpit() {
                           const prop = properties.find((p) => p.id === propId);
                           const isSelected = activePropId === propId;
                           const propInterest = lead.interests?.find((i) => i.propertyId === propId || i.unitId === propId);
-                          const propStatus = propInterest?.status || "ACTIVE";
-                          const propStatusObj = PROPERTY_STATUS_OPTIONS.find((s) => s.id === propStatus);
                           const pillTitle = prop?.title || propInterest?.propertyTitle || `Inmueble #${idx + 1}`;
                           return (
                             <button
@@ -688,12 +673,7 @@ export default function AdvisorCockpit() {
                                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
                               )}
                             >
-                              <span className="truncate max-w-[130px]">{pillTitle}</span>
-                              {propStatusObj && propStatus !== "ACTIVE" && (
-                                <span className={cn("text-[9px] px-1.5 py-0.2 rounded font-bold uppercase", propStatusObj.color)}>
-                                  {propStatusObj.label}
-                                </span>
-                              )}
+                              <span className="truncate max-w-[150px]">{pillTitle}</span>
                             </button>
                           );
                         })}
@@ -722,47 +702,24 @@ export default function AdvisorCockpit() {
                         </div>
                       )}
 
-                      {/* Selectores de Estado: Estado del Lote y Etapa del Lead */}
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {/* Selector de Estado de la Propiedad */}
-                        <div className="flex items-center justify-between gap-1 rounded-xl bg-slate-50 dark:bg-slate-900 px-2 py-1.5 border border-slate-100 dark:border-slate-800 text-xs">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Lote:</span>
-                          <select
-                            value={currentPropStatus}
-                            onChange={(e) => targetPropIdToUpdate && handlePropertyStatusChange(lead.id, targetPropIdToUpdate, e.target.value)}
-                            className={cn(
-                              "h-7 w-full rounded-lg border px-1 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
-                              currentPropStatusObj.color
-                            )}
-                            title="Estado comercial de este lote"
-                          >
-                            {PROPERTY_STATUS_OPTIONS.map((opt) => (
-                              <option key={opt.id} value={opt.id}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Selector de Etapa del Lead */}
-                        <div className="flex items-center justify-between gap-1 rounded-xl bg-slate-50 dark:bg-slate-900 px-2 py-1.5 border border-slate-100 dark:border-slate-800 text-xs">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Lead:</span>
-                          <select
-                            value={lead.stage}
-                            onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"])}
-                            className={cn(
-                              "h-7 w-full rounded-lg border px-1 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
-                              currentStageObj.color
-                            )}
-                            title="Etapa general del lead"
-                          >
-                            {STAGE_OPTIONS.map((opt) => (
-                              <option key={opt.id} value={opt.id}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                      {/* Selector Unificado de Etapa del Lead */}
+                      <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-1.5 border border-slate-100 dark:border-slate-800 text-xs">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">Etapa Lead:</span>
+                        <select
+                          value={lead.stage}
+                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"])}
+                          className={cn(
+                            "h-7 w-full rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
+                            currentStageObj.color
+                          )}
+                          title="Etapa comercial unificada del lead"
+                        >
+                          {STAGE_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 

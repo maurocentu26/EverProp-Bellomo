@@ -43,7 +43,13 @@ import { MOCK_USERS } from "@/data/auth-sample";
 import { appendLeadToStorage, loadLeadList, loadProjectList, loadPropertyList, saveLeadList } from "@/lib/admin-storage";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { isMockDataMode } from "@/lib/data-mode";
-import { createEverpropLead, loadEverpropCatalog } from "@/lib/everprop-api";
+import {
+  attachEverpropLeadProperty,
+  createEverpropLead,
+  loadEverpropCatalog,
+  loadEverpropLeadById,
+  updateEverpropLead,
+} from "@/lib/everprop-api";
 import { createLeadInterest, isProjectUnit } from "@/lib/lead-interests";
 import { createNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
@@ -131,11 +137,16 @@ type FormValues = z.infer<typeof formSchema>;
 
 type Props = {
   companyId?: string;
+  leadId?: string;
+  initialLead?: Lead;
+  isEditing?: boolean;
 };
 
-export function NewLeadForm({ companyId = "c1" }: Props) {
+export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing = false }: Props) {
   const router = useRouter();
   const { user, isAdvisor } = useCurrentSession();
+  const [activeLead, setActiveLead] = useState<Lead | null>(initialLead ?? null);
+  const [isLoadingLead, setIsLoadingLead] = useState(Boolean(leadId && !initialLead));
   const [selectedCategory, setSelectedCategory] = useState<AssetCategory | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedAsset, setSelectedAsset] = useState<Property | null>(null);
@@ -149,6 +160,36 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
       ? MOCK_USERS.filter((u) => u.role === "ADVISOR").map((u) => ({ id: u.id, name: u.name }))
       : REAL_ADVISORS;
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (leadId && !initialLead) {
+      async function fetchLead() {
+        if (!isMockDataMode) {
+          try {
+            const fetched = await loadEverpropLeadById(leadId!);
+            if (active && fetched) {
+              setActiveLead(fetched);
+              setIsLoadingLead(false);
+              return;
+            }
+          } catch {
+            // fallback to storage
+          }
+        }
+        if (active) {
+          const stored = loadLeadList(sampleLeads, companyId);
+          const found = stored.find((l) => l.id === leadId);
+          if (found) setActiveLead(found);
+          setIsLoadingLead(false);
+        }
+      }
+      void fetchLead();
+    }
+    return () => {
+      active = false;
+    };
+  }, [leadId, initialLead, companyId]);
 
   useEffect(() => {
     let active = true;
@@ -188,10 +229,44 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
   });
 
   useEffect(() => {
-    if (isAdvisor && user?.id) {
+    if (activeLead) {
+      form.reset({
+        name: activeLead.name || "",
+        origin: (activeLead.origin as any) || "WhatsApp",
+        email: activeLead.email || "",
+        phone: activeLead.phone || "",
+        stage: activeLead.stage || "new",
+        notes: activeLead.notes || "",
+        agentId: activeLead.agentId || (isAdvisor ? user?.id : ""),
+      });
+
+      if (activeLead.interestCategory) {
+        setSelectedCategory(activeLead.interestCategory);
+      }
+      if (activeLead.projectId) {
+        setSelectedProjectId(activeLead.projectId);
+      }
+    } else if (isAdvisor && user?.id) {
       form.setValue("agentId", user.id);
     }
-  }, [isAdvisor, user?.id, form]);
+  }, [activeLead, form, isAdvisor, user?.id]);
+
+  useEffect(() => {
+    if (activeLead && allProperties.length > 0 && !selectedAsset) {
+      const candidateId =
+        activeLead.propertyIds?.[0] ||
+        activeLead.interests?.[0]?.propertyId ||
+        activeLead.interests?.[0]?.unitId;
+      if (candidateId) {
+        const found = allProperties.find((p) => p.id === candidateId);
+        if (found) {
+          setSelectedAsset(found);
+          if (!selectedCategory) setSelectedCategory(inferLeadInterestCategory(found));
+          if (!selectedProjectId && found.projectId) setSelectedProjectId(found.projectId);
+        }
+      }
+    }
+  }, [activeLead, allProperties, selectedAsset, selectedCategory, selectedProjectId]);
 
   const availableAssets = useMemo(() => {
     const query = assetSearchQuery.toLowerCase().trim();
@@ -260,6 +335,66 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
           unitId: selectedAsset && selectedAssetIsUnit ? selectedAsset.id : undefined,
         })
       : undefined;
+
+    if (isEditing && activeLead) {
+      const updatedLead: Lead = {
+        ...activeLead,
+        name: trimmedName || activeLead.name,
+        phone: data.phone?.trim() || activeLead.phone,
+        email: data.email?.trim() || activeLead.email,
+        origin: data.origin || activeLead.origin,
+        stage: data.stage || activeLead.stage,
+        notes: data.notes?.trim() || activeLead.notes,
+        agentId: assignedAgentId || activeLead.agentId,
+        projectId,
+        propertyIds: selectedAsset ? [selectedAsset.id] : activeLead.propertyIds,
+        unitIds: selectedAsset && selectedAssetIsUnit ? [selectedAsset.id] : activeLead.unitIds,
+        interestCategory: selectedCategory ?? activeLead.interestCategory,
+        interests: firstInterest
+          ? [...(activeLead.interests || []).filter((i) => i.propertyId !== selectedAsset?.id), firstInterest]
+          : activeLead.interests,
+        lastActivity: new Date().toISOString(),
+      };
+
+      if (!isMockDataMode) {
+        try {
+          const stageApiMap: Record<string, string> = {
+            new: "NEW",
+            contacted: "CONTACTED",
+            visiting: "VISIT_SCHEDULED",
+            negotiation: "NEGOTIATION",
+            closing: "WON",
+          };
+          await updateEverpropLead(activeLead.id, {
+            name: updatedLead.name,
+            email: updatedLead.email,
+            phone: updatedLead.phone,
+            stage: stageApiMap[updatedLead.stage] || "NEW",
+            notes: updatedLead.notes,
+            agentId: updatedLead.agentId,
+          });
+          if (selectedAsset?.id) {
+            try {
+              await attachEverpropLeadProperty(activeLead.id, selectedAsset.id);
+            } catch (e) {
+              console.warn("Could not attach property to lead:", e);
+            }
+          }
+        } catch (e: any) {
+          toast.error("Error al actualizar lead en base de datos: " + (e.message || "Error desconocido"));
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const stored = loadLeadList(sampleLeads, companyId);
+      const nextLeads = stored.map((l) => (l.id === updatedLead.id ? updatedLead : l));
+      saveLeadList(nextLeads, companyId);
+
+      toast.success("Ficha del lead completada con éxito.");
+      router.push(`/admin/leads/${activeLead.id}`);
+      return;
+    }
 
     const nextLead: Lead = {
       id: crypto.randomUUID(),
@@ -340,10 +475,10 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <Link
-        href="/admin/leads"
+        href={isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads"}
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-100"
       >
-        <ArrowLeft className="h-4 w-4" /> Volver a la lista de leads
+        <ArrowLeft className="h-4 w-4" /> {isEditing ? "Volver a la ficha del lead" : "Volver a la lista de leads"}
       </Link>
 
       <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-lg rounded-2xl p-0 dark:border-slate-800 dark:bg-card">
@@ -353,9 +488,13 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
               <Sparkles size={20} aria-hidden="true" />
             </span>
             <div>
-              <CardTitle className="text-xl font-bold text-white">Alta de nuevo lead</CardTitle>
+              <CardTitle className="text-xl font-bold text-white">
+                {isEditing ? `Completar Ficha: ${activeLead?.name || ""}` : "Alta de nuevo lead"}
+              </CardTitle>
               <CardDescription className="text-xs text-slate-400 mt-0.5">
-                Registrá el contacto y su interés inmobiliario opcional para incorporarlo al pipeline comercial.
+                {isEditing
+                  ? "Actualizá los datos de contacto, requerimientos comerciales y propiedades de interés del prospecto."
+                  : "Registrá el contacto y su interés inmobiliario opcional para incorporarlo al pipeline comercial."}
               </CardDescription>
             </div>
           </div>
@@ -692,21 +831,23 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/admin/leads")}
+            onClick={() => router.push(isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads")}
             className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Cancelar
           </Button>
 
           <div className="flex gap-2.5">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleReset}
-              className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-            >
-              Limpiar formulario
-            </Button>
+            {!isEditing && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleReset}
+                className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Limpiar formulario
+              </Button>
+            )}
 
             <Button
               type="submit"
@@ -714,7 +855,7 @@ export function NewLeadForm({ companyId = "c1" }: Props) {
               disabled={isSubmitting}
               className="h-10 bg-blue-600 px-6 text-xs font-bold text-white hover:bg-blue-700 shadow-sm disabled:opacity-50"
             >
-              {isSubmitting ? "Guardando..." : "Guardar lead"}
+              {isSubmitting ? "Guardando..." : isEditing ? "Guardar y completar ficha" : "Guardar lead"}
             </Button>
           </div>
         </CardFooter>

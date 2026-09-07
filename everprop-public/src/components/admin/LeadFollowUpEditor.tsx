@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { ClipboardCheck, X } from "lucide-react";
+import { ClipboardCheck, Loader2, X } from "lucide-react";
 
 import type { Lead, LeadFollowUp, LeadFollowUpType } from "@/data/admin-sample";
 import { MOCK_USERS, REAL_ADVISORS } from "@/data/auth-sample";
@@ -55,9 +55,12 @@ export function LeadFollowUpEditor({
   const [nextAction, setNextAction] = useState("");
   const [nextContactAt, setNextContactAt] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
+
     const occurredAtIso = argentinaDateTimeInputToIso(occurredAt);
     const nextContactAtIso = nextContactAt
       ? argentinaDateTimeInputToIso(nextContactAt)
@@ -88,18 +91,24 @@ export function LeadFollowUpEditor({
       return;
     }
 
-    onConfirm({
-      id: crypto.randomUUID(),
-      companyId: lead.companyId,
-      leadId: lead.id,
-      agentId,
-      type,
-      occurredAt: occurredAtIso,
-      summary: summary.trim(),
-      result: result.trim(),
-      nextAction: nextAction.trim() || undefined,
-      nextContactAt: nextContactAtIso,
-    });
+    setIsSubmitting(true);
+    try {
+      await onConfirm({
+        id: crypto.randomUUID(),
+        companyId: lead.companyId,
+        leadId: lead.id,
+        agentId,
+        type,
+        occurredAt: occurredAtIso,
+        summary: summary.trim(),
+        result: result.trim(),
+        nextAction: nextAction.trim() || undefined,
+        nextContactAt: nextContactAtIso,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al registrar el seguimiento.");
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -247,16 +256,27 @@ export function LeadFollowUpEditor({
               type="button" 
               variant="outline" 
               onClick={onClose} 
-              className="h-10 px-4 text-xs font-semibold rounded-xl border-slate-300 hover:bg-slate-100"
+              disabled={isSubmitting}
+              className="h-10 px-4 text-xs font-semibold rounded-xl border-slate-300 hover:bg-slate-100 disabled:opacity-50"
             >
               Cancelar
             </Button>
             <Button 
               type="submit" 
-              className="h-10 gap-1.5 bg-blue-600 px-5 text-xs font-bold text-white hover:bg-blue-700 rounded-xl shadow-sm"
+              disabled={isSubmitting}
+              className="h-10 gap-1.5 bg-blue-600 px-5 text-xs font-bold text-white hover:bg-blue-700 rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ClipboardCheck className="size-4" aria-hidden="true" />
-              Guardar seguimiento
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Guardando seguimiento...
+                </>
+              ) : (
+                <>
+                  <ClipboardCheck className="size-4" aria-hidden="true" />
+                  Guardar seguimiento
+                </>
+              )}
             </Button>
           </footer>
         </form>

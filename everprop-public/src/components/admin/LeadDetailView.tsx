@@ -62,7 +62,6 @@ import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
 import { LeadFollowUpTimeline } from "@/components/admin/LeadFollowUpTimeline";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
-import { NewLeadDrawer } from "@/components/admin/NewLeadDrawer";
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
   loteo: "Loteos",
@@ -75,15 +74,14 @@ type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInter
 
 export default function LeadDetailView({ leadId }: { leadId: string }) {
   const { currentUser } = useAuth();
-  const [lead, setLead] = useState<Lead | null>(null);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [lead, setLead] = useState<Lead | null>(null);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [advisorEditorOpen, setAdvisorEditorOpen] = useState(false);
   const [followUpEditorOpen, setFollowUpEditorOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [completingDrawerOpen, setCompletingDrawerOpen] = useState(false);
   const [interestEditor, setInterestEditor] = useState<InterestEditorState>(null);
   const [interestToDelete, setInterestToDelete] = useState<LeadInterest | null>(null);
   const [stageUpdateModalOpen, setStageUpdateModalOpen] = useState(false);
@@ -605,9 +603,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </div>
             </div>
 
-            <Button onClick={() => setCompletingDrawerOpen(true)} className="mt-4 h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
-              <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
-            </Button>
+            <Link href={`/admin/leads/${lead.id}/edit`} className="w-full">
+              <Button className="mt-4 h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
+                <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
+              </Button>
+            </Link>
           </section>
 
           {/* Assigned Advisor Card */}
@@ -654,18 +654,6 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </div>
         </div>
       </div>
-
-      <NewLeadDrawer
-        open={completingDrawerOpen}
-        onOpenChange={setCompletingDrawerOpen}
-        initialLead={lead}
-        isCompleting={true}
-        companyId={lead.companyId}
-        onLeadUpdated={(updatedLead) => {
-          setLead(updatedLead);
-          setAllLeads((prev) => prev.map((item) => (item.id === updatedLead.id ? updatedLead : item)));
-        }}
-      />
 
       {profileEditorOpen && <LeadProfileEditor key={lead.lastActivity} lead={lead} onClose={() => setProfileEditorOpen(false)} onSave={handleSaveProfile} />}
       {interestEditor && <LeadInterestEditor key={interestEditor.mode === "edit" ? interestEditor.interest.id : "new-interest"} companyId={lead.companyId} interest={interestEditor.mode === "edit" ? interestEditor.interest : undefined} projects={allProjects} properties={allProperties} onClose={() => setInterestEditor(null)} onSave={handleSaveInterest} />}
