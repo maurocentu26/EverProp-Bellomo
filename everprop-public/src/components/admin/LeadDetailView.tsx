@@ -454,7 +454,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
                 <StickyNote className="size-3.5" aria-hidden="true" /> Notas generales
               </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{lead.notes}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200">{lead.notes}</p>
             </div>
           )}
 
@@ -576,7 +576,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <AvatarFallback className="bg-blue-600 text-white">{lead.name[0]}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <h1 id="lead-name" className="text-lg font-bold tracking-tight text-slate-950 sm:text-xl truncate">{lead.name}</h1>
+                <h1 id="lead-name" className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100 sm:text-xl truncate">{lead.name}</h1>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <Badge variant="default" className="px-2 py-0.5 text-xs">{lead.origin}</Badge>
                   <Badge className="border-0 bg-blue-50 px-2 py-0.5 text-xs capitalize text-blue-700">{lead.stage}</Badge>
@@ -584,9 +584,9 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </div>
             </div>
 
-            <div className="mt-4 space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <div className="mt-4 space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-xs text-slate-600 dark:text-slate-300">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900">Teléfono:</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Teléfono:</span>
                 <span className="text-right">{lead.phone || "Sin informar"}</span>
               </div>
               {cleanPhone && (
@@ -604,7 +604,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 </a>
               )}
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900">Email:</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Email:</span>
                 <span className="text-right truncate max-w-44">{lead.email || "Sin informar"}</span>
               </div>
             </div>

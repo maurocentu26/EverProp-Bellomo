@@ -98,7 +98,11 @@ export default function AdvisorCockpit() {
             loadEverpropAllFollowUps().catch(() => []),
           ]);
           if (active) {
-            loadedLeads = apiLeads;
+            const localLeads = loadLeadList([], "c1");
+            const apiIds = new Set(apiLeads.map((l) => l.id));
+            const extraLocalLeads = localLeads.filter((l) => !apiIds.has(l.id));
+            loadedLeads = [...apiLeads, ...extraLocalLeads];
+
             if (catalog.properties && catalog.properties.length > 0) {
               loadedProperties = catalog.properties;
             }
@@ -106,7 +110,9 @@ export default function AdvisorCockpit() {
               loadedProjects = catalog.projects;
             }
             const localFollowUps = loadLeadFollowUpList([], "c1");
-            loadedFollowUps = apiFollowUps.length > 0 ? apiFollowUps : localFollowUps;
+            const apiFuIds = new Set(apiFollowUps.map((f) => f.id));
+            const extraLocalFus = localFollowUps.filter((f) => !apiFuIds.has(f.id));
+            loadedFollowUps = [...apiFollowUps, ...extraLocalFus];
           }
         } catch (err) {
           console.error("Error loading leads from API:", err);

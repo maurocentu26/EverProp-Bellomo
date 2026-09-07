@@ -42,6 +42,8 @@ import {
   savePropertyList 
 } from "@/lib/admin-storage";
 import { createNotification } from "@/lib/notifications";
+import { isMockDataMode } from "@/lib/data-mode";
+import { createEverpropLead, createEverpropLeadFollowUp } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 
 export function SidebarSimulations() {
@@ -115,6 +117,15 @@ export function SidebarSimulations() {
     const currentLeads = loadLeadList(sampleLeads, "c1");
     saveLeadList([newLead, ...currentLeads], "c1");
 
+    if (!isMockDataMode) {
+      void createEverpropLead({
+        name,
+        email: `${name.toLowerCase().replace(/\s+/g, ".")}@gmail.com`,
+        phone: cleanPhone,
+        stage: "NEW",
+      }).catch((err) => console.warn("Simulation API create lead:", err));
+    }
+
     dispatchRealtimeUpdates(
       name,
       "Nuevo Lead Asignado",
@@ -180,6 +191,30 @@ export function SidebarSimulations() {
     const currentFUs = loadLeadFollowUpList([], "c1");
     appendLeadFollowUpToStorage(newFollowUp, currentFUs, "c1");
 
+    if (!isMockDataMode) {
+      void (async () => {
+        try {
+          const apiLead = await createEverpropLead({
+            name,
+            email: "esteban.morales@hotmail.com",
+            phone: "+54 9 11 4433-2211",
+            stage: "CONTACTED",
+          });
+          await createEverpropLeadFollowUp(apiLead.id, {
+            type: "whatsapp",
+            occurredAt,
+            summary: "Interesado en lote 22. Se envió plan de pago. Requiere re-contacto para definir seña.",
+            result: "interested",
+            nextAction: "Llamar para coordinar reserva",
+            nextContactAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          });
+          window.dispatchEvent(new Event("everprop_leads_updated"));
+        } catch (err) {
+          console.warn("Simulation API due lead:", err);
+        }
+      })();
+    }
+
     dispatchRealtimeUpdates(
       name,
       "Seguimiento Próximo a Vencer",
@@ -242,6 +277,29 @@ export function SidebarSimulations() {
     saveLeadList([newLead, ...currentLeads], "c1");
     const currentFUs = loadLeadFollowUpList([], "c1");
     appendLeadFollowUpToStorage(newFollowUp, currentFUs, "c1");
+
+    if (!isMockDataMode) {
+      void (async () => {
+        try {
+          const apiLead = await createEverpropLead({
+            name,
+            email: "gonzalo.funes@yahoo.com",
+            phone: "+54 9 11 6789-0123",
+            stage: "CONTACTED",
+          });
+          await createEverpropLeadFollowUp(apiLead.id, {
+            type: "call",
+            occurredAt,
+            summary: "Pidió información sobre cuotas pero no respondió los últimos mensajes.",
+            result: "no_answer",
+            nextAction: "Reintentar llamada urgente",
+          });
+          window.dispatchEvent(new Event("everprop_leads_updated"));
+        } catch (err) {
+          console.warn("Simulation API overdue lead:", err);
+        }
+      })();
+    }
 
     dispatchRealtimeUpdates(
       name,

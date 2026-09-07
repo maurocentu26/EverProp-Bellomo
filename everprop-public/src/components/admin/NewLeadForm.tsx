@@ -297,9 +297,16 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   }, [isEditing, activeLead, watchedPhone, watchedEmail]);
 
   const availableProjects = useMemo(() => {
-    if (!selectedCategory) return allProjects;
+    const eligibleProps = allProperties.filter(
+      (p) => p.status !== "reserved" && p.status !== "sold"
+    );
+    if (!selectedCategory) {
+      return allProjects.filter((project) =>
+        eligibleProps.some((p) => p.projectId === project.id)
+      );
+    }
     return allProjects.filter((project) =>
-      allProperties.some(
+      eligibleProps.some(
         (p) => p.projectId === project.id && inferLeadInterestCategory(p) === selectedCategory
       )
     );
@@ -309,6 +316,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     const query = assetSearchQuery.toLowerCase().trim();
 
     return allProperties
+      .filter((property) => property.status !== "reserved" && property.status !== "sold")
       .filter((property) => !selectedCategory || inferLeadInterestCategory(property) === selectedCategory)
       .filter((property) => !selectedProjectId || property.projectId === selectedProjectId)
       .filter((property) => {
@@ -328,7 +336,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
     if (selectedProjectId && nextCategory) {
       const projectHasMatchingProps = allProperties.some(
-        (p) => p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
+        (p) => p.status !== "reserved" && p.status !== "sold" && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
       );
       if (!projectHasMatchingProps) {
         setSelectedProjectId("");

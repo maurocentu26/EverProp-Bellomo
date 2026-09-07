@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, CalendarDays, Clock, MapPin,
@@ -82,6 +83,7 @@ export default function CalendarAgenda() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "scheduled" | "completed">("all");
   const [showNewVisitModal, setShowNewVisitModal] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
 
   const loadItems = useCallback(() => {
     let leads = loadLeadList(sampleLeads, "c1");
@@ -212,6 +214,12 @@ export default function CalendarAgenda() {
     };
   }, [items, viewDate]);
 
+  const pendingVisits = useMemo(() => {
+    return items
+      .filter((it) => it.status === "scheduled")
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  }, [items]);
+
   const handleDelete = useCallback((id: string) => {
     removeVisitById(id, sampleLeads, sampleProperties);
     setItems((prev) => prev.filter((it) => it.id !== id));
@@ -233,10 +241,15 @@ export default function CalendarAgenda() {
 
         {/* Month stats pills and Action Button */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full">
+          <button
+            type="button"
+            onClick={() => setShowPendingModal(true)}
+            className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-full transition-colors cursor-pointer text-xs font-bold text-blue-700 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            title="Ver lista de visitas pendientes"
+          >
             <Clock className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-xs font-bold text-blue-700">{monthStats.scheduled} pendientes</span>
-          </div>
+            <span>{monthStats.scheduled} pendientes</span>
+          </button>
           <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
             <span className="text-xs font-bold text-emerald-700">{monthStats.completed} realizadas</span>
@@ -567,6 +580,157 @@ export default function CalendarAgenda() {
         onOpenChange={setShowNewVisitModal}
         onVisitCreated={loadItems}
       />
+
+      {/* ── Modal Citas Pendientes ── */}
+      <Dialog open={showPendingModal} onOpenChange={setShowPendingModal}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-6 dark:bg-card dark:border-border">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-400">
+                <Clock className="size-5" />
+              </span>
+              <div>
+                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  Citas y Visitas Pendientes
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+                  {pendingVisits.length} {pendingVisits.length === 1 ? "cita pendiente registrada" : "citas pendientes registradas"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-3 my-4 pr-1">
+            {pendingVisits.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 dark:border-slate-800 dark:bg-slate-900/30">
+                <CheckCircle2 className="size-10 text-emerald-500 mb-2" />
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No hay visitas pendientes</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Todas las citas del período fueron completadas.</p>
+              </div>
+            ) : (
+              pendingVisits.map((ev) => {
+                const dateObj = new Date(ev.scheduledAt);
+                const dateFormatted = dateObj.toLocaleDateString("es-AR", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                });
+                const timeFormatted = dateObj.toLocaleTimeString("es-AR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                const cleanPhone = ev.phone?.replace(/[^0-9]/g, "");
+
+                return (
+                  <div
+                    key={ev.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-all shadow-2xs dark:bg-card dark:border-border dark:hover:border-blue-500"
+                  >
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      {/* Fecha y Hora Pill */}
+                      <div className="flex flex-col items-center justify-center min-w-[65px] px-2 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-center shrink-0 dark:bg-blue-950/40 dark:border-blue-900">
+                        <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">{dateFormatted}</span>
+                        <span className="text-sm font-black text-blue-900 dark:text-blue-200">{timeFormatted} hs</span>
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                            {ev.leadName}
+                          </p>
+                          {ev.leadId && (
+                            <Link
+                              href={`/admin/leads/${ev.leadId}`}
+                              className="text-[11px] text-blue-600 hover:underline flex items-center gap-0.5 shrink-0 dark:text-blue-400"
+                              onClick={() => setShowPendingModal(false)}
+                            >
+                              Ver ficha <ChevronRight className="size-3" />
+                            </Link>
+                          )}
+                        </div>
+
+                        {ev.propertyTitle && (
+                          <p className="text-xs text-slate-600 dark:text-slate-300 truncate flex items-center gap-1.5">
+                            <PropertyTypeIcon type={ev.propertyType} />
+                            <span className="font-medium">{ev.propertyTitle}</span>
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
+                          {ev.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="size-3 text-slate-400" />
+                              {ev.phone}
+                            </span>
+                          )}
+                          {cleanPhone && (
+                            <a
+                              href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hola ${ev.leadName}, te contacto de Bellomo Inmobiliaria para coordinar tu cita...`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400"
+                            >
+                              <MessageCircle className="size-3" /> WhatsApp
+                            </a>
+                          )}
+                          {ev.agentName && (
+                            <span className="flex items-center gap-1 text-slate-400">
+                              <User className="size-3" />
+                              {ev.agentName}
+                            </span>
+                          )}
+                        </div>
+
+                        {ev.notes && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 border border-slate-100 dark:bg-slate-900 dark:border-slate-800 rounded-md px-2 py-1 mt-1 line-clamp-2">
+                            {ev.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Acciones */}
+                    <div className="flex sm:flex-col items-center sm:items-end justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedDate(new Date(ev.scheduledAt));
+                          setViewDate(new Date(ev.scheduledAt));
+                          setShowPendingModal(false);
+                        }}
+                        className="h-8 text-xs font-semibold px-2.5 rounded-lg border-slate-200 dark:border-slate-800"
+                      >
+                        Ver en día
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setDeletingId(ev.id)}
+                        className="h-8 text-xs text-rose-600 hover:bg-rose-50 px-2 rounded-lg dark:hover:bg-rose-950/40"
+                        title="Eliminar visita"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowPendingModal(false)}
+              className="w-full sm:w-auto h-9 text-xs font-semibold rounded-xl dark:border-slate-800"
+            >
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

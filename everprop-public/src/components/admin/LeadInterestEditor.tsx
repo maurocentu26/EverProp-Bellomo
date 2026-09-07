@@ -63,9 +63,16 @@ export function LeadInterestEditor({
   }));
 
   const availableProjects = useMemo(() => {
-    if (!draft.category) return projects;
+    const eligibleProps = properties.filter(
+      (p) => p.status !== "reserved" && p.status !== "sold"
+    );
+    if (!draft.category) {
+      return projects.filter((project) =>
+        eligibleProps.some((p) => p.projectId === project.id)
+      );
+    }
     return projects.filter((project) =>
-      properties.some(
+      eligibleProps.some(
         (p) => p.projectId === project.id && inferLeadInterestCategory(p) === draft.category
       )
     );
@@ -73,6 +80,7 @@ export function LeadInterestEditor({
 
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
+      if (property.status === "reserved" || property.status === "sold") return false;
       if (draft.projectId && property.projectId !== draft.projectId) return false;
       if (draft.category && inferLeadInterestCategory(property) !== draft.category) return false;
       return true;
@@ -80,13 +88,16 @@ export function LeadInterestEditor({
   }, [draft.category, draft.projectId, properties]);
 
   const unitOptions = useMemo(() => {
+    const eligibleProps = properties.filter(
+      (p) => p.status !== "reserved" && p.status !== "sold"
+    );
     let list: Property[] = [];
     if (draft.projectId) {
-      list = properties.filter((p) => p.projectId === draft.projectId && (p.unitNumber || p.sectorName));
+      list = eligibleProps.filter((p) => p.projectId === draft.projectId && (p.unitNumber || p.sectorName));
     } else if (draft.propertyId) {
-      const p = properties.find((item) => item.id === draft.propertyId);
+      const p = eligibleProps.find((item) => item.id === draft.propertyId);
       if (p?.projectId) {
-        list = properties.filter((item) => item.projectId === p.projectId && (item.unitNumber || item.sectorName));
+        list = eligibleProps.filter((item) => item.projectId === p.projectId && (item.unitNumber || item.sectorName));
       } else if (p && (p.unitNumber || p.sectorName)) {
         list = [p];
       }
