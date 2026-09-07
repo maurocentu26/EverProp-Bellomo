@@ -4970,3 +4970,11 @@ html.motion-ready
 .promotion-benefit { position:absolute; bottom:24px; left:24px; display:flex; flex-direction:column; gap:2px; padding:20px 24px; background:#e7d5af; color:#052b43; border:1px solid #fff1cf; }
 .promotion-benefit strong { font-size:clamp(48px,6vw,80px); line-height:1; letter-spacing:-.06em; }
 .promotion-benefit span { font-size:11px; letter-spacing:.12em; font-weight:700; }
+/* An empty promotion image stays empty; emphasize the benefit instead. */
+.promotion-without-image .promotion-photo { background:#e7d5af; display:grid; place-items:center; min-height:200px; }
+.promotion-without-image .promotion-photo:empty { display:none; }
+.promotion-without-image .promotion-benefit { position:static; border:0; padding:32px; text-align:center; }
+.promotion-without-image .promotion-benefit strong { font-size:clamp(64px,9vw,120px); }
+.promotion-featured.promotion-without-image { grid-template-columns:minmax(220px,.6fr) minmax(0,1.4fr); }
+.promotion-featured.promotion-without-image:has(.promotion-photo:empty) { grid-template-columns:minmax(0,1fr); }
+@media(max-width:700px) { .promotion-featured.promotion-without-image { display:flex; } }
