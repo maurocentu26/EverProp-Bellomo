@@ -35,6 +35,7 @@ import {
   projects as sampleProjects,
   properties as sampleProperties,
   type Lead,
+  type LeadInterest,
   type LeadInterestCategory,
   type Project,
   type Property,
@@ -95,7 +96,7 @@ const CATEGORIES: AssetCategoryOption[] = [
   },
 ];
 
-const ORIGINS = ["Web", "WhatsApp", "Portal", "Referido", "Instagram"];
+const ORIGINS = ["Web", "WhatsApp", "Portal", "Referido", "Instagram", "Web / Formulario"];
 
 const REAL_ADVISORS = [
   {
@@ -127,9 +128,9 @@ const formSchema = z.object({
     .string()
     .trim()
     .optional()
-    .refine((value) => !value || /^\+?[0-9\s().-]{7,20}$/.test(value), "Ingresá un teléfono válido."),
+    .refine((value) => !value || /^[+0-9\s().-]{6,30}$/.test(value), "Ingresá un teléfono válido."),
   stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing"]),
-  notes: z.string().trim().max(250, "Las notas no pueden superar 250 caracteres.").optional().or(z.literal("")),
+  notes: z.string().trim().max(5000, "Las notas no pueden superar 5000 caracteres.").optional().or(z.literal("")),
   agentId: z.string().optional(),
 });
 
@@ -230,9 +231,17 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
   useEffect(() => {
     if (activeLead) {
+      const originValue = ORIGINS.includes(activeLead.origin)
+        ? activeLead.origin
+        : activeLead.origin?.toLowerCase().includes("web")
+        ? "Web"
+        : activeLead.origin?.toLowerCase().includes("whatsapp")
+        ? "WhatsApp"
+        : "Web";
+
       form.reset({
         name: activeLead.name || "",
-        origin: (activeLead.origin as any) || "WhatsApp",
+        origin: originValue,
         email: activeLead.email || "",
         phone: activeLead.phone || "",
         stage: activeLead.stage || "new",
@@ -321,22 +330,45 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     });
   };
 
+  const onFormError = (errors: any) => {
+    console.error("Form validation errors:", errors);
+    const firstKey = Object.keys(errors)[0];
+    const firstError = errors[firstKey];
+    if (firstError?.message) {
+      toast.error(`Error en el formulario: ${firstError.message}`);
+    } else {
+      toast.error("Por favor revisá los campos obligatorios del formulario.");
+    }
+  };
+
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     const trimmedName = data.name.trim();
     const assignedAgentId = isAdvisor ? user?.id : (data.agentId || undefined);
     const projectId = selectedAsset?.projectId ?? (selectedProjectId || undefined);
     const selectedAssetIsUnit = isProjectUnit(selectedAsset ?? undefined);
-    const firstInterest = selectedCategory || projectId || selectedAsset
-      ? createLeadInterest(companyId, {
-          category: selectedCategory ?? undefined,
-          projectId,
-          propertyId: selectedAsset && !selectedAssetIsUnit ? selectedAsset.id : undefined,
-          unitId: selectedAsset && selectedAssetIsUnit ? selectedAsset.id : undefined,
-        })
+    const targetCategory = selectedCategory ?? (selectedAsset ? inferLeadInterestCategory(selectedAsset) : undefined);
+    
+    const firstInterest: LeadInterest | undefined = (targetCategory || projectId || selectedAsset)
+      ? {
+          ...createLeadInterest(companyId, {
+            category: targetCategory,
+            projectId,
+            propertyId: selectedAsset?.id,
+            unitId: selectedAsset && selectedAssetIsUnit ? selectedAsset.id : undefined,
+          }),
+          propertyTitle: selectedAsset?.title,
+          price: selectedAsset?.price,
+          currency: selectedAsset?.currency,
+        }
       : undefined;
 
     if (isEditing && activeLead) {
+      const existingInterests = (activeLead.interests || []).filter(
+        (i) => (!selectedAsset || (i.propertyId !== selectedAsset.id && i.unitId !== selectedAsset.id))
+      );
+      const updatedInterests = firstInterest ? [firstInterest, ...existingInterests] : activeLead.interests;
+
       const updatedLead: Lead = {
         ...activeLead,
         name: trimmedName || activeLead.name,
@@ -347,12 +379,10 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
         notes: data.notes?.trim() || activeLead.notes,
         agentId: assignedAgentId || activeLead.agentId,
         projectId,
-        propertyIds: selectedAsset ? [selectedAsset.id] : activeLead.propertyIds,
+        propertyIds: selectedAsset ? [selectedAsset.id] : (activeLead.propertyIds || []),
         unitIds: selectedAsset && selectedAssetIsUnit ? [selectedAsset.id] : activeLead.unitIds,
-        interestCategory: selectedCategory ?? activeLead.interestCategory,
-        interests: firstInterest
-          ? [...(activeLead.interests || []).filter((i) => i.propertyId !== selectedAsset?.id), firstInterest]
-          : activeLead.interests,
+        interestCategory: targetCategory ?? activeLead.interestCategory,
+        interests: updatedInterests,
         lastActivity: new Date().toISOString(),
       };
 
@@ -375,9 +405,12 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           });
           if (selectedAsset?.id) {
             try {
-              await attachEverpropLeadProperty(activeLead.id, selectedAsset.id);
-            } catch (e) {
-              console.warn("Could not attach property to lead:", e);
+              await attachEverpropLeadProperty(activeLead.id, selectedAsset.id, {
+                price: selectedAsset.price,
+                currency: selectedAsset.currency,
+              });
+            } catch (e: any) {
+              console.warn("Could not attach property to lead via API:", e);
             }
           }
         } catch (e: any) {
@@ -388,11 +421,14 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       }
 
       const stored = loadLeadList(sampleLeads, companyId);
-      const nextLeads = stored.map((l) => (l.id === updatedLead.id ? updatedLead : l));
+      const nextLeads = stored.some((l) => l.id === updatedLead.id)
+        ? stored.map((l) => (l.id === updatedLead.id ? updatedLead : l))
+        : [updatedLead, ...stored];
       saveLeadList(nextLeads, companyId);
 
       toast.success("Ficha del lead completada con éxito.");
       router.push(`/admin/leads/${activeLead.id}`);
+      router.refresh();
       return;
     }
 
@@ -472,6 +508,15 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     }
   };
 
+  if (isEditing && isLoadingLead) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="h-6 w-44 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        <div className="h-[36rem] animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <Link
@@ -500,8 +545,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           </div>
         </div>
 
-        <CardContent className="p-6 sm:p-8">
-          <form id="new-lead-page-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form id="new-lead-page-form" onSubmit={form.handleSubmit(onSubmit, onFormError)}>
+          <CardContent className="p-6 sm:p-8 space-y-6">
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
               {/* ── Seccion 1: Datos basicos del lead ── */}
               <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-basic-data">
@@ -824,41 +869,40 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                 </Field>
               </section>
             </div>
-          </form>
-        </CardContent>
+          </CardContent>
 
-        <CardFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/60">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push(isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads")}
-            className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            Cancelar
-          </Button>
-
-          <div className="flex gap-2.5">
-            {!isEditing && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleReset}
-                className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-              >
-                Limpiar formulario
-              </Button>
-            )}
-
+          <CardFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/60">
             <Button
-              type="submit"
-              form="new-lead-page-form"
-              disabled={isSubmitting}
-              className="h-10 bg-blue-600 px-6 text-xs font-bold text-white hover:bg-blue-700 shadow-sm disabled:opacity-50"
+              type="button"
+              variant="outline"
+              onClick={() => router.push(isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads")}
+              className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              {isSubmitting ? "Guardando..." : isEditing ? "Guardar y completar ficha" : "Guardar lead"}
+              Cancelar
             </Button>
-          </div>
-        </CardFooter>
+
+            <div className="flex gap-2.5">
+              {!isEditing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleReset}
+                  className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  Limpiar formulario
+                </Button>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-10 bg-blue-600 px-6 text-xs font-bold text-white hover:bg-blue-700 shadow-sm disabled:opacity-50"
+              >
+                {isSubmitting ? "Guardando..." : isEditing ? "Guardar y completar ficha" : "Guardar lead"}
+              </Button>
+            </div>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   );

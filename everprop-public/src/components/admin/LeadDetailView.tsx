@@ -41,6 +41,7 @@ import { isCommercialContact } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
 import {
   loadEverpropLeads,
+  loadEverpropLeadById,
   loadEverpropCatalog,
   updateEverpropLead,
   loadEverpropLeadFollowUps,
@@ -91,14 +92,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const [apiLeads, catalog, apiFollowUps] = await Promise.all([
-            loadEverpropLeads(),
-            loadEverpropCatalog(),
+          const [singleLead, apiLeads, catalog, apiFollowUps] = await Promise.all([
+            loadEverpropLeadById(leadId).catch(() => null),
+            loadEverpropLeads().catch(() => []),
+            loadEverpropCatalog().catch(() => ({ properties: sampleProperties, projects: sampleProjects })),
             loadEverpropLeadFollowUps(leadId).catch(() => []),
           ]);
           if (!active) return;
-          const foundLead = apiLeads.find((candidate) => candidate.id === leadId) ?? null;
-          setAllLeads(apiLeads);
+          const foundLead = singleLead ?? (apiLeads.find((candidate) => candidate.id === leadId) ?? null);
+          setAllLeads(apiLeads.length > 0 ? apiLeads : (singleLead ? [singleLead] : []));
           setAllProperties(catalog.properties);
           setAllProjects(catalog.projects);
           const localFollowUps = loadLeadFollowUpList([], foundLead?.companyId ?? "c1").filter((f) => f.leadId === leadId);
@@ -407,7 +409,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   ].filter((item): item is string => item !== null);
   const interestAssetIds = getInterestAssetIds(interests);
   const primaryProperty = interestAssetIds[0]
-    ? propertyById.get(interestAssetIds[0])
+    ? (propertyById.get(interestAssetIds[0]) || allProperties.find((p) => p.id === interestAssetIds[0]))
     : undefined;
   const assignedAgent = getAdvisor(lead.agentId, lead.agentName);
 
@@ -512,7 +514,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                       </div>
                       <dl className="mt-3.5 space-y-2 text-xs">
                         <div><dt className="font-semibold text-slate-500">Proyecto</dt><dd className="font-bold text-slate-900">{project?.name || "Sin informar"}</dd></div>
-                        <div><dt className="font-semibold text-slate-500">Propiedad</dt><dd className="font-bold text-slate-900">{property?.title || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500">Propiedad</dt><dd className="font-bold text-slate-900">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
                         <div><dt className="font-semibold text-slate-500">Unidad</dt><dd className="font-bold text-slate-900">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
                       </dl>
                       <div className="mt-3.5 space-y-2 border-t border-slate-200 pt-3 text-xs">
@@ -537,8 +539,8 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                           <Trash2 className="size-3" aria-hidden="true" /> Eliminar
                         </Button>
                       </div>
-                      {(property || unit) && (
-                        <Link href={`/admin/properties/${(unit ?? property)?.id}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors">
+                      {(property || unit || interest.propertyId || interest.unitId) && (
+                        <Link href={`/admin/properties/${(unit ?? property)?.id || interest.propertyId || interest.unitId}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors">
                           Ver activo <ExternalLink className="size-3" aria-hidden="true" />
                         </Link>
                       )}
