@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
-import { Bell, Check, Menu, Plus, Trash2 } from "lucide-react";
+import { Bell, Check, ExternalLink, Inbox, Menu, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { canManageInventory } from "@/lib/demo-permissions";
@@ -198,11 +198,10 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               </Button>
             )}
 
-            {/* Notifications Popover */}
-            <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-              <PopoverTrigger
-                type="button"
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-slate-100"
+            {/* Notifications Drawer (Sheet) */}
+            <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+              <SheetTrigger
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Notificaciones"
               >
                 <motion.div animate={bellControls}>
@@ -212,71 +211,118 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-red-500"
+                    className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-red-600"
                   >
                     <span className="text-[8px] font-black leading-none text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>
                   </motion.span>
                 )}
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 p-0 shadow-xl" sideOffset={8}>
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                  <p className="text-sm font-bold text-slate-900">Notificaciones</p>
-                  <div className="flex items-center gap-2">
-                    {unreadCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleMarkAllAsRead}
-                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50"
-                      >
-                        <Check className="h-3 w-3" /> Marcar leídas
-                      </button>
-                    )}
-                    {notifications.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleClearAll}
-                        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-red-600"
-                        title="Borrar todas las notificaciones"
-                      >
-                        <Trash2 className="h-3 w-3" /> Limpiar
-                      </button>
-                    )}
+              </SheetTrigger>
+              <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-md">
+                <SheetHeader className="border-b border-border px-5 py-4 text-left">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <SheetTitle className="text-base font-bold text-foreground">Notificaciones</SheetTitle>
+                      {unreadCount > 0 ? (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                          {unreadCount} sin leer
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          Al día
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleMarkAllAsRead}
+                          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                        >
+                          <Check className="h-3.5 w-3.5" /> Marcar leídas
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearAll}
+                          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          title="Vaciar todas las notificaciones"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Limpiar
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                  <SheetDescription className="text-xs text-muted-foreground">
+                    Alertas de leads asignados, compromisos comerciales y eventos del sistema.
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
                   {notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
-                      <Bell className="h-8 w-8 text-slate-300" />
-                      <p className="mt-3 text-sm font-semibold text-slate-600">Sin notificaciones</p>
-                      <p className="mt-1 text-xs text-slate-400">Cuando haya novedades aparecerán aquí.</p>
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                        <Inbox className="h-6 w-6" />
+                      </div>
+                      <p className="mt-4 text-sm font-semibold text-foreground">Bandeja al día</p>
+                      <p className="mt-1 text-xs text-muted-foreground max-w-[220px]">
+                        No tenés notificaciones pendientes. Cuando haya nuevos contactos o novedades aparecerán acá.
+                      </p>
                     </div>
                   ) : (
-                    notifications.slice(0, 15).map((n) => (
+                    notifications.map((n) => (
                       <button
                         key={n.id}
                         type="button"
                         onClick={() => handleNotificationClick(n)}
                         className={cn(
-                          "w-full px-4 py-3 text-left transition-colors hover:bg-slate-50",
-                          !n.read && "bg-blue-50/60",
+                          "group relative flex w-full flex-col gap-1.5 rounded-xl border p-3.5 text-left transition-all",
+                          n.read
+                            ? "border-border bg-card hover:border-border/80 hover:bg-accent/40 text-muted-foreground"
+                            : "border-blue-200 bg-blue-50/50 hover:bg-blue-50/80 dark:border-blue-900/60 dark:bg-blue-950/20 dark:hover:bg-blue-950/30 text-foreground"
                         )}
                       >
-                        <div className="flex items-start gap-2.5">
-                          <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", n.read ? "bg-slate-300" : "bg-blue-600")} />
-                          <div className="min-w-0">
-                            {n.title && <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">{n.title}</p>}
-                            <p className="text-xs font-semibold leading-5 text-slate-900 line-clamp-2">{n.message}</p>
-                            <p className="mt-0.5 text-[10px] text-slate-500">
-                              {new Date(n.timestamp).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
-                            </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "h-2 w-2 rounded-full shrink-0",
+                                n.read ? "bg-muted-foreground/30" : "bg-blue-600 ring-2 ring-blue-200 dark:ring-blue-950"
+                              )}
+                            />
+                            {n.title && (
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                                {n.title}
+                              </span>
+                            )}
                           </div>
+                          <span className="text-[11px] text-muted-foreground">
+                            {new Date(n.timestamp).toLocaleString("es-AR", {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
                         </div>
+
+                        <p className={cn("text-xs leading-relaxed font-medium text-foreground", n.read && "text-muted-foreground")}>
+                          {n.message}
+                        </p>
+
+                        {(n.leadId || n.actionUrl) && (
+                          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 group-hover:underline">
+                            <span>Ver detalle</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </div>
+                        )}
                       </button>
                     ))
                   )}
                 </div>
-              </PopoverContent>
-            </Popover>
+              </SheetContent>
+            </Sheet>
 
             <div
               role="img"

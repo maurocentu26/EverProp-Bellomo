@@ -855,9 +855,9 @@
       "value": "/brand/eversys-isotipo-oficial-blanco.png"
     },
     "rami-image-73": {
-      "label": "logo-bellomo-isotipo.png",
+      "label": "Logo oficial Bellomo con símbolo · Drive",
       "group": "shared.tsx",
-      "value": "/brand/logo-bellomo-isotipo.png"
+      "value": "/images/bellomo/bellomo-oficial-blanco.svg"
     }
   },
   "sections": [

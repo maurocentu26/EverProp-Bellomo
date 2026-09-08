@@ -17,7 +17,12 @@ export type LeadInterest = {
   category?: LeadInterestCategory;
   projectId?: string;
   propertyId?: string;
+  propertyTitle?: string;
+  status?: string;
+  interestLevel?: string;
   unitId?: string;
+  price?: number;
+  currency?: string;
   preferences?: string;
   notes?: string;
   createdAt: string;
@@ -126,22 +131,51 @@ export type Lead = {
 };
 
 export function inferLeadInterestCategory(property: Property): LeadInterestCategory {
+  const type = (property.propertyType || '').toLowerCase();
+  const sector = (property.sectorName || '').toLowerCase();
+  const title = (property.title || '').toLowerCase();
+
+  // 1. Cocheras / Estacionamientos
   if (
-    property.propertyType === 'Lote' ||
-    property.sectorName?.toLowerCase().includes('manzana') ||
-    property.title.toLowerCase().includes('lote')
+    type === 'cochera' ||
+    type === 'garage' ||
+    title.includes('cochera') ||
+    title.includes('garage') ||
+    title.includes('estacionamiento') ||
+    property.isCovered !== undefined
+  ) {
+    return 'cochera';
+  }
+
+  // 2. Locales comerciales / Showrooms / Espacios gastronómicos u oficinas
+  if (
+    type === 'local' ||
+    title.includes('local') ||
+    title.includes('showroom') ||
+    title.includes('comercial') ||
+    title.includes('gastronóm') ||
+    title.includes('oficina')
+  ) {
+    return 'local';
+  }
+
+  // 3. Loteos / Terrenos en barrios privados y loteos abiertos
+  if (
+    type === 'lote' ||
+    type === 'loteo' ||
+    type === 'lot' ||
+    type === 'terreno' ||
+    sector.includes('manzana') ||
+    sector.includes('lote') ||
+    sector.includes('etapa') ||
+    title.includes('lote') ||
+    title.includes('terreno') ||
+    Boolean(property.sectorName && property.unitNumber && !title.includes('depto') && !title.includes('departamento') && !title.includes('casa'))
   ) {
     return 'loteo';
   }
 
-  if (property.propertyType === 'Local' || property.commercialFeatures !== undefined) {
-    return 'local';
-  }
-
-  if (property.propertyType === 'Cochera' || property.isCovered !== undefined) {
-    return 'cochera';
-  }
-
+  // 4. Inmobiliaria Tradicional (Departamentos, Casas, Dúplex, etc.)
   return 'tradicional';
 }
 

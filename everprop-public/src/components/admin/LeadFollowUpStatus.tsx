@@ -73,19 +73,19 @@ export function LeadFollowUpStatus({
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold",
-            overdue && "border-rose-200 bg-rose-50 text-rose-700",
-            dueSoon && "border-amber-200 bg-amber-50 text-amber-800",
-            empty && "border-slate-200 bg-slate-100 text-slate-700",
-            isCurrent && "border-emerald-200 bg-emerald-50 text-emerald-700",
+            overdue && "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300",
+            dueSoon && "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300",
+            empty && "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300",
+            isCurrent && "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300",
           )}
         >
           <StatusIcon className="size-3.5 shrink-0" aria-hidden="true" />
           {state.title}
         </span>
         {!empty && (
-          <div className="flex items-center gap-1 text-xs text-slate-500">
+          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
             <Clock3 className="size-3 text-slate-400 shrink-0" />
-            <span className={cn(overdue ? "font-semibold text-rose-700" : dueSoon ? "font-semibold text-amber-800" : "text-slate-600")}>
+            <span className={cn(overdue ? "font-semibold text-rose-700 dark:text-rose-400" : dueSoon ? "font-semibold text-amber-800 dark:text-amber-400" : "text-slate-600 dark:text-slate-300")}>
               {state.detail}
             </span>
           </div>
@@ -98,24 +98,24 @@ export function LeadFollowUpStatus({
     <div
       className={cn(
         "rounded-2xl border p-4 space-y-3.5",
-        overdue && "border-rose-200 bg-rose-50/60",
-        dueSoon && "border-amber-200 bg-amber-50/60",
-        empty && "border-slate-200 bg-slate-50",
-        isCurrent && "border-emerald-200 bg-emerald-50/60",
+        overdue && "border-rose-200 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/25",
+        dueSoon && "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/25",
+        empty && "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/30",
+        isCurrent && "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/25",
         className,
       )}
       role="status"
     >
       {/* Cabecera del estado con badge */}
-      <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 pb-3">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-800/80 pb-3">
         <div className="flex items-center gap-2">
           <span
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-xl",
-              overdue && "bg-rose-100 text-rose-700",
-              dueSoon && "bg-amber-100 text-amber-800",
-              empty && "bg-slate-200 text-slate-700",
-              isCurrent && "bg-emerald-100 text-emerald-700",
+              overdue && "bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300",
+              dueSoon && "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
+              empty && "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+              isCurrent && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300",
             )}
           >
             <StatusIcon className="size-4" aria-hidden="true" />
@@ -123,14 +123,14 @@ export function LeadFollowUpStatus({
           <div>
             <p className={cn(
               "text-sm font-bold",
-              overdue && "text-rose-950",
-              dueSoon && "text-amber-950",
-              empty && "text-slate-900",
-              isCurrent && "text-emerald-950",
+              overdue && "text-rose-950 dark:text-rose-200",
+              dueSoon && "text-amber-950 dark:text-amber-200",
+              empty && "text-slate-900 dark:text-slate-100",
+              isCurrent && "text-emerald-950 dark:text-emerald-200",
             )}>
               {state.title}
             </p>
-            <p className="text-xs text-slate-600 leading-tight">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-tight">
               {state.detail}
             </p>
           </div>
@@ -140,13 +140,13 @@ export function LeadFollowUpStatus({
       {/* Grid de Metadatos con Iconos Distribuidos */}
       <div className="grid grid-cols-1 gap-2 pt-0.5">
         {/* Último contacto */}
-        <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-slate-100 shadow-2xs">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+        <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-slate-100 shadow-2xs dark:bg-card/90 dark:border-border">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             <CalendarClock className="size-3.5" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Último contacto</p>
-            <p className="truncate text-xs font-semibold text-slate-800">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Último contacto</p>
+            <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
               {state.formattedDate || "Sin actividad previa"}
             </p>
           </div>
@@ -154,18 +154,18 @@ export function LeadFollowUpStatus({
 
         {/* Plazo límite de 10 días */}
         {state.formattedDeadline && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-slate-100 shadow-2xs">
+          <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-slate-100 shadow-2xs dark:bg-card/90 dark:border-border">
             <span className={cn(
               "flex size-7 shrink-0 items-center justify-center rounded-lg",
-              overdue ? "bg-rose-100 text-rose-700" : dueSoon ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+              overdue ? "bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300" : dueSoon ? "bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
             )}>
               <Hourglass className="size-3.5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vencimiento (10 días)</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Vencimiento (10 días)</p>
               <p className={cn(
                 "truncate text-xs font-semibold",
-                overdue ? "text-rose-800 font-bold" : "text-slate-800"
+                overdue ? "text-rose-800 font-bold dark:text-rose-300" : "text-slate-800 dark:text-slate-200"
               )}>
                 {state.formattedDeadline}
               </p>
@@ -175,13 +175,13 @@ export function LeadFollowUpStatus({
 
         {/* Canal del último contacto */}
         {latestFollowUp && ChannelIcon && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-slate-100 shadow-2xs">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+          <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-slate-100 shadow-2xs dark:bg-card/90 dark:border-border">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
               <ChannelIcon className="size-3.5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Último canal</p>
-              <p className="truncate text-xs font-semibold text-slate-800">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Último canal</p>
+              <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
                 {TYPE_NAMES[latestFollowUp.type]} · {latestFollowUp.summary || "Contacto registrado"}
               </p>
             </div>
@@ -190,13 +190,13 @@ export function LeadFollowUpStatus({
 
         {/* Próximo contacto agendado (si existe) */}
         {latestFollowUp?.nextContactAt && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-blue-100 shadow-2xs">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+          <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-blue-100 shadow-2xs dark:bg-card/90 dark:border-blue-900/60">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
               <CalendarCheck className="size-3.5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Próximo contacto</p>
-              <p className="truncate text-xs font-bold text-slate-900">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Próximo contacto</p>
+              <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">
                 {latestFollowUp.nextContactAt}
               </p>
             </div>
@@ -205,13 +205,13 @@ export function LeadFollowUpStatus({
 
         {/* Próxima acción comprometida (si existe) */}
         {latestFollowUp?.nextAction && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-slate-100 shadow-2xs">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+          <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-slate-100 shadow-2xs dark:bg-card/90 dark:border-border">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
               <ArrowRight className="size-3.5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Próxima acción</p>
-              <p className="truncate text-xs font-semibold text-slate-800">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Próxima acción</p>
+              <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
                 {latestFollowUp.nextAction}
               </p>
             </div>

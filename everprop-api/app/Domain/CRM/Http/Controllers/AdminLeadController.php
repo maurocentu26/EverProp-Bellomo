@@ -69,17 +69,23 @@ final class AdminLeadController extends Controller
             if (! empty($leadIds)) {
                 $linkedProps = DB::table('lead_properties')
                     ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
+                    ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
                     ->where('lead_properties.tenant_id', $tenantId)
                     ->whereIn('lead_properties.lead_id', $leadIds)
                     ->select([
                         'lead_properties.lead_id',
                         'lead_properties.interest_level',
+                        'lead_properties.status as interest_status',
                         'lead_properties.notes as interest_notes',
                         'properties.public_id as property_public_id',
                         'properties.title as property_title',
                         'properties.price as property_price',
                         'properties.currency_code as property_currency',
                         'properties.category as property_category',
+                        'properties.unit_number',
+                        'properties.sector_name',
+                        'projects.public_id as project_public_id',
+                        'projects.name as project_name',
                     ])
                     ->get();
 
@@ -91,7 +97,12 @@ final class AdminLeadController extends Controller
                         'price' => $prop->property_price ? (float) $prop->property_price : null,
                         'currency' => $prop->property_currency,
                         'category' => $prop->property_category,
+                        'project_id' => $prop->project_public_id,
+                        'project_name' => $prop->project_name,
+                        'unit_number' => $prop->unit_number,
+                        'sector_name' => $prop->sector_name,
                         'interest_level' => $prop->interest_level,
+                        'status' => $prop->interest_status ?: 'ACTIVE',
                         'notes' => $prop->interest_notes,
                     ];
                 }
@@ -114,12 +125,12 @@ final class AdminLeadController extends Controller
                         'notes' => $lead->notes,
                         'agent_id' => $lead->assigned_user_id,
                         'agent_name' => $lead->assigned_user_name,
-                        'last_touch_at' => $lead->last_touch_at,
-                        'follow_up_updated_at' => $lead->last_touch_at,
+                        'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
+                        'follow_up_updated_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
                         'property_ids' => $linkedPropertyIds[$lead->id] ?? [],
                         'properties' => $linkedPropertiesMap[$lead->id] ?? [],
-                        'created_at' => $lead->created_at,
-                        'updated_at' => $lead->updated_at,
+                        'created_at' => $lead->created_at ? Carbon::parse($lead->created_at, 'UTC')->toISOString() : null,
+                        'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                     ];
                 }),
             ]);
@@ -334,16 +345,22 @@ final class AdminLeadController extends Controller
 
             $linkedProps = DB::table('lead_properties')
                 ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
+                ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
                 ->where('lead_properties.tenant_id', $tenantId)
                 ->where('lead_properties.lead_id', $lead->id)
                 ->select([
                     'lead_properties.interest_level',
+                    'lead_properties.status as interest_status',
                     'lead_properties.notes as interest_notes',
                     'properties.public_id as property_public_id',
                     'properties.title as property_title',
                     'properties.price as property_price',
                     'properties.currency_code as property_currency',
                     'properties.category as property_category',
+                    'properties.unit_number',
+                    'properties.sector_name',
+                    'projects.public_id as project_public_id',
+                    'projects.name as project_name',
                 ])
                 ->get();
 
@@ -355,7 +372,12 @@ final class AdminLeadController extends Controller
                     'price' => $prop->property_price ? (float) $prop->property_price : null,
                     'currency' => $prop->property_currency,
                     'category' => $prop->property_category,
+                    'project_id' => $prop->project_public_id,
+                    'project_name' => $prop->project_name,
+                    'unit_number' => $prop->unit_number,
+                    'sector_name' => $prop->sector_name,
                     'interest_level' => $prop->interest_level,
+                    'status' => $prop->interest_status ?: 'ACTIVE',
                     'notes' => $prop->interest_notes,
                 ];
             })->all();
@@ -376,12 +398,12 @@ final class AdminLeadController extends Controller
                     'notes' => $lead->notes,
                     'agent_id' => $lead->assigned_user_id,
                     'agent_name' => $lead->assigned_user_name,
-                    'last_touch_at' => $lead->last_touch_at,
-                    'follow_up_updated_at' => $lead->last_touch_at,
+                    'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
+                    'follow_up_updated_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
                     'property_ids' => $propertyIds,
                     'properties' => $propertiesList,
-                    'created_at' => $lead->created_at,
-                    'updated_at' => $lead->updated_at,
+                    'created_at' => $lead->created_at ? Carbon::parse($lead->created_at, 'UTC')->toISOString() : null,
+                    'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -393,203 +415,327 @@ final class AdminLeadController extends Controller
 
     public function update(Request $request, string $leadPublicId): JsonResponse
     {
-        $tenantId = $this->tenantContext->id();
+        try {
+            $tenantId = $this->tenantContext->id();
 
-        $validated = $request->validate([
-            'name' => 'nullable|string|max:160',
-            'email' => 'nullable|string|max:160',
-            'phone' => 'nullable|string|max:40',
-            'stage' => 'nullable|string|max:40',
-            'notes' => 'nullable|string|max:10000',
-            'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT',
-            'agent_id' => 'nullable',
-        ]);
+            $validated = $request->validate([
+                'name' => 'nullable|string|max:160',
+                'email' => 'nullable|string|max:160',
+                'phone' => 'nullable|string|max:40',
+                'stage' => 'nullable|string|max:40',
+                'notes' => 'nullable|string|max:10000',
+                'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT',
+                'agent_id' => 'nullable',
+            ]);
 
-        $lead = DB::table('leads')
-            ->where('tenant_id', $tenantId)
-            ->where('public_id', $leadPublicId)
-            ->first();
-
-        if (! $lead) {
-            return response()->json(['error' => 'Lead not found'], 404);
-        }
-
-        $contactUpdates = [];
-        if (array_key_exists('name', $validated) && ! empty($validated['name'])) {
-            $contactUpdates['first_name'] = $validated['name'];
-        }
-        if (array_key_exists('email', $validated)) {
-            $contactUpdates['email'] = $validated['email'];
-        }
-        if (array_key_exists('phone', $validated)) {
-            $contactUpdates['phone'] = $validated['phone'];
-        }
-
-        if (! empty($contactUpdates) && $lead->contact_id) {
-            $contactUpdates['updated_at'] = Carbon::now('UTC');
-            DB::table('contacts')->where('id', $lead->contact_id)->update($contactUpdates);
-        }
-
-        $updates = [
-            'updated_at' => Carbon::now('UTC'),
-        ];
-
-        if (! empty($validated['stage'])) {
-            $stage = DB::table('pipeline_stages')
+            $lead = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('code', strtoupper($validated['stage']))
+                ->where('public_id', $leadPublicId)
                 ->first();
-            if ($stage) {
-                $updates['stage_id'] = $stage->id;
+
+            if (! $lead) {
+                return response()->json(['error' => 'Lead not found'], 404);
             }
-        }
 
-        if (array_key_exists('notes', $validated)) {
-            $updates['notes'] = $validated['notes'];
-        }
+            $contactUpdates = [];
+            $updates = [
+                'updated_at' => Carbon::now('UTC'),
+            ];
 
-        if (! empty($validated['priority'])) {
-            $updates['priority'] = strtoupper($validated['priority']);
-        }
+            if (array_key_exists('name', $validated) && ! empty($validated['name'])) {
+                $contactUpdates['first_name'] = $validated['name'];
+                $contactUpdates['display_name'] = $validated['name'];
+                $updates['title'] = 'Interés: ' . $validated['name'];
+            }
+            if (array_key_exists('email', $validated)) {
+                $contactUpdates['email'] = $validated['email'];
+            }
+            if (array_key_exists('phone', $validated)) {
+                $contactUpdates['phone_e164'] = $validated['phone'];
+            }
 
-        if (array_key_exists('agent_id', $validated)) {
-            $newAssignedId = $this->resolveUserId($validated['agent_id'], $tenantId);
-            $oldAssignedId = $lead->assigned_user_id ? (int) $lead->assigned_user_id : null;
+            if (! empty($contactUpdates) && $lead->contact_id) {
+                $contactUpdates['updated_at'] = Carbon::now('UTC');
+                DB::table('contacts')->where('id', $lead->contact_id)->update($contactUpdates);
+            }
 
-            $updates['assigned_user_id'] = $newAssignedId;
-
-            if ($newAssignedId && $newAssignedId !== $oldAssignedId) {
-                try {
-                    $assignedUser = User::find($newAssignedId);
-                    if ($assignedUser) {
-                        $contact = DB::table('contacts')->where('id', $lead->contact_id)->first(['display_name']);
-                        $leadName = $contact?->display_name ?: $lead->title;
-                        $assignedUser->notify(new LeadAssignedNotification(
-                            leadPublicId: $lead->public_id,
-                            leadName: $leadName,
-                            eventType: 'LEAD_REASSIGNED',
-                            title: 'Lead reasignado',
-                            message: "Se te ha reasignado el lead '{$leadName}'",
-                            actionUrl: "/admin/leads/{$lead->public_id}"
-                        ));
-                    }
-                } catch (\Throwable) {
-                    // Ignore notification errors
+            if (! empty($validated['stage'])) {
+                $stage = DB::table('pipeline_stages')
+                    ->where('tenant_id', $tenantId)
+                    ->where('code', strtoupper($validated['stage']))
+                    ->first();
+                if ($stage) {
+                    $updates['stage_id'] = $stage->id;
                 }
             }
+
+            if (array_key_exists('notes', $validated)) {
+                $updates['notes'] = $validated['notes'];
+            }
+
+            if (! empty($validated['priority'])) {
+                $updates['priority'] = strtoupper($validated['priority']);
+            }
+
+            if (array_key_exists('agent_id', $validated)) {
+                $newAssignedId = $this->resolveUserId($validated['agent_id'], $tenantId);
+                $oldAssignedId = $lead->assigned_user_id ? (int) $lead->assigned_user_id : null;
+
+                $updates['assigned_user_id'] = $newAssignedId;
+
+                if ($newAssignedId && $newAssignedId !== $oldAssignedId) {
+                    try {
+                        $assignedUser = User::find($newAssignedId);
+                        if ($assignedUser) {
+                            $contact = DB::table('contacts')->where('id', $lead->contact_id)->first(['display_name']);
+                            $leadName = $contact?->display_name ?: $lead->title;
+                            $assignedUser->notify(new LeadAssignedNotification(
+                                leadPublicId: $lead->public_id,
+                                leadName: $leadName,
+                                eventType: 'LEAD_REASSIGNED',
+                                title: 'Lead reasignado',
+                                message: "Se te ha reasignado el lead '{$leadName}'",
+                                actionUrl: "/admin/leads/{$lead->public_id}"
+                            ));
+                        }
+                    } catch (\Throwable) {
+                        // Ignore notification errors
+                    }
+                }
+            }
+
+            DB::table('leads')
+                ->where('id', $lead->id)
+                ->update($updates);
+
+            return response()->json(['status' => 'updated']);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        DB::table('leads')
-            ->where('id', $lead->id)
-            ->update($updates);
-
-        return response()->json(['status' => 'updated']);
     }
 
     public function attachProperty(Request $request, string $leadPublicId): JsonResponse
     {
-        $tenantId = $this->tenantContext->id();
-        $user = $request->user();
+        try {
+            $tenantId = $this->tenantContext->id();
+            $user = $request->user();
 
-        $lead = DB::table('leads')
-            ->where('tenant_id', $tenantId)
-            ->where('public_id', $leadPublicId)
-            ->first();
+            $lead = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('public_id', $leadPublicId)
+                ->first();
 
-        if (! $lead) {
-            return response()->json(['error' => 'Lead not found'], 404);
+            if (! $lead) {
+                return response()->json(['error' => 'Lead not found'], 404);
+            }
+
+            $validated = $request->validate([
+                'property_id' => 'required',
+                'interest_level' => 'nullable|string|in:LOW,MEDIUM,HIGH,HOT,low,medium,high,hot',
+                'status' => 'nullable|string|max:24',
+                'notes' => 'nullable|string|max:5000',
+                'quoted_price' => 'nullable|numeric|min:0',
+                'quoted_currency_code' => 'nullable|string|in:USD,ARS',
+            ]);
+
+            $propertyIdentifier = $validated['property_id'];
+            $property = DB::table('properties')
+                ->where('tenant_id', $tenantId)
+                ->where(function ($q) use ($propertyIdentifier) {
+                    $q->where('public_id', $propertyIdentifier);
+                    if (is_numeric($propertyIdentifier)) {
+                        $q->orWhere('id', (int) $propertyIdentifier);
+                    }
+                })
+                ->first();
+
+            if (! $property) {
+                return response()->json(['error' => 'Property not found'], 404);
+            }
+
+            $now = Carbon::now('UTC');
+            $interestLevel = strtoupper($validated['interest_level'] ?? 'MEDIUM');
+            $status = strtoupper($validated['status'] ?? 'ACTIVE');
+
+            DB::table('lead_properties')->updateOrInsert(
+                [
+                    'tenant_id' => $tenantId,
+                    'lead_id' => $lead->id,
+                    'property_id' => $property->id,
+                ],
+                [
+                    'linked_by_user_id' => $user?->id ?? $lead->assigned_user_id,
+                    'interest_level' => $interestLevel,
+                    'status' => $status,
+                    'notes' => $validated['notes'] ?? null,
+                    'quoted_price' => $validated['quoted_price'] ?? $property->price,
+                    'quoted_currency_code' => $validated['quoted_currency_code'] ?? $property->currency_code,
+                    'last_activity_at' => $now,
+                    'updated_at' => $now,
+                ]
+            );
+
+            return response()->json([
+                'status' => 'ok',
+                'data' => [
+                    'lead_id' => $leadPublicId,
+                    'property_id' => $property->public_id,
+                    'title' => $property->title,
+                    'interest_level' => $interestLevel,
+                    'status' => $status,
+                    'notes' => $validated['notes'] ?? null,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 500);
         }
+    }
 
-        $validated = $request->validate([
-            'property_id' => 'required|string',
-            'interest_level' => 'nullable|string|in:LOW,MEDIUM,HIGH,HOT,low,medium,high,hot',
-            'notes' => 'nullable|string|max:5000',
-            'quoted_price' => 'nullable|numeric|min:0',
-            'quoted_currency_code' => 'nullable|string|in:USD,ARS',
-        ]);
+    public function updateProperty(Request $request, string $leadPublicId, string $propertyPublicId): JsonResponse
+    {
+        try {
+            $tenantId = $this->tenantContext->id();
 
-        $propertyIdentifier = $validated['property_id'];
-        $property = DB::table('properties')
-            ->where('tenant_id', $tenantId)
-            ->where(function ($q) use ($propertyIdentifier) {
-                $q->where('public_id', $propertyIdentifier);
-                if (is_numeric($propertyIdentifier)) {
-                    $q->orWhere('id', (int) $propertyIdentifier);
-                }
-            })
-            ->first();
+            $lead = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('public_id', $leadPublicId)
+                ->first();
 
-        if (! $property) {
-            return response()->json(['error' => 'Property not found'], 404);
+            if (! $lead) {
+                return response()->json(['error' => 'Lead not found'], 404);
+            }
+
+            $property = DB::table('properties')
+                ->where('tenant_id', $tenantId)
+                ->where(function ($q) use ($propertyPublicId) {
+                    $q->where('public_id', $propertyPublicId);
+                    if (is_numeric($propertyPublicId)) {
+                        $q->orWhere('id', (int) $propertyPublicId);
+                    }
+                })
+                ->first();
+
+            if (! $property) {
+                return response()->json(['error' => 'Property not found'], 404);
+            }
+
+            $validated = $request->validate([
+                'status' => 'nullable|string|max:24',
+                'interest_level' => 'nullable|string|max:16',
+                'notes' => 'nullable|string|max:5000',
+            ]);
+
+            $updates = [
+                'updated_at' => Carbon::now('UTC'),
+                'last_activity_at' => Carbon::now('UTC'),
+            ];
+
+            if (array_key_exists('status', $validated)) {
+                $rawStatus = strtoupper(trim((string) $validated['status']));
+                $statusMap = [
+                    'NEW' => 'ACTIVE',
+                    'CONTACTED' => 'ACTIVE',
+                    'QUALIFIED' => 'ACTIVE',
+                    'ACTIVE' => 'ACTIVE',
+                    'VISIT_SCHEDULED' => 'VISIT_SCHEDULED',
+                    'VISITING' => 'VISIT_SCHEDULED',
+                    'NEGOTIATION' => 'NEGOTIATING',
+                    'NEGOTIATING' => 'NEGOTIATING',
+                    'IN_NEGOTIATION' => 'NEGOTIATING',
+                    'WON' => 'CONVERTED',
+                    'CLOSING' => 'CONVERTED',
+                    'CONVERTED' => 'CONVERTED',
+                    'DISCARDED' => 'DISCARDED',
+                    'LOST' => 'DISCARDED',
+                ];
+                $updates['status'] = $statusMap[$rawStatus] ?? 'ACTIVE';
+            }
+            if (array_key_exists('interest_level', $validated)) {
+                $rawLevel = strtoupper(trim((string) $validated['interest_level']));
+                $levelMap = [
+                    'LOW' => 'LOW',
+                    'BAJO' => 'LOW',
+                    'MEDIUM' => 'MEDIUM',
+                    'MEDIO' => 'MEDIUM',
+                    'HIGH' => 'HIGH',
+                    'ALTO' => 'HIGH',
+                    'HOT' => 'HOT',
+                ];
+                $updates['interest_level'] = $levelMap[$rawLevel] ?? 'MEDIUM';
+            }
+            if (array_key_exists('notes', $validated)) {
+                $updates['notes'] = $validated['notes'];
+            }
+
+            DB::table('lead_properties')
+                ->updateOrInsert(
+                    [
+                        'tenant_id' => $tenantId,
+                        'lead_id' => $lead->id,
+                        'property_id' => $property->id,
+                    ],
+                    $updates
+                );
+
+            return response()->json([
+                'status' => 'ok',
+                'data' => [
+                    'lead_id' => $leadPublicId,
+                    'property_id' => $propertyPublicId,
+                    'status' => $updates['status'] ?? null,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $now = Carbon::now('UTC');
-        $interestLevel = strtoupper($validated['interest_level'] ?? 'MEDIUM');
-
-        DB::table('lead_properties')->updateOrInsert(
-            [
-                'tenant_id' => $tenantId,
-                'lead_id' => $lead->id,
-                'property_id' => $property->id,
-            ],
-            [
-                'linked_by_user_id' => $user?->id ?? $lead->assigned_user_id,
-                'interest_level' => $interestLevel,
-                'status' => 'ACTIVE',
-                'notes' => $validated['notes'] ?? null,
-                'quoted_price' => $validated['quoted_price'] ?? $property->price,
-                'quoted_currency_code' => $validated['quoted_currency_code'] ?? $property->currency_code,
-                'last_activity_at' => $now,
-                'updated_at' => $now,
-            ]
-        );
-
-        return response()->json([
-            'status' => 'ok',
-            'data' => [
-                'lead_id' => $leadPublicId,
-                'property_id' => $property->public_id,
-                'title' => $property->title,
-                'interest_level' => $interestLevel,
-                'notes' => $validated['notes'] ?? null,
-            ],
-        ], 200);
     }
 
     public function detachProperty(Request $request, string $leadPublicId, string $propertyPublicId): JsonResponse
     {
-        $tenantId = $this->tenantContext->id();
+        try {
+            $tenantId = $this->tenantContext->id();
 
-        $lead = DB::table('leads')
-            ->where('tenant_id', $tenantId)
-            ->where('public_id', $leadPublicId)
-            ->first();
+            $lead = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('public_id', $leadPublicId)
+                ->first();
 
-        if (! $lead) {
-            return response()->json(['error' => 'Lead not found'], 404);
+            if (! $lead) {
+                return response()->json(['error' => 'Lead not found'], 404);
+            }
+
+            $property = DB::table('properties')
+                ->where('tenant_id', $tenantId)
+                ->where(function ($q) use ($propertyPublicId) {
+                    $q->where('public_id', $propertyPublicId);
+                    if (is_numeric($propertyPublicId)) {
+                        $q->orWhere('id', (int) $propertyPublicId);
+                    }
+                })
+                ->first();
+
+            if (! $property) {
+                return response()->json(['error' => 'Property not found'], 404);
+            }
+
+            DB::table('lead_properties')
+                ->where('tenant_id', $tenantId)
+                ->where('lead_id', $lead->id)
+                ->where('property_id', $property->id)
+                ->delete();
+
+            return response()->json(['status' => 'ok'], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $property = DB::table('properties')
-            ->where('tenant_id', $tenantId)
-            ->where(function ($q) use ($propertyPublicId) {
-                $q->where('public_id', $propertyPublicId);
-                if (is_numeric($propertyPublicId)) {
-                    $q->orWhere('id', (int) $propertyPublicId);
-                }
-            })
-            ->first();
-
-        if (! $property) {
-            return response()->json(['error' => 'Property not found'], 404);
-        }
-
-        DB::table('lead_properties')
-            ->where('tenant_id', $tenantId)
-            ->where('lead_id', $lead->id)
-            ->where('property_id', $property->id)
-            ->delete();
-
-        return response()->json(['status' => 'ok'], 200);
     }
 
     private function resolveUserId(mixed $agentId, int $tenantId): ?int

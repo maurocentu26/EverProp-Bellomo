@@ -20,8 +20,18 @@ export function isCommercialContact(followUp: LeadFollowUp) {
   return followUp.type !== "note";
 }
 
+export function parseArgentinaDate(value: string | Date): Date {
+  if (value instanceof Date) return value;
+  let str = String(value).trim();
+  // If string has date and time but lacks timezone indicator (Z or +/-offset), treat as UTC
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/.test(str)) {
+    str = str.replace(" ", "T") + "Z";
+  }
+  return new Date(str);
+}
+
 export function formatArgentinaDateTime(value: string | Date) {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = parseArgentinaDate(value);
   if (Number.isNaN(date.getTime())) return "Fecha inválida";
 
   return new Intl.DateTimeFormat("es-AR", {

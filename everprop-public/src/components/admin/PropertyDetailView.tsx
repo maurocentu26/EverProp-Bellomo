@@ -13,7 +13,7 @@ import { leads as sampleLeads, properties as sampleProperties } from "@/data/adm
 import { loadLeadList, loadPropertyList, saveLeadList, savePropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { isLocalDemo, demoCatalog } from "@/lib/demo-catalog";
-import { loadEverpropCatalog, updateEverpropPropertyStatus } from "@/lib/everprop-api";
+import { loadEverpropCatalog, loadEverpropLeads, updateEverpropPropertyStatus } from "@/lib/everprop-api";
 import {
   createInterestForProperty,
   getInterestAssetIds,
@@ -54,9 +54,17 @@ export default function PropertyDetailView({ propertyId }: Props) {
       }
       if (!isMockDataMode) {
         try {
-          const catalog = await loadEverpropCatalog();
+          const [catalog, apiLeads] = await Promise.all([
+            loadEverpropCatalog(),
+            loadEverpropLeads().catch(() => []),
+          ]);
           if (!active) return;
           setAllProperties(catalog.properties);
+          const localLeads = loadLeadList(sampleLeads, "c1");
+          const apiIds = new Set(apiLeads.map((l) => l.id));
+          const extraLocalLeads = localLeads.filter((l) => !apiIds.has(l.id));
+          setAllLeads([...apiLeads, ...extraLocalLeads]);
+
           const found = catalog.properties.find((item) => item.id === propertyId);
           setProperty(found ?? null);
           return;

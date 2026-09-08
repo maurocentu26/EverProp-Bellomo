@@ -41,6 +41,7 @@ import { isCommercialContact } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
 import {
   loadEverpropLeads,
+  loadEverpropLeadById,
   loadEverpropCatalog,
   updateEverpropLead,
   loadEverpropLeadFollowUps,
@@ -61,7 +62,7 @@ import { LeadAdvisorEditor } from "@/components/admin/LeadAdvisorEditor";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
 import { LeadFollowUpTimeline } from "@/components/admin/LeadFollowUpTimeline";
-import { NewLeadDrawer } from "@/components/admin/NewLeadDrawer";
+import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
   loteo: "Loteos",
@@ -74,31 +75,32 @@ type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInter
 
 export default function LeadDetailView({ leadId }: { leadId: string }) {
   const { currentUser } = useAuth();
-  const [lead, setLead] = useState<Lead | null>(null);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [lead, setLead] = useState<Lead | null>(null);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [advisorEditorOpen, setAdvisorEditorOpen] = useState(false);
   const [followUpEditorOpen, setFollowUpEditorOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [completingDrawerOpen, setCompletingDrawerOpen] = useState(false);
   const [interestEditor, setInterestEditor] = useState<InterestEditorState>(null);
   const [interestToDelete, setInterestToDelete] = useState<LeadInterest | null>(null);
+  const [stageUpdateModalOpen, setStageUpdateModalOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const [apiLeads, catalog, apiFollowUps] = await Promise.all([
-            loadEverpropLeads(),
-            loadEverpropCatalog(),
+          const [singleLead, apiLeads, catalog, apiFollowUps] = await Promise.all([
+            loadEverpropLeadById(leadId).catch(() => null),
+            loadEverpropLeads().catch(() => []),
+            loadEverpropCatalog().catch(() => ({ properties: sampleProperties, projects: sampleProjects })),
             loadEverpropLeadFollowUps(leadId).catch(() => []),
           ]);
           if (!active) return;
-          const foundLead = apiLeads.find((candidate) => candidate.id === leadId) ?? null;
-          setAllLeads(apiLeads);
+          const foundLead = singleLead ?? (apiLeads.find((candidate) => candidate.id === leadId) ?? null);
+          setAllLeads(apiLeads.length > 0 ? apiLeads : (singleLead ? [singleLead] : []));
           setAllProperties(catalog.properties);
           setAllProjects(catalog.projects);
           const localFollowUps = loadLeadFollowUpList([], foundLead?.companyId ?? "c1").filter((f) => f.leadId === leadId);
@@ -359,6 +361,42 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success(
       followUp.type === "note" ? "Nota agregada al historial" : "Seguimiento comercial registrado",
     );
+    setStageUpdateModalOpen(true);
+  }
+
+  async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
+    if (!lead) return;
+    const stageApiMap: Record<string, string> = {
+      contacted: "CONTACTED",
+      visiting: "VISIT_SCHEDULED",
+      negotiation: "NEGOTIATION",
+      closing: "WON",
+    };
+    const stageLabels: Record<string, string> = {
+      contacted: "Contactado",
+      visiting: "Visita Agendada",
+      negotiation: "Negociación",
+      closing: "Cierre / Ganado",
+    };
+
+    const updatedLead: Lead = {
+      ...lead,
+      stage: newStage,
+      lastActivity: new Date().toISOString(),
+    };
+    updateLeadData(updatedLead);
+    setStageUpdateModalOpen(false);
+    toast.success(`Etapa comercial actualizada a "${stageLabels[newStage] || newStage}"`);
+
+    if (!isMockDataMode) {
+      try {
+        await updateEverpropLead(lead.id, {
+          stage: stageApiMap[newStage] || "CONTACTED",
+        });
+      } catch (err) {
+        console.error("Error al actualizar etapa en backend:", err);
+      }
+    }
   }
 
   if (!lead) return null;
@@ -371,7 +409,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   ].filter((item): item is string => item !== null);
   const interestAssetIds = getInterestAssetIds(interests);
   const primaryProperty = interestAssetIds[0]
-    ? propertyById.get(interestAssetIds[0])
+    ? (propertyById.get(interestAssetIds[0]) || allProperties.find((p) => p.id === interestAssetIds[0]))
     : undefined;
   const assignedAgent = getAdvisor(lead.agentId, lead.agentName);
 
@@ -416,7 +454,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
                 <StickyNote className="size-3.5" aria-hidden="true" /> Notas generales
               </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{lead.notes}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200">{lead.notes}</p>
             </div>
           )}
 
@@ -476,7 +514,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                       </div>
                       <dl className="mt-3.5 space-y-2 text-xs">
                         <div><dt className="font-semibold text-slate-500">Proyecto</dt><dd className="font-bold text-slate-900">{project?.name || "Sin informar"}</dd></div>
-                        <div><dt className="font-semibold text-slate-500">Propiedad</dt><dd className="font-bold text-slate-900">{property?.title || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500">Propiedad</dt><dd className="font-bold text-slate-900">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
                         <div><dt className="font-semibold text-slate-500">Unidad</dt><dd className="font-bold text-slate-900">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
                       </dl>
                       <div className="mt-3.5 space-y-2 border-t border-slate-200 pt-3 text-xs">
@@ -501,8 +539,8 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                           <Trash2 className="size-3" aria-hidden="true" /> Eliminar
                         </Button>
                       </div>
-                      {(property || unit) && (
-                        <Link href={`/admin/properties/${(unit ?? property)?.id}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors">
+                      {(property || unit || interest.propertyId || interest.unitId) && (
+                        <Link href={`/admin/properties/${(unit ?? property)?.id || interest.propertyId || interest.unitId}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors">
                           Ver activo <ExternalLink className="size-3" aria-hidden="true" />
                         </Link>
                       )}
@@ -538,7 +576,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <AvatarFallback className="bg-blue-600 text-white">{lead.name[0]}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <h1 id="lead-name" className="text-lg font-bold tracking-tight text-slate-950 sm:text-xl truncate">{lead.name}</h1>
+                <h1 id="lead-name" className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100 sm:text-xl truncate">{lead.name}</h1>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <Badge variant="default" className="px-2 py-0.5 text-xs">{lead.origin}</Badge>
                   <Badge className="border-0 bg-blue-50 px-2 py-0.5 text-xs capitalize text-blue-700">{lead.stage}</Badge>
@@ -546,14 +584,18 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </div>
             </div>
 
-            <div className="mt-4 space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <div className="mt-4 space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-xs text-slate-600 dark:text-slate-300">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900">Teléfono:</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Teléfono:</span>
                 <span className="text-right">{lead.phone || "Sin informar"}</span>
               </div>
               {cleanPhone && (
                 <a
-                  href={`https://wa.me/${cleanPhone}`}
+                  href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                    `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
+                      interests[0]?.propertyTitle ? ` sobre ${interests[0].propertyTitle}` : ""
+                    }. ¿Cómo estás?`
+                  )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
@@ -562,14 +604,16 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 </a>
               )}
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900">Email:</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Email:</span>
                 <span className="text-right truncate max-w-44">{lead.email || "Sin informar"}</span>
               </div>
             </div>
 
-            <Button onClick={() => setCompletingDrawerOpen(true)} className="mt-4 h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
-              <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
-            </Button>
+            <Link href={`/admin/leads/${lead.id}/edit`} className="w-full">
+              <Button className="mt-4 h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
+                <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
+              </Button>
+            </Link>
           </section>
 
           {/* Assigned Advisor Card */}
@@ -617,21 +661,18 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         </div>
       </div>
 
-      <NewLeadDrawer
-        open={completingDrawerOpen}
-        onOpenChange={setCompletingDrawerOpen}
-        initialLead={lead}
-        isCompleting={true}
-        companyId={lead.companyId}
-        onLeadUpdated={(updatedLead) => {
-          setLead(updatedLead);
-          setAllLeads((prev) => prev.map((item) => (item.id === updatedLead.id ? updatedLead : item)));
-        }}
-      />
-
       {profileEditorOpen && <LeadProfileEditor key={lead.lastActivity} lead={lead} onClose={() => setProfileEditorOpen(false)} onSave={handleSaveProfile} />}
       {interestEditor && <LeadInterestEditor key={interestEditor.mode === "edit" ? interestEditor.interest.id : "new-interest"} companyId={lead.companyId} interest={interestEditor.mode === "edit" ? interestEditor.interest : undefined} projects={allProjects} properties={allProperties} onClose={() => setInterestEditor(null)} onSave={handleSaveInterest} />}
       {followUpEditorOpen && <LeadFollowUpEditor lead={lead} onClose={() => setFollowUpEditorOpen(false)} onConfirm={handleSaveFollowUp} />}
+      {lead && (
+        <LeadStageUpdateModal
+          open={stageUpdateModalOpen}
+          leadName={lead.name}
+          currentStage={lead.stage}
+          onClose={() => setStageUpdateModalOpen(false)}
+          onConfirm={handleConfirmStageUpdate}
+        />
+      )}
       {advisorEditorOpen && currentUser?.role === "ADMIN" && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
 
       <Dialog open={Boolean(interestToDelete)} onOpenChange={(open) => !open && setInterestToDelete(null)}>

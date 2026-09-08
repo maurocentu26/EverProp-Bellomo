@@ -2558,3 +2558,6 @@ body:has(.commission-calculator:focus-within) .back-to-top {
 
 /* Keep mobile navigation above the local assistant. */
 .site-header.is-open { z-index: 90; }
+
+/* Official Drive logo includes the symbol above the wordmark. */
+.site-logo .brand-wordmark { width: 7rem; height: 3.6rem; }

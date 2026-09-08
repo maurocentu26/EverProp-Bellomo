@@ -65,15 +65,27 @@ export function normalizeLeadInterests(lead: Lead, properties: Property[]): Lead
   if (Array.isArray(lead.interests)) {
     return lead.interests
       .filter((interest) => interest.companyId === lead.companyId)
-      .map((interest) => ({
-        ...interest,
-        category: interest.category,
-        projectId: optionalText(interest.projectId),
-        propertyId: optionalText(interest.propertyId),
-        unitId: optionalText(interest.unitId),
-        preferences: optionalText(interest.preferences),
-        notes: optionalText(interest.notes),
-      }));
+      .map((interest) => {
+        const prop = findProperty(properties, interest.propertyId || interest.unitId);
+        const resolvedCategory = interest.category || (prop ? inferLeadInterestCategory(prop) : undefined);
+        const resolvedProjectId = optionalText(interest.projectId) || prop?.projectId;
+        const resolvedUnitId = optionalText(interest.unitId) || (isProjectUnit(prop) ? prop?.id : undefined);
+        const resolvedPropertyId = optionalText(interest.propertyId) || (resolvedUnitId ? resolvedUnitId : prop?.id);
+        const resolvedTitle = interest.propertyTitle || prop?.title;
+
+        return {
+          ...interest,
+          category: resolvedCategory,
+          projectId: resolvedProjectId,
+          propertyId: resolvedPropertyId,
+          unitId: resolvedUnitId,
+          propertyTitle: resolvedTitle,
+          price: interest.price || prop?.price,
+          currency: interest.currency || prop?.currency,
+          preferences: optionalText(interest.preferences),
+          notes: optionalText(interest.notes),
+        };
+      });
   }
 
   const legacyUnitIds = new Set(lead.unitIds ?? []);

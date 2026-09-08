@@ -7,3 +7,5 @@ export type Promotion = { id: string; title: string; eyebrow: string; descriptio
 export type WebsiteContent = Omit<typeof defaults, "customSections"> & { customSections: CustomSection[]; promotions: Promotion[]; official: typeof official };
 export const defaultWebsite: WebsiteContent = { ...defaults, promotions: [], official };
 export type WebsiteState = { revision: number; publishedAt: string | null; draft: WebsiteContent; published: WebsiteContent };
+
+export { default as driveMaterial } from "./drive-material.json";
