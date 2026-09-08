@@ -14,11 +14,11 @@ import { cn } from "@/lib/utils";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
 
 export const STAGE_OPTIONS: { id: Lead["stage"]; label: string; class: string }[] = [
-  { id: "new", label: "Nuevo", class: "bg-slate-100 text-slate-700 border-slate-300" },
-  { id: "contacted", label: "Contactado", class: "bg-blue-100 text-blue-700 border-blue-300" },
-  { id: "visiting", label: "Visita Agendada", class: "bg-purple-100 text-purple-700 border-purple-300" },
-  { id: "negotiation", label: "Negociación", class: "bg-amber-100 text-amber-700 border-amber-300" },
-  { id: "closing", label: "Cerrado / Ganado", class: "bg-emerald-100 text-emerald-700 border-emerald-300" },
+  { id: "new", label: "Nuevo", class: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" },
+  { id: "contacted", label: "Contactado", class: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/80 dark:text-blue-200 dark:border-blue-800" },
+  { id: "visiting", label: "Visita Agendada", class: "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/80 dark:text-purple-200 dark:border-purple-800" },
+  { id: "negotiation", label: "Negociación", class: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-200 dark:border-amber-800" },
+  { id: "closing", label: "Cerrado / Ganado", class: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-200 dark:border-emerald-800" },
 ];
 
 export const STAGE_LABELS: Record<string, { label: string; class: string }> = Object.fromEntries(
@@ -40,17 +40,17 @@ function LeadActions({ lead, onView, onFollowUp }: LeadActionsProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+          className="h-9 w-9 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300"
           onClick={() => {
             const propTitle = lead.interests?.[0]?.propertyTitle;
-            const msg = encodeURIComponent(
-              `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
+            const message = encodeURIComponent(
+              `Hola ${lead.name}, te escribo de Bellomo Inmobiliaria respecto a tu consulta${
                 propTitle ? ` sobre ${propTitle}` : ""
               }. ¿Cómo estás?`
             );
-            window.open(`https://wa.me/${whatsappNumber}?text=${msg}`, "_blank", "noopener,noreferrer");
+            window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank");
           }}
-          aria-label={`Contactar a ${lead.name} por WhatsApp`}
+          aria-label={`Enviar WhatsApp a ${lead.name}`}
           title="Contactar por WhatsApp"
         >
           <MessageCircle className="h-4 w-4" aria-hidden="true" />
@@ -59,9 +59,9 @@ function LeadActions({ lead, onView, onFollowUp }: LeadActionsProps) {
       {lead.phone && (
         <a
           href={`tel:${lead.phone}`}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
           aria-label={`Llamar a ${lead.name}`}
-          title="Llamar por teléfono"
+          title="Llamar"
         >
           <Phone className="h-4 w-4" aria-hidden="true" />
         </a>
@@ -70,7 +70,7 @@ function LeadActions({ lead, onView, onFollowUp }: LeadActionsProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+          className="h-9 w-9 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-blue-700 dark:hover:text-blue-300"
           onClick={onFollowUp}
           aria-label={`Registrar seguimiento de ${lead.name}`}
           title="Registrar seguimiento"
@@ -81,7 +81,7 @@ function LeadActions({ lead, onView, onFollowUp }: LeadActionsProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="h-9 w-9 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+        className="h-9 w-9 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
         onClick={onView}
         aria-label={`Abrir ficha de ${lead.name}`}
         title="Abrir ficha del lead"
@@ -105,63 +105,61 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
   const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase();
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-sm">
       {/* Vista Mobile / Tablet */}
-      <div className="divide-y divide-slate-100 xl:hidden">
+      <div className="divide-y divide-slate-100 dark:divide-slate-800 xl:hidden">
         {leads.map((lead) => {
           const property = sampleProperties.find((item) => item.id === lead.propertyIds[0]);
           const currentStage = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
 
           return (
-            <article key={lead.id} className="p-4 sm:p-5">
-              <div className="flex min-w-0 items-start gap-3">
-                <Avatar className="h-10 w-10 shrink-0 border border-slate-100">
-                  <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-600">
+            <article key={lead.id} className="p-3.5 sm:p-4">
+              {/* Row 1: Avatar + Name + Origin dot + Stage selector */}
+              <div className="flex items-center gap-2.5">
+                <Avatar className="size-9 shrink-0 border border-slate-100 dark:border-slate-800">
+                  <AvatarFallback className="bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300">
                     {getInitials(lead.name)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-semibold leading-6 text-slate-900">{lead.name}</p>
-                  <p className="truncate text-sm text-slate-500">{lead.email || lead.phone || "Sin datos de contacto"}</p>
+                  <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{lead.name}</p>
+                  <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <span className="size-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                    <span className="truncate">{lead.origin}</span>
+                  </p>
                 </div>
-                {/* Selector de estado inline en mobile */}
                 <select
                   aria-label={`Cambiar estado de ${lead.name}`}
                   value={lead.stage}
                   onChange={(e) => onStageChange?.(lead.id, e.target.value as Lead["stage"])}
                   className={cn(
-                    "cursor-pointer shrink-0 rounded-lg border px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-400",
+                    "cursor-pointer shrink-0 rounded-lg border px-2 py-1 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-400",
                     currentStage.class
                   )}
                 >
                   {STAGE_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id} className="bg-white text-slate-800 font-medium">
+                    <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
                       {opt.label}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <dl className="mt-4 grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-3">
-                <div className="min-w-0">
-                  <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Interés</dt>
-                  <dd className="mt-1 truncate text-sm font-semibold text-slate-800">{property?.title || "Sin propiedad"}</dd>
-                  <dd className="mt-0.5 text-sm font-bold text-blue-600">
+              {/* Row 2: Property interest + price + follow-up status */}
+              <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 px-3 py-2 border border-slate-100 dark:border-slate-800">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">{property?.title || "Sin propiedad"}</p>
+                  <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
                     {property ? `${property.currency} ${property.price.toLocaleString()}` : "Pendiente"}
-                  </dd>
+                  </p>
                 </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Origen</dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-700">{lead.origin}</dd>
+                <div className="shrink-0">
+                  <LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} compact />
                 </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">Seguimiento</dt>
-                  <dd className="mt-1"><LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} compact /></dd>
-                </div>
-              </dl>
+              </div>
 
-              <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                <span className="text-xs font-medium text-slate-500">Acciones rápidas</span>
+              {/* Row 3: Quick action buttons */}
+              <div className="mt-2.5 flex items-center justify-end gap-1">
                 <LeadActions 
                   lead={lead} 
                   onView={() => router.push(`/admin/leads/${lead.id}`)}
@@ -177,38 +175,38 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
       <div className="hidden xl:block overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/50">
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">Interesado</th>
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">Propiedad / Precio</th>
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">Estado (1 Clic)</th>
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">Origen</th>
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">Seguimiento</th>
-              <th className="px-4 py-4 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">Acciones</th>
+            <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Interesado</th>
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Propiedad / Precio</th>
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Estado (1 Clic)</th>
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Origen</th>
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Seguimiento</th>
+              <th className="px-4 py-4 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
             {leads.map((lead) => {
               const props = sampleProperties.find(p => p.id === lead.propertyIds[0]);
               const currentStage = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
 
               return (
-                <tr key={lead.id} className="group hover:bg-slate-50/60 transition-colors">
+                <tr key={lead.id} className="group hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors">
                   {/* Columna: Interesado */}
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 border border-slate-100">
-                        <AvatarFallback className="bg-slate-100 text-slate-600 text-[10px] font-bold">
+                      <Avatar className="h-9 w-9 border border-slate-100 dark:border-slate-800">
+                        <AvatarFallback className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
                           {getInitials(lead.name)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col min-w-0">
                         <span 
                           onClick={() => router.push(`/admin/leads/${lead.id}`)}
-                          className="text-sm font-semibold text-slate-900 leading-tight hover:text-blue-600 cursor-pointer"
+                          className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-tight hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
                         >
                           {lead.name}
                         </span>
-                        <span className="text-xs text-slate-500 truncate">{lead.email || lead.phone || "Sin contacto"}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{lead.email || lead.phone || "Sin contacto"}</span>
                       </div>
                     </div>
                   </td>
@@ -216,10 +214,10 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
                   {/* Columna: Propiedad */}
                   <td className="px-4 py-4">
                     <div className="flex flex-col">
-                      <span className="text-sm text-slate-700 truncate max-w-[220px] font-medium">
+                      <span className="text-sm text-slate-700 dark:text-slate-300 truncate max-w-[220px] font-medium">
                         {props?.title || "Sin propiedad"}
                       </span>
-                      <span className="text-xs font-bold text-blue-600">
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
                         {props ? `${props.currency} ${props.price.toLocaleString()}` : "-"}
                       </span>
                     </div>
@@ -237,7 +235,7 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
                       )}
                     >
                       {STAGE_OPTIONS.map((opt) => (
-                        <option key={opt.id} value={opt.id} className="bg-white text-slate-800 font-medium">
+                        <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
                           {opt.label}
                         </option>
                       ))}
@@ -246,8 +244,8 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
 
                   {/* Columna: Origen */}
                   <td className="px-4 py-4">
-                    <span className="text-xs text-slate-500 flex items-center gap-1.5">
-                      <div className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                    <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <div className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
                       {lead.origin}
                     </span>
                   </td>

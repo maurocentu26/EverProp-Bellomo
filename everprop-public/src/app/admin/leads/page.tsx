@@ -316,20 +316,23 @@ export default function AllLeadsPage() {
             />
           </InputGroup>
           
-          <div className="flex w-full gap-2 sm:w-auto">
-            <Link href="/admin/leads/new" className="flex-1 sm:flex-none">
-              <Button className="min-h-11 w-full gap-2 bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-sm">
-                <Plus className="h-4 w-4" />
-                Nuevo Lead
-              </Button>
-            </Link>
-          </div>
+          {!isEngineer && (
+            <div className="flex w-full gap-2 sm:w-auto">
+              <Link href="/admin/leads/new" className="flex-1 sm:flex-none">
+                <Button className="min-h-11 w-full gap-2 bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-sm">
+                  <Plus className="h-4 w-4" />
+                  Nuevo Lead
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Pipeline Tabs con Contadores en Tiempo Real */}
-      <div className="flex flex-col justify-between gap-4 pb-2 xl:flex-row xl:items-center">
-        <div className="flex flex-wrap gap-1.5 rounded-2xl bg-slate-100 p-1.5">
+      {/* Compact Filter Bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Stage chip-tabs: compact pills */}
+        <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-1">
           {LEAD_STAGE_FILTERS.map(tab => {
             const count = stageCounts[tab.id];
             const isActive = activeStage === tab.id;
@@ -339,16 +342,16 @@ export default function AllLeadsPage() {
                 type="button"
                 onClick={() => setActiveStage(tab.id)}
                 className={cn(
-                  "min-h-10 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-2",
+                  "rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap",
                   isActive 
-                    ? "bg-white text-blue-700 shadow-sm" 
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                    ? "bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-300" 
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
                 <span>{tab.label}</span>
                 <span className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-extrabold",
-                  isActive ? "bg-blue-100 text-blue-800" : "bg-slate-200 text-slate-600"
+                  "rounded-full px-1.5 py-0.5 text-[9px] font-extrabold leading-none",
+                  isActive ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                 )}>
                   {count}
                 </span>
@@ -357,71 +360,47 @@ export default function AllLeadsPage() {
           })}
         </div>
 
-        {/* Filtro por tipo de activo y botón limpiar */}
-        <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center xl:w-auto">
-          <div className="flex min-w-0 flex-1 items-center gap-2 xl:flex-none">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:inline-block">Interés:</span>
-            <select 
-              aria-label="Filtrar por tipo de interés"
-              className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 xl:min-w-56"
-              value={assetType}
-              onChange={(e) => setAssetType(e.target.value as AssetTypeFilter)}
-            >
-              <option value="all">Todos los activos</option>
-              <option value="lote">Loteos</option>
-              <option value="departamento">Edificios (Pozo)</option>
-              <option value="comercial">Comercial (Locales/Cocheras)</option>
-              <option value="tradicional">Inmobiliaria Tradicional</option>
-            </select>
-          </div>
+        {/* Divider */}
+        <div className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-800" />
 
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearFilters}
-              className="min-h-11 gap-1.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Limpiar
-            </Button>
-          )}
-        </div>
+        {/* Asset type chip */}
+        <select 
+          aria-label="Filtrar por tipo de interés"
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 cursor-pointer"
+          value={assetType}
+          onChange={(e) => setAssetType(e.target.value as AssetTypeFilter)}
+        >
+          <option value="all">Tipo: Todos</option>
+          <option value="lote">Loteos</option>
+          <option value="departamento">Edificios</option>
+          <option value="comercial">Comercial</option>
+          <option value="tradicional">Tradicional</option>
+        </select>
+
+        {/* Follow-up urgency chip */}
+        <select
+          aria-label="Filtrar por urgencia de seguimiento"
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 cursor-pointer"
+          value={followUpFilter}
+          onChange={(e) => setFollowUpFilter(e.target.value as FollowUpFilter)}
+        >
+          <option value="all">Seguimiento: Todos</option>
+          <option value="dueSoon">Próximos a vencer</option>
+          <option value="overdue">Vencidos</option>
+        </select>
+
+        {/* Clear filters */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearFilters}
+            className="h-8 gap-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/30"
+          >
+            <RotateCcw className="size-3.5" /> Limpiar
+          </Button>
+        )}
       </div>
-
-      {/* Barra de Prioridad de Seguimiento */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-labelledby="follow-up-filter-title">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 id="follow-up-filter-title" className="text-sm font-bold uppercase tracking-wider text-slate-800">
-              Plazo de Seguimiento
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Filtra leads que requieren contacto urgente (&gt;10 días sin gestión) o vencen próximamente.
-            </p>
-          </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
-            {FOLLOW_UP_FILTERS.map((filter) => (
-              <button
-                key={filter.id}
-                type="button"
-                onClick={() => setFollowUpFilter(filter.id)}
-                className={cn(
-                  "min-h-10 rounded-xl border px-4 py-1.5 text-xs font-bold transition-colors",
-                  followUpFilter === filter.id
-                    ? filter.id === "overdue"
-                      ? "border-rose-600 bg-rose-600 text-white shadow-sm"
-                      : filter.id === "dueSoon"
-                        ? "border-amber-500 bg-amber-500 text-slate-950 shadow-sm"
-                        : "border-blue-600 bg-blue-600 text-white shadow-sm"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50",
-                )}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Tabla Pro de Leads */}
       <div className="min-h-[500px]">

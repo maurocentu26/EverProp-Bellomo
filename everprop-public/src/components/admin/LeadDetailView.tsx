@@ -50,6 +50,7 @@ import {
   detachEverpropLeadProperty,
 } from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Badge from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -69,6 +70,22 @@ const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
   local: "Locales",
   cochera: "Cocheras",
   tradicional: "Inmobiliaria tradicional",
+};
+
+const STAGE_LABELS: Record<string, string> = {
+  new: "Nuevo",
+  contacted: "Contactado",
+  visiting: "Visita Agendada",
+  negotiation: "Negociación",
+  closing: "Cierre / Ganado",
+};
+
+const STAGE_STYLES: Record<string, string> = {
+  new: "border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200",
+  contacted: "border-blue-300 bg-blue-100 text-blue-900 dark:border-blue-800 dark:bg-blue-950/80 dark:text-blue-200",
+  visiting: "border-purple-300 bg-purple-100 text-purple-900 dark:border-purple-800 dark:bg-purple-950/80 dark:text-purple-200",
+  negotiation: "border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950/80 dark:text-amber-200",
+  closing: "border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-200",
 };
 
 type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInterest } | null;
@@ -426,15 +443,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         <div className="space-y-6 lg:col-span-8">
           {/* Pending Info Alert */}
           {generalPendingData.length > 0 ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4" role="status">
+            <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-4" role="status">
               <div className="flex items-start gap-2.5">
-                <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
+                <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-bold text-amber-950">Información pendiente</p>
-                  <p className="mt-0.5 text-xs text-amber-800">El cliente ya está registrado. Podés completar estos datos con el botón "Completar ficha".</p>
+                  <p className="text-xs font-bold text-amber-950 dark:text-amber-100">Información pendiente</p>
+                  <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">El cliente ya está registrado. Podés completar estos datos con el botón "Completar ficha".</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {generalPendingData.map((item) => (
-                      <span key={item} className="rounded-md border border-amber-200 bg-white px-2 py-0.5 text-xs font-semibold text-amber-900">
+                      <span key={item} className="rounded-md border border-amber-200 dark:border-amber-900 bg-white dark:bg-amber-950/60 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:text-amber-200">
                         {item}
                       </span>
                     ))}
@@ -443,15 +460,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-800" role="status">
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 p-3.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300" role="status">
               <CircleCheck className="size-4 shrink-0" aria-hidden="true" /> La información general del cliente está completa.
             </div>
           )}
 
           {/* General Notes */}
           {lead.notes && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <StickyNote className="size-3.5" aria-hidden="true" /> Notas generales
               </p>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200">{lead.notes}</p>
@@ -459,12 +476,12 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           )}
 
           {/* Follow-up Timeline */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-follow-up-timeline-title">
-            <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-follow-up-timeline-title">
+            <div className="flex flex-col gap-3 border-b border-slate-200 dark:border-slate-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Historial comercial</p>
-                <h2 id="lead-follow-up-timeline-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950">Línea de tiempo</h2>
-                <p className="mt-0.5 text-xs text-slate-500">Cada contacto conserva su asesor, fecha, tipo, resumen, resultado y próximo paso.</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Historial comercial</p>
+                <h2 id="lead-follow-up-timeline-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">Línea de tiempo</h2>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Cada contacto conserva su asesor, fecha, tipo, resumen, resultado y próximo paso.</p>
               </div>
               <Button onClick={() => setFollowUpEditorOpen(true)} disabled={!lead.agentId} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 <Plus className="size-3.5" aria-hidden="true" /> Nuevo seguimiento
@@ -476,12 +493,12 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
 
           {/* Interests Section */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-interests-title">
-            <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-interests-title">
+            <div className="flex flex-col gap-3 border-b border-slate-200 dark:border-slate-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Calificación comercial</p>
-                <h2 id="lead-interests-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950">Intereses independientes</h2>
-                <p className="mt-0.5 text-xs text-slate-500">Cada ficha conserva su propio proyecto, propiedad, unidad, preferencias y notas.</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Calificación comercial</p>
+                <h2 id="lead-interests-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">Intereses independientes</h2>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Cada ficha conserva su propio proyecto, propiedad, unidad, preferencias y notas.</p>
               </div>
               <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
                 <Plus className="size-3.5" aria-hidden="true" /> Agregar interés
@@ -489,10 +506,10 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             </div>
 
             {interests.length === 0 ? (
-              <div className="mt-5 flex min-h-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+              <div className="mt-5 flex min-h-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-6 text-center">
                 <Layers3 className="size-8 text-slate-400" aria-hidden="true" />
-                <h3 className="mt-3 text-base font-bold text-slate-950">Todavía no hay intereses cargados</h3>
-                <p className="mt-1 max-w-md text-xs text-slate-500">Podés registrar una ficha vacía y completarla durante la calificación.</p>
+                <h3 className="mt-3 text-base font-bold text-slate-950 dark:text-slate-100">Todavía no hay intereses cargados</h3>
+                <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">Podés registrar una ficha vacía y completarla durante la calificación.</p>
               </div>
             ) : (
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -502,45 +519,45 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                   const unit = interest.unitId ? propertyById.get(interest.unitId) : undefined;
                   const pendingFields = getInterestPendingFields(interest);
                   return (
-                    <article key={interest.id} className="flex min-h-full flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                    <article key={interest.id} className="flex min-h-full flex-col rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-4 sm:p-5">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Interés {index + 1}</p>
-                          <h3 className="mt-1 text-base font-bold text-slate-950">{interest.category ? CATEGORY_LABELS[interest.category] : "Sin categoría"}</h3>
+                          <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Interés {index + 1}</p>
+                          <h3 className="mt-1 text-base font-bold text-slate-950 dark:text-slate-100">{interest.category ? CATEGORY_LABELS[interest.category] : "Sin categoría"}</h3>
                         </div>
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm border border-slate-100">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800">
                           <Building2 className="size-4" aria-hidden="true" />
                         </span>
                       </div>
                       <dl className="mt-3.5 space-y-2 text-xs">
-                        <div><dt className="font-semibold text-slate-500">Proyecto</dt><dd className="font-bold text-slate-900">{project?.name || "Sin informar"}</dd></div>
-                        <div><dt className="font-semibold text-slate-500">Propiedad</dt><dd className="font-bold text-slate-900">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
-                        <div><dt className="font-semibold text-slate-500">Unidad</dt><dd className="font-bold text-slate-900">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Proyecto</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{project?.name || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Propiedad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Unidad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
                       </dl>
-                      <div className="mt-3.5 space-y-2 border-t border-slate-200 pt-3 text-xs">
-                        <div><p className="font-semibold text-slate-500">Preferencias</p><p className="whitespace-pre-wrap text-slate-700">{interest.preferences || "Sin informar"}</p></div>
-                        <div><p className="font-semibold text-slate-500">Notas</p><p className="whitespace-pre-wrap text-slate-700">{interest.notes || "Sin informar"}</p></div>
+                      <div className="mt-3.5 space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3 text-xs">
+                        <div><p className="font-semibold text-slate-500 dark:text-slate-400">Preferencias</p><p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{interest.preferences || "Sin informar"}</p></div>
+                        <div><p className="font-semibold text-slate-500 dark:text-slate-400">Notas</p><p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{interest.notes || "Sin informar"}</p></div>
                       </div>
                       <div className="mt-3">
-                        <p className="text-xs font-bold text-amber-800">Datos sin informar</p>
+                        <p className="text-xs font-bold text-amber-800 dark:text-amber-300">Datos sin informar</p>
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {pendingFields.length > 0 ? pendingFields.map((field) => (
-                            <span key={field} className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{field}</span>
+                            <span key={field} className="rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-xs font-medium text-amber-900 dark:text-amber-200">{field}</span>
                           )) : (
-                            <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">Ficha completa</span>
+                            <span className="rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-300">Ficha completa</span>
                           )}
                         </div>
                       </div>
                       <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
-                        <Button variant="outline" size="sm" onClick={() => setInterestEditor({ mode: "edit", interest })} className="h-8 gap-1.5 text-xs font-semibold">
+                        <Button variant="outline" size="sm" onClick={() => setInterestEditor({ mode: "edit", interest })} className="h-8 gap-1.5 text-xs font-semibold dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
                           <Edit3 className="size-3" aria-hidden="true" /> Editar
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setInterestToDelete(interest)} className="h-8 gap-1.5 border-rose-200 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800">
+                        <Button variant="outline" size="sm" onClick={() => setInterestToDelete(interest)} className="h-8 gap-1.5 border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-800">
                           <Trash2 className="size-3" aria-hidden="true" /> Eliminar
                         </Button>
                       </div>
                       {(property || unit || interest.propertyId || interest.unitId) && (
-                        <Link href={`/admin/properties/${(unit ?? property)?.id || interest.propertyId || interest.unitId}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors">
+                        <Link href={`/admin/properties/${(unit ?? property)?.id || interest.propertyId || interest.unitId}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors">
                           Ver activo <ExternalLink className="size-3" aria-hidden="true" />
                         </Link>
                       )}
@@ -552,7 +569,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
 
           {/* Visits & Agenda */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6">
             <VisitManager
               title="Gestión de visitas y citas"
               subtitle="Agendá citas para cualquiera de sus activos de interés."
@@ -570,7 +587,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         {/* ── Sidebar Column (4 cols): Quick access tools ── */}
         <div className="space-y-6 lg:col-span-4">
           {/* Lead Overview Card */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-name">
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-name">
             <div className="flex items-start gap-3.5">
               <Avatar className="size-12 shrink-0 rounded-xl bg-blue-600 text-base font-bold text-white">
                 <AvatarFallback className="bg-blue-600 text-white">{lead.name[0]}</AvatarFallback>
@@ -579,7 +596,9 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <h1 id="lead-name" className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100 sm:text-xl truncate">{lead.name}</h1>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   <Badge variant="default" className="px-2 py-0.5 text-xs">{lead.origin}</Badge>
-                  <Badge className="border-0 bg-blue-50 px-2 py-0.5 text-xs capitalize text-blue-700">{lead.stage}</Badge>
+                  <Badge className={cn("border px-2 py-0.5 text-xs font-bold", STAGE_STYLES[lead.stage] || STAGE_STYLES.new)}>
+                    {STAGE_LABELS[lead.stage] || lead.stage}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -598,7 +617,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline"
                 >
                   Abrir conversación en WhatsApp →
                 </a>
@@ -617,32 +636,32 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
 
           {/* Assigned Advisor Card */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="lead-advisor-title">
-            <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500">Asesor responsable</p>
-            <p className="mt-1 text-base font-bold text-slate-900">{assignedAgent?.name ?? "Sin asignar"}</p>
-            <p className="mt-0.5 text-xs leading-5 text-slate-500">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm" aria-labelledby="lead-advisor-title">
+            <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500 dark:text-slate-400">Asesor responsable</p>
+            <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">{assignedAgent?.name ?? "Sin asignar"}</p>
+            <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
             {currentUser?.role === "ADMIN" && (
-              <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold">
+              <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
                 Cambiar asesor
               </Button>
             )}
           </section>
 
           {/* Follow-up Status Card */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="lead-follow-up-title">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm" aria-labelledby="lead-follow-up-title">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                <span className="flex size-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400">
                   <ClipboardCheck className="size-4" aria-hidden="true" />
                 </span>
-                <h2 id="lead-follow-up-title" className="text-sm font-bold text-slate-900">Seguimiento Comercial</h2>
+                <h2 id="lead-follow-up-title" className="text-sm font-bold text-slate-900 dark:text-slate-100">Seguimiento Comercial</h2>
               </div>
             </div>
             <div className="mt-3">
               <LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
             </div>
             {!lead.agentId && (
-              <p className="mt-2 text-xs text-amber-700 font-medium">Asigná un asesor antes de registrar un seguimiento.</p>
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 font-medium">Asigná un asesor antes de registrar un seguimiento.</p>
             )}
             <Button
               onClick={() => setFollowUpEditorOpen(true)}
@@ -655,7 +674,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
 
           {/* Financing Calculator Card */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
             <FinancingCalculator defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "USD"} leadName={lead.name} />
           </div>
         </div>
@@ -676,7 +695,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       {advisorEditorOpen && currentUser?.role === "ADMIN" && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
 
       <Dialog open={Boolean(interestToDelete)} onOpenChange={(open) => !open && setInterestToDelete(null)}>
-        <DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Eliminar este interés</DialogTitle><DialogDescription>Se quitará solamente esta ficha. El cliente y sus demás intereses no serán eliminados.</DialogDescription></DialogHeader><DialogFooter className="mt-4 gap-2"><Button variant="outline" onClick={() => setInterestToDelete(null)}>Cancelar</Button><Button variant="destructive" onClick={handleDeleteInterest}>Eliminar interés</Button></DialogFooter></DialogContent>
+        <DialogContent className="sm:max-w-md dark:border-slate-800 dark:bg-slate-900"><DialogHeader><DialogTitle className="dark:text-slate-100">Eliminar este interés</DialogTitle><DialogDescription className="dark:text-slate-400">Se quitará solamente esta ficha. El cliente y sus demás intereses no serán eliminados.</DialogDescription></DialogHeader><DialogFooter className="mt-4 gap-2"><Button variant="outline" onClick={() => setInterestToDelete(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button><Button variant="destructive" onClick={handleDeleteInterest}>Eliminar interés</Button></DialogFooter></DialogContent>
       </Dialog>
     </div>
   );

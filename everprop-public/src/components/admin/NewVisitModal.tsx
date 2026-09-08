@@ -20,6 +20,7 @@ import {
 import { loadLeadList, loadPropertyList, saveLeadList, savePropertyList } from "@/lib/admin-storage";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOCK_USERS } from "@/data/auth-sample";
+import { QuickScheduleButtons } from "@/components/admin/QuickScheduleButtons";
 
 interface NewVisitModalProps {
   open: boolean;
@@ -146,7 +147,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden rounded-2xl border-slate-200">
+      <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden rounded-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
         <DialogHeader className="p-6 bg-slate-900 text-white border-b border-slate-800">
           <div className="flex items-center gap-2">
             <span className="flex size-9 items-center justify-center rounded-xl bg-blue-600/30 text-blue-400 border border-blue-500/30">
@@ -163,7 +164,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto bg-white dark:bg-slate-900">
           {/* Seleccionar Lead existente o escribir nombre */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
@@ -172,7 +173,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
             <select
               value={selectedLeadId}
               onChange={(e) => handleLeadSelect(e.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
             >
               <option value="">-- Cargar visitante manual / No vinculado --</option>
               {leads.map((l) => (
@@ -193,7 +194,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
                 onChange={(e) => setGuestName(e.target.value)}
                 placeholder="Ej: Marcelo Morales"
                 required
-                className="h-11 rounded-xl border-slate-200 bg-white px-3.5 shadow-2xs"
+                className="h-11 rounded-xl border-slate-200 bg-white px-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               />
             </div>
 
@@ -205,7 +206,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Ej: +54 9 11..."
-                className="h-11 rounded-xl border-slate-200 bg-white px-3.5 shadow-2xs"
+                className="h-11 rounded-xl border-slate-200 bg-white px-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               />
             </div>
           </div>
@@ -217,7 +218,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
             <select
               value={selectedPropertyId}
               onChange={(e) => setSelectedPropertyId(e.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
             >
               <option value="">Seleccionar propiedad o lote...</option>
               {properties.map((p) => (
@@ -229,20 +230,37 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                Fecha y Hora de la Cita *
-              </label>
+            <div className="space-y-1.5 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  Fecha y Hora de la Cita *
+                </label>
+                {scheduledAt && (
+                  <button
+                    type="button"
+                    onClick={() => setScheduledAt("")}
+                    className="text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  >
+                    Limpiar fecha
+                  </button>
+                )}
+              </div>
               <Input
                 type="datetime-local"
                 value={scheduledAt}
                 onChange={(e) => setScheduledAt(e.target.value)}
                 required
-                className="h-11 rounded-xl border-slate-200 bg-white px-3 shadow-2xs"
+                className="h-11 rounded-xl border-slate-200 bg-white px-3 shadow-2xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+              />
+              <QuickScheduleButtons
+                value={scheduledAt}
+                onChange={setScheduledAt}
+                label="Agendar visita rápido para:"
+                className="pt-1"
               />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                 Asesor Responsable
               </label>
@@ -250,7 +268,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}
                 disabled={isAdvisor}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
               >
                 {MOCK_USERS.filter((u) => u.role === "ADVISOR" || u.role === "ADMIN").map((u) => (
                   <option key={u.id} value={u.id}>
@@ -269,16 +287,16 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Ej: Viene con arquitecto, interesado en financiación a 24 cuotas, trae seña..."
-              className="min-h-[85px] rounded-xl border-slate-200 bg-white p-3 shadow-2xs text-sm"
+              className="min-h-[85px] rounded-xl border-slate-200 bg-white p-3 shadow-2xs text-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
             />
           </div>
 
-          <DialogFooter className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+          <DialogFooter className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="min-h-11 rounded-xl border-slate-200 px-4 text-sm font-semibold text-slate-700"
+              className="min-h-11 rounded-xl border-slate-200 dark:border-slate-800 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Cancelar
             </Button>
