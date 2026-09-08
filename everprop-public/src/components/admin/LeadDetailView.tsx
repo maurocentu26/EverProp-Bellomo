@@ -64,6 +64,7 @@ import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
 import { LeadFollowUpTimeline } from "@/components/admin/LeadFollowUpTimeline";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
+import { FINAL_DELIVERY_ENABLED } from "@/lib/release-visibility";
 import { LeadFinancingAgreements } from "@/components/admin/LeadFinancingAgreements";
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
@@ -519,13 +520,13 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
 
           {/* Financing Agreements & Installment Tracking */}
-          <LeadFinancingAgreements
+          {FINAL_DELIVERY_ENABLED && <LeadFinancingAgreements
             leadId={lead.id}
             leadName={lead.name}
             leadPhone={lead.phone}
             companyId={lead.companyId}
             advisorId={lead.agentId}
-          />
+          />}
 
           {/* Interests Section */}
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-interests-title">
@@ -730,3 +731,4 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     </div>
   );
 }
+

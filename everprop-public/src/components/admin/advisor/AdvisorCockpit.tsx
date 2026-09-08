@@ -1,4 +1,5 @@
 "use client";
+import { FINAL_DELIVERY_ENABLED } from "@/lib/release-visibility";
 import { useCollections } from "@/hooks/use-collections";
 
 import { useState, useEffect, useMemo } from "react";
@@ -444,9 +445,9 @@ export default function AdvisorCockpit() {
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-6 dark:bg-card dark:border-border">
         {/* Mobile layout */}
         <div className="sm:hidden space-y-3">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col items-stretch gap-3">
             <div className="min-w-0">
-              <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">
+              <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 break-words">
                 Hola, {user?.name || "Asesor"}
               </h1>
               <p className="text-xs capitalize text-slate-500 dark:text-slate-400">
@@ -454,19 +455,19 @@ export default function AdvisorCockpit() {
               </p>
             </div>
             <Link href="/admin/leads/new">
-              <Button className="h-9 gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white hover:bg-blue-700 shadow-xs shrink-0">
+              <Button className="min-h-11 gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white hover:bg-blue-700 shadow-xs w-full">
                 <Plus className="size-3.5" />
                 Nuevo Lead
               </Button>
             </Link>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
+          <div className="grid grid-cols-2 gap-2">
+            {FINAL_DELIVERY_ENABLED && <Button
               type="button"
               variant={showMonthBalance ? "default" : "outline"}
               onClick={() => setShowMonthBalance(!showMonthBalance)}
               className={cn(
-                "h-8 gap-1.5 rounded-lg px-3 text-xs font-semibold flex-1",
+                "min-h-11 gap-1.5 rounded-lg px-3 text-xs font-semibold flex-1",
                 showMonthBalance
                   ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
@@ -474,25 +475,25 @@ export default function AdvisorCockpit() {
             >
               <BarChart3 className="size-3.5" />
               Balance
-            </Button>
+            </Button>}
             <Link href="/admin/leads" className="flex-1">
-              <Button variant="outline" className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <Users className="size-3.5" />
                 Mis Leads
               </Button>
             </Link>
             <Link href="/admin/agenda" className="flex-1">
-              <Button variant="outline" className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <CalendarDays className="size-3.5" />
                 Agenda
               </Button>
             </Link>
-            <Link href="/admin/cobranzas" className="flex-1">
-              <Button variant="outline" className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+            {FINAL_DELIVERY_ENABLED && <Link href="/admin/cobranzas" className="flex-1">
+              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <ReceiptText className="size-3.5 text-blue-600 dark:text-blue-400" />
                 Cuotas
               </Button>
-            </Link>
+            </Link>}
           </div>
         </div>
 
@@ -508,7 +509,7 @@ export default function AdvisorCockpit() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button
+            {FINAL_DELIVERY_ENABLED && <Button
               type="button"
               variant={showMonthBalance ? "default" : "outline"}
               onClick={() => setShowMonthBalance(!showMonthBalance)}
@@ -521,7 +522,7 @@ export default function AdvisorCockpit() {
             >
               <BarChart3 className="size-4" />
               {showMonthBalance ? "Ocultar Balance" : "Balance del Mes & Números"}
-            </Button>
+            </Button>}
             <Link href="/admin/leads/new">
               <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs">
                 <Plus className="size-4" />
@@ -540,18 +541,18 @@ export default function AdvisorCockpit() {
                 Mi Agenda
               </Button>
             </Link>
-            <Link href="/admin/cobranzas">
+            {FINAL_DELIVERY_ENABLED && <Link href="/admin/cobranzas">
               <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
                 <ReceiptText className="size-4 text-blue-600 dark:text-blue-400" />
                 Cobranzas & Cuotas
               </Button>
-            </Link>
+            </Link>}
           </div>
         </div>
       </div>
 
       {/* ── BALANCE DEL MES & NÚMEROS DE LEADS (AUDITORÍA COMERCIAL) ── */}
-      {showMonthBalance && (
+      {FINAL_DELIVERY_ENABLED && showMonthBalance && (
         <AdminMonthBalanceWidget
           leads={leads}
           followUps={followUps}
@@ -654,8 +655,8 @@ export default function AdvisorCockpit() {
       </div>
 
       {/* ── ALERTA DE MORA EN CUOTAS DE CLIENTES ── */}
-      {collectionsError && <p role="alert" className="text-red-600">Cobranzas: {collectionsError}</p>}
-      {overdueInstallmentsCount > 0 && (
+      {FINAL_DELIVERY_ENABLED && collectionsError && <p role="alert" className="text-red-600">Cobranzas: {collectionsError}</p>}
+      {FINAL_DELIVERY_ENABLED && overdueInstallmentsCount > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/20">
           <div className="flex items-center gap-3">
             <span className="flex size-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 shrink-0">
@@ -1170,3 +1171,5 @@ export default function AdvisorCockpit() {
     </div>
   );
 }
+
+

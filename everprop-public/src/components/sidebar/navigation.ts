@@ -1,3 +1,4 @@
+import { isReleaseRouteVisible } from "@/lib/release-visibility";
 import { 
   Home, 
   Building2, 
@@ -108,7 +109,7 @@ export const navigationGroups: NavGroup[] = [
   }
 ];
 
-export const navigationConfig: NavItem[] = navigationGroups.flatMap(g => g.items);
+export const navigationConfig: NavItem[] = navigationGroups.flatMap(g => g.items).filter(item => isReleaseRouteVisible(item.href));
 
 export function getAvailableNavigationGroups({
   isEngineer,
@@ -116,11 +117,11 @@ export function getAvailableNavigationGroups({
   isTenantAdmin,
 }: NavigationAccess): NavGroup[] {
   if (isAdvisor) {
-    return advisorNavigationGroups;
+    return advisorNavigationGroups.map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))}));
   }
 
   if (isEngineer) {
-    return navigationGroups
+    return navigationGroups.map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))}))
       .map((group) => {
         if (group.label !== "Gestión") return group;
         return {
@@ -133,5 +134,5 @@ export function getAvailableNavigationGroups({
 
   return navigationGroups.map(group => group.label === "Gestión" && isTenantAdmin
     ? {...group, items: [...group.items, {title: "Alta de Asesor", href: "/admin/asesores", icon: Users, matchPath: "/admin/asesores"}]}
-    : group);
+    : group).map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))})).filter(group => group.items.length > 0);
 }

@@ -6,6 +6,7 @@ import { loadInstallmentList, loadPaymentAgreementList } from "@/lib/collections
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
+import { FINAL_DELIVERY_ENABLED } from "@/lib/release-visibility";
 
 export function useCollections(leadId?: string, companyId = "c1") {
   const { currentUser, isLoaded } = useAuth();
@@ -17,7 +18,7 @@ export function useCollections(leadId?: string, companyId = "c1") {
   const [error, setError] = useState<string | null>(null);
   const generation = useRef(0);
   const refresh = useCallback(async () => {
-    if (!isLoaded || !userId) return;
+    if (!FINAL_DELIVERY_ENABLED || !isLoaded || !userId) return;
     const version = ++generation.current;
     try {
       const [nextAgreements, nextInstallments] = await Promise.all([
@@ -38,6 +39,7 @@ export function useCollections(leadId?: string, companyId = "c1") {
     }
   }, [leadId, companyId, isLoaded, userId]);
   useEffect(() => {
+    if (!FINAL_DELIVERY_ENABLED) return;
     const cancelInitial = deferEffectUpdate(() => {
       setAgreements([]);
       setInstallments([]);

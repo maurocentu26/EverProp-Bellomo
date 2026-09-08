@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
-import { Bell, Check, ExternalLink, Inbox, Menu, Plus, Trash2, Volume2 } from "lucide-react";
+import { Bell, Check, ExternalLink, Inbox, Menu, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,11 @@ import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
-import { clearAllNotifications, createNotification, fetchNotifications, isNotificationForUser, markAllNotificationsAsRead, markNotificationAsRead, requestDesktopNotificationPermission, showDesktopNotification, type AppNotification } from "@/lib/notifications";
+import { clearAllNotifications, fetchNotifications, isNotificationForUser, markAllNotificationsAsRead, markNotificationAsRead, requestDesktopNotificationPermission, showDesktopNotification, type AppNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { NotificationPermissionPrompt } from "@/components/admin/NotificationPermissionPrompt";
 import { playCorporateNotificationChime } from "@/lib/notification-audio";
 
 type Props = {
@@ -148,6 +149,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
 
   return (
     <>
+      {user?.id && <NotificationPermissionPrompt key={user.id} />}
       <header className={cn("z-30 flex flex-col gap-2 sm:gap-3 border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-3 text-card-foreground", className)}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -257,20 +259,6 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                       >
                         <Bell className="h-3.5 w-3.5" /> Escritorio
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!user?.id) return;
-                          playCorporateNotificationChime();
-                          createNotification(user.id, "Probando sistema de notificaciones y audio reactivo", {
-                            title: "Alerta de Prueba",
-                          });
-                        }}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-muted"
-                        title="Probar sonido y notificación"
-                      >
-                        <Volume2 className="h-3.5 w-3.5" /> Probar
-                      </button>
                       {notifications.length > 0 && (
                         <button
                           type="button"
@@ -375,3 +363,4 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     </>
   );
 }
+
