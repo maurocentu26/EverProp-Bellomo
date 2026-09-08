@@ -12,17 +12,18 @@ import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
-import { clearAllNotifications, fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, type AppNotification } from "@/lib/notifications";
+import { clearAllNotifications, fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, requestDesktopNotificationPermission, safeAdminActionUrl, showDesktopNotification, type AppNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { playCorporateNotificationChime } from "@/lib/notification-audio";
 
 type Props = {
   companyName?: string;
   className?: string;
 };
 
-export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
+export function AdminNavbar({ className }: Props) {
   const router = useRouter();
   const { user, isEngineer, isAdvisor, canCreate } = useCurrentSession();
   const { state: sidebarState, toggleSidebar } = useSidebar();
@@ -35,7 +36,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const latestIdRef = useRef<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Adaptive polling: 12s active, paused when tab hidden, instant on focus/visibility
+  // Polling autenticado contra Laravel; se pausa cuando la pestaña no está visible.
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
@@ -44,20 +45,19 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
       try {
         const notifs = await fetchNotifications(user.id);
         if (!mounted) return;
-        // Detect new unread notification → fire toast
-        const newest = notifs.find((n) => !n.read);
+
+        const newest = notifs.find((notification) => !notification.read);
         if (newest && newest.id !== latestIdRef.current && latestIdRef.current !== null) {
+          const actionUrl = safeAdminActionUrl(newest.actionUrl)
+            ?? (newest.leadId ? `/admin/leads/${encodeURIComponent(newest.leadId)}` : null);
+          playCorporateNotificationChime();
+          showDesktopNotification(newest.title || "Nueva notificación", { body: newest.message });
           toast.info(newest.title || "Nueva notificación", {
             description: newest.message,
-            action: newest.actionUrl
-              ? { label: "Ver", onClick: () => router.push(newest.actionUrl!) }
+            action: actionUrl
+              ? { label: "Ver", onClick: () => router.push(actionUrl) }
               : undefined,
           });
-          try {
-            const ch = new BroadcastChannel("everprop_notifications");
-            ch.postMessage({ type: "NEW_NOTIFICATION" });
-            ch.close();
-          } catch { /* ignore */ }
         }
         if (newest) latestIdRef.current = newest.id;
         setNotifications(notifs);
@@ -71,26 +71,37 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
       intervalRef.current = setInterval(refresh, 12_000);
     };
     const stopPolling = () => {
-      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") { stopPolling(); }
-      else { void refresh(); startPolling(); }
+      if (document.visibilityState === "hidden") {
+        stopPolling();
+        return;
+      }
+      void refresh();
+      startPolling();
     };
 
+    const handleLocalUpdate = () => void refresh();
     void refresh();
     startPolling();
-    window.addEventListener("everprop_notifications_updated", refresh);
-    window.addEventListener("focus", refresh);
+    window.addEventListener("everprop_notifications_updated", handleLocalUpdate);
+    window.addEventListener("focus", handleLocalUpdate);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     let channel: BroadcastChannel | null = null;
-    try { channel = new BroadcastChannel("everprop_notifications"); channel.onmessage = refresh; } catch { /* ignore */ }
+    try {
+      channel = new BroadcastChannel("everprop_notifications");
+      channel.onmessage = handleLocalUpdate;
+    } catch { /* ignore */ }
 
     return () => {
       mounted = false;
       stopPolling();
-      window.removeEventListener("everprop_notifications_updated", refresh);
-      window.removeEventListener("focus", refresh);
+      window.removeEventListener("everprop_notifications_updated", handleLocalUpdate);
+      window.removeEventListener("focus", handleLocalUpdate);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       channel?.close();
     };
@@ -120,21 +131,39 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
 
   const handleMarkAllAsRead = async () => {
     if (!user?.id) return;
-    setNotifications((current) => current.map((n) => ({ ...n, read: true })));
-    await markAllNotificationsAsRead(user.id);
+    try {
+      await markAllNotificationsAsRead(user.id);
+      setNotifications((current) => current.map((notification) => ({ ...notification, read: true })));
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
+      toast.error("No se pudieron marcar las notificaciones como leídas.");
+    }
   };
 
   const handleClearAll = async () => {
-    setNotifications([]);
-    await clearAllNotifications(user?.id);
+    if (!user?.id) return;
+    try {
+      await clearAllNotifications(user.id);
+      setNotifications([]);
+    } catch (error) {
+      console.error("Error clearing notifications:", error);
+      toast.error("No se pudieron limpiar las notificaciones.");
+    }
   };
 
   const handleNotificationClick = async (n: AppNotification) => {
     if (!n.read) {
-      void markNotificationAsRead(n.id);
-      setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, read: true } : item)));
+      try {
+        await markNotificationAsRead(n.id);
+        setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, read: true } : item)));
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+        toast.error("No se pudo actualizar la notificación.");
+        return;
+      }
     }
-    const url = n.actionUrl || (n.leadId ? `/admin/leads/${n.leadId}` : null);
+    const url = safeAdminActionUrl(n.actionUrl)
+      ?? (n.leadId ? `/admin/leads/${encodeURIComponent(n.leadId)}` : null);
     if (url) { setIsNotificationsOpen(false); router.push(url); }
   };
 
@@ -146,12 +175,13 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
 
   return (
     <>
-      <header className={cn("z-30 flex flex-col gap-3 border-b border-border bg-card px-3 py-3 text-card-foreground sm:px-4", className)}>
+      <header className={cn("z-30 flex flex-col gap-2 sm:gap-3 border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-3 text-card-foreground", className)}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
+              size="icon"
               onClick={() => {
                 if (isMobile) {
                   setIsMenuOpen(true);
@@ -160,7 +190,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                 setIsMenuOpen(false);
                 toggleSidebar();
               }}
-              className="h-10 shrink-0 gap-2 px-3 text-sm font-semibold"
+              className="size-9 sm:size-10 p-0 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
               aria-label={
                 isMobile
                   ? "Abrir menú principal"
@@ -171,9 +201,6 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               aria-expanded={isMobile ? isMenuOpen : sidebarState === "expanded"}
             >
               <Menu className="h-5 w-5" aria-hidden="true" />
-              <span className="hidden sm:inline">
-                {isMobile ? "Menú" : sidebarState === "expanded" ? "Ocultar menú" : "Mostrar menú"}
-              </span>
             </Button>
           </div>
 
@@ -198,10 +225,13 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               </Button>
             )}
 
+            {/* Theme Toggle (Icon Only) */}
+            <ThemeToggle />
+
             {/* Notifications Drawer (Sheet) */}
             <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
               <SheetTrigger
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="relative inline-flex size-9 sm:size-10 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Notificaciones"
               >
                 <motion.div animate={bellControls}>
@@ -242,6 +272,18 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                           <Check className="h-3.5 w-3.5" /> Marcar leídas
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const p = await requestDesktopNotificationPermission();
+                          if (p === 'granted') toast.success("Notificaciones de escritorio activadas");
+                          else if (p === 'denied') toast.error("Notificaciones bloqueadas por el navegador");
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        title="Activar notificaciones de escritorio"
+                      >
+                        <Bell className="h-3.5 w-3.5" />
+                      </button>
                       {notifications.length > 0 && (
                         <button
                           type="button"
@@ -311,7 +353,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                           {n.message}
                         </p>
 
-                        {(n.leadId || n.actionUrl) && (
+                        {(n.leadId || safeAdminActionUrl(n.actionUrl)) && (
                           <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 group-hover:underline">
                             <span>Ver detalle</span>
                             <ExternalLink className="h-3 w-3" />
@@ -328,20 +370,17 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               role="img"
               aria-label={`Usuario actual: ${userInfo.name}`}
               title={`${userInfo.name}${userInfo.role ? ` · ${userInfo.role}` : ""}`}
-              className="relative ml-1 flex h-9 w-9 cursor-default items-center justify-center rounded-full border border-slate-200"
+              className="relative ml-0.5 sm:ml-1 flex size-9 sm:size-10 cursor-default items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs"
             >
-              <Avatar className="h-full w-full">
-                <AvatarFallback className="bg-blue-600 text-xs font-bold text-white">{userInfo.initials}</AvatarFallback>
+              <Avatar className="h-full w-full rounded-xl">
+                <AvatarFallback className="bg-blue-600 text-xs font-bold text-white rounded-xl">{userInfo.initials}</AvatarFallback>
               </Avatar>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="min-w-0 flex-1">
-            <GlobalSearch />
-          </div>
-          <ThemeToggle className="w-full shrink-0 sm:w-auto" />
+        <div className="w-full min-w-0">
+          <GlobalSearch />
         </div>
       </header>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Building2, ChevronRight, Database, FlaskConical, HardHat, Map, RotateCcw } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, Database, FlaskConical, Map, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { useAuth } from "@/lib/auth-context";
@@ -60,20 +60,7 @@ function ProjectCard({ project, properties, readOnly }: { project: Project; prop
         </p>
 
         <div className="mt-auto space-y-5">
-          <div>
-            <div className="mb-2 flex justify-between text-xs font-bold text-slate-700">
-              <span>Avance de obra</span>
-              <span className="text-blue-600">{project.progress}%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                className={cn("h-full rounded-full", project.progress === 100 ? "bg-emerald-500" : "bg-blue-600")}
-                style={{ width: `${project.progress}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 border-y border-slate-100 py-4">
+          <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
             <div>
               <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Unidades</span>
               <span className="text-lg font-black text-slate-700">{project.totalUnits}</span>
@@ -184,7 +171,7 @@ export default function DesarrollosPage() {
       <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold text-slate-900">
-            <HardHat className="h-8 w-8 text-blue-600" aria-hidden="true" /> Proyectos y desarrollos
+            <Building2 className="h-8 w-8 text-blue-600" aria-hidden="true" /> Proyectos y desarrollos
           </h1>
           <p className="mt-1 text-slate-500">Catálogo de loteos, barrios y edificios.</p>
         </div>
@@ -220,7 +207,7 @@ export default function DesarrollosPage() {
 
       {projects.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <HardHat className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
+          <Building2 className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
           <h2 className="mt-4 text-lg font-bold text-slate-900">No hay proyectos para mostrar</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
             La consulta fue válida y el catálogo administrativo está vacío. No se sustituyó con datos mock.

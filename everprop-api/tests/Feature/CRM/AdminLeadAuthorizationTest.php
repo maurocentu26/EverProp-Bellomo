@@ -92,6 +92,23 @@ final class AdminLeadAuthorizationTest extends TestCase
             ->assertJsonMissingPath('line');
     }
 
+    public function test_lead_creation_without_a_tenant_pipeline_stage_fails_safely(): void
+    {
+        [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $this->actingAs($admin);
+
+        $response = $this->withHeaders($this->tenantHeaders($tenant))
+            ->postJson('/api/v1/admin/leads', ['name' => 'Lead without stage']);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('stage')
+            ->assertJsonMissingPath('file')
+            ->assertJsonMissingPath('trace');
+
+        self::assertSame(0, DB::table('contacts')->where('tenant_id', $tenant->id)->count());
+        self::assertSame(0, DB::table('leads')->where('tenant_id', $tenant->id)->count());
+    }
+
     /** @return array{Tenant, User} */
     private function identity(RoleCode $role): array
     {

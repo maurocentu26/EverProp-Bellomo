@@ -200,7 +200,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
     return (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {STAGE_ORDER.map((s) => (
-          <div key={s} className="h-64 animate-pulse rounded-xl bg-slate-100" />
+          <div key={s} className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
         ))}
       </div>
     );
@@ -217,9 +217,9 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
         {/* Selector de Proyecto - Only show if in Enterprise Mode */}
         {dashboardMode === "enterprise" ? (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-slate-700 whitespace-nowrap">Proyecto:</label>
+            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Proyecto:</label>
             <select 
-              className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              className="text-sm border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
             >
@@ -240,7 +240,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
           </div>
           <input
             type="text"
-            className="block w-full pl-9 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white text-slate-900 placeholder:text-slate-400"
+            className="block w-full pl-9 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             placeholder="Buscar lead rápido..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -298,7 +298,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
             
             <div className="scale-105 rotate-2 shadow-2xl opacity-95">
               <CardLead
-                className="border-2 border-blue-500 bg-white"
+                className="border-2 border-blue-500 bg-white dark:bg-slate-900"
                 id={activeLead.id}
                 name={activeLead.name}
                 phone={activeLead.phone}

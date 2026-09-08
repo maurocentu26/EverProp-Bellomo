@@ -4,12 +4,11 @@ import {
   markAllEverpropNotificationsRead,
   markEverpropNotificationRead,
   clearAllEverpropNotifications,
-  type ApiNotification,
 } from "./everprop-api";
 
 export type AppNotification = {
   id: string;
-  targetUserId: string; // Quien recibe la notificación
+  targetUserId: string;
   title?: string;
   message: string;
   leadId?: string | null;
@@ -20,6 +19,20 @@ export type AppNotification = {
 };
 
 const STORAGE_KEY = "everprop:notifications";
+
+export function safeAdminActionUrl(value?: string | null): string | null {
+  if (!value) return null;
+
+  try {
+    const base = "https://everprop.invalid";
+    const parsed = new URL(value, base);
+    if (parsed.origin !== base) return null;
+    if (parsed.pathname !== "/admin" && !parsed.pathname.startsWith("/admin/")) return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
 
 export function loadNotifications(): AppNotification[] {
   if (typeof window === "undefined") return [];
@@ -39,13 +52,10 @@ export function saveNotifications(notifications: AppNotification[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
 
-  // Emitir evento para actualizar otras pestañas u otros componentes locales
   try {
     const channel = new BroadcastChannel("everprop_notifications");
     channel.postMessage({ type: "NOTIFICATIONS_UPDATED" });
     channel.close();
-
-    // También dispatch local en esta misma ventana
     window.dispatchEvent(new Event("everprop_notifications_updated"));
   } catch (e) {
     console.error(e);
@@ -54,12 +64,8 @@ export function saveNotifications(notifications: AppNotification[]) {
 
 export async function fetchNotifications(targetUserId?: string): Promise<AppNotification[]> {
   if (!isMockDataMode) {
-    try {
-      const res = await loadEverpropNotifications();
-      return res.data;
-    } catch (err) {
-      console.error("Error loading notifications from API, falling back to local:", err);
-    }
+    const res = await loadEverpropNotifications();
+    return res.data;
   }
 
   const local = loadNotifications();
@@ -69,25 +75,17 @@ export async function fetchNotifications(targetUserId?: string): Promise<AppNoti
 
 export async function markAllNotificationsAsRead(targetUserId?: string): Promise<void> {
   if (!isMockDataMode) {
-    try {
-      await markAllEverpropNotificationsRead();
-    } catch (err) {
-      console.error("Error marking notifications as read via API:", err);
-    }
+    await markAllEverpropNotificationsRead();
+    return;
   }
 
-  if (targetUserId) {
-    markAllAsRead(targetUserId);
-  }
+  if (targetUserId) markAllAsRead(targetUserId);
 }
 
 export async function markNotificationAsRead(id: string): Promise<void> {
   if (!isMockDataMode) {
-    try {
-      await markEverpropNotificationRead(id);
-    } catch (err) {
-      console.error("Error marking notification read via API:", err);
-    }
+    await markEverpropNotificationRead(id);
+    return;
   }
 
   const notifs = loadNotifications();
@@ -100,6 +98,8 @@ export function createNotification(
   message: string,
   extra?: Partial<Omit<AppNotification, "id" | "targetUserId" | "message" | "timestamp" | "read">>
 ) {
+  if (!isMockDataMode) return;
+
   const notifs = loadNotifications();
   const newNotif: AppNotification = {
     id: crypto.randomUUID(),
@@ -112,7 +112,7 @@ export function createNotification(
     timestamp: new Date().toISOString(),
     read: false,
   };
-  saveNotifications([newNotif, ...notifs].slice(0, 50)); // Guardar últimas 50
+  saveNotifications([newNotif, ...notifs].slice(0, 50));
 }
 
 export function markAllAsRead(targetUserId: string) {
@@ -125,15 +125,15 @@ export function markAllAsRead(targetUserId: string) {
 
 export async function clearAllNotifications(targetUserId?: string): Promise<void> {
   if (!isMockDataMode) {
-    try {
-      await clearAllEverpropNotifications();
-    } catch (err) {
-      console.error("Error clearing notifications via API:", err);
-    }
+    await clearAllEverpropNotifications();
+    return;
   }
 
   if (typeof window !== "undefined") {
-    localStorage.removeItem(STORAGE_KEY);
+    const remaining = targetUserId
+      ? loadNotifications().filter((notification) => notification.targetUserId !== targetUserId)
+      : [];
+    saveNotifications(remaining);
     try {
       const channel = new BroadcastChannel("everprop_notifications");
       channel.postMessage({ type: "NOTIFICATIONS_UPDATED" });
@@ -145,4 +145,27 @@ export async function clearAllNotifications(targetUserId?: string): Promise<void
   }
 }
 
+// ── Desktop Notification Permissions ──
 
+export async function requestDesktopNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return 'unsupported';
+  }
+  if (Notification.permission === 'granted') return 'granted';
+  if (Notification.permission === 'denied') return 'denied';
+  return Notification.requestPermission();
+}
+
+export function showDesktopNotification(title: string, options?: NotificationOptions): void {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  try {
+    new Notification(title, {
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      ...options,
+    });
+  } catch {
+    // Silently fail
+  }
+}

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { QuickScheduleButtons } from "@/components/admin/QuickScheduleButtons";
 
 const FOLLOW_UP_TYPES: { value: LeadFollowUpType; label: string }[] = [
   { value: "call", label: "Llamada" },
@@ -222,25 +223,44 @@ export function LeadFollowUpEditor({
                 />
               </label>
 
-              <label className="block text-xs font-bold text-slate-700">
+              <label className="block text-xs font-bold text-slate-700 sm:col-span-2 dark:text-slate-300">
                 Próxima acción <span className="font-normal text-slate-400">(opcional)</span>
                 <Input 
                   value={nextAction} 
                   onChange={(event) => setNextAction(event.target.value)} 
-                  className="mt-1.5 h-10 border-slate-300 px-3 text-sm rounded-xl" 
-                  placeholder="Ej: Enviar propuesta de cuotas" 
+                  className="mt-1.5 h-10 border-slate-300 px-3 text-sm rounded-xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                  placeholder="Ej: Enviar propuesta de cuotas, llamar para coordinar seña..."
                 />
               </label>
 
-              <label className="block text-xs font-bold text-slate-700">
-                Próximo contacto <span className="font-normal text-slate-400">(opcional)</span>
+              <div className="space-y-1.5 sm:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Próximo contacto / Fecha de la siguiente acción <span className="font-normal text-slate-400">(opcional)</span>
+                  </label>
+                  {nextContactAt && (
+                    <button
+                      type="button"
+                      onClick={() => setNextContactAt("")}
+                      className="text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    >
+                      Limpiar fecha
+                    </button>
+                  )}
+                </div>
                 <Input 
                   type="datetime-local" 
                   value={nextContactAt} 
                   onChange={(event) => setNextContactAt(event.target.value)} 
-                  className="mt-1.5 h-10 border-slate-300 px-3 text-sm rounded-xl" 
+                  className="h-10 border-slate-300 px-3 text-sm rounded-xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                 />
-              </label>
+                <QuickScheduleButtons
+                  value={nextContactAt}
+                  onChange={setNextContactAt}
+                  label="Fijar siguiente acción en:"
+                  className="pt-1"
+                />
+              </div>
 
               {error && (
                 <p className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-800 sm:col-span-2" role="alert">

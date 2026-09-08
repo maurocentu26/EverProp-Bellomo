@@ -212,13 +212,21 @@ final class AdminLeadController extends Controller
                 $stage = DB::table('pipeline_stages')
                     ->where('tenant_id', $tenantId)
                     ->where('code', $stageCode)
+                    ->where('is_active', true)
                     ->first();
 
                 if (! $stage) {
                     $stage = DB::table('pipeline_stages')
                         ->where('tenant_id', $tenantId)
                         ->where('code', 'NEW')
+                        ->where('is_active', true)
                         ->first();
+                }
+
+                if (! $stage) {
+                    throw ValidationException::withMessages([
+                        'stage' => ['No active pipeline stage is configured for this tenant.'],
+                    ]);
                 }
 
                 // 3. Resolve assigned agent
@@ -230,7 +238,7 @@ final class AdminLeadController extends Controller
                     'tenant_id' => $tenantId,
                     'public_id' => $leadUuid,
                     'contact_id' => $contactId,
-                    'stage_id' => $stage ? $stage->id : 1,
+                    'stage_id' => $stage->id,
                     'assigned_user_id' => $assignedId,
                     'assignment_method' => $assignedId ? 'MANUAL' : 'UNASSIGNED',
                     'source_channel' => 'WEB_FORM',
@@ -307,7 +315,7 @@ final class AdminLeadController extends Controller
                         'name' => $validated['name'],
                         'email' => $validated['email'] ?? null,
                         'phone' => $validated['phone'] ?? null,
-                        'stage' => $stage ? $stage->code : 'NEW',
+                        'stage' => $stage->code,
                         'priority' => strtolower($validated['priority'] ?? 'normal'),
                         'agent_id' => $assignedId,
                         'property_ids' => $linkedPropertyIds,

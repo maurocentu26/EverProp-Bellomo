@@ -1,24 +1,33 @@
-# Mapa visual del informe
+# Mapa visual del informe integrado
 
 ## Pregunta analítica
 
-¿Cómo se distribuyen los defectos de la auditoría por severidad y por estado de resolución, y por qué el dictamen sigue siendo NO-GO?
+¿Cómo se distribuyen los 27 defectos por severidad y estado, y por qué un candidato local verde todavía no autoriza producción?
 
-## Visual seleccionado
+## Visual principal
 
 - Tipo: barras apiladas.
 - Eje X: severidad (`P0`, `P1`, `P2`, `P3`).
 - Eje Y: cantidad de defectos.
-- Color/serie: `Cerrado verificado`, `Fix/mitigación pendiente de integración`, `Abierto/bloqueado`.
-- Dataset: 12 filas en formato largo; incluye además el total de cada severidad y si bloquea release.
-- Lectura final: 15 de los 22 defectos son P0/P1; tras cerrar backend/contrato/dependencias/paginación, 9 defectos están cerrados y verificados, 6 mitigados/parciales y 7 abiertos.
+- Series: `Cerrado verificado`, `Mitigado/parcial`, `Abierto`.
+- Conteos: P0 `2/0/1`, P1 `11/4/2`, P2 `1/2/3`, P3 `0/0/1`.
+- Lectura: 14 cerrados, 6 mitigados y 7 abiertos; el único P0 abierto corresponde al despliegue live no listo.
+
+## Resumen visual secundario
+
+- Tipo: tira de métricas ejecutivas.
+- Valores: Vitest `21/21`, Playwright mock `6/6`, Playwright API `2/2`, PHPUnit `63/63`, HTTP `7/7`, OpenAPI `55/55`.
+- Finalidad: separar evidencia local reproducible de la decisión operativa live.
 
 ## Proveniencia y transformación
 
-Fuente primaria: `docs/qa/BUG_REGISTER.md`. Los estados individuales fueron normalizados en tres grupos de decisión. El informe MCP conserva una consulta DuckDB `VALUES` reproducible con los 12 conteos revisados; no consulta producción ni contiene datos personales.
+- `docs/qa/BUG_REGISTER.md`: severidad y estado normalizados.
+- `docs/qa/evidence/frontend-gates.md`: suites frontend/browser.
+- `docs/qa/evidence/backend-gates.md`: backend/schema/contrato/imagen.
+- `docs/qa/evidence/live-readonly-smoke.md`: probes live GET sin credenciales.
+
+No se consultan datos personales ni se muta producción. Los conteos se cargan como datasets estáticos revisados y se contrastan con las tablas del informe maestro.
 
 ## Validación y entrega
 
-- `validate_artifact`: PASS; 2 datasets, 2 fuentes, snapshot `partial`.
-- `render_artifact`: PASS en una única llamada posterior a la validación.
-- El artefacto visual renderizado durante el primer corte conserva los conteos anteriores al cierre backend. Para la decisión final prevalecen `QA_MASTER_REPORT.md` y `BUG_REGISTER.md`; la certificación backend ya no está bloqueada.
+El artefacto MCP pasó `validate_artifact` con estado `ready`, 3 datasets y 3 fuentes. Después se ejecutó una única llamada a `render_artifact`, completada correctamente. Si los números cambian, se actualizan simultáneamente este mapa, el registro de defectos y el informe maestro.

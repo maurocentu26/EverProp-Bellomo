@@ -1,6 +1,6 @@
 # Registro de defectos
 
-Ambiente base: `main@11e93b15acf97241b7720de9d518905fadc54db2`, 7 de septiembre de 2026 ART. Toda evidencia live fue GET no destructiva y sanitizada.
+Ambiente base inicial: `main@11e93b15acf97241b7720de9d518905fadc54db2`. Corte integrado: `origin/main@bf7018118ee683725c20d43e472b0722f05708af`, 8 de septiembre de 2026 ART, en `codex/preproduction-audit-20260908`. Toda evidencia live fue GET no destructiva y sanitizada.
 
 ## EP-QA-001 — P0 — Setup destructivo público
 
@@ -148,7 +148,7 @@ Ambiente base: `main@11e93b15acf97241b7720de9d518905fadc54db2`, 7 de septiembre 
 - **Impacto:** fixes críticos sin validación dinámica.
 - **Evidencia:** `evidence/backend-gates.md`.
 - **Causa:** Docker Desktop local caído; no se violó la prohibición de PHP host.
-- **Corrección/test:** Docker reparado sin factory reset; 62 tests/216 assertions, PHPStan/Pint/schema/smoke/imagen PASS.
+- **Corrección/test:** Docker reparado sin factory reset; corte integrado 63 tests/223 assertions, PHPStan/Pint/schema/smoke/imagen PASS.
 - **Riesgo residual:** el host continúa con poco espacio libre; los artefactos QA pesados se eliminan al finalizar cada corrida.
 
 ## EP-QA-015 — P1 — Roles incompletos en UI
@@ -190,7 +190,7 @@ Ambiente base: `main@11e93b15acf97241b7720de9d518905fadc54db2`, 7 de septiembre 
 - **Baseline:** leads y follow-ups usaban `limit(200/500)` y el frontend pedía una sola página de catálogo, con truncamiento silencioso al crecer la base.
 - **Impacto:** registros operativos podían faltar sin aviso.
 - **Corrección/test:** leads y follow-ups ahora exponen paginación determinista con metadata y máximo de 100 por página; el cliente recorre todas las páginas de catálogo/CRM y falla explícitamente por encima de 10.000 registros. OpenAPI documenta parámetros, metadata y 422.
-- **Evidencia:** `AdminLeadPaginationTest` 2 casos/24 aserciones, Vitest multipágina/cap 2 casos, PHPUnit 62/62, Vitest 15/15, PHPStan, TypeScript, Redocly y paridad 55/55 PASS.
+- **Evidencia:** `AdminLeadPaginationTest` 2 casos/24 aserciones, Vitest multipágina/cap 2 casos, PHPUnit 63/63, Vitest 21/21, PHPStan, TypeScript, Redocly y paridad 55/55 PASS.
 - **Riesgo residual:** para más de 10.000 registros hace falta paginación/filtros visibles server-side; no hay truncamiento silencioso.
 
 ## EP-QA-020 — P2 — Runtime web de Railway no usa hardening Nginx
@@ -210,6 +210,44 @@ Ambiente base: `main@11e93b15acf97241b7720de9d518905fadc54db2`, 7 de septiembre 
 ## EP-QA-022 — P3 — Idioma y deuda de frontend
 
 - **Módulo/estado:** UX/mantenibilidad, `OPEN`.
-- **Actual:** textos ingleses en panel español y 87 warnings (unused, any, hooks, imágenes).
+- **Actual:** textos ingleses en panel español y 83 warnings (unused, any, hooks, imágenes), sin errores de lint.
 - **Impacto:** inconsistencia y riesgo técnico menor frente a bloqueantes.
 - **Corrección/test:** limpieza incremental después de P0/P1.
+
+## EP-QA-023 — P0 — Gateway de notificaciones Next sin autenticación ni tenant
+
+- **Módulo/estado:** frontend/API incorporado desde Mauro, `FIXED_VERIFIED_LOCAL`.
+- **Actual detectado:** dos Route Handlers y un emisor SSE mantenían una lista global en memoria y permitían listar, crear, marcar o borrar notificaciones sin sesión, tenant, CSRF ni límites.
+- **Impacto:** lectura/manipulación cross-tenant, pérdida de eventos y superficie de denegación de servicio.
+- **Corrección/test:** se eliminaron los endpoints Next y SSE; el navbar vuelve a consultar exclusivamente la API Laravel autenticada y tenant-scoped.
+- **Evidencia:** TypeScript, build, Playwright mock/API y regresiones de `notifications.test.ts` PASS.
+
+## EP-QA-024 — P1 — Fallback local y navegación insegura en notificaciones
+
+- **Módulo/estado:** frontend, `FIXED_VERIFIED_LOCAL`.
+- **Actual detectado:** una respuesta API vacía o fallida podía reponer notificaciones de `localStorage`; `actionUrl` aceptaba destinos externos o esquemas peligrosos.
+- **Impacto:** datos viejos de otro usuario, falsos positivos operativos y navegación no confiable.
+- **Corrección/test:** la API es autoritativa incluso para `[]`, los fallos se muestran sin fallback y sólo se permiten rutas same-origin bajo `/admin`.
+- **Evidencia:** 6 archivos/21 tests Vitest PASS, incluidos error propagado y allowlist de URL.
+
+## EP-QA-025 — P1 — Regresiones del merge en navegación, filtros y permisos
+
+- **Módulo/estado:** panel admin, `FIXED_VERIFIED_LOCAL`.
+- **Actual detectado:** el merge produjo una declaración duplicada que rompía compilación, preservaba una manzana incompatible al cambiar proyecto y mostraba fugazmente controles de alta/etapa sin capability.
+- **Corrección/test:** navegación unificada por capability, reset de filtro dependiente, guard temprano de alta y selectores de etapa deshabilitados en desktop/mobile; chips con semántica ARIA y cierre por Escape.
+- **Evidencia:** typecheck, lint estricto, build productivo y Playwright Chrome desktop/mobile PASS.
+
+## EP-QA-026 — P1 — Alta de lead sin etapa del tenant devolvía 500
+
+- **Módulo/estado:** CRM/tenancy, `FIXED_VERIFIED_LOCAL`.
+- **Pasos:** crear un tenant válido sin `pipeline_stages` e intentar `POST /api/v1/admin/leads`.
+- **Actual detectado:** el controlador usaba `stage_id=1`, que podía pertenecer a otro tenant, y MySQL rechazaba la FK con 500.
+- **Corrección/test:** sólo se aceptan etapas activas del tenant; si no existe una etapa solicitada o `NEW`, la transacción revierte y devuelve 422 sin stack ni residuos.
+- **Evidencia:** nueva regresión PHPUnit; suite final 63/63 y 223 aserciones; E2E API posterior 2/2.
+
+## EP-QA-027 — P1 — Estados AP8 divergentes entre fixture y despliegue
+
+- **Módulo/estado:** inventario Bellomo, `FIXED_VERIFIED_LOCAL`.
+- **Actual detectado:** el fixture visual marcaba AP8 lotes 12/14/15/16 como reservados aunque la fuente SQL los define disponibles; el cambio de Mauro para 17/18 vivía sólo en un seeder y no alcanzaba bases ya creadas.
+- **Corrección/test:** fixture alineado a 6 disponibles, 7 reservados y 60 vendidos; migración forward-only idempotente reserva AP8 17/18 por UUID y tenant sin alterar el baseline.
+- **Evidencia:** 73 UUID únicos, totales por proyecto y distribución 6/7/60 verificados en Vitest; importación/schema dev+test PASS.

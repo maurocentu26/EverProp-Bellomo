@@ -219,17 +219,14 @@ export default function PropertyDetailView({ propertyId }: Props) {
         <div className="lg:col-span-2 space-y-6">
           <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
              <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                <Building2 size={64} strokeWidth={1} />
+                <Trees size={64} strokeWidth={1} className="text-emerald-500/50" />
              </div>
              <div className="absolute top-4 left-4 flex gap-2">
-                <Badge className={cn(
-                    "px-3 py-1 rounded-full border-none shadow-md text-white font-bold text-xs tracking-wider",
-                    property.operation === 'sale' ? "bg-emerald-500" : "bg-blue-600"
-                )}>
-                    {property.operation === 'sale' ? 'EN VENTA' : 'ALQUILER'}
+                <Badge className="px-3 py-1 rounded-full border-none shadow-md text-white font-bold text-xs tracking-wider bg-emerald-600">
+                    EN VENTA
                 </Badge>
                 <Badge className="bg-white/90 backdrop-blur text-slate-900 border-none px-3 py-1 rounded-full shadow-md text-xs font-bold">
-                    {property.propertyType}
+                    {property.sectorName || property.propertyType}
                 </Badge>
              </div>
           </div>
@@ -243,9 +240,15 @@ export default function PropertyDetailView({ propertyId }: Props) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-4 border-y border-slate-100">
                 {[
                     { label: 'Superficie', val: `${property.area_m2 || "--"} m²`, icon: Ruler },
-                    { label: 'Ambientes', val: property.bedrooms || "0", icon: BedDouble },
-                    { label: 'Baños', val: property.bathrooms || "0", icon: Bath },
-                    { label: 'Cochera', val: '1', icon: Car }
+                    { label: 'Manzana', val: property.sectorName || "-", icon: Trees },
+                    { label: 'Parcela', val: property.unitNumber || "-", icon: Building2 },
+                    {
+                      label: 'Ochava / Obs.',
+                      val: property.description?.match(/OCH\.?\s*([0-9.,]+)\s*M2?/i)?.[1]
+                        ? `Och. ${property.description?.match(/OCH\.?\s*([0-9.,]+)\s*M2?/i)?.[1]} m²`
+                        : 'Estándar',
+                      icon: MapPin
+                    }
                 ].map((item, idx) => (
                     <div key={idx} className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600">

@@ -6,7 +6,6 @@ import { type Property, properties as sampleProperties, projects as sampleProjec
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropCatalog } from "@/lib/everprop-api";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
 import { Button } from "@/components/ui/button";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";

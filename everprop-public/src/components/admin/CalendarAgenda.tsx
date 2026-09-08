@@ -232,10 +232,10 @@ export default function CalendarAgenda() {
       {/* ── Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Agenda</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Agenda</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             {MONTHS_ES[viewDate.getMonth()]} {viewDate.getFullYear()} —{" "}
-            <span className="font-semibold text-slate-700">{monthStats.total} visitas</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{monthStats.total} visitas</span>
           </p>
         </div>
 
@@ -244,15 +244,15 @@ export default function CalendarAgenda() {
           <button
             type="button"
             onClick={() => setShowPendingModal(true)}
-            className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-full transition-colors cursor-pointer text-xs font-bold text-blue-700 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-900/50 border border-blue-200 px-3 py-1.5 rounded-full transition-colors cursor-pointer text-xs font-bold text-blue-700 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Ver lista de visitas pendientes"
           >
-            <Clock className="h-3.5 w-3.5 text-blue-600" />
+            <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
             <span>{monthStats.scheduled} pendientes</span>
           </button>
-          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-            <span className="text-xs font-bold text-emerald-700">{monthStats.completed} realizadas</span>
+          <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900 px-3 py-1.5 rounded-full">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{monthStats.completed} realizadas</span>
           </div>
           <Button
             onClick={() => setShowNewVisitModal(true)}
@@ -268,21 +268,21 @@ export default function CalendarAgenda() {
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px_300px] gap-6">
 
         {/* ── Col 1: Calendar ── */}
-        <div className="rounded-[2.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
           {/* Calendar header */}
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <button
               onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-              className="h-9 w-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+              className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <h2 className="text-base font-bold text-slate-900 capitalize">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 capitalize">
               {MONTHS_ES[viewDate.getMonth()]} {viewDate.getFullYear()}
             </h2>
             <button
               onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-              className="h-9 w-9 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+              className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -292,7 +292,7 @@ export default function CalendarAgenda() {
             {/* Weekday labels */}
             <div className="grid grid-cols-7 mb-2">
               {WEEKDAYS.map((d) => (
-                <div key={d} className="py-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div key={d} className="py-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                   {d}
                 </div>
               ))}
@@ -317,12 +317,12 @@ export default function CalendarAgenda() {
                     }}
                     className={cn(
                       "relative flex flex-col items-center justify-start pt-2 pb-1.5 rounded-xl min-h-[56px] transition-all border text-sm font-semibold",
-                      cell.current ? "text-slate-800" : "text-slate-300",
+                      cell.current ? "text-slate-800 dark:text-slate-100" : "text-slate-300 dark:text-slate-600",
                       isSelected
-                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200 dark:shadow-none"
                         : isToday
-                        ? "border-blue-300 bg-blue-50 text-blue-700"
-                        : "border-transparent hover:bg-slate-50",
+                        ? "border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
+                        : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60",
                     )}
                   >
                     <span>{cell.date.getDate()}</span>
@@ -343,28 +343,28 @@ export default function CalendarAgenda() {
           </div>
 
           {/* Legend */}
-          <div className="px-6 pb-5 flex items-center gap-4 text-[10px] text-slate-400 font-semibold">
+          <div className="px-6 pb-5 flex items-center gap-4 text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
             <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" />Programada</span>
             <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Realizada</span>
           </div>
         </div>
 
         {/* ── Col 2: Selected Day Panel ── */}
-        <div className="rounded-[2.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+        <div className="rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col">
           {/* Day header */}
-          <div className="px-6 py-5 border-b border-slate-100">
+          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                   {WEEKDAYS[selectedDate.getDay()]}
                 </p>
-                <h3 className="text-2xl font-black text-slate-900 leading-none mt-1">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 leading-none mt-1">
                   {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}
                 </h3>
               </div>
               <div className={cn(
                 "h-12 w-12 rounded-2xl flex items-center justify-center text-xl font-black",
-                toKey(selectedDate) === toKey(today) ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+                toKey(selectedDate) === toKey(today) ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
               )}>
                 {selectedDate.getDate()}
               </div>
@@ -379,8 +379,8 @@ export default function CalendarAgenda() {
                   className={cn(
                     "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
                     activeFilter === f
-                      ? f === "completed" ? "bg-emerald-600 text-white" : f === "scheduled" ? "bg-blue-600 text-white" : "bg-slate-800 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      ? f === "completed" ? "bg-emerald-600 text-white" : f === "scheduled" ? "bg-blue-600 text-white" : "bg-slate-800 dark:bg-slate-700 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
                   )}
                 >
                   {f === "all" ? "Todas" : f === "scheduled" ? "Pendientes" : "Realizadas"}
@@ -400,8 +400,8 @@ export default function CalendarAgenda() {
                   exit={{ opacity: 0 }}
                   className="flex flex-col items-center justify-center py-16 text-center"
                 >
-                  <CalendarDays className="h-10 w-10 text-slate-200 mb-3" />
-                  <p className="text-sm font-semibold text-slate-400">Sin visitas este día</p>
+                  <CalendarDays className="h-10 w-10 text-slate-200 dark:text-slate-700 mb-3" />
+                  <p className="text-sm font-semibold text-slate-400 dark:text-slate-500">Sin visitas este día</p>
                 </motion.div>
               ) : (
                 <motion.div
@@ -423,17 +423,17 @@ export default function CalendarAgenda() {
                         className={cn(
                           "rounded-2xl border p-4 space-y-3 transition-all hover:shadow-sm",
                           ev.status === "completed"
-                            ? "border-l-4 border-l-emerald-500 border-slate-100"
+                            ? "border-l-4 border-l-emerald-500 border-slate-100 dark:border-slate-800 dark:bg-slate-800/40"
                             : ev.status === "cancelled"
-                            ? "border-l-4 border-l-rose-400 border-slate-100 opacity-60"
-                            : "border-l-4 border-l-blue-500 border-slate-100"
+                            ? "border-l-4 border-l-rose-400 border-slate-100 dark:border-slate-800 dark:bg-slate-800/20 opacity-60"
+                            : "border-l-4 border-l-blue-500 border-slate-100 dark:border-slate-800 dark:bg-slate-800/40"
                         )}
                       >
                         {/* Time + status */}
                         <div className="flex items-center justify-between">
                           <span className={cn(
                             "px-2.5 py-1 rounded-lg text-xs font-black",
-                            ev.status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
+                            ev.status === "completed" ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
                           )}>
                             {time}hs
                           </span>
@@ -442,26 +442,26 @@ export default function CalendarAgenda() {
 
                         {/* Lead info */}
                         <div>
-                          <p className="font-bold text-slate-900 text-sm">{ev.leadName}</p>
-                          {ev.phone && <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><Phone className="h-3 w-3" />{ev.phone}</p>}
-                          {ev.email && <p className="text-xs text-slate-500 flex items-center gap-1"><Mail className="h-3 w-3" />{ev.email}</p>}
+                          <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">{ev.leadName}</p>
+                          {ev.phone && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1"><Phone className="h-3 w-3" />{ev.phone}</p>}
+                          {ev.email && <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"><Mail className="h-3 w-3" />{ev.email}</p>}
                         </div>
 
                         {/* Property */}
                         {ev.propertyTitle && (
-                          <div className="flex items-center gap-1.5 bg-slate-50 rounded-xl px-2.5 py-1.5 border border-slate-100">
+                          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl px-2.5 py-1.5 border border-slate-100 dark:border-slate-700/80">
                             <PropertyTypeIcon type={ev.propertyType} />
-                            <span className="text-xs font-semibold text-slate-700 truncate">{ev.propertyTitle}</span>
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{ev.propertyTitle}</span>
                           </div>
                         )}
 
                         {/* Advisor info — always visible (key feature) */}
                         {ev.agentName && (
-                          <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                             <div className="h-6 w-6 rounded-full bg-blue-600 flex items-center justify-center text-[9px] font-black text-white shrink-0">
                               {ev.agentAvatar || ev.agentName[0]}
                             </div>
-                            <span className="text-[11px] font-semibold text-slate-500">Asesor: <span className="text-slate-800">{ev.agentName}</span></span>
+                            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Asesor: <span className="text-slate-800 dark:text-slate-200">{ev.agentName}</span></span>
                           </div>
                         )}
 
@@ -476,7 +476,7 @@ export default function CalendarAgenda() {
                           )}
                           <button
                             onClick={() => setDeletingId(ev.id)}
-                            className="h-9 w-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-colors shrink-0"
+                            className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/30 dark:hover:border-rose-800 transition-colors shrink-0"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -491,22 +491,22 @@ export default function CalendarAgenda() {
         </div>
 
         {/* ── Col 3: Upcoming Visits ── */}
-        <div className="rounded-[2.5rem] border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
+        <div className="rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col">
+          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
             <span className="p-2 rounded-xl bg-indigo-600 text-white">
               <Users className="h-4 w-4" />
             </span>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Próximas Visitas</h3>
-              <p className="text-[10px] text-slate-400 font-medium">Las más cercanas en el tiempo</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Próximas Visitas</h3>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Las más cercanas en el tiempo</p>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {upcomingItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Clock className="h-8 w-8 text-slate-200 mb-2" />
-                <p className="text-xs font-semibold text-slate-400">No hay visitas próximas</p>
+                <Clock className="h-8 w-8 text-slate-200 dark:text-slate-700 mb-2" />
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">No hay visitas próximas</p>
               </div>
             ) : (
               upcomingItems.map((ev) => {
@@ -521,18 +521,18 @@ export default function CalendarAgenda() {
                       setSelectedDate(d);
                       setViewDate(d);
                     }}
-                    className="w-full text-left p-3 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all group"
+                    className="w-full text-left p-3 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-all group"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="bg-blue-50 group-hover:bg-blue-100 rounded-xl px-2 py-1.5 text-center shrink-0 transition-colors">
-                        <p className="text-[9px] font-bold uppercase text-blue-500 leading-none">{dateStr.split(" ")[0]}</p>
-                        <p className="text-sm font-black text-blue-700 leading-none mt-0.5">{d.getDate()}</p>
-                        <p className="text-[9px] font-bold text-blue-500 leading-none">{time}h</p>
+                      <div className="bg-blue-50 dark:bg-blue-950/60 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/60 rounded-xl px-2 py-1.5 text-center shrink-0 transition-colors">
+                        <p className="text-[9px] font-bold uppercase text-blue-500 dark:text-blue-400 leading-none">{dateStr.split(" ")[0]}</p>
+                        <p className="text-sm font-black text-blue-700 dark:text-blue-300 leading-none mt-0.5">{d.getDate()}</p>
+                        <p className="text-[9px] font-bold text-blue-500 dark:text-blue-400 leading-none">{time}h</p>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 truncate">{ev.leadName}</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{ev.leadName}</p>
                         {ev.propertyTitle && (
-                          <p className="text-[10px] text-slate-500 truncate mt-0.5 flex items-center gap-1">
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5 flex items-center gap-1">
                             <PropertyTypeIcon type={ev.propertyType} />{ev.propertyTitle}
                           </p>
                         )}
@@ -542,7 +542,7 @@ export default function CalendarAgenda() {
                             <div className="h-4 w-4 rounded-full bg-indigo-600 flex items-center justify-center text-[7px] font-black text-white shrink-0">
                               {ev.agentAvatar || ev.agentName[0]}
                             </div>
-                            <span className="text-[9px] text-slate-500 font-semibold truncate">{ev.agentName}</span>
+                            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate">{ev.agentName}</span>
                           </div>
                         )}
                       </div>
@@ -557,13 +557,13 @@ export default function CalendarAgenda() {
 
       {/* ── Delete Confirmation Modal ── */}
       <Dialog open={!!deletingId} onOpenChange={(open) => { if (!open) setDeletingId(null); }}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm dark:bg-slate-900 dark:border-slate-800">
           <DialogHeader>
-            <DialogTitle>Eliminar visita</DialogTitle>
-            <DialogDescription>¿Querés eliminar esta visita? Esta acción no se puede deshacer.</DialogDescription>
+            <DialogTitle className="dark:text-slate-100">Eliminar visita</DialogTitle>
+            <DialogDescription className="dark:text-slate-400">¿Querés eliminar esta visita? Esta acción no se puede deshacer.</DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 gap-2">
-            <Button variant="outline" onClick={() => setDeletingId(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDeletingId(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button>
             <Button
               className="bg-rose-600 text-white hover:bg-rose-700"
               onClick={() => deletingId && handleDelete(deletingId)}

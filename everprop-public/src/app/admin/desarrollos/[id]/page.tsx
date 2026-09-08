@@ -2,21 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { HardHat, ArrowLeft, BarChart3, Map, Clock, Building2, Layers } from "lucide-react";
+import { ArrowLeft, BarChart3, Map, Layers } from "lucide-react";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropCatalog } from "@/lib/everprop-api";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
+import { useCurrentSession } from "@/hooks/use-current-session";
 
 export default function ProjectDetailView() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
+  const { isAdvisor } = useCurrentSession();
   
   const [project, setProject] = useState<Project | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -113,15 +114,17 @@ export default function ProjectDetailView() {
           <p className="text-sm text-slate-500 mt-1">{project.location.city}, {project.location.province}</p>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => setIsGenerateLotsOpen(true)}
-            className="h-9 px-4 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
-          >
-            <Layers className="h-4 w-4" /> + Cargar Manzana / Lotes
-          </Button>
-        </div>
+        {!isAdvisor && (
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => setIsGenerateLotsOpen(true)}
+              className="h-9 px-4 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
+            >
+              <Layers className="h-4 w-4" /> + Cargar Manzana / Lotes
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -151,26 +154,6 @@ export default function ProjectDetailView() {
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {/* Progress Card */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <HardHat className="h-5 w-5 text-blue-600" /> Avance del Proyecto
-                </h3>
-                <div className="flex justify-between text-sm font-semibold text-slate-600 mb-2">
-                  <span>Progreso General</span>
-                  <span className="text-blue-600 text-xl">{project.progress}%</span>
-                </div>
-                <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                  <div 
-                    className={cn("h-full rounded-full transition-all duration-1000", project.progress === 100 ? "bg-emerald-500" : "bg-blue-600")}
-                    style={{ width: `${project.progress}%` }}
-                  />
-                </div>
-                <p className="text-sm text-slate-500 mt-4 leading-relaxed">
-                  {project.description || "Sin descripción disponible para este desarrollo."}
-                </p>
-              </div>
-
               {/* Inventario Stats */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
                 <h3 className="text-lg font-bold text-slate-800 mb-6">Estado del Inventario</h3>
@@ -195,6 +178,16 @@ export default function ProjectDetailView() {
                   </Button>
                 </div>
               </div>
+
+              {/* Descripción del Desarrollo */}
+              {project.description && (
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                  <h3 className="text-base font-bold text-slate-800 mb-2">Descripción del Desarrollo</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {project.description}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-6">
