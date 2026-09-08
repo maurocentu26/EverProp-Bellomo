@@ -159,10 +159,10 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                       <Badge className={cn(
                         "w-fit px-4 py-2 text-sm font-bold uppercase tracking-wider",
                         (!selectedUnit.status || selectedUnit.status === "available") ? "border-emerald-200 bg-emerald-100 text-emerald-700" :
-                        selectedUnit.status === "reserved" ? "border-amber-200 bg-amber-100 text-amber-700" :
+                        selectedUnit.status === "reserved" ? "border-amber-200 bg-amber-100 text-amber-800" :
                         "border-rose-200 bg-rose-100 text-rose-700"
                       )}>
-                        {(!selectedUnit.status || selectedUnit.status === "available") ? "Disponible" : selectedUnit.status === "reserved" ? "Reservado" : "Vendido"}
+                        {(!selectedUnit.status || selectedUnit.status === "available") ? "Disponible" : selectedUnit.status === "reserved" ? "No Vendible / Reserva" : "Vendido"}
                       </Badge>
                     </div>
 
@@ -172,7 +172,7 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                         <dd className="mt-2 text-xl font-bold text-slate-900">{selectedUnit.propertyType}</dd>
                       </div>
                       <div className="rounded-2xl bg-slate-50 p-5">
-                        <dt className="text-base font-medium text-slate-500">Sector / Piso</dt>
+                        <dt className="text-base font-medium text-slate-500">Manzana</dt>
                         <dd className="mt-2 text-xl font-bold text-slate-900">{selectedUnit.sectorName || "-"}</dd>
                       </div>
                       {selectedUnit.area_m2 && (

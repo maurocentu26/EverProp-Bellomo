@@ -11,6 +11,11 @@ function readList<T>(key: string): T[] {
   if (typeof window === "undefined") return [];
 
   try {
+    // One-time reset of the old local demo, explicitly requested when importing Mauro's catalog.
+    if (process.env.NEXT_PUBLIC_LOCAL_DEMO === "1" && !window.localStorage.getItem("everprop:bellomo-catalog:bf70181")) {
+      for (const legacy of [...Object.values(ADMIN_STORAGE_KEYS), "everprop:notifications"]) window.localStorage.removeItem(legacy);
+      window.localStorage.setItem("everprop:bellomo-catalog:bf70181", "1");
+    }
     const raw = window.localStorage.getItem(key);
     if (!raw) return [];
 

@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Badge from "@/components/ui/badge";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { cn } from "@/lib/utils";
+import { QuickScheduleButtons } from "@/components/admin/QuickScheduleButtons";
 
 type Props = {
   title: string;
@@ -336,25 +337,41 @@ export default function VisitManager({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Teléfono / WhatsApp</label>
-                <Input 
-                  value={phone} 
-                  onChange={(e) => setPhone(e.target.value)} 
-                  placeholder="Ej: +54 9 11..." 
-                  className="h-11 bg-white border-slate-200 rounded-xl px-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" 
-                />
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Teléfono / WhatsApp</label>
+              <Input 
+                value={phone} 
+                onChange={(e) => setPhone(e.target.value)} 
+                placeholder="Ej: +54 9 11..." 
+                className="h-11 bg-white border-slate-200 rounded-xl px-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" 
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Fecha y Hora de la Visita</label>
+                {scheduledAt && (
+                  <button
+                    type="button"
+                    onClick={() => setScheduledAt("")}
+                    className="text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  >
+                    Limpiar fecha
+                  </button>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Fecha y Hora</label>
-                <Input 
-                  type="datetime-local" 
-                  value={scheduledAt} 
-                  onChange={(e) => setScheduledAt(e.target.value)} 
-                  className="h-11 bg-white border-slate-200 rounded-xl px-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" 
-                />
-              </div>
+              <Input 
+                type="datetime-local" 
+                value={scheduledAt} 
+                onChange={(e) => setScheduledAt(e.target.value)} 
+                className="h-11 bg-white border-slate-200 rounded-xl px-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" 
+              />
+              <QuickScheduleButtons
+                value={scheduledAt}
+                onChange={setScheduledAt}
+                label="Agendar visita rápido para:"
+                className="pt-1"
+              />
             </div>
 
             <div className="space-y-1.5">

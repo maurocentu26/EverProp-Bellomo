@@ -21,7 +21,8 @@ import {
   Mail,
   Lightbulb,
   Building2,
-  BarChart3
+  BarChart3,
+  Users
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -59,11 +60,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const STAGE_OPTIONS: { id: Lead["stage"]; label: string; apiCode: string; color: string }[] = [
-  { id: "new", label: "Nuevo", apiCode: "NEW", color: "bg-slate-100 text-slate-700 border-slate-200" },
-  { id: "contacted", label: "Contactado", apiCode: "CONTACTED", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { id: "visiting", label: "Visita Agendada", apiCode: "VISIT_SCHEDULED", color: "bg-purple-100 text-purple-700 border-purple-200" },
-  { id: "negotiation", label: "Negociación", apiCode: "NEGOTIATION", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  { id: "closing", label: "Cerrado / Ganado", apiCode: "WON", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  { id: "new", label: "Nuevo", apiCode: "NEW", color: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" },
+  { id: "contacted", label: "Contactado", apiCode: "CONTACTED", color: "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950/80 dark:text-blue-200 dark:border-blue-800" },
+  { id: "visiting", label: "Visita Agendada", apiCode: "VISIT_SCHEDULED", color: "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-950/80 dark:text-purple-200 dark:border-purple-800" },
+  { id: "negotiation", label: "Negociación", apiCode: "NEGOTIATION", color: "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/80 dark:text-amber-200 dark:border-amber-800" },
+  { id: "closing", label: "Cerrado / Ganado", apiCode: "WON", color: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-200 dark:border-emerald-800" },
 ];
 
 export default function AdvisorCockpit() {
@@ -417,43 +418,100 @@ export default function AdvisorCockpit() {
   return (
     <div className="space-y-6 pb-12">
       {/* ── CABECERA CORPORATIVA SOBRIA: BIENVENIDA AL ASESOR ── */}
-      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:p-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Bienvenido, {user?.name || "Asesor"}
-          </h1>
-          <p className="mt-1 text-sm capitalize text-slate-500">
-            {todayFormatted}
-          </p>
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-6 dark:bg-card dark:border-border">
+        {/* Mobile layout */}
+        <div className="sm:hidden space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">
+                Hola, {user?.name || "Asesor"}
+              </h1>
+              <p className="text-xs capitalize text-slate-500 dark:text-slate-400">
+                {todayFormatted}
+              </p>
+            </div>
+            <Link href="/admin/leads/new">
+              <Button className="h-9 gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white hover:bg-blue-700 shadow-xs shrink-0">
+                <Plus className="size-3.5" />
+                Nuevo Lead
+              </Button>
+            </Link>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant={showMonthBalance ? "default" : "outline"}
+              onClick={() => setShowMonthBalance(!showMonthBalance)}
+              className={cn(
+                "h-8 gap-1.5 rounded-lg px-3 text-xs font-semibold flex-1",
+                showMonthBalance
+                  ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+              )}
+            >
+              <BarChart3 className="size-3.5" />
+              Balance
+            </Button>
+            <Link href="/admin/leads" className="flex-1">
+              <Button variant="outline" className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                <Users className="size-3.5" />
+                Mis Leads
+              </Button>
+            </Link>
+            <Link href="/admin/agenda" className="flex-1">
+              <Button variant="outline" className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                <CalendarDays className="size-3.5" />
+                Agenda
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant={showMonthBalance ? "default" : "outline"}
-            onClick={() => setShowMonthBalance(!showMonthBalance)}
-            className={cn(
-              "min-h-11 gap-2 rounded-xl px-4 text-sm font-semibold shadow-xs transition-colors",
-              showMonthBalance
-                ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
-            )}
-          >
-            <BarChart3 className="size-4" />
-            {showMonthBalance ? "Ocultar Balance" : "Balance del Mes & Números"}
-          </Button>
-          <Link href="/admin/leads/new">
-            <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs">
-              <Plus className="size-4" />
-              Nuevo Lead
+        {/* Desktop layout */}
+        <div className="hidden sm:flex sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
+              Bienvenido, {user?.name || "Asesor"}
+            </h1>
+            <p className="mt-1 text-sm capitalize text-slate-500 dark:text-slate-400">
+              {todayFormatted}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant={showMonthBalance ? "default" : "outline"}
+              onClick={() => setShowMonthBalance(!showMonthBalance)}
+              className={cn(
+                "min-h-11 gap-2 rounded-xl px-4 text-sm font-semibold shadow-xs transition-colors",
+                showMonthBalance
+                  ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+              )}
+            >
+              <BarChart3 className="size-4" />
+              {showMonthBalance ? "Ocultar Balance" : "Balance del Mes & Números"}
             </Button>
-          </Link>
-          <Link href="/admin/agenda">
-            <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs">
-              <CalendarDays className="size-4" />
-              Mi Agenda
-            </Button>
-          </Link>
+            <Link href="/admin/leads/new">
+              <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs">
+                <Plus className="size-4" />
+                Nuevo Lead
+              </Button>
+            </Link>
+            <Link href="/admin/leads">
+              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                <Users className="size-4" />
+                Mis Leads
+              </Button>
+            </Link>
+            <Link href="/admin/agenda">
+              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs">
+                <CalendarDays className="size-4" />
+                Mi Agenda
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -468,28 +526,28 @@ export default function AdvisorCockpit() {
       )}
 
       {/* ── 4 TARJETAS DE ENFOQUE DIARIO (KPIS ACCIONABLES) ── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
         {/* Vencidos */}
         <button
           type="button"
           onClick={() => setActiveQueueFilter(activeQueueFilter === "overdue" ? "all" : "overdue")}
           className={cn(
-            "flex flex-col justify-between rounded-2xl border p-5 text-left transition-all shadow-sm",
+            "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "overdue"
               ? "border-rose-500 bg-rose-50 ring-2 ring-rose-500"
               : "border-rose-200/80 bg-white hover:border-rose-300 hover:bg-rose-50/50"
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-              <AlertTriangle className="size-5" />
+            <span className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+              <AlertTriangle className="size-4 sm:size-5" />
             </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-600">Urgente</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-600">Urgente</span>
           </div>
-          <div className="mt-4">
-            <p className="text-3xl font-black text-rose-950">{overdueLeads.length}</p>
-            <p className="mt-0.5 text-sm font-semibold text-rose-800">Seguimientos Vencidos</p>
-            <p className="text-xs text-rose-600">&gt; 10 días sin contacto</p>
+          <div className="mt-2.5 sm:mt-4">
+            <p className="text-2xl sm:text-3xl font-black text-rose-950">{overdueLeads.length}</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-rose-800">Seg. Vencidos</p>
+            <p className="text-[10px] sm:text-xs text-rose-600 hidden sm:block">&gt; 10 días sin contacto</p>
           </div>
         </button>
 
@@ -498,22 +556,22 @@ export default function AdvisorCockpit() {
           type="button"
           onClick={() => setActiveQueueFilter(activeQueueFilter === "today" ? "all" : "today")}
           className={cn(
-            "flex flex-col justify-between rounded-2xl border p-5 text-left transition-all shadow-sm",
+            "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "today"
               ? "border-amber-500 bg-amber-50 ring-2 ring-amber-500"
               : "border-amber-200/80 bg-white hover:border-amber-300 hover:bg-amber-50/50"
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-              <Clock3 className="size-5" />
+            <span className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+              <Clock3 className="size-4 sm:size-5" />
             </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-600">Para Hoy</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600">Para Hoy</span>
           </div>
-          <div className="mt-4">
-            <p className="text-3xl font-black text-amber-950">{todayLeads.length}</p>
-            <p className="mt-0.5 text-sm font-semibold text-amber-800">Contactos Programados</p>
-            <p className="text-xs text-amber-600">Compromisos de hoy</p>
+          <div className="mt-2.5 sm:mt-4">
+            <p className="text-2xl sm:text-3xl font-black text-amber-950">{todayLeads.length}</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-amber-800">Programados</p>
+            <p className="text-[10px] sm:text-xs text-amber-600 hidden sm:block">Compromisos de hoy</p>
           </div>
         </button>
 
@@ -522,40 +580,40 @@ export default function AdvisorCockpit() {
           type="button"
           onClick={() => setActiveQueueFilter(activeQueueFilter === "new" ? "all" : "new")}
           className={cn(
-            "flex flex-col justify-between rounded-2xl border p-5 text-left transition-all shadow-sm",
+            "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "new"
               ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500"
               : "border-blue-200/80 bg-white hover:border-blue-300 hover:bg-blue-50/50"
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
-              <Flame className="size-5" />
+            <span className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+              <Flame className="size-4 sm:size-5" />
             </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Entrantes</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-600">Entrantes</span>
           </div>
-          <div className="mt-4">
-            <p className="text-3xl font-black text-blue-950">{newLeads.length}</p>
-            <p className="mt-0.5 text-sm font-semibold text-blue-800">Nuevos sin Contactar</p>
-            <p className="text-xs text-blue-600">Primer contacto pendiente</p>
+          <div className="mt-2.5 sm:mt-4">
+            <p className="text-2xl sm:text-3xl font-black text-blue-950">{newLeads.length}</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-blue-800">Sin Contactar</p>
+            <p className="text-[10px] sm:text-xs text-blue-600 hidden sm:block">Primer contacto pendiente</p>
           </div>
         </button>
 
         {/* Citas de Hoy */}
         <Link
           href="/admin/agenda"
-          className="flex flex-col justify-between rounded-2xl border border-purple-200/80 bg-white p-5 text-left shadow-sm transition-all hover:border-purple-300 hover:bg-purple-50/50"
+          className="flex flex-col justify-between rounded-2xl border border-purple-200/80 bg-white p-3 sm:p-5 text-left shadow-sm transition-all hover:border-purple-300 hover:bg-purple-50/50"
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
-              <Calendar className="size-5" />
+            <span className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+              <Calendar className="size-4 sm:size-5" />
             </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-600">Agenda</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-600">Agenda</span>
           </div>
-          <div className="mt-4">
-            <p className="text-3xl font-black text-purple-950">{scheduledVisitsToday.length}</p>
-            <p className="mt-0.5 text-sm font-semibold text-purple-800">Citas Agendadas Hoy</p>
-            <p className="text-xs text-purple-600">Visitas a loteos / unidades</p>
+          <div className="mt-2.5 sm:mt-4">
+            <p className="text-2xl sm:text-3xl font-black text-purple-950">{scheduledVisitsToday.length}</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-purple-800">Citas Hoy</p>
+            <p className="text-[10px] sm:text-xs text-purple-600 hidden sm:block">Visitas a loteos / unidades</p>
           </div>
         </Link>
       </div>
@@ -636,7 +694,7 @@ export default function AdvisorCockpit() {
                 <p className="mt-1 text-sm text-slate-500">Excelente trabajo. Podés revisar el catálogo o cargar nuevos interesados.</p>
               </div>
             ) : (
-              priorityQueue.slice(0, 15).map(({ lead, state, isOverdue, isDueToday }) => {
+              priorityQueue.slice(0, 5).map(({ lead, state, isOverdue, isDueToday }) => {
                 const cleanPhone = lead.phone?.replace(/\D/g, "");
                 const candidatePropertyIds = (lead.propertyIds && lead.propertyIds.length > 0)
                   ? lead.propertyIds
@@ -666,7 +724,7 @@ export default function AdvisorCockpit() {
                   <article
                     key={lead.id}
                     className={cn(
-                      "rounded-2xl border bg-white p-4 shadow-sm transition-all sm:p-5 dark:bg-card dark:border-border",
+                      "rounded-2xl border bg-white p-3.5 shadow-sm transition-all sm:p-5 dark:bg-card dark:border-border",
                       isOverdue
                         ? "border-rose-200 hover:border-rose-400 dark:border-rose-900/60"
                         : isDueToday
@@ -674,56 +732,67 @@ export default function AdvisorCockpit() {
                         : "border-slate-200 hover:border-blue-300 dark:border-border"
                     )}
                   >
-                    {/* Cabecera de la Card: Cliente, Avatar y Prioridad */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className="size-10 shrink-0 border border-slate-200 dark:border-slate-800">
-                          <AvatarFallback className="bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                            {lead.name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                    {/* Row 1: Avatar + Name + Origin + Urgency Badge + Stage Selector */}
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="size-9 shrink-0 border border-slate-200 dark:border-slate-800">
+                        <AvatarFallback className="bg-slate-100 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                          {lead.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
 
-                        <div className="min-w-0">
-                          <Link
-                            href={`/admin/leads/${lead.id}`}
-                            className="truncate text-base font-bold text-slate-900 hover:text-blue-600 block leading-snug dark:text-slate-100 dark:hover:text-blue-400"
-                          >
-                            {lead.name}
-                          </Link>
-                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                            <MapPin className="size-3 text-slate-400 shrink-0" />
-                            <span className="truncate">{lead.origin}</span>
-                          </div>
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/admin/leads/${lead.id}`}
+                          className="truncate text-sm font-bold text-slate-900 hover:text-blue-600 block leading-tight dark:text-slate-100 dark:hover:text-blue-400"
+                        >
+                          {lead.name}
+                        </Link>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="size-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                          <span className="truncate text-[11px] text-slate-500 dark:text-slate-400">{lead.origin}</span>
+                          {isOverdue && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300 shrink-0 ml-auto">
+                              <AlertTriangle className="size-2.5" />
+                              {state.elapsedDays}d
+                            </span>
+                          )}
+                          {isDueToday && !isOverdue && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300 shrink-0 ml-auto">
+                              <Clock3 className="size-2.5" />
+                              Hoy
+                            </span>
+                          )}
+                          {lead.stage === "new" && !isOverdue && !isDueToday && (
+                            <span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300 shrink-0 ml-auto">
+                              Nuevo
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      {/* Badge de Urgencia / Estado */}
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        {isOverdue && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300">
-                            <AlertTriangle className="size-3 text-rose-600 shrink-0" />
-                            Vencido ({state.elapsedDays}d)
-                          </span>
+                      {/* Stage selector - compact on mobile */}
+                      <select
+                        value={activePropStage}
+                        onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
+                        className={cn(
+                          "hidden sm:block h-7 shrink-0 rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs",
+                          currentStageObj.color
                         )}
-                        {isDueToday && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-300">
-                            <Clock3 className="size-3 text-amber-600 shrink-0" />
-                            Para Hoy
-                          </span>
-                        )}
-                        {lead.stage === "new" && !isOverdue && !isDueToday && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300">
-                            Nuevo
-                          </span>
-                        )}
-                      </div>
+                        title={matchedProperty ? `Etapa comercial para ${matchedProperty.title}` : "Etapa comercial del lead"}
+                      >
+                        {STAGE_OPTIONS.map((opt) => (
+                          <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Switcher de Propiedades si el lead tiene múltiples intereses con estados independientes */}
                     {candidatePropertyIds.length > 1 && (
-                      <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
+                      <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
-                          Propiedades ({candidatePropertyIds.length}):
+                          Inmuebles ({candidatePropertyIds.length}):
                         </span>
                         {candidatePropertyIds.map((propId, idx) => {
                           const prop = properties.find((p) => p.id === propId);
@@ -738,13 +807,13 @@ export default function AdvisorCockpit() {
                               type="button"
                               onClick={() => setSelectedPropertyByLead((prev) => ({ ...prev, [lead.id]: propId }))}
                               className={cn(
-                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all border shadow-2xs",
+                                "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold shrink-0 transition-all border shadow-2xs",
                                 isSelected
                                   ? "border-blue-500 bg-blue-50 text-blue-900 font-bold dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-700"
                                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
                               )}
                             >
-                              <span className="truncate max-w-[140px]">{pillTitle}</span>
+                              <span className="truncate max-w-[120px]">{pillTitle}</span>
                               {pillStageObj && (
                                 <span className={cn(
                                   "text-[9px] font-bold px-1.5 py-0.5 rounded border leading-none",
@@ -759,54 +828,46 @@ export default function AdvisorCockpit() {
                       </div>
                     )}
 
-                    {/* Fila Intermedia: Propiedad de Interés y Selectores de Estado */}
-                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {/* Propiedad vinculada */}
+                    {/* Row 2: Property interest + price + stage (mobile stage selector) */}
+                    <div className="mt-2.5 flex items-center gap-2">
                       {displayTitle ? (
-                        <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 border border-slate-100 dark:border-slate-800 text-xs">
+                        <div className="flex items-center justify-between gap-2 flex-1 rounded-lg bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 border border-slate-100 dark:border-slate-800 text-xs min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <Building2 className="size-3.5 text-slate-400 shrink-0" />
                             <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{displayTitle}</span>
                           </div>
                           {displayPrice && (
-                            <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                            <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0 text-[11px]">
                               {displayPrice}
                             </span>
                           )}
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-2 border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
+                        <div className="flex items-center gap-1.5 flex-1 rounded-lg bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
                           <Building2 className="size-3.5 text-slate-300 shrink-0" />
                           <span>Sin propiedad vinculada</span>
                         </div>
                       )}
-
-                      {/* Selector de Etapa: Vinculado dinámicamente a la propiedad seleccionada */}
-                      <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900 px-3 py-1.5 border border-slate-100 dark:border-slate-800 text-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">
-                          {candidatePropertyIds.length > 1 ? "Etapa Inmueble:" : "Etapa Lead:"}
-                        </span>
-                        <select
-                          value={activePropStage}
-                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
-                          className={cn(
-                            "h-7 w-full rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
-                            currentStageObj.color
-                          )}
-                          title={matchedProperty ? `Etapa comercial para ${matchedProperty.title}` : "Etapa comercial del lead"}
-                        >
-                          {STAGE_OPTIONS.map((opt) => (
-                            <option key={opt.id} value={opt.id}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      {/* Mobile-only stage selector */}
+                      <select
+                        value={activePropStage}
+                        onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
+                        className={cn(
+                          "sm:hidden h-7 shrink-0 rounded-lg border px-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs max-w-[100px]",
+                          currentStageObj.color
+                        )}
+                      >
+                        {STAGE_OPTIONS.map((opt) => (
+                          <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    {/* Datos de Contacto y Último Seguimiento */}
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 border-t border-slate-100 pt-2.5">
-                      <div className="flex items-center gap-3">
+                    {/* Row 3: Contact data + last follow-up (compact) */}
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-2.5">
                         {lead.phone && (
                           <span className="inline-flex items-center gap-1">
                             <Phone className="size-3 text-slate-400" />
@@ -820,62 +881,55 @@ export default function AdvisorCockpit() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-slate-500">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Clock3 className="size-3 text-slate-400" />
-                        <span>{state.formattedDate ? `Último: ${state.formattedDate}` : "Sin contacto previo"}</span>
+                        <span>{state.formattedDate ? `${state.formattedDate}` : "Sin contacto"}</span>
                       </div>
                     </div>
 
-                    {/* ── BOTONES DE ACCIÓN (RESPONSIVE TOUCH) ── */}
-                    <div className="mt-3 pt-2.5 border-t border-slate-100">
-                      {/* Vista Mobile (< sm): Botones táctiles amplios */}
-                      <div className="grid grid-cols-2 gap-2 sm:hidden">
-                        {cleanPhone ? (
+                    {/* Row 4: Action buttons */}
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      {/* Mobile (< sm): tactile button row */}
+                      <div className="flex items-center gap-1.5 sm:hidden">
+                        {cleanPhone && (
                           <a
                             href={`https://wa.me/${cleanPhone}?text=${whatsappText}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white shadow-xs active:bg-emerald-700"
+                            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-xs active:bg-emerald-700"
                           >
-                            <MessageCircle className="size-4" />
+                            <MessageCircle className="size-3.5" />
                             WhatsApp
                           </a>
-                        ) : (
-                          <div />
                         )}
-
-                        {lead.phone ? (
+                        {lead.phone && (
                           <a
                             href={`tel:${lead.phone}`}
-                            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-xs active:bg-slate-100"
+                            className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-xs active:bg-slate-100"
                           >
-                            <Phone className="size-4 text-blue-600" />
-                            Llamar
+                            <Phone className="size-3.5 text-blue-600" />
                           </a>
-                        ) : (
-                          <div />
                         )}
-
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => setFollowUpLead(lead)}
-                          className="col-span-2 h-10 gap-1.5 rounded-xl border-blue-200 bg-blue-50/60 text-xs font-bold text-blue-700 active:bg-blue-100"
+                          className="h-9 flex-1 gap-1 rounded-xl border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/30 text-xs font-bold text-blue-700 dark:text-blue-300 active:bg-blue-100"
                         >
-                          <ClipboardCheck className="size-4" />
-                          Registrar Seguimiento
+                          <ClipboardCheck className="size-3.5" />
+                          Seguimiento
                         </Button>
-
                         <Link
                           href={`/admin/leads/${lead.id}`}
-                          className="col-span-2 py-1 text-center text-xs font-semibold text-slate-500 hover:text-slate-900 flex items-center justify-center gap-1"
+                          className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-slate-500 dark:text-slate-400 shadow-xs active:bg-slate-100"
+                          aria-label="Ver ficha completa"
                         >
-                          Ver ficha completa <ChevronRight className="size-3.5" />
+                          <ChevronRight className="size-4" />
                         </Link>
                       </div>
 
-                      {/* Vista Desktop (>= sm): Barra horizontal compacta */}
+                      {/* Desktop (>= sm): compact horizontal bar */}
                       <div className="hidden sm:flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {cleanPhone && (
@@ -925,11 +979,11 @@ export default function AdvisorCockpit() {
               })
             )}
 
-            {priorityQueue.length > 15 && (
+            {priorityQueue.length > 5 && (
               <div className="pt-2 text-center">
                 <Link href="/admin/leads">
                   <Button variant="outline" className="gap-2 rounded-xl text-xs font-bold">
-                    Ver los {priorityQueue.length} leads en la tabla completa <ArrowRight className="size-3.5" />
+                    Ver todos los leads ({priorityQueue.length}) <ArrowRight className="size-3.5" />
                   </Button>
                 </Link>
               </div>

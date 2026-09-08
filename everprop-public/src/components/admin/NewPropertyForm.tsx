@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { properties as sampleProperties, type Property } from "@/data/admin-sample";
+import { properties as sampleProperties, type Property, JUJUY_CITIES } from "@/data/admin-sample";
 import { loadPropertyList, savePropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { createEverpropProperty } from "@/lib/everprop-api";
@@ -28,6 +28,8 @@ import LoteFields from "./property-form/LoteFields";
 import CommercialFields from "./property-form/CommercialFields";
 import { formSchema, type FormData, type Category } from "./property-form/types";
 import { GenerateLotsModal } from "./GenerateLotsModal";
+import { useCurrentSession } from "@/hooks/use-current-session";
+import { toast } from "sonner";
 
 type Props = {
   companyId?: string;
@@ -36,6 +38,7 @@ type Props = {
 export default function NewPropertyForm({ companyId = "c1" }: Props) {
   const { currentUser } = useAuth();
   const router = useRouter();
+  const { isAdvisor } = useCurrentSession();
   const searchParams = useSearchParams();
   const paramCategory = searchParams.get("category") as Category | null;
   const paramType = searchParams.get("type") as "Casa" | "Departamento" | "Lote" | "Cochera" | "Local" | null;
@@ -96,6 +99,11 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
   }, [activeTab, setValue]);
 
   const onSubmit = async (data: FormData) => {
+    if (isAdvisor) {
+      setError("Acceso no autorizado: Los asesores no tienen permisos para crear propiedades.");
+      toast.error("Acceso restringido: Los asesores no tienen permisos para crear propiedades.");
+      return;
+    }
     setError("");
     setIsSaving(true);
 
@@ -285,8 +293,25 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="city" className="text-xs font-semibold text-slate-700">Ciudad</FieldLabel>
-                <Input id="city" {...register("city")} placeholder="San Salvador de Jujuy" className="h-10 rounded-lg bg-slate-50 text-sm" />
+                <FieldLabel htmlFor="city" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Ciudad / Localidad <span className="text-rose-500">*</span>
+                </FieldLabel>
+                <select
+                  id="city"
+                  {...register("city")}
+                  className={cn(
+                    "h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100",
+                    errors.city && "border-rose-500"
+                  )}
+                  defaultValue=""
+                >
+                  <option value="">-- Seleccionar Ciudad --</option>
+                  {JUJUY_CITIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
                 {errors.city && <FieldError>{errors.city.message}</FieldError>}
               </Field>
 

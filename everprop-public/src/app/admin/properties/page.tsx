@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import PropertyList from "@/components/admin/PropertyList";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Plus, Map, Building2, RotateCcw, Database, FlaskConical } from "lucide-react";
+import { AlertTriangle, Download, Plus, Map, Building2, RotateCcw, Database, FlaskConical, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { type Project, type Property, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
@@ -12,6 +12,7 @@ import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-ap
 import { canManageInventory } from "@/lib/demo-permissions";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
+import { useCurrentSession } from "@/hooks/use-current-session";
 
 import { isLocalDemo, demoCatalog } from "@/lib/demo-catalog";
 
@@ -22,13 +23,14 @@ type DataState =
 
 const statusFilters = [
   { id: "all", label: "Todos" },
-  { id: "available", label: "Disponible" },
-  { id: "reserved", label: "Reservado" },
-  { id: "sold", label: "Vendido" },
+  { id: "available", label: "Disponibles" },
+  { id: "reserved", label: "No Vendibles / Reserva" },
+  { id: "sold", label: "Vendidos" },
 ] as const;
 
 export default function AllPropertiesPage() {
   const { invalidateSession, currentUser } = useAuth();
+  const { isAdvisor } = useCurrentSession();
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
@@ -38,7 +40,22 @@ export default function AllPropertiesPage() {
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [activeStatus, setActiveStatus] = useState<"all" | "available" | "reserved" | "sold">("all");
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedManzana, setSelectedManzana] = useState<string>("all");
+
+  const [openFilter, setOpenFilter] = useState<'proyecto' | 'estado' | 'manzana' | null>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setOpenFilter(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -99,9 +116,16 @@ export default function AllPropertiesPage() {
     };
   }, [attempt, invalidateSession]);
 
-  const toggleType = (type: string) => {
-    setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
-  };
+  const availableManzanas = useMemo(() => {
+    const pool = selectedProjectId === "all"
+      ? allProperties
+      : allProperties.filter(p => p.projectId === selectedProjectId);
+    const set = new Set<string>();
+    pool.forEach(p => {
+      if (p.sectorName) set.add(p.sectorName);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [allProperties, selectedProjectId]);
 
   const filteredProperties = useMemo(() => {
     let filtered = allProperties.filter(p => `${p.title} ${p.city} ${p.neighborhood}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
@@ -116,13 +140,13 @@ export default function AllPropertiesPage() {
       filtered = filtered.filter(p => p.status === activeStatus || (!p.status && activeStatus === "available"));
     }
 
-    // 3. Type Filter
-    if (selectedTypes.length > 0) {
-      filtered = filtered.filter(p => selectedTypes.includes(p.propertyType));
+    // 3. Manzana Filter
+    if (selectedManzana !== "all") {
+      filtered = filtered.filter(p => p.sectorName === selectedManzana);
     }
 
     return filtered;
-  }, [allProperties, selectedProjectId, activeStatus, selectedTypes, search]);
+  }, [allProperties, selectedProjectId, activeStatus, selectedManzana, search]);
 
   const groupedProperties = useMemo(() => {
     const groups: { projects: Record<string, Property[]>, individual: Property[] } = {
@@ -177,8 +201,8 @@ export default function AllPropertiesPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Propiedades e Inventario</h1>
-          <p className="mt-1 text-slate-500 text-sm">Gestioná todos los activos, lotes y proyectos en cartera.</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Propiedades e Inventario</h1>
+          <p className="mt-1 text-slate-500 dark:text-slate-400 text-sm">Gestioná todos los activos, lotes y proyectos en cartera.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -194,13 +218,13 @@ export default function AllPropertiesPage() {
       <div className={cn(
         "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
         dataState.source === "admin-api"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-          : "border-amber-200 bg-amber-50 text-amber-950",
+          ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+          : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
       )}>
         {dataState.source === "admin-api" ? (
-          <Database className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+          <Database className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
         ) : (
-          <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+          <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         )}
         <p>
           {dataState.source === "admin-api"
@@ -210,91 +234,141 @@ export default function AllPropertiesPage() {
       </div>
 
       {/* Control Panel / Filtros */}
-      <label className="block max-w-lg text-sm font-medium text-slate-700">Buscar propiedad
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nombre, ciudad o barrio" className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3" />
-      </label>
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center">
-
-        {/* Project Filter */}
-        <div className="flex min-w-0 items-center gap-3 w-full sm:w-auto sm:min-w-60">
-          <div className="h-10 w-10 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
-            <Map className="h-5 w-5 text-slate-500" />
-          </div>
-          <select
-            className="text-sm font-semibold border-none bg-transparent focus:ring-0 cursor-pointer p-0 min-w-0 w-full sm:w-48 text-slate-700"
-            aria-label="Filtrar por desarrollo"
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
+      <div className="bg-white dark:bg-card p-4 rounded-2xl border border-slate-200 dark:border-border shadow-sm flex flex-wrap gap-2 items-center relative" ref={filterRef}>
+        {/* Desarrollo Chip */}
+        <div className="relative">
+          <button
+            onClick={() => setOpenFilter(openFilter === 'proyecto' ? null : 'proyecto')}
+            className={cn(
+              "flex items-center gap-1",
+              selectedProjectId === "all"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
+            )}
           >
-            <option value="all">Todos los Desarrollos</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
-
-
-        {/* Status Filter */}
-        <div className="flex flex-wrap items-center gap-2 max-w-full p-1 bg-slate-50 rounded-xl border border-slate-100">
-          {statusFilters.map(tab => (
-            <button
-              aria-pressed={activeStatus === tab.id}
-              key={tab.id}
-              onClick={() => setActiveStatus(tab.id)}
-              className={cn(
-                "min-h-11 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap uppercase tracking-wider",
-                activeStatus === tab.id
-                  ? (tab.id === 'available' ? "bg-emerald-100 text-emerald-700" : tab.id === 'reserved' ? "bg-amber-100 text-amber-700" : tab.id === 'sold' ? "bg-rose-100 text-rose-700" : "bg-white text-slate-800 shadow-sm border border-slate-200")
-                  : "text-slate-500 hover:text-slate-700"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-
-
-        {/* Type Multi-select & Clear Filters */}
-        <div className="flex flex-wrap items-center gap-2 max-w-full">
-          <Building2 className="h-4 w-4 text-slate-400 mr-2 hidden sm:block" />
-          {["Lote", "Departamento", "Local", "Cochera", "Casa"].map(type => (
-            <button
-              aria-pressed={selectedTypes.includes(type)}
-              key={type}
-              onClick={() => toggleType(type)}
-              className={cn(
-                "min-h-11 px-3 py-2 rounded-lg text-xs font-semibold transition-all border",
-                selectedTypes.includes(type) ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-              )}
-            >
-              {type}
-            </button>
-          ))}
-
-          {(selectedProjectId !== "all" || activeStatus !== "all" || selectedTypes.length > 0) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedProjectId("all");
-                setActiveStatus("all");
-                setSelectedTypes([]);
-              }}
-              className="text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold gap-1.5 ml-2"
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Limpiar
-            </Button>
+            Desarrollo: {selectedProjectId === 'all' ? 'Todos' : projects.find(p => p.id === selectedProjectId)?.name || 'Todos'} <ChevronDown className="h-3.5 w-3.5 ml-1" />
+          </button>
+          {openFilter === 'proyecto' && (
+            <div className="absolute z-50 mt-1 min-w-[180px] rounded-xl border border-slate-200 bg-white shadow-lg dark:bg-slate-900 dark:border-slate-800 p-1">
+              <button
+                onClick={() => { setSelectedProjectId('all'); setOpenFilter(null); }}
+                className={cn(
+                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                  selectedProjectId === 'all' && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
+                )}
+              >
+                Todos
+              </button>
+              {projects.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => { setSelectedProjectId(p.id); setOpenFilter(null); }}
+                  className={cn(
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    selectedProjectId === p.id && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
+                  )}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
           )}
         </div>
+
+        {/* Estado Chip */}
+        <div className="relative">
+          <button
+            onClick={() => setOpenFilter(openFilter === 'estado' ? null : 'estado')}
+            className={cn(
+              "flex items-center gap-1",
+              activeStatus === "all"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
+            )}
+          >
+            Estado: {statusFilters.find(s => s.id === activeStatus)?.label || 'Todos'} <ChevronDown className="h-3.5 w-3.5 ml-1" />
+          </button>
+          {openFilter === 'estado' && (
+            <div className="absolute z-50 mt-1 min-w-[180px] rounded-xl border border-slate-200 bg-white shadow-lg dark:bg-slate-900 dark:border-slate-800 p-1">
+              {statusFilters.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveStatus(tab.id); setOpenFilter(null); }}
+                  className={cn(
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    activeStatus === tab.id && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Manzana Chip */}
+        <div className="relative">
+          <button
+            onClick={() => setOpenFilter(openFilter === 'manzana' ? null : 'manzana')}
+            className={cn(
+              "flex items-center gap-1",
+              selectedManzana === "all"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
+            )}
+          >
+            Mz: {selectedManzana === 'all' ? 'Todas' : selectedManzana.replace(/manzana\s*/i, "Mz ")} <ChevronDown className="h-3.5 w-3.5 ml-1" />
+          </button>
+          {openFilter === 'manzana' && (
+            <div className="absolute z-50 mt-1 min-w-[180px] rounded-xl border border-slate-200 bg-white shadow-lg dark:bg-slate-900 dark:border-slate-800 p-1 max-h-60 overflow-y-auto">
+              <button
+                onClick={() => { setSelectedManzana('all'); setOpenFilter(null); }}
+                className={cn(
+                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                  selectedManzana === 'all' && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
+                )}
+              >
+                Todas
+              </button>
+              {availableManzanas.map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setSelectedManzana(m); setOpenFilter(null); }}
+                  className={cn(
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    selectedManzana === m && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
+                  )}
+                >
+                  {m.replace(/manzana\s*/i, "Mz ")}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Clear Filters Button */}
+        {(selectedProjectId !== "all" || activeStatus !== "all" || selectedManzana !== "all") && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedProjectId("all");
+              setActiveStatus("all");
+              setSelectedManzana("all");
+            }}
+            className="text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/30 font-semibold gap-1.5"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Limpiar
+          </Button>
+        )}
       </div>
 
       {/* Content Rendering */}
       {filteredProperties.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <Building2 className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
-          <h2 className="mt-4 text-lg font-bold text-slate-900">No hay propiedades para mostrar</h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
+        <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-card px-6 py-14 text-center">
+          <Building2 className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+          <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-slate-100">No hay propiedades para mostrar</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">
             {allProperties.length === 0
               ? "La consulta fue válida y el catálogo administrativo está vacío. No se sustituyó con datos mock."
               : "Ninguna propiedad coincide con los filtros seleccionados."}
@@ -307,11 +381,11 @@ export default function AllPropertiesPage() {
             const proj = projects.find(p => p.id === pId);
             return (
               <div key={pId} className="space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                    <Map className="h-6 w-6 text-blue-600" /> {proj?.name || "Proyecto"}
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    <Map className="h-6 w-6 text-blue-600 dark:text-blue-400" /> {proj?.name || "Proyecto"}
                   </h2>
-                  <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full">
+                  <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 rounded-full">
                     {props.length} unidades
                   </span>
                 </div>
@@ -323,11 +397,11 @@ export default function AllPropertiesPage() {
           {/* Individual properties */}
           {groupedProperties.individual.length > 0 && (
             <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                  <Building2 className="h-6 w-6 text-emerald-600" /> Propiedades Individuales
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Building2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" /> Propiedades Individuales
                 </h2>
-                <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full">
+                <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 rounded-full">
                   {groupedProperties.individual.length} unidades
                 </span>
               </div>
