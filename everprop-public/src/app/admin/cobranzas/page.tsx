@@ -95,21 +95,39 @@ export default function CobranzasPage() {
 
   // Load and evaluate data
   useEffect(() => {
-    const loadedLeads = loadLeadList(adminSample.leads, "c1");
-    const loadedAgreements = loadPaymentAgreementList(samplePaymentAgreements, "c1");
-    const loadedInstallments = loadInstallmentList(sampleInstallments, "c1");
+    function loadData() {
+      const loadedLeads = loadLeadList(adminSample.leads, "c1");
+      const loadedAgreements = loadPaymentAgreementList(samplePaymentAgreements, "c1");
+      const loadedInstallments = loadInstallmentList(sampleInstallments, "c1");
 
-    setLeads(loadedLeads);
-    setAgreements(loadedAgreements);
+      setLeads(loadedLeads);
+      setAgreements(loadedAgreements);
 
-    // Dynamic evaluation and notification dispatch
-    const { installments: evaluated } = evaluateInstallmentsAndNotify(
-      loadedAgreements,
-      loadedInstallments,
-      loadedLeads,
-      "c1"
-    );
-    setInstallments(evaluated);
+      // Dynamic evaluation and notification dispatch
+      const { installments: evaluated } = evaluateInstallmentsAndNotify(
+        loadedAgreements,
+        loadedInstallments,
+        loadedLeads,
+        "c1"
+      );
+      setInstallments(evaluated);
+    }
+
+    loadData();
+
+    window.addEventListener("everprop_agreements_updated", loadData);
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel("everprop_agreements");
+      channel.onmessage = () => loadData();
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      window.removeEventListener("everprop_agreements_updated", loadData);
+      channel?.close();
+    };
   }, []);
 
   // Filter agreements & installments by current user role/advisor assignment

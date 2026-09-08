@@ -11,6 +11,9 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
+  ReceiptText,
+  Check,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -21,14 +24,27 @@ import {
   cacPayment,
   type FinancingPlan,
 } from "@/lib/bellomo-financing";
+import {
+  createAgreementWithInstallments,
+  loadPaymentAgreementList,
+  loadInstallmentList,
+} from "@/lib/admin-storage";
+import { samplePaymentAgreements, sampleInstallments } from "@/data/admin-sample";
+import { getTodayDateString } from "@/lib/installment-notifications";
+import { toast } from "sonner";
 
 export type FinancingCalculatorProps = {
   /** Pre-fill with the primary property price */
   defaultPrice?: number;
   defaultCurrency?: "USD" | "ARS";
   leadName?: string;
+  leadId?: string;
+  advisorId?: string;
+  propertyTitle?: string;
   projectName?: string;
+  companyId?: string;
   className?: string;
+  onPlanCreated?: () => void;
 };
 
 function fmt(n: number, currency: "USD" | "ARS") {
@@ -43,8 +59,13 @@ export default function FinancingCalculator({
   defaultPrice = 0,
   defaultCurrency = "USD",
   leadName,
+  leadId,
+  advisorId,
+  propertyTitle,
   projectName,
+  companyId = "c1",
   className,
+  onPlanCreated,
 }: FinancingCalculatorProps) {
   const componentId = useId();
   const [isOpen, setIsOpen] = useState(Boolean(projectName || defaultPrice > 0));
@@ -163,6 +184,87 @@ export default function FinancingCalculator({
     }
     return cacPayment(summary.balance, numericMonths, numericCacBase, numericCacDue);
   }, [mode, summary, numericMonths, numericCacBase, numericCacDue]);
+
+  // Confirmation modal state for creating payment agreement
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [confirmDueDay, setConfirmDueDay] = useState<number>(10);
+  const [confirmStartDate, setConfirmStartDate] = useState<string>(getTodayDateString());
+  const [confirmNotes, setConfirmNotes] = useState<string>("");
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+
+  const handleConfirmCreatePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadId) {
+      toast.error("No se encontró un lead activo para vincular el plan de pago.");
+      return;
+    }
+    if (!summary?.valid || summary.balance === null) {
+      toast.error("La financiación no es válida o no cubre el anticipo mínimo.");
+      return;
+    }
+
+    setIsCreatingPlan(true);
+
+    try {
+      const allAgreements = loadPaymentAgreementList(samplePaymentAgreements, companyId);
+      const allInstallments = loadInstallmentList(sampleInstallments, companyId);
+
+      const finalTotalPrice = summary.net;
+      const finalDownPayment = summary.initial ?? 0;
+      const finalFinancedBalance = summary.balance;
+
+      const modalityMap: Record<string, "FIXED" | "CAC" | "STEPPED"> = {
+        fixed: "FIXED",
+        cac: "CAC",
+        stepped: "STEPPED",
+      };
+
+      const result = createAgreementWithInstallments(
+        {
+          leadId,
+          advisorId: advisorId || "usr-sales",
+          projectName: selectedPlanName || projectName || "Financiación Bellomo",
+          propertyTitle: propertyTitle || undefined,
+          currency,
+          modality: modalityMap[mode] || "FIXED",
+          totalPrice: finalTotalPrice,
+          downPayment: finalDownPayment,
+          financedBalance: finalFinancedBalance,
+          totalInstallments: numericMonths,
+          dayOfMonthDue: confirmDueDay,
+          startDate: confirmStartDate,
+          notes: confirmNotes
+            ? `Plan desde calculadora: ${confirmNotes}`
+            : `Plan comercial generado desde el simulador (${selectedPlanName})`,
+        },
+        allAgreements,
+        allInstallments,
+        companyId
+      );
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("everprop_agreements_updated"));
+        try {
+          const channel = new BroadcastChannel("everprop_agreements");
+          channel.postMessage({ type: "AGREEMENT_CREATED", agreementId: result.agreement.id });
+          channel.close();
+        } catch {
+          // ignore
+        }
+      }
+
+      onPlanCreated?.();
+      toast.success(
+        `Plan ${result.agreement.publicId} creado exitosamente con ${numericMonths} cuotas`
+      );
+      setIsConfirmModalOpen(false);
+    } catch (err: any) {
+      console.error("Error al crear plan de pago:", err);
+      toast.error("Error al generar el plan de pago.");
+    } finally {
+      setIsCreatingPlan(false);
+    }
+  };
 
   return (
     <div
@@ -540,6 +642,23 @@ export default function FinancingCalculator({
                   El plan escalonado aplica a lotes de 300 m² en 72 cuotas. Solicitar escala anual vigente a gerencia comercial.
                 </div>
               )}
+
+              {/* Botón: Crear plan de pago con esta financiación */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <ReceiptText className="size-4" />
+                  <span>Crear plan de pago con esta financiación</span>
+                </button>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center mt-1.5">
+                  {leadName
+                    ? `Genera el contrato comercial y el cronograma de ${numericMonths} cuotas para ${leadName}.`
+                    : `Genera el contrato y el cronograma de ${numericMonths} cuotas a pagar.`}
+                </p>
+              </div>
             </div>
           ) : (
             numericPrice > 0 && (
@@ -578,6 +697,137 @@ export default function FinancingCalculator({
           <div className="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
             <span>Fuente: Condiciones oficiales de Financiación Bellomo.</span>
             <span>Simulación orientativa de trabajo.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación para Crear Plan de Pago */}
+      {isConfirmModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <ReceiptText className="size-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Confirmar Plan de Pago
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsConfirmModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCreatePlan} className="mt-4 space-y-3.5 text-xs">
+              {/* Resumen de la financiación simulada */}
+              <div className="rounded-xl bg-slate-50 p-3.5 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Cliente:</span>
+                  <strong className="text-slate-900 dark:text-slate-100">{leadName || "Cliente actual"}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Desarrollo:</span>
+                  <strong className="text-slate-900 dark:text-slate-100">
+                    {selectedPlanName} {propertyTitle ? `(${propertyTitle})` : ""}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Precio Total:</span>
+                  <strong className="text-slate-900 dark:text-slate-100">
+                    {fmt(summary?.net ?? numericPrice, currency)}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Anticipo Pactado:</span>
+                  <strong className="text-slate-900 dark:text-slate-100">
+                    {fmt(summary?.initial ?? 0, currency)}
+                  </strong>
+                </div>
+                <div className="flex justify-between border-t border-slate-200 dark:border-slate-800 pt-1.5">
+                  <span className="text-slate-700 dark:text-slate-300 font-bold">Saldo Financiado:</span>
+                  <strong className="text-blue-600 dark:text-blue-400 font-extrabold">
+                    {fmt(summary?.balance ?? 0, currency)}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Modalidad & Plazo:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {mode === "fixed" ? `Fija (${monthlyRate}% mens.)` : mode === "cac" ? "Ajustable CAC" : "Escalonado"} · {numericMonths} cuotas
+                  </span>
+                </div>
+                {mode === "fixed" && fixedCalc && (
+                  <div className="flex justify-between bg-blue-50 dark:bg-blue-950/40 p-2 rounded-lg mt-1 text-blue-900 dark:text-blue-200">
+                    <span className="font-bold">Cuota Mensual:</span>
+                    <span className="font-extrabold">{fmt(fixedCalc.monthly, currency)} / mes</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Parámetros operativos */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold text-slate-700 dark:text-slate-300">
+                    Día de Vencimiento
+                  </label>
+                  <select
+                    value={confirmDueDay}
+                    onChange={(e) => setConfirmDueDay(Number(e.target.value))}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 font-semibold"
+                  >
+                    {[5, 10, 15, 20, 25].map((d) => (
+                      <option key={d} value={d}>
+                        Día {d} de cada mes
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 dark:text-slate-300">
+                    Fecha de Inicio
+                  </label>
+                  <input
+                    type="date"
+                    value={confirmStartDate}
+                    onChange={(e) => setConfirmStartDate(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300">
+                  Notas adicionales (opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="ej. Se pactó anticipo en 2 partes"
+                  value={confirmNotes}
+                  onChange={(e) => setConfirmNotes(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmModalOpen(false)}
+                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingPlan}
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Check className="size-3.5" />
+                  <span>{isCreatingPlan ? "Creando..." : "Confirmar y Generar Plan"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

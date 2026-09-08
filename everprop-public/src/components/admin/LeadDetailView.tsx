@@ -451,7 +451,16 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           defaultPrice={primaryProperty?.price}
           defaultCurrency={(primaryProperty?.currency as "USD" | "ARS") ?? "USD"}
           leadName={lead.name}
+          leadId={lead.id}
+          advisorId={lead.agentId}
+          propertyTitle={primaryProperty?.title}
           projectName={primaryProject?.name}
+          companyId={lead.companyId}
+          onPlanCreated={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("everprop_agreements_updated"));
+            }
+          }}
         />
       </div>
 

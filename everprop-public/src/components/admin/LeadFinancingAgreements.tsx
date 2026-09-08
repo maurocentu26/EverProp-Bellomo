@@ -86,6 +86,10 @@ export function LeadFinancingAgreements({
 
   useEffect(() => {
     refreshData();
+    window.addEventListener("everprop_agreements_updated", refreshData);
+    return () => {
+      window.removeEventListener("everprop_agreements_updated", refreshData);
+    };
   }, [leadId, companyId]);
 
   // Lead agreements and installments
