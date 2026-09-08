@@ -64,6 +64,7 @@ import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
 import { LeadFollowUpTimeline } from "@/components/admin/LeadFollowUpTimeline";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
+import { LeadFinancingAgreements } from "@/components/admin/LeadFinancingAgreements";
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
   loteo: "Loteos",
@@ -428,6 +429,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const primaryProperty = interestAssetIds[0]
     ? (propertyById.get(interestAssetIds[0]) || allProperties.find((p) => p.id === interestAssetIds[0]))
     : undefined;
+  const primaryProject = primaryProperty?.projectId
+    ? allProjects.find((p) => p.id === primaryProperty.projectId)
+    : interests[0]?.projectId
+    ? allProjects.find((p) => p.id === interests[0].projectId)
+    : undefined;
   const assignedAgent = getAdvisor(lead.agentId, lead.agentName);
 
   const cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
@@ -437,6 +443,26 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       <Link href="/admin/leads" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-blue-700">
         <ArrowLeft className="size-4" aria-hidden="true" /> Volver al pipeline
       </Link>
+
+      {/* Financing Calculator Card */}
+      <div className="min-w-0">
+        <FinancingCalculator
+          key={`${lead.id}-${primaryProperty?.id ?? "none"}`}
+          defaultPrice={primaryProperty?.price}
+          defaultCurrency={(primaryProperty?.currency as "USD" | "ARS") ?? "USD"}
+          leadName={lead.name}
+          leadId={lead.id}
+          advisorId={lead.agentId}
+          propertyTitle={primaryProperty?.title}
+          projectName={primaryProject?.name}
+          companyId={lead.companyId}
+          onPlanCreated={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("everprop_agreements_updated"));
+            }
+          }}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* ── Main Column (8 cols): Deep content ── */}
@@ -491,6 +517,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               <LeadFollowUpTimeline leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
             </div>
           </section>
+
+          {/* Financing Agreements & Installment Tracking */}
+          <LeadFinancingAgreements
+            leadId={lead.id}
+            leadName={lead.name}
+            leadPhone={lead.phone}
+            companyId={lead.companyId}
+            advisorId={lead.agentId}
+          />
 
           {/* Interests Section */}
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-interests-title">
@@ -672,11 +707,6 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               Registrar seguimiento
             </Button>
           </section>
-
-          {/* Financing Calculator Card */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
-            <FinancingCalculator defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "USD"} leadName={lead.name} />
-          </div>
         </div>
       </div>
 

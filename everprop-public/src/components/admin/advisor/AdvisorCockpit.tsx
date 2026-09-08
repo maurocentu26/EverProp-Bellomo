@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   AlertTriangle, 
   Calendar, 
@@ -22,7 +23,9 @@ import {
   Lightbulb,
   Building2,
   BarChart3,
-  Users
+  Users,
+  Loader2,
+  ReceiptText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -30,16 +33,21 @@ import {
   type LeadFollowUp, 
   type Property, 
   type Project,
+  type Installment,
   leads as sampleLeads, 
   properties as sampleProperties,
-  projects as sampleProjects 
+  projects as sampleProjects,
+  sampleInstallments,
 } from "@/data/admin-sample";
 import { 
   loadLeadFollowUpList, 
   loadLeadList, 
   appendLeadFollowUpToStorage,
-  saveLeadList 
+  saveLeadList,
+  loadInstallmentList,
 } from "@/lib/admin-storage";
+import { evaluateInstallmentStatus, getTodayDateString } from "@/lib/installment-notifications";
+import { isNotificationForUser } from "@/lib/notifications";
 import { getLeadFollowUpState } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
 import { 
@@ -76,10 +84,13 @@ export default function AdvisorCockpit() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQueueFilter, setActiveQueueFilter] = useState<"all" | "overdue" | "today" | "new">("all");
+  const router = useRouter();
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
+  const [updatingStageLeadId, setUpdatingStageLeadId] = useState<string | null>(null);
   const [selectedPropertyByLead, setSelectedPropertyByLead] = useState<Record<string, string>>({});
   const [showMonthBalance, setShowMonthBalance] = useState(false);
+  const [installments, setInstallments] = useState<Installment[]>([]);
 
   // Carga de datos inicial y sincronización en tiempo real
   useEffect(() => {
@@ -90,6 +101,7 @@ export default function AdvisorCockpit() {
       let loadedFollowUps: LeadFollowUp[] = [];
       let loadedProperties: Property[] = sampleProperties;
       let loadedProjects: Project[] = sampleProjects;
+      const loadedInst = loadInstallmentList(sampleInstallments, "c1");
 
       if (!isMockDataMode) {
         try {
@@ -111,7 +123,7 @@ export default function AdvisorCockpit() {
               loadedProjects = catalog.projects;
             }
             const localFollowUps = loadLeadFollowUpList([], "c1");
-            const apiFuIds = new Set(apiFollowUps.map((f) => f.id));
+            const apiFuIds = new Set(apiFollowUps.map((f: LeadFollowUp) => f.id));
             const extraLocalFus = localFollowUps.filter((f) => !apiFuIds.has(f.id));
             loadedFollowUps = [...apiFollowUps, ...extraLocalFus];
           }
@@ -130,6 +142,7 @@ export default function AdvisorCockpit() {
         setFollowUps(loadedFollowUps);
         setProperties(loadedProperties);
         setProjects(loadedProjects);
+        setInstallments(loadedInst);
         setIsLoaded(true);
       }
     }
@@ -169,6 +182,15 @@ export default function AdvisorCockpit() {
       month: "long",
     });
   }, []);
+
+  const overdueInstallmentsCount = useMemo(() => {
+    const today = getTodayDateString();
+    return installments.filter((inst) => {
+      if (user && !isNotificationForUser(inst.advisorId, user)) return false;
+      const { status } = evaluateInstallmentStatus(inst, today);
+      return status === "OVERDUE";
+    }).length;
+  }, [installments, user]);
 
   // Filtrar leads del asesor comercial (si es admin, ve todos los leads de la empresa)
   const myLeads = useMemo(() => {
@@ -291,46 +313,13 @@ export default function AdvisorCockpit() {
     }
 
     const targetPropId = propertyId || selectedPropertyByLead[leadId] || targetLead.propertyIds?.[0] || targetLead.interests?.[0]?.propertyId || targetLead.interests?.[0]?.unitId;
+    const stageConfig = STAGE_OPTIONS.find((s) => s.id === newStage);
 
-    // Actualización optimista local
-    const updated = leads.map((l) => {
-      if (l.id !== leadId) return l;
-
-      let updatedInterests = l.interests;
-      if (targetPropId && l.interests && l.interests.length > 0) {
-        updatedInterests = l.interests.map((interest) => {
-          if (interest.propertyId === targetPropId || interest.unitId === targetPropId) {
-            return { ...interest, status: newStage };
-          }
-          return interest;
-        });
-      }
-
-      return {
-        ...l,
-        stage: newStage,
-        interests: updatedInterests,
-      };
-    });
-
-    setLeads(updated);
-    saveLeadList(updated, "c1");
+    setUpdatingStageLeadId(leadId);
 
     try {
-      window.dispatchEvent(new Event("everprop_leads_updated"));
-      const ch = new BroadcastChannel("everprop_leads");
-      ch.postMessage({ type: "LEADS_UPDATED" });
-      ch.close();
-    } catch {
-      // ignore
-    }
-
-    const stageConfig = STAGE_OPTIONS.find((s) => s.id === newStage);
-    toast.success(`Etapa cambiada a "${stageConfig?.label || newStage}"`);
-
-    // Sincronización API
-    if (!isMockDataMode) {
-      try {
+      // Sincronización API antes de confirmar el cambio
+      if (!isMockDataMode) {
         const promises: Promise<unknown>[] = [
           updateEverpropLead(leadId, {
             stage: stageConfig?.apiCode || "NEW",
@@ -348,11 +337,47 @@ export default function AdvisorCockpit() {
         }
 
         await Promise.all(promises);
-      } catch (err) {
-        console.error("Error al actualizar etapa en backend:", err);
-        toast.error("Error al sincronizar con el servidor, guardado localmente.");
-        setLeads(previousLeads);
       }
+
+      // Actualización local una vez confirmado el patch
+      const updated = leads.map((l) => {
+        if (l.id !== leadId) return l;
+
+        let updatedInterests = l.interests;
+        if (targetPropId && l.interests && l.interests.length > 0) {
+          updatedInterests = l.interests.map((interest) => {
+            if (interest.propertyId === targetPropId || interest.unitId === targetPropId) {
+              return { ...interest, status: newStage };
+            }
+            return interest;
+          });
+        }
+
+        return {
+          ...l,
+          stage: newStage,
+          interests: updatedInterests,
+        };
+      });
+
+      setLeads(updated);
+      saveLeadList(updated, "c1");
+
+      try {
+        window.dispatchEvent(new Event("everprop_leads_updated"));
+        const ch = new BroadcastChannel("everprop_leads");
+        ch.postMessage({ type: "LEADS_UPDATED" });
+        ch.close();
+      } catch {
+        // ignore
+      }
+
+      toast.success(`Etapa cambiada a "${stageConfig?.label || newStage}"`);
+    } catch (err) {
+      console.error("Error al actualizar etapa en backend:", err);
+      toast.error("No se pudo actualizar la etapa en el servidor.");
+    } finally {
+      setUpdatingStageLeadId(null);
     }
   }
 
@@ -464,6 +489,12 @@ export default function AdvisorCockpit() {
                 Agenda
               </Button>
             </Link>
+            <Link href="/admin/cobranzas" className="flex-1">
+              <Button variant="outline" className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                <ReceiptText className="size-3.5 text-blue-600 dark:text-blue-400" />
+                Cuotas
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -506,9 +537,15 @@ export default function AdvisorCockpit() {
               </Button>
             </Link>
             <Link href="/admin/agenda">
-              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs">
+              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
                 <CalendarDays className="size-4" />
                 Mi Agenda
+              </Button>
+            </Link>
+            <Link href="/admin/cobranzas">
+              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                <ReceiptText className="size-4 text-blue-600 dark:text-blue-400" />
+                Cobranzas & Cuotas
               </Button>
             </Link>
           </div>
@@ -618,6 +655,32 @@ export default function AdvisorCockpit() {
         </Link>
       </div>
 
+      {/* ── ALERTA DE MORA EN CUOTAS DE CLIENTES ── */}
+      {overdueInstallmentsCount > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/20">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 shrink-0">
+              <ReceiptText className="size-5" />
+            </span>
+            <div>
+              <p className="text-xs font-bold text-rose-950 dark:text-rose-100">
+                Alerta de Mora: Tenés {overdueInstallmentsCount} cuota(s) vencida(s) en tu cartera de leads
+              </p>
+              <p className="text-[11px] text-rose-700 dark:text-rose-400">
+                Registrá el cobro recibido o enviá el recordatorio personalizado por WhatsApp con 1 clic.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/cobranzas?status=overdue"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-rose-700 shrink-0"
+          >
+            <span>Gestionar Mora</span>
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      )}
+
       {/* ── CUERPO PRINCIPAL: COLA DE ACCIÓN + AGENDA LATERAL ── */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Columna Izquierda: Cola de Tareas Prioritarias (2 columnas en lg) */}
@@ -723,8 +786,12 @@ export default function AdvisorCockpit() {
                 return (
                   <article
                     key={lead.id}
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("button, a, select, input, label")) return;
+                      router.push(`/admin/leads/${lead.id}`);
+                    }}
                     className={cn(
-                      "rounded-2xl border bg-white p-3.5 shadow-sm transition-all sm:p-5 dark:bg-card dark:border-border",
+                      "rounded-2xl border bg-white p-3.5 shadow-sm transition-all sm:p-5 dark:bg-card dark:border-border cursor-pointer hover:shadow-md",
                       isOverdue
                         ? "border-rose-200 hover:border-rose-400 dark:border-rose-900/60"
                         : isDueToday
@@ -771,21 +838,30 @@ export default function AdvisorCockpit() {
                       </div>
 
                       {/* Stage selector - compact on mobile */}
-                      <select
-                        value={activePropStage}
-                        onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
-                        className={cn(
-                          "hidden sm:block h-7 shrink-0 rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs",
-                          currentStageObj.color
+                      <div className="relative inline-flex items-center">
+                        {updatingStageLeadId === lead.id && (
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center z-10 pointer-events-none">
+                            <Loader2 className="size-3 animate-spin text-blue-600 dark:text-blue-400" />
+                          </span>
                         )}
-                        title={matchedProperty ? `Etapa comercial para ${matchedProperty.title}` : "Etapa comercial del lead"}
-                      >
-                        {STAGE_OPTIONS.map((opt) => (
-                          <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        <select
+                          disabled={updatingStageLeadId === lead.id}
+                          value={activePropStage}
+                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
+                          className={cn(
+                            "hidden sm:block h-7 shrink-0 rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed",
+                            updatingStageLeadId === lead.id && "pl-6",
+                            currentStageObj.color
+                          )}
+                          title={matchedProperty ? `Etapa comercial para ${matchedProperty.title}` : "Etapa comercial del lead"}
+                        >
+                          {STAGE_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     {/* Switcher de Propiedades si el lead tiene múltiples intereses con estados independientes */}
@@ -849,20 +925,29 @@ export default function AdvisorCockpit() {
                         </div>
                       )}
                       {/* Mobile-only stage selector */}
-                      <select
-                        value={activePropStage}
-                        onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
-                        className={cn(
-                          "sm:hidden h-7 shrink-0 rounded-lg border px-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs max-w-[100px]",
-                          currentStageObj.color
+                      <div className="relative inline-flex items-center sm:hidden shrink-0">
+                        {updatingStageLeadId === lead.id && (
+                          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center z-10 pointer-events-none">
+                            <Loader2 className="size-3 animate-spin text-blue-600 dark:text-blue-400" />
+                          </span>
                         )}
-                      >
-                        {STAGE_OPTIONS.map((opt) => (
-                          <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        <select
+                          disabled={updatingStageLeadId === lead.id}
+                          value={activePropStage}
+                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
+                          className={cn(
+                            "h-7 shrink-0 rounded-lg border px-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs max-w-[110px] disabled:opacity-60 disabled:cursor-not-allowed",
+                            updatingStageLeadId === lead.id && "pl-5",
+                            currentStageObj.color
+                          )}
+                        >
+                          {STAGE_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     {/* Row 3: Contact data + last follow-up (compact) */}

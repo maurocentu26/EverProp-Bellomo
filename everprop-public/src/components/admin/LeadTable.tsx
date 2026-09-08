@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { 
   MessageCircle, 
   Eye,
   Phone,
   ClipboardCheck,
+  Loader2,
 } from "lucide-react";
 import { properties as sampleProperties, type Lead, type LeadFollowUp } from "@/data/admin-sample";
 import { Button } from "@/components/ui/button";
@@ -95,14 +97,25 @@ function LeadActions({ lead, onView, onFollowUp }: LeadActionsProps) {
 export type LeadTableProps = {
   leads: Lead[];
   followUps: LeadFollowUp[];
-  onStageChange?: (leadId: string, stage: Lead["stage"]) => void;
+  onStageChange?: (leadId: string, stage: Lead["stage"]) => Promise<void> | void;
   onFollowUp?: (lead: Lead) => void;
 };
 
 export default function LeadTable({ leads, followUps, onStageChange, onFollowUp }: LeadTableProps) {
   const router = useRouter();
+  const [updatingStageLeadId, setUpdatingStageLeadId] = useState<string | null>(null);
 
   const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase();
+
+  const handleStageSelect = async (leadId: string, newStage: Lead["stage"]) => {
+    if (updatingStageLeadId) return;
+    try {
+      setUpdatingStageLeadId(leadId);
+      await onStageChange?.(leadId, newStage);
+    } finally {
+      setUpdatingStageLeadId(null);
+    }
+  };
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-sm">
@@ -113,7 +126,14 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
           const currentStage = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
 
           return (
-            <article key={lead.id} className="p-3.5 sm:p-4">
+            <article
+              key={lead.id}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button, a, select, input, label")) return;
+                router.push(`/admin/leads/${lead.id}`);
+              }}
+              className="p-3.5 sm:p-4 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+            >
               {/* Row 1: Avatar + Name + Origin dot + Stage selector */}
               <div className="flex items-center gap-2.5">
                 <Avatar className="size-9 shrink-0 border border-slate-100 dark:border-slate-800">
@@ -128,21 +148,30 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
                     <span className="truncate">{lead.origin}</span>
                   </p>
                 </div>
-                <select
-                  aria-label={`Cambiar estado de ${lead.name}`}
-                  value={lead.stage}
-                  onChange={(e) => onStageChange?.(lead.id, e.target.value as Lead["stage"])}
-                  className={cn(
-                    "cursor-pointer shrink-0 rounded-lg border px-2 py-1 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-400",
-                    currentStage.class
+                <div className="relative inline-flex items-center shrink-0">
+                  {updatingStageLeadId === lead.id && (
+                    <span className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center z-10 pointer-events-none">
+                      <Loader2 className="size-3 animate-spin text-blue-600 dark:text-blue-400" />
+                    </span>
                   )}
-                >
-                  {STAGE_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    aria-label={`Cambiar estado de ${lead.name}`}
+                    disabled={updatingStageLeadId === lead.id}
+                    value={lead.stage}
+                    onChange={(e) => handleStageSelect(lead.id, e.target.value as Lead["stage"])}
+                    className={cn(
+                      "cursor-pointer shrink-0 rounded-lg border px-2 py-1 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60 disabled:cursor-not-allowed",
+                      updatingStageLeadId === lead.id && "pl-5",
+                      currentStage.class
+                    )}
+                  >
+                    {STAGE_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Row 2: Property interest + price + follow-up status */}
@@ -190,7 +219,14 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
               const currentStage = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
 
               return (
-                <tr key={lead.id} className="group hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors">
+                <tr
+                  key={lead.id}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest("button, a, select, input, label")) return;
+                    router.push(`/admin/leads/${lead.id}`);
+                  }}
+                  className="group hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                >
                   {/* Columna: Interesado */}
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -225,21 +261,30 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
 
                   {/* Columna: Estado con Dropdown Inline */}
                   <td className="px-4 py-4">
-                    <select
-                      aria-label={`Cambiar estado de ${lead.name}`}
-                      value={lead.stage}
-                      onChange={(e) => onStageChange?.(lead.id, e.target.value as Lead["stage"])}
-                      className={cn(
-                        "cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-400",
-                        currentStage.class
+                    <div className="relative inline-flex items-center">
+                      {updatingStageLeadId === lead.id && (
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center z-10 pointer-events-none">
+                          <Loader2 className="size-3 animate-spin text-blue-600 dark:text-blue-400" />
+                        </span>
                       )}
-                    >
-                      {STAGE_OPTIONS.map((opt) => (
-                        <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                      <select
+                        aria-label={`Cambiar estado de ${lead.name}`}
+                        disabled={updatingStageLeadId === lead.id}
+                        value={lead.stage}
+                        onChange={(e) => handleStageSelect(lead.id, e.target.value as Lead["stage"])}
+                        className={cn(
+                          "cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60 disabled:cursor-not-allowed",
+                          updatingStageLeadId === lead.id && "pl-6",
+                          currentStage.class
+                        )}
+                      >
+                        {STAGE_OPTIONS.map((opt) => (
+                          <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
 
                   {/* Columna: Origen */}
