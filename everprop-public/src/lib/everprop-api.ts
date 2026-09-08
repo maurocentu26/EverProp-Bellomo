@@ -91,7 +91,7 @@ function xsrfToken() {
   return entry ? decodeURIComponent(entry.slice("XSRF-TOKEN=".length)) : "";
 }
 
-async function apiFetch<T>(path: string, init: RequestInit = {}) {
+export async function apiFetch<T>(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   headers.set("X-Everprop-Tenant", TENANT);
@@ -140,6 +140,7 @@ async function apiFetch<T>(path: string, init: RequestInit = {}) {
 }
 
 function mapRole(role: string): UserRole {
+  if (role === "INVENTORY_MANAGER") return "ENGINEER";
   if (role === "SUPER_ADMIN" || role === "TENANT_ADMIN" || role === "SALES_MANAGER") return "ADMIN";
   return "ADVISOR";
 }
@@ -160,7 +161,7 @@ function mapUser(user: ApiUser): UserProfile {
     apiRole: user.role,
     name,
     avatar: avatar || "EP",
-    title: user.tenant?.name ? `${user.tenant.name} · API` : "Usuario EverProp",
+    title: user.tenant?.name || "Usuario EverProp",
     permissions: user.capabilities,
     source: "api",
   };

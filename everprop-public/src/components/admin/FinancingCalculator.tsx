@@ -26,10 +26,9 @@ import {
 } from "@/lib/bellomo-financing";
 import {
   createAgreementWithInstallments,
-  loadPaymentAgreementList,
-  loadInstallmentList,
-} from "@/lib/admin-storage";
-import { samplePaymentAgreements, sampleInstallments } from "@/data/admin-sample";
+} from "@/lib/collections-api";
+import { isMockDataMode } from "@/lib/data-mode";
+
 import { getTodayDateString } from "@/lib/installment-notifications";
 import { toast } from "sonner";
 
@@ -192,8 +191,10 @@ export default function FinancingCalculator({
   const [confirmNotes, setConfirmNotes] = useState<string>("");
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
 
-  const handleConfirmCreatePlan = (e: React.FormEvent) => {
+  const handleConfirmCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCreatingPlan) return;
+    if (!isMockDataMode && mode !== "fixed") { toast.error("La creación online admite cuotas fijas; CAC y escalonado siguen disponibles como simulación."); return; }
     if (!leadId) {
       toast.error("No se encontró un lead activo para vincular el plan de pago.");
       return;
@@ -206,8 +207,7 @@ export default function FinancingCalculator({
     setIsCreatingPlan(true);
 
     try {
-      const allAgreements = loadPaymentAgreementList(samplePaymentAgreements, companyId);
-      const allInstallments = loadInstallmentList(sampleInstallments, companyId);
+
 
       const finalTotalPrice = summary.net;
       const finalDownPayment = summary.initial ?? 0;
@@ -219,7 +219,7 @@ export default function FinancingCalculator({
         stepped: "STEPPED",
       };
 
-      const result = createAgreementWithInstallments(
+      const result = await createAgreementWithInstallments(
         {
           leadId,
           advisorId: advisorId || "usr-sales",
@@ -231,14 +231,15 @@ export default function FinancingCalculator({
           downPayment: finalDownPayment,
           financedBalance: finalFinancedBalance,
           totalInstallments: numericMonths,
+          monthlyRatePct: monthlyRate,
           dayOfMonthDue: confirmDueDay,
           startDate: confirmStartDate,
           notes: confirmNotes
             ? `Plan desde calculadora: ${confirmNotes}`
             : `Plan comercial generado desde el simulador (${selectedPlanName})`,
         },
-        allAgreements,
-        allInstallments,
+        [],
+        [],
         companyId
       );
 
@@ -648,12 +649,14 @@ export default function FinancingCalculator({
                 <button
                   type="button"
                   onClick={() => setIsConfirmModalOpen(true)}
+                  disabled={!isMockDataMode && mode !== "fixed"}
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
                   <ReceiptText className="size-4" />
                   <span>Crear plan de pago con esta financiación</span>
                 </button>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center mt-1.5">
+                  {!isMockDataMode && mode !== "fixed" && "CAC y escalonado disponibles solo como simulación. "}
                   {leadName
                     ? `Genera el contrato comercial y el cronograma de ${numericMonths} cuotas para ${leadName}.`
                     : `Genera el contrato y el cronograma de ${numericMonths} cuotas a pagar.`}

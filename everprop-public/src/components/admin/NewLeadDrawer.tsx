@@ -253,7 +253,7 @@ export function NewLeadDrawer({
     setSelectedProjectId(asset.projectId ?? "");
   };
 
-  const handleReset = () => {
+  function handleReset() {
     if (isCompleting && initialLead) {
       form.reset({
         name: initialLead.name || "",

@@ -20,7 +20,7 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
           </p>
         </div>
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          {readOnly ? "Sólo lectura" : isMockDataMode ? "Modo Mock" : "Base de Datos · API"}
+          {readOnly ? "Sólo lectura" : ""}
         </span>
       </div>
 

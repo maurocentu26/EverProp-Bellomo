@@ -25,7 +25,7 @@ export default function LoginPage() {
   const handleApiLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
-    setLoadingLabel("Conectando con EverProp API…");
+    setLoadingLabel("Iniciando sesión…");
     setError("");
 
     try {
@@ -110,7 +110,7 @@ export default function LoginPage() {
           <p className="text-sm text-slate-400">
             {isMockDataMode
               ? "Entorno aislado para QA visual con datos no reales."
-              : "Acceso al panel mediante una sesión real de EverProp."}
+              : "Ingresá a tu panel de gestión."}
           </p>
         </div>
 
@@ -151,15 +151,7 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" aria-hidden="true" />
-                <div>
-                  <h2 className="text-sm font-semibold text-white">Sesión real EverProp</h2>
-                  <p className="mt-1 text-xs leading-5 text-slate-300">Usa Sanctum, tenant Bellomo y las credenciales de la API.</p>
-                </div>
-              </div>
-
-              <div className="mb-5">
+              {process.env.NODE_ENV !== "production" && <div className="mb-5">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Acceso Rápido de Prueba (1 clic)
                 </p>
@@ -183,6 +175,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              }
               <div className="relative my-5 flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-white/10" />
@@ -219,7 +212,7 @@ export default function LoginPage() {
                   type="submit"
                   className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
                 >
-                  Ingresar con EverProp API
+                  Ingresar
                 </button>
               </form>
 

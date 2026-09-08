@@ -16,9 +16,9 @@ export function getTodayDateString(): string {
  */
 export function formatInstallmentAmount(amount: number, currency: "ARS" | "USD" = "ARS"): string {
   if (currency === "USD") {
-    return `USD ${Math.round(amount).toLocaleString("es-AR")}`;
+    return `USD ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
-  return `$ ${Math.round(amount).toLocaleString("es-AR")}`;
+  return `$ ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /**
@@ -41,6 +41,7 @@ export function evaluateInstallmentStatus(
   installment: Installment,
   todayStr: string = getTodayDateString()
 ): { status: InstallmentStatus; daysOverdue: number } {
+  if (installment.serverManaged) return { status: installment.status, daysOverdue: installment.daysOverdue };
   if (installment.status === "PAID" || installment.status === "CANCELLED") {
     return { status: installment.status, daysOverdue: 0 };
   }
@@ -86,7 +87,7 @@ export function buildInstallmentWhatsAppMessage(
     ? (agreement.propertyTitle ? `${agreement.projectName} (${agreement.propertyTitle})` : agreement.projectName)
     : (agreement.propertyTitle || "su plan de financiación");
 
-  const amountStr = formatInstallmentAmount(installment.amountExpected, installment.currency);
+  const amountStr = formatInstallmentAmount(installment.amountRemaining ?? installment.amountExpected, installment.currency);
   const dateFormatted = formatDueDate(installment.dueDate);
   const installmentRatio = `${installment.installmentNumber}/${agreement.totalInstallments}`;
 

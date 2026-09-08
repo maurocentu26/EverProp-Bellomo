@@ -182,6 +182,9 @@ export type InstallmentStatus =
 export type InstallmentPaymentMethod = "TRANSFER" | "CASH" | "CHECK" | "DEPOSIT";
 
 export type Installment = {
+  amountRemaining?: number;
+  paidThisMonth?: number;
+  serverManaged?: boolean;
   id: string;
   agreementId: string;
   leadId: string;

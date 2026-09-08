@@ -1,21 +1,20 @@
 "use client";
+import { CollectionsLoading } from "@/components/admin/CollectionsLoading";
+import { InstallmentPaymentHistory } from "@/components/admin/InstallmentPaymentHistory";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  type PaymentAgreement,
   type Installment,
   type InstallmentPaymentMethod,
-  samplePaymentAgreements,
-  sampleInstallments,
 } from "@/data/admin-sample";
 import {
-  loadPaymentAgreementList,
-  loadInstallmentList,
   recordInstallmentPayment,
   createAgreementWithInstallments,
-  evaluateInstallmentsAndNotify,
-} from "@/lib/admin-storage";
+} from "@/lib/collections-api";
+import { useCollections } from "@/hooks/use-collections";
+import { useCollectionAction } from "@/hooks/use-collection-action";
+import { isMockDataMode } from "@/lib/data-mode";
 import {
   formatInstallmentAmount,
   formatDueDate,
@@ -54,8 +53,8 @@ export function LeadFinancingAgreements({
   companyId = "c1",
   advisorId = "usr-sales",
 }: LeadFinancingAgreementsProps) {
-  const [agreements, setAgreements] = useState<PaymentAgreement[]>([]);
-  const [installments, setInstallments] = useState<Installment[]>([]);
+  const { agreements, installments, setInstallments, loading, error, refresh, canWrite } = useCollections(leadId, companyId);
+  const { run, saving } = useCollectionAction();
   const [isNewPlanModalOpen, setIsNewPlanModalOpen] = useState(false);
   const [payingInstallment, setPayingInstallment] = useState<Installment | null>(null);
 
@@ -75,22 +74,8 @@ export function LeadFinancingAgreements({
   const [totalInstallments, setTotalInstallments] = useState<number>(36);
   const [dueDay, setDueDay] = useState<number>(10);
   const [startDate, setStartDate] = useState(getTodayDateString());
+  const [monthlyRatePct, setMonthlyRatePct] = useState(0);
   const [notes, setNotes] = useState("");
-
-  const refreshData = () => {
-    const loadedAgr = loadPaymentAgreementList(samplePaymentAgreements, companyId);
-    const loadedInst = loadInstallmentList(sampleInstallments, companyId);
-    setAgreements(loadedAgr.filter((a) => a.leadId === leadId));
-    setInstallments(loadedInst.filter((i) => i.leadId === leadId));
-  };
-
-  useEffect(() => {
-    refreshData();
-    window.addEventListener("everprop_agreements_updated", refreshData);
-    return () => {
-      window.removeEventListener("everprop_agreements_updated", refreshData);
-    };
-  }, [leadId, companyId]);
 
   // Lead agreements and installments
   const leadAgreements = useMemo(() => {
@@ -114,66 +99,74 @@ export function LeadFinancingAgreements({
 
   const handleOpenPayment = (inst: Installment) => {
     setPayingInstallment(inst);
-    setPaymentAmount(inst.amountExpected);
+    setPaymentAmount(inst.amountRemaining ?? Math.max(0, inst.amountExpected - (inst.amountPaid ?? 0)));
     setPaymentMethod("TRANSFER");
-    setPaymentReceipt(`TRF-${Math.floor(100000 + Math.random() * 900000)}`);
+    setPaymentReceipt("");
     setPaymentNotes("");
   };
 
   const handleConfirmPayment = () => {
-    if (!payingInstallment) return;
-    const allStoredInst = loadInstallmentList(sampleInstallments, companyId);
+    void run(async () => {
+      if (!payingInstallment) return;
+      const allStoredInst = installments;
 
-    const updated = recordInstallmentPayment(
-      payingInstallment.id,
-      {
-        amountPaid: paymentAmount,
-        paymentMethod,
-        paymentReceiptNumber: paymentReceipt || "S/N",
-        notes: paymentNotes || undefined,
-        paidAt: getTodayDateString(),
-      },
-      allStoredInst,
-      companyId
-    );
+      const updated = await recordInstallmentPayment(
+        payingInstallment.id,
+        {
+          amountPaid: paymentAmount,
+          paymentMethod,
+          paymentReceiptNumber: paymentReceipt || "S/N",
+          notes: paymentNotes || undefined,
+          paidAt: getTodayDateString(),
+        },
+        allStoredInst,
+        companyId
+      );
 
-    setInstallments(updated.filter((i) => i.leadId === leadId));
-    toast.success("Cobro imputado correctamente");
-    setPayingInstallment(null);
+      setInstallments(updated.filter((i) => i.leadId === leadId));
+      toast.success("Cobro imputado correctamente");
+      setPayingInstallment(null);
+    });
   };
 
   const handleCreatePlan = (e: React.FormEvent) => {
     e.preventDefault();
-    const financed = Math.max(0, totalPrice - downPayment);
-    const allAgreements = loadPaymentAgreementList(samplePaymentAgreements, companyId);
-    const allInstallments = loadInstallmentList(sampleInstallments, companyId);
+    void run(async () => {
+      const financed = Math.max(0, totalPrice - downPayment);
+      const allAgreements = agreements;
+      const allInstallments = installments;
 
-    const result = createAgreementWithInstallments(
-      {
-        leadId,
-        advisorId,
-        projectName,
-        propertyTitle: propertyTitle || undefined,
-        currency,
-        modality,
-        totalPrice,
-        downPayment,
-        financedBalance: financed,
-        totalInstallments,
-        dayOfMonthDue: dueDay,
-        startDate,
-        notes: notes || undefined,
-      },
-      allAgreements,
-      allInstallments,
-      companyId
-    );
+      const result = await createAgreementWithInstallments(
+        {
+          leadId,
+          advisorId,
+          projectName,
+          propertyTitle: propertyTitle || undefined,
+          currency,
+          modality,
+          totalPrice,
+          downPayment,
+          financedBalance: financed,
+          totalInstallments,
+          monthlyRatePct,
+          dayOfMonthDue: dueDay,
+          startDate,
+          notes: notes || undefined,
+        },
+        allAgreements,
+        allInstallments,
+        companyId
+      );
 
-    setAgreements((prev) => [result.agreement, ...prev]);
-    setInstallments(result.installments.filter((i) => i.leadId === leadId));
-    setIsNewPlanModalOpen(false);
-    toast.success(`Plan de cuotas creado con éxito (${totalInstallments} cuotas)`);
+      await refresh();
+      setInstallments(result.installments.filter((i) => i.leadId === leadId));
+      setIsNewPlanModalOpen(false);
+      toast.success(`Plan de cuotas creado con éxito (${totalInstallments} cuotas)`);
+    });
   };
+
+  if (loading) return <CollectionsLoading />;
+  if (error) return <section className="rounded-xl border p-5"><h2>Acuerdos financieros</h2>{loading ? <p role="status">Cargando…</p> : <p role="alert">{error}</p>}<button onClick={() => { void refresh(); window.dispatchEvent(new Event("focus")); }}>Reintentar</button></section>;
 
   return (
     <section
@@ -215,6 +208,9 @@ export function LeadFinancingAgreements({
         </div>
       </div>
 
+      {loading && <p role="status">Cargando cobranzas…</p>}
+      {error && <div role="alert" className="rounded-lg border border-red-300 p-3 text-red-700">{error} <button onClick={() => void refresh()}>Reintentar</button></div>}
+      {saving && <p role="status">Guardando…</p>}
       {/* Mora Alert Banner if customer has debt */}
       {overdueInstallments.length > 0 && (
         <div className="mt-4 flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 text-xs dark:border-rose-900/50 dark:bg-rose-950/20">
@@ -224,10 +220,10 @@ export function LeadFinancingAgreements({
               <strong>Atención:</strong> El cliente posee{" "}
               <strong>{overdueInstallments.length} cuota(s) en mora</strong> por un total de{" "}
               <strong>
-                {formatInstallmentAmount(
-                  overdueInstallments.reduce((acc, curr) => acc + curr.amountExpected, 0),
-                  overdueInstallments[0]?.currency
-                )}
+                {(["ARS", "USD"] as const).map(code => {
+                  const amount = overdueInstallments.filter(i => i.currency === code).reduce((sum, i) => sum + (i.amountRemaining ?? i.amountExpected), 0);
+                  return amount > 0 ? <span key={code} className="mr-2">{formatInstallmentAmount(amount, code)}</span> : null;
+                })}
               </strong>
               .
             </span>
@@ -345,9 +341,9 @@ export function LeadFinancingAgreements({
                                   Vence hoy
                                 </span>
                               )}
-                              {statusInfo.status === "PENDING" && (
+                              {(statusInfo.status === "PENDING" || statusInfo.status === "PARTIALLY_PAID") && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                  Al día
+                                  {statusInfo.status === "PARTIALLY_PAID" ? "Pago parcial" : "Al día"}
                                 </span>
                               )}
                               {statusInfo.status === "PAID" && (
@@ -359,6 +355,7 @@ export function LeadFinancingAgreements({
                             </td>
                             <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
                               {formatInstallmentAmount(inst.amountExpected, inst.currency)}
+                          {inst.serverManaged && <span className="block text-xs font-normal">Saldo: {formatInstallmentAmount(inst.amountRemaining ?? 0, inst.currency)}</span>}
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
@@ -374,7 +371,8 @@ export function LeadFinancingAgreements({
                                   </a>
                                 )}
 
-                                {inst.status !== "PAID" ? (
+                                <InstallmentPaymentHistory installment={inst} />
+                                {inst.status !== "PAID" && inst.status !== "CANCELLED" ? (
                                   <button
                                     type="button"
                                     onClick={() => handleOpenPayment(inst)}
@@ -471,7 +469,7 @@ export function LeadFinancingAgreements({
                 </Button>
                 <Button
                   size="sm"
-                  onClick={handleConfirmPayment}
+                  disabled={saving || !canWrite} onClick={handleConfirmPayment}
                   className="bg-blue-600 text-white hover:bg-blue-700"
                 >
                   Confirmar Cobro
@@ -500,6 +498,9 @@ export function LeadFinancingAgreements({
             </div>
 
             <form onSubmit={handleCreatePlan} className="mt-4 space-y-3.5 text-xs">
+              <label className="block">Fecha de inicio<input className="block rounded border p-2" type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
+              <label className="block text-xs">Interés mensual sobre capital inicial (%)<input className="mt-1 block w-full rounded border p-2" type="number" min="0" max="100" step="0.0001" required value={monthlyRatePct} onChange={e => setMonthlyRatePct(Number(e.target.value))} /></label>
+              <p className="text-xs text-slate-500">La primera cuota vence el mes siguiente a la fecha de inicio. Los días 29–31 se ajustan al último día del mes cuando corresponda.</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold text-slate-700 dark:text-slate-300">
@@ -550,8 +551,8 @@ export function LeadFinancingAgreements({
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
                   >
                     <option value="FIXED">Cuotas Fijas</option>
-                    <option value="CAC">Ajustable por CAC</option>
-                    <option value="STEPPED">Escalonado</option>
+                    {isMockDataMode && <option value="CAC">Ajustable por CAC</option>}
+                    {isMockDataMode && <option value="STEPPED">Escalonado</option>}
                   </select>
                 </div>
               </div>
@@ -638,8 +639,7 @@ export function LeadFinancingAgreements({
                 >
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
+                <Button disabled={saving || !canWrite} type="submit"
                   size="sm"
                   className="bg-blue-600 text-white hover:bg-blue-700"
                 >

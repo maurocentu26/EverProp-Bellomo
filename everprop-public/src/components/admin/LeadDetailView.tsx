@@ -474,7 +474,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
                 <div>
                   <p className="text-xs font-bold text-amber-950 dark:text-amber-100">Información pendiente</p>
-                  <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">El cliente ya está registrado. Podés completar estos datos con el botón "Completar ficha".</p>
+                  <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">El cliente ya está registrado. Podés completar estos datos con el botón &quot;Completar ficha&quot;.</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {generalPendingData.map((item) => (
                       <span key={item} className="rounded-md border border-amber-200 dark:border-amber-900 bg-white dark:bg-amber-950/60 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:text-amber-200">

@@ -185,25 +185,7 @@ export default function DesarrollosPage() {
         )}
       </header>
 
-      <div
-        className={cn(
-          "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
-          dataState.source === "admin-api"
-            ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-            : "border-amber-200 bg-amber-50 text-amber-950",
-        )}
-      >
-        {dataState.source === "admin-api" ? (
-          <Database className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        ) : (
-          <FlaskConical className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        )}
-        <p>
-          {dataState.source === "admin-api"
-            ? `Proyectos y desarrollos conectados a la base de datos (${projects.length} activos). Hacé clic en cualquier desarrollo para ver sus unidades e inventario.`
-            : "QA visual mock: proyectos de muestra locales, sin confirmación de la API."}
-        </p>
-      </div>
+
 
       {projects.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">

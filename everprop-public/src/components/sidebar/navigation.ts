@@ -36,6 +36,7 @@ type NavigationAccess = {
   isEngineer: boolean;
   isMockMode: boolean;
   isAdvisor?: boolean;
+  isTenantAdmin?: boolean;
 };
 
 export const advisorNavigationGroups: NavGroup[] = [
@@ -112,6 +113,7 @@ export const navigationConfig: NavItem[] = navigationGroups.flatMap(g => g.items
 export function getAvailableNavigationGroups({
   isEngineer,
   isAdvisor,
+  isTenantAdmin,
 }: NavigationAccess): NavGroup[] {
   if (isAdvisor) {
     return advisorNavigationGroups;
@@ -123,11 +125,13 @@ export function getAvailableNavigationGroups({
         if (group.label !== "Gestión") return group;
         return {
           ...group,
-          items: group.items.filter((item) => item.title !== "Agenda"),
+          items: group.items.filter((item) => !["Agenda", "Cobranzas"].includes(item.title)),
         };
       })
       .filter((group) => group.label !== "Comercializadora");
   }
 
-  return navigationGroups;
+  return navigationGroups.map(group => group.label === "Gestión" && isTenantAdmin
+    ? {...group, items: [...group.items, {title: "Alta de Asesor", href: "/admin/asesores", icon: Users, matchPath: "/admin/asesores"}]}
+    : group);
 }

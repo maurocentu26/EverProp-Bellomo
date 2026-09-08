@@ -1,25 +1,26 @@
 "use client";
+import { CollectionsLoading } from "@/components/admin/CollectionsLoading";
+import { InstallmentPaymentHistory } from "@/components/admin/InstallmentPaymentHistory";
+import { ExportLocalCollections } from "@/components/admin/ExportLocalCollections";
+import { loadCollectionLeads } from "@/lib/collections-api";
+import { loadLeadList } from "@/lib/admin-storage";
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import adminSample, {
-  type PaymentAgreement,
   type Installment,
   type Lead,
   type InstallmentPaymentMethod,
-  samplePaymentAgreements,
-  sampleInstallments,
 } from "@/data/admin-sample";
 import {
-  loadLeadList,
-  loadPaymentAgreementList,
-  loadInstallmentList,
   recordInstallmentPayment,
   createAgreementWithInstallments,
-  evaluateInstallmentsAndNotify,
-} from "@/lib/admin-storage";
+} from "@/lib/collections-api";
+import { useCollections } from "@/hooks/use-collections";
+import { useCollectionAction } from "@/hooks/use-collection-action";
+import { isMockDataMode } from "@/lib/data-mode";
 import {
   formatInstallmentAmount,
   formatDueDate,
@@ -58,8 +59,8 @@ export default function CobranzasPage() {
 
   // State
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [agreements, setAgreements] = useState<PaymentAgreement[]>([]);
-  const [installments, setInstallments] = useState<Installment[]>([]);
+  const { agreements, installments, setInstallments, loading, error, refresh, canWrite } = useCollections();
+  const { run, saving } = useCollectionAction();
   const [statusFilter, setStatusFilter] = useState<FilterStatus>(() => {
     const p = searchParams.get("status");
     if (p === "overdue" || p === "dueToday" || p === "next7Days" || p === "paid") {
@@ -67,7 +68,7 @@ export default function CobranzasPage() {
     }
     return "all";
   });
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("search") || "");
   const [selectedProject, setSelectedProject] = useState<string>("all");
 
   // Modals state
@@ -91,48 +92,32 @@ export default function CobranzasPage() {
   const [newAgrTotalInstallments, setNewAgrTotalInstallments] = useState<number>(36);
   const [newAgrDueDay, setNewAgrDueDay] = useState<number>(10);
   const [newAgrStartDate, setNewAgrStartDate] = useState(getTodayDateString());
+  const [monthlyRatePct, setMonthlyRatePct] = useState(0);
   const [newAgrNotes, setNewAgrNotes] = useState("");
 
-  // Load and evaluate data
+  const [leadsLoading, setLeadsLoading] = useState(true);
+  const [leadsError, setLeadsError] = useState<string | null>(null);
   useEffect(() => {
-    function loadData() {
-      const loadedLeads = loadLeadList(adminSample.leads, "c1");
-      const loadedAgreements = loadPaymentAgreementList(samplePaymentAgreements, "c1");
-      const loadedInstallments = loadInstallmentList(sampleInstallments, "c1");
-
-      setLeads(loadedLeads);
-      setAgreements(loadedAgreements);
-
-      // Dynamic evaluation and notification dispatch
-      const { installments: evaluated } = evaluateInstallmentsAndNotify(
-        loadedAgreements,
-        loadedInstallments,
-        loadedLeads,
-        "c1"
-      );
-      setInstallments(evaluated);
-    }
-
-    loadData();
-
-    window.addEventListener("everprop_agreements_updated", loadData);
-    let channel: BroadcastChannel | null = null;
-    try {
-      channel = new BroadcastChannel("everprop_agreements");
-      channel.onmessage = () => loadData();
-    } catch {
-      // ignore
-    }
-
-    return () => {
-      window.removeEventListener("everprop_agreements_updated", loadData);
-      channel?.close();
+    if (!session.user?.id) return;
+    let active = true;
+    const load = async () => {
+      try {
+        const rows = isMockDataMode ? loadLeadList(adminSample.leads, "c1") : await loadCollectionLeads();
+        if (active) { setLeads(rows); setLeadsError(null); }
+      } catch (reason) {
+        if (active) { setLeads([]); setLeadsError(reason instanceof Error ? reason.message : "No se pudieron cargar los clientes."); }
+      } finally {
+        if (active) setLeadsLoading(false);
+      }
     };
-  }, []);
+    void load();
+    window.addEventListener("focus", load);
+    return () => { active = false; window.removeEventListener("focus", load); };
+  }, [session.user?.id]);
 
   // Filter agreements & installments by current user role/advisor assignment
   const visibleAgreements = useMemo(() => {
-    if (session.isAdmin) return agreements;
+    if (!isMockDataMode || session.isAdmin) return agreements;
     if (!session.user) return [];
     return agreements.filter((agr) => {
       if (agr.advisorId && isNotificationForUser(agr.advisorId, session.user)) return true;
@@ -143,7 +128,7 @@ export default function CobranzasPage() {
   }, [agreements, leads, session.isAdmin, session.user]);
 
   const visibleInstallments = useMemo(() => {
-    if (session.isAdmin) return installments;
+    if (!isMockDataMode || session.isAdmin) return installments;
     if (!session.user) return [];
     const allowedAgreementIds = new Set(visibleAgreements.map((a) => a.id));
     return installments.filter((inst) => {
@@ -195,21 +180,24 @@ export default function CobranzasPage() {
       if (status === "OVERDUE") {
         overdueCount++;
         overdueLeadIds.add(inst.leadId);
-        if (inst.currency === "USD") overdueUsd += inst.amountExpected;
-        else overdueArs += inst.amountExpected;
+        if (inst.currency === "USD") overdueUsd += (inst.amountRemaining ?? inst.amountExpected);
+        else overdueArs += (inst.amountRemaining ?? inst.amountExpected);
       } else if (status === "DUE_TODAY") {
         dueTodayCount++;
-        if (inst.currency === "USD") dueTodayUsd += inst.amountExpected;
-        else dueTodayArs += inst.amountExpected;
-      } else if (status === "PENDING") {
+        if (inst.currency === "USD") dueTodayUsd += (inst.amountRemaining ?? inst.amountExpected);
+        else dueTodayArs += (inst.amountRemaining ?? inst.amountExpected);
+      } else if ((status === "PENDING" || status === "PARTIALLY_PAID")) {
         if (dueTime >= todayTime && dueTime <= next7Time) {
           next7DaysCount++;
-          if (inst.currency === "USD") next7DaysUsd += inst.amountExpected;
-          else next7DaysArs += inst.amountExpected;
+          if (inst.currency === "USD") next7DaysUsd += (inst.amountRemaining ?? inst.amountExpected);
+          else next7DaysArs += (inst.amountRemaining ?? inst.amountExpected);
         }
       }
 
-      if (inst.status === "PAID") {
+      if (inst.serverManaged) {
+        const amount = inst.paidThisMonth ?? 0;
+        if (amount > 0) { paidThisMonthCount++; if (inst.currency === "USD") paidThisMonthUsd += amount; else paidThisMonthArs += amount; }
+      } else if (inst.status === "PAID") {
         const paidMonth = (inst.paidAt || inst.dueDate).substring(0, 7);
         if (paidMonth === currentYearMonth) {
           paidThisMonthCount++;
@@ -256,7 +244,7 @@ export default function CobranzasPage() {
       if (statusFilter === "dueToday" && status !== "DUE_TODAY") return false;
       if (statusFilter === "paid" && inst.status !== "PAID") return false;
       if (statusFilter === "next7Days") {
-        if (status !== "PENDING" || dueTime < todayTime || dueTime > next7Time) {
+        if ((status !== "PENDING" && status !== "PARTIALLY_PAID") || dueTime < todayTime || dueTime > next7Time) {
           return false;
         }
       }
@@ -292,7 +280,7 @@ export default function CobranzasPage() {
         const { status } = evaluateInstallmentStatus(item, getTodayDateString());
         if (status === "OVERDUE") return 1;
         if (status === "DUE_TODAY") return 2;
-        if (status === "PENDING") return 3;
+        if (status === "PENDING" || status === "PARTIALLY_PAID") return 3;
         return 4;
       };
       const pA = priority(a);
@@ -305,74 +293,79 @@ export default function CobranzasPage() {
   // Handlers for payments
   const handleOpenPaymentModal = (inst: Installment) => {
     setPayingInstallment(inst);
-    setPaymentAmount(inst.amountExpected);
+    setPaymentAmount(inst.amountRemaining ?? Math.max(0, inst.amountExpected - (inst.amountPaid ?? 0)));
     setPaymentMethod("TRANSFER");
-    setPaymentReceipt(`TRF-${Math.floor(100000 + Math.random() * 900000)}`);
+    setPaymentReceipt("");
     setPaymentNotes("");
   };
 
   const handleConfirmPayment = () => {
-    if (!payingInstallment) return;
-    if (paymentAmount <= 0) {
-      toast.error("El monto debe ser mayor a 0");
-      return;
-    }
+    void run(async () => {
+      if (!payingInstallment) return;
+      if (paymentAmount <= 0) {
+        toast.error("El monto debe ser mayor a 0");
+        return;
+      }
 
-    const updated = recordInstallmentPayment(
-      payingInstallment.id,
-      {
-        amountPaid: paymentAmount,
-        paymentMethod,
-        paymentReceiptNumber: paymentReceipt || "S/N",
-        notes: paymentNotes || undefined,
-        paidAt: getTodayDateString(),
-      },
-      installments,
-      "c1"
-    );
+      const updated = await recordInstallmentPayment(
+        payingInstallment.id,
+        {
+          amountPaid: paymentAmount,
+          paymentMethod,
+          paymentReceiptNumber: paymentReceipt || "S/N",
+          notes: paymentNotes || undefined,
+          paidAt: getTodayDateString(),
+        },
+        installments,
+        "c1"
+      );
 
-    setInstallments(updated);
-    toast.success("Pago registrado exitosamente");
-    setPayingInstallment(null);
+      setInstallments(updated);
+      toast.success("Pago registrado exitosamente");
+      setPayingInstallment(null);
+    });
   };
 
   // Handlers for new agreement creation
   const handleCreateAgreement = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAgrLeadId) {
-      toast.error("Selecciona un lead para el acuerdo");
-      return;
-    }
-    const financed = Math.max(0, newAgrTotalPrice - newAgrDownPayment);
+    void run(async () => {
+      if (!newAgrLeadId) {
+        toast.error("Selecciona un lead para el acuerdo");
+        return;
+      }
+      const financed = Math.max(0, newAgrTotalPrice - newAgrDownPayment);
 
-    const targetLead = leads.find((l) => l.id === newAgrLeadId);
-    const advisorId = targetLead?.agentId || session.user?.id || "usr-sales";
+      const targetLead = leads.find((l) => l.id === newAgrLeadId);
+      const advisorId = targetLead?.agentId || session.user?.id || "usr-sales";
 
-    const result = createAgreementWithInstallments(
-      {
-        leadId: newAgrLeadId,
-        advisorId,
-        projectName: newAgrProjectName,
-        propertyTitle: newAgrPropertyTitle || undefined,
-        currency: newAgrCurrency,
-        modality: newAgrModality,
-        totalPrice: newAgrTotalPrice,
-        downPayment: newAgrDownPayment,
-        financedBalance: financed,
-        totalInstallments: newAgrTotalInstallments,
-        dayOfMonthDue: newAgrDueDay,
-        startDate: newAgrStartDate,
-        notes: newAgrNotes || undefined,
-      },
-      agreements,
-      installments,
-      "c1"
-    );
+      const result = await createAgreementWithInstallments(
+        {
+          leadId: newAgrLeadId,
+          advisorId,
+          projectName: newAgrProjectName,
+          propertyTitle: newAgrPropertyTitle || undefined,
+          currency: newAgrCurrency,
+          modality: newAgrModality,
+          totalPrice: newAgrTotalPrice,
+          downPayment: newAgrDownPayment,
+          financedBalance: financed,
+          totalInstallments: newAgrTotalInstallments,
+          monthlyRatePct,
+          dayOfMonthDue: newAgrDueDay,
+          startDate: newAgrStartDate,
+          notes: newAgrNotes || undefined,
+        },
+        agreements,
+        installments,
+        "c1"
+      );
 
-    setAgreements((prev) => [result.agreement, ...prev]);
-    setInstallments(result.installments);
-    setIsNewAgreementModalOpen(false);
-    toast.success(`Plan creado con éxito (${newAgrTotalInstallments} cuotas generadas)`);
+      await refresh();
+      setInstallments(result.installments);
+      setIsNewAgreementModalOpen(false);
+      toast.success(`Plan creado con éxito (${newAgrTotalInstallments} cuotas generadas)`);
+    });
   };
 
   const getLeadInitials = (name?: string) => {
@@ -385,8 +378,14 @@ export default function CobranzasPage() {
       .toUpperCase();
   };
 
+  if (loading || leadsLoading) return <CollectionsLoading />;
+  if (error || leadsError) return <section className="rounded-xl border p-5"><h2>Cobranzas y Cuotas</h2>{loading ? <p role="status">Cargando…</p> : <p role="alert">{error || leadsError}</p>}<button onClick={() => { void refresh(); window.dispatchEvent(new Event("focus")); }}>Reintentar</button></section>;
+
   return (
     <div className="space-y-6">
+      {loading && <p role="status">Cargando cobranzas…</p>}
+      {(error || leadsError) && <div role="alert" className="rounded-lg border border-red-300 p-3 text-red-700">{error || leadsError} <button onClick={() => void refresh()}>Reintentar</button></div>}
+      {saving && <p role="status">Guardando…</p>}
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -406,8 +405,10 @@ export default function CobranzasPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ExportLocalCollections />
           <button
             type="button"
+            disabled={!canWrite}
             onClick={() => {
               setNewAgrLeadId(leads[0]?.id || "");
               setIsNewAgreementModalOpen(true);
@@ -737,11 +738,11 @@ export default function CobranzasPage() {
                             </div>
                           )}
 
-                          {statusInfo.status === "PENDING" && (
+                          {(statusInfo.status === "PENDING" || statusInfo.status === "PARTIALLY_PAID") && (
                             <div className="flex flex-col gap-0.5">
                               <span className="inline-flex w-fit items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                                 <Clock className="size-3" />
-                                Al día
+                                {statusInfo.status === "PARTIALLY_PAID" ? "Pago parcial" : "Al día"}
                               </span>
                               <span className="text-[11px] text-slate-500 dark:text-slate-400">
                                 {formatDueDate(inst.dueDate)}
@@ -765,11 +766,13 @@ export default function CobranzasPage() {
                         {/* Importe */}
                         <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-slate-100">
                           {formatInstallmentAmount(inst.amountExpected, inst.currency)}
+                          {inst.serverManaged && <span className="block text-xs font-normal">Saldo: {formatInstallmentAmount(inst.amountRemaining ?? 0, inst.currency)}</span>}
                         </td>
 
                         {/* Acciones */}
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            <InstallmentPaymentHistory installment={inst} />
                             {/* WhatsApp Button */}
                             {whatsappUrl && inst.status !== "PAID" ? (
                               <a
@@ -785,7 +788,7 @@ export default function CobranzasPage() {
                             ) : null}
 
                             {/* Registrar Cobro Button */}
-                            {inst.status !== "PAID" ? (
+                            {inst.status !== "PAID" && inst.status !== "CANCELLED" ? (
                               <button
                                 type="button"
                                 onClick={() => handleOpenPaymentModal(inst)}
@@ -852,6 +855,7 @@ export default function CobranzasPage() {
                       <div className="text-right">
                         <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
                           {formatInstallmentAmount(inst.amountExpected, inst.currency)}
+                          {inst.serverManaged && <span className="block text-xs font-normal">Saldo: {formatInstallmentAmount(inst.amountRemaining ?? 0, inst.currency)}</span>}
                         </p>
                         <p className="text-[10px] text-slate-400">{formatDueDate(inst.dueDate)}</p>
                       </div>
@@ -871,9 +875,9 @@ export default function CobranzasPage() {
                             Vence hoy
                           </span>
                         )}
-                        {statusInfo.status === "PENDING" && (
+                        {(statusInfo.status === "PENDING" || statusInfo.status === "PARTIALLY_PAID") && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                            Al día
+                            {statusInfo.status === "PARTIALLY_PAID" ? "Pago parcial" : "Al día"}
                           </span>
                         )}
                         {statusInfo.status === "PAID" && (
@@ -884,6 +888,7 @@ export default function CobranzasPage() {
                       </div>
 
                       <div className="flex items-center gap-1.5">
+                        <InstallmentPaymentHistory installment={inst} />
                         {whatsappUrl && inst.status !== "PAID" && (
                           <a
                             href={whatsappUrl}
@@ -896,7 +901,7 @@ export default function CobranzasPage() {
                           </a>
                         )}
 
-                        {inst.status !== "PAID" && (
+                        {inst.status !== "PAID" && inst.status !== "CANCELLED" && (
                           <button
                             type="button"
                             onClick={() => handleOpenPaymentModal(inst)}
@@ -1023,7 +1028,7 @@ export default function CobranzasPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={handleConfirmPayment}
+                  disabled={saving || !canWrite} onClick={handleConfirmPayment}
                   className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
                 >
                   <Check className="size-3.5" />
@@ -1056,6 +1061,8 @@ export default function CobranzasPage() {
             </div>
 
             <form onSubmit={handleCreateAgreement} className="mt-4 space-y-4">
+              <label className="block text-xs">Interés mensual sobre capital inicial (%)<input className="mt-1 block w-full rounded border p-2" type="number" min="0" max="100" step="0.0001" required value={monthlyRatePct} onChange={e => setMonthlyRatePct(Number(e.target.value))} /></label>
+              <p className="text-xs text-slate-500">La primera cuota vence el mes siguiente a la fecha de inicio. Los días 29–31 se ajustan al último día del mes cuando corresponda.</p>
               {/* Lead Selector */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -1131,8 +1138,8 @@ export default function CobranzasPage() {
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
                   >
                     <option value="FIXED">Cuotas Fijas</option>
-                    <option value="CAC">Ajustable por CAC</option>
-                    <option value="STEPPED">Escalonado</option>
+                    {isMockDataMode && <option value="CAC">Ajustable por CAC</option>}
+                    {isMockDataMode && <option value="STEPPED">Escalonado</option>}
                   </select>
                 </div>
               </div>
@@ -1253,12 +1260,11 @@ export default function CobranzasPage() {
                 >
                   Cancelar
                 </button>
-                <button
-                  type="submit"
+                <button disabled={saving || !canWrite} type="submit"
                   className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500"
                 >
                   <Plus className="size-3.5" />
-                  <span>Generar Plan de Cobranza</span>
+                  <span>{saving ? "Generando plan…" : "Generar Plan de Cobranza"}</span>
                 </button>
               </div>
             </form>

@@ -222,7 +222,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               </SheetTrigger>
               <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-md">
                 <SheetHeader className="border-b border-border px-5 py-4 text-left">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col gap-4 pr-6">
                     <div className="flex items-center gap-2">
                       <SheetTitle className="text-base font-bold text-foreground">Notificaciones</SheetTitle>
                       {unreadCount > 0 ? (
@@ -235,12 +235,12 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="grid grid-cols-2 gap-2">
                       {unreadCount > 0 && (
                         <button
                           type="button"
                           onClick={handleMarkAllAsRead}
-                          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300"
                         >
                           <Check className="h-3.5 w-3.5" /> Marcar leídas
                         </button>
@@ -252,10 +252,10 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                           if (p === 'granted') toast.success("Notificaciones de escritorio activadas");
                           else if (p === 'denied') toast.error("Notificaciones bloqueadas por el navegador");
                         }}
-                        className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-muted"
                         title="Activar notificaciones de escritorio"
                       >
-                        <Bell className="h-3.5 w-3.5" />
+                        <Bell className="h-3.5 w-3.5" /> Escritorio
                       </button>
                       <button
                         type="button"
@@ -266,7 +266,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                             title: "Alerta de Prueba",
                           });
                         }}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-muted"
                         title="Probar sonido y notificación"
                       >
                         <Volume2 className="h-3.5 w-3.5" /> Probar
@@ -275,7 +275,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                         <button
                           type="button"
                           onClick={handleClearAll}
-                          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive"
                           title="Vaciar todas las notificaciones"
                         >
                           <Trash2 className="h-3.5 w-3.5" /> Limpiar

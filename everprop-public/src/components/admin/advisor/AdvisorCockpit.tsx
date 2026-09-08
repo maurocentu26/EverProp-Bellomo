@@ -1,4 +1,5 @@
 "use client";
+import { useCollections } from "@/hooks/use-collections";
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -33,18 +34,15 @@ import {
   type LeadFollowUp, 
   type Property, 
   type Project,
-  type Installment,
   leads as sampleLeads, 
   properties as sampleProperties,
   projects as sampleProjects,
-  sampleInstallments,
 } from "@/data/admin-sample";
 import { 
   loadLeadFollowUpList, 
   loadLeadList, 
   appendLeadFollowUpToStorage,
   saveLeadList,
-  loadInstallmentList,
 } from "@/lib/admin-storage";
 import { evaluateInstallmentStatus, getTodayDateString } from "@/lib/installment-notifications";
 import { isNotificationForUser } from "@/lib/notifications";
@@ -90,7 +88,7 @@ export default function AdvisorCockpit() {
   const [updatingStageLeadId, setUpdatingStageLeadId] = useState<string | null>(null);
   const [selectedPropertyByLead, setSelectedPropertyByLead] = useState<Record<string, string>>({});
   const [showMonthBalance, setShowMonthBalance] = useState(false);
-  const [installments, setInstallments] = useState<Installment[]>([]);
+  const { installments, error: collectionsError } = useCollections();
 
   // Carga de datos inicial y sincronización en tiempo real
   useEffect(() => {
@@ -101,7 +99,7 @@ export default function AdvisorCockpit() {
       let loadedFollowUps: LeadFollowUp[] = [];
       let loadedProperties: Property[] = sampleProperties;
       let loadedProjects: Project[] = sampleProjects;
-      const loadedInst = loadInstallmentList(sampleInstallments, "c1");
+
 
       if (!isMockDataMode) {
         try {
@@ -142,7 +140,7 @@ export default function AdvisorCockpit() {
         setFollowUps(loadedFollowUps);
         setProperties(loadedProperties);
         setProjects(loadedProjects);
-        setInstallments(loadedInst);
+
         setIsLoaded(true);
       }
     }
@@ -186,7 +184,7 @@ export default function AdvisorCockpit() {
   const overdueInstallmentsCount = useMemo(() => {
     const today = getTodayDateString();
     return installments.filter((inst) => {
-      if (user && !isNotificationForUser(inst.advisorId, user)) return false;
+      if (isMockDataMode && user && !isNotificationForUser(inst.advisorId, user)) return false;
       const { status } = evaluateInstallmentStatus(inst, today);
       return status === "OVERDUE";
     }).length;
@@ -656,6 +654,7 @@ export default function AdvisorCockpit() {
       </div>
 
       {/* ── ALERTA DE MORA EN CUOTAS DE CLIENTES ── */}
+      {collectionsError && <p role="alert" className="text-red-600">Cobranzas: {collectionsError}</p>}
       {overdueInstallmentsCount > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/20">
           <div className="flex items-center gap-3">

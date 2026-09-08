@@ -190,23 +190,7 @@ export default function AllPropertiesPage() {
         )}
       </div>
 
-      <div className={cn(
-        "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
-        dataState.source === "admin-api"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
-          : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
-      )}>
-        {dataState.source === "admin-api" ? (
-          <Database className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-        ) : (
-          <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-        )}
-        <p>
-          {dataState.source === "admin-api"
-            ? `Inventario real conectado a la base de datos (${allProperties.length} activos en cartera). Modo interactivo habilitado: podés abrir cada ficha, consultar datos y actualizar estados.`
-            : "QA visual mock: inventario de muestra local, sin confirmación de la API."}
-        </p>
-      </div>
+
 
       {/* Control Panel / Filtros */}
       <div className="bg-white dark:bg-card p-4 rounded-2xl border border-slate-200 dark:border-border shadow-sm flex flex-wrap gap-2 items-center relative" ref={filterRef}>
