@@ -148,7 +148,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
 
   return (
     <>
-      <header className={cn("z-30 flex flex-col gap-3 border-b border-border bg-card px-3 py-3 text-card-foreground sm:px-4", className)}>
+      <header className={cn("z-30 flex shrink-0 flex-col gap-3 border-b border-border bg-card px-3 py-3 text-card-foreground sm:px-4", className)}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Button
@@ -337,11 +337,11 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="min-w-0 flex-1">
             <GlobalSearch />
           </div>
-          <ThemeToggle className="w-full shrink-0 sm:w-auto" />
+          <ThemeToggle compact={isMobile} className="shrink-0" />
         </div>
       </header>
 

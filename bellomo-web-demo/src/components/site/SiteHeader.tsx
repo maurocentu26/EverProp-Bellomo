@@ -117,9 +117,9 @@ export function SiteHeader() {
       </div>
       <div className="mobile-menu" hidden={!open} id="mobile-menu">
         <nav aria-label="Navegación móvil">
-          {navigation.map((item, index) => (
+          {navigation.map((item) => (
             <CmsLink href={item.href} key={item.href} onClick={closeMenu}>
-              <span>0{index + 1}</span>{item.label}
+              {item.label}
             </CmsLink>
           ))}
         </nav>

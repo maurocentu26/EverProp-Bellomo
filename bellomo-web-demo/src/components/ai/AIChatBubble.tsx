@@ -196,20 +196,20 @@ export function AIChatBubble() {
 
   if (isLocalDemo && !content.bot.enabled) return null;
   return (
-    <div className="fixed bottom-4 right-4 z-[80] flex flex-col items-end pointer-events-auto sm:bottom-6 sm:right-36">
+    <div className="fixed bottom-4 left-4 right-4 z-[80] flex flex-col items-end pointer-events-auto sm:bottom-6 sm:left-auto sm:right-36">
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="mb-3 flex h-[min(540px,calc(100dvh-6rem))] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10 sm:mb-4"
+            className="flex h-[min(400px,65dvh)] sm:h-[min(480px,75dvh)] w-full max-w-[380px] sm:w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10"
             role="dialog"
             aria-label="Chat con Bellomito"
           >
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-950 p-3.5 text-white">
-              <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-950 px-3 py-2 text-white">
+              <div className="flex min-w-0 items-center gap-2">
                 <BellomitoAvatar size="md" showOnlineStatus />
                 <div>
                   <h2 className="flex items-center gap-1.5 text-sm font-semibold leading-tight text-white">
@@ -217,7 +217,7 @@ export function AIChatBubble() {
                     <Sparkles size={13} className="fill-amber-400 text-amber-400" aria-hidden="true" />
                   </h2>
                   <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+
                     {isLocalDemo ? content.bot.subtitle : "Asistente de Bellomo"}
                   </p>
                 </div>
@@ -242,14 +242,14 @@ export function AIChatBubble() {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-slate-50/50 p-4" aria-live="polite">
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain bg-slate-50/50 p-3" aria-live="polite">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                    className={`min-w-0 max-w-[92%] break-words rounded-xl px-3 py-2 text-[13px] leading-[1.45] [&_p]:text-[13px] [&_p]:leading-[1.45] [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_a]:break-all ${
                       message.role === "user"
                         ? "rounded-tr-xs bg-blue-600 text-white shadow-sm"
                         : "rounded-tl-xs bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80 [&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-blue-700"
@@ -380,14 +380,14 @@ export function AIChatBubble() {
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   placeholder="Escribí tu mensaje..."
-                  className="flex-1 bg-transparent py-2.5 outline-none placeholder:text-slate-400"
+                  className="min-w-0 flex-1 bg-transparent py-2.5 outline-none placeholder:text-slate-400"
                   disabled={isLoading}
                   maxLength={600}
                 />
                 <button
                   type="submit"
                   disabled={isLoading || !input.trim()}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white transition-all hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:scale-95 disabled:bg-slate-300 disabled:text-slate-500"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition-all hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:scale-95 disabled:bg-slate-300 disabled:text-slate-500"
                   aria-label="Enviar mensaje"
                 >
                   <Send size={14} aria-hidden="true" />
@@ -398,50 +398,29 @@ export function AIChatBubble() {
         )}
       </AnimatePresence>
 
-      <div className="relative flex items-center">
-        <AnimatePresence>
-          {!isOpen && showTooltip && (
-            <motion.button
-              type="button"
-              initial={{ opacity: 0, x: 10, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 10, scale: 0.9 }}
-              transition={{ duration: 0.3 }}
-              onClick={handleToggleOpen}
-              className="bellomito-tooltip absolute right-16 top-1/2 flex -translate-y-1/2 items-center gap-1.5 whitespace-nowrap rounded-2xl bg-slate-900 px-3.5 py-2 text-xs font-medium text-white shadow-xl ring-1 ring-white/15 transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
-            >
-              <span>¡Tengo una propuesta para vos!</span>
-              <span className="text-amber-300" aria-hidden="true">✨</span>
-              <span className="absolute -right-1.5 top-1/2 -translate-y-1/2 border-y-[5px] border-l-[6px] border-y-transparent border-l-slate-900" aria-hidden="true" />
-            </motion.button>
-          )}
-        </AnimatePresence>
-
-        <motion.div className="relative" whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}>
-          {!isOpen && (
-            <motion.span
-              className="absolute inset-0 rounded-full bg-blue-500/30"
-              animate={{ scale: [1, 1.4, 1], opacity: [0.7, 0, 0.7] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+      {!isOpen && (
+        <button
+          type="button"
+          onClick={handleToggleOpen}
+          aria-label="Abrir chat con Bellomito"
+          aria-expanded={false}
+          className="bellomito-launcher relative flex h-14 w-14 shrink-0 items-center justify-center appearance-none border-0 p-0 rounded-lg bg-transparent text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 sm:h-14 sm:w-14"
+        >
+          <AnimatePresence>
+            {showTooltip && <motion.span
               aria-hidden="true"
-            />
-          )}
-          <button
-            type="button"
-            onClick={handleToggleOpen}
-            aria-label={isOpen ? "Cerrar chat con Bellomito" : "Abrir chat con Bellomito"}
-            aria-expanded={isOpen}
-            className="relative flex h-14 w-14 items-center justify-center rounded-full bg-slate-950 text-white shadow-xl shadow-slate-950/20 ring-2 ring-white/20 transition-all hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
-          >
-            {isOpen ? <X size={24} aria-hidden="true" /> : <BellomitoAvatar size="xl" showOnlineStatus />}
-          </button>
-          {!isOpen && (
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white shadow-sm ring-2 ring-white" aria-hidden="true">
-              1
-            </span>
-          )}
-        </motion.div>
-      </div>
+              initial={{ opacity: 0, x: 6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 6 }}
+              className="bellomito-tooltip pointer-events-none absolute right-14 top-1/2 w-max max-w-[calc(100vw-7rem)] -translate-y-1/2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium leading-snug text-white shadow-md sm:right-16"
+            >
+              <span className="sm:hidden">¿Te ayudo?</span>
+              <span className="hidden sm:inline">Hablá con Bellomito</span>
+            </motion.span>}
+          </AnimatePresence>
+          <BellomitoAvatar size="xl" showOnlineStatus />
+        </button>
+      )}
     </div>
   );
 }

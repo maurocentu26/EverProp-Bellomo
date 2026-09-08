@@ -145,7 +145,7 @@ export function HeroSection() {
             key={item.id}
             onClick={() => selectSlide(index)}
             type="button"
-          ><span>0{index + 1}</span></button>
+          ><span className="hero-slide-dot" aria-hidden="true" /></button>
         ))}
         <button
           aria-label={

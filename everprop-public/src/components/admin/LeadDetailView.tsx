@@ -421,9 +421,9 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         <ArrowLeft className="size-4" aria-hidden="true" /> Volver al pipeline
       </Link>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         {/* ── Main Column (8 cols): Deep content ── */}
-        <div className="space-y-6 lg:col-span-8">
+        <div className="min-w-0 space-y-6 xl:col-span-8">
           {/* Pending Info Alert */}
           {generalPendingData.length > 0 ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4" role="status">
@@ -568,7 +568,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         </div>
 
         {/* ── Sidebar Column (4 cols): Quick access tools ── */}
-        <div className="space-y-6 lg:col-span-4">
+        <div className="min-w-0 space-y-6 xl:col-span-4">
           {/* Lead Overview Card */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" aria-labelledby="lead-name">
             <div className="flex items-start gap-3.5">
@@ -654,12 +654,14 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             </Button>
           </section>
 
-          {/* Financing Calculator Card */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <FinancingCalculator defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "USD"} leadName={lead.name} />
-          </div>
+
         </div>
       </div>
+
+          {/* Financing Calculator Card */}
+          <div className="min-w-0">
+            <FinancingCalculator key={`${lead.id}-${primaryProperty?.id ?? ''}`} defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "ARS"} leadName={lead.name} projectName={projectById.get(primaryProperty?.projectId ?? interests[0]?.projectId ?? '')?.name} />
+          </div>
 
       {profileEditorOpen && <LeadProfileEditor key={lead.lastActivity} lead={lead} onClose={() => setProfileEditorOpen(false)} onSave={handleSaveProfile} />}
       {interestEditor && <LeadInterestEditor key={interestEditor.mode === "edit" ? interestEditor.interest.id : "new-interest"} companyId={lead.companyId} interest={interestEditor.mode === "edit" ? interestEditor.interest : undefined} projects={allProjects} properties={allProperties} onClose={() => setInterestEditor(null)} onSave={handleSaveInterest} />}

@@ -78,7 +78,7 @@ export function ProjectsSection() {
             return (
               <details className="project-group" key={stage.id} open={index === 0}>
                 <summary>
-                  <span><small>0{index + 1}</small>{stage.label}</span>
+                  <span>{stage.label}</span>
                   <span className="project-count">{projects.length} <SiteText id="rami-text-63"/></span>
                   <ArrowIcon />
                 </summary>
