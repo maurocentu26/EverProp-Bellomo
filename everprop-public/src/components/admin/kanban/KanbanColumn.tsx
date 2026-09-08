@@ -24,11 +24,11 @@ export function KanbanColumn({
       className={cn(
         "flex flex-col rounded-xl border-2 p-4 transition-all duration-200 min-h-[200px]",
         isHighlighted
-          ? "border-blue-500 bg-blue-50/50 ring-4 ring-blue-500/10 shadow-lg scale-[1.01]"
-          : "border-slate-200 bg-white shadow-sm"
+          ? "border-blue-500 bg-blue-50/50 ring-4 ring-blue-500/10 shadow-lg scale-[1.01] dark:bg-blue-950/30"
+          : "border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
       )}
     >
-      <h3 className="mb-4 flex items-center justify-between text-sm font-bold uppercase tracking-wider text-slate-600">
+      <h3 className="mb-4 flex items-center justify-between text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
         <span className="flex items-center gap-2">
           <span className={cn(
             "h-2 w-2 rounded-full",
@@ -38,7 +38,7 @@ export function KanbanColumn({
           )} />
           {STAGE_LABELS[stage]}
         </span>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
           {items.length}
         </span>
       </h3>
@@ -50,9 +50,9 @@ export function KanbanColumn({
       </SortableContext>
       
       {items.length > 5 && (
-        <div className="pt-3 mt-auto border-t border-slate-100">
+        <div className="pt-3 mt-auto border-t border-slate-100 dark:border-slate-800">
           <Link href={`/admin/leads?stage=${stage}`}>
-            <button className="w-full py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-700 rounded-lg transition-colors border border-dashed border-slate-200 flex justify-center items-center gap-1">
+            <button className="w-full py-2 text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-700 dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 rounded-lg transition-colors border border-dashed border-slate-200 flex justify-center items-center gap-1">
               Hay {items.length - 5} leads más en esta etapa
             </button>
           </Link>

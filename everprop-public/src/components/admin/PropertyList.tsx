@@ -11,15 +11,15 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
   const totalProperties = properties.length;
 
   return (
-    <div className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6">
+    <div className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-card dark:text-card-foreground">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 dark:border-slate-800">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Inventario de Lotes y Propiedades</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Inventario de Lotes y Propiedades</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Mostrando {totalProperties} de {totalProperties} activos en cartera
           </p>
         </div>
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           {readOnly ? "Sólo lectura" : isMockDataMode ? "Modo Mock" : "Base de Datos · API"}
         </span>
       </div>
@@ -35,7 +35,7 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
           </colgroup>
 
           <thead>
-            <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <th className="px-4 py-3">Lote / Parcela</th>
               <th className="px-4 py-3">Manzana</th>
               <th className="px-4 py-3">Superficie / Ochava</th>

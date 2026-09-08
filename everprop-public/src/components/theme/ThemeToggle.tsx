@@ -11,7 +11,7 @@ type ThemeToggleProps = {
   compact?: boolean;
 };
 
-export function ThemeToggle({ className, compact = false }: ThemeToggleProps) {
+export function ThemeToggle({ className }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
@@ -19,18 +19,17 @@ export function ThemeToggle({ className, compact = false }: ThemeToggleProps) {
     <Button
       type="button"
       variant="outline"
+      size="icon"
       onClick={toggleTheme}
       aria-label={isDark ? "Activar modo claro" : "Activar modo oscuro"}
       aria-pressed={isDark}
       title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
       className={cn(
-        "h-12 gap-2 border-slate-300 bg-white px-4 font-semibold text-slate-800 shadow-sm hover:bg-slate-100 hover:text-slate-950 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:hover:text-white",
-        compact && "w-12 px-0",
+        "size-9 sm:size-10 shrink-0 rounded-xl border-slate-200 bg-white p-0 text-slate-700 shadow-2xs transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
         className,
       )}
     >
-      {isDark ? <Moon className="size-5" aria-hidden="true" /> : <Sun className="size-5" aria-hidden="true" />}
-      {!compact && <span>{isDark ? "Modo oscuro" : "Modo claro"}</span>}
+      {isDark ? <Moon className="size-4 sm:size-4.5" aria-hidden="true" /> : <Sun className="size-4 sm:size-4.5" aria-hidden="true" />}
     </Button>
   );
 }

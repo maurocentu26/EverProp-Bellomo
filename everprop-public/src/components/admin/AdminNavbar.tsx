@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
-import { Bell, Check, ExternalLink, Inbox, Menu, Plus, Trash2 } from "lucide-react";
+import { Bell, Check, ExternalLink, Inbox, Menu, Plus, Trash2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,11 @@ import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
-import { clearAllNotifications, fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, type AppNotification } from "@/lib/notifications";
+import { clearAllNotifications, createNotification, fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, requestDesktopNotificationPermission, showDesktopNotification, type AppNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { playCorporateNotificationChime } from "@/lib/notification-audio";
 
 type Props = {
   companyName?: string;
@@ -24,7 +25,7 @@ type Props = {
 
 export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const router = useRouter();
-  const { user, isEngineer } = useCurrentSession();
+  const { user, isEngineer, isAdvisor, isAdmin } = useCurrentSession();
   const { state: sidebarState, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,66 +36,67 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const latestIdRef = useRef<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Adaptive polling: 12s active, paused when tab hidden, instant on focus/visibility
+  // SSE connection for reactive notifications
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
 
+    // Initial fetch
     const refresh = async () => {
       try {
-        const notifs = await fetchNotifications(user.id);
-        if (!mounted) return;
-        // Detect new unread notification → fire toast
-        const newest = notifs.find((n) => !n.read);
-        if (newest && newest.id !== latestIdRef.current && latestIdRef.current !== null) {
-          toast.info(newest.title || "Nueva notificación", {
-            description: newest.message,
-            action: newest.actionUrl
-              ? { label: "Ver", onClick: () => router.push(newest.actionUrl!) }
-              : undefined,
-          });
-          try {
-            const ch = new BroadcastChannel("everprop_notifications");
-            ch.postMessage({ type: "NEW_NOTIFICATION" });
-            ch.close();
-          } catch { /* ignore */ }
-        }
-        if (newest) latestIdRef.current = newest.id;
-        setNotifications(notifs);
+        const notifs = await fetchNotifications(user.id, isAdmin);
+        if (mounted) setNotifications(notifs);
       } catch (err) {
         console.error("Error fetching notifications:", err);
       }
     };
-
-    const startPolling = () => {
-      if (intervalRef.current) return;
-      intervalRef.current = setInterval(refresh, 12_000);
-    };
-    const stopPolling = () => {
-      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    };
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") { stopPolling(); }
-      else { void refresh(); startPolling(); }
-    };
-
     void refresh();
-    startPolling();
-    window.addEventListener("everprop_notifications_updated", refresh);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    const eventSource = new EventSource('/api/notifications/stream');
+
+    eventSource.addEventListener('notification', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        const isForMe = isAdmin || !data.targetUserId || data.targetUserId === user.id;
+        if (isForMe) {
+          setNotifications(prev => {
+            if (prev.some(n => n.id === data.id)) return prev;
+            return [data, ...prev];
+          });
+          playCorporateNotificationChime();
+          showDesktopNotification(data.title || "Nueva notificación", { body: data.message });
+          toast.info(data.title || "Nueva notificación", {
+            description: data.message,
+            action: data.actionUrl
+              ? { label: "Ver", onClick: () => router.push(data.actionUrl!) }
+              : undefined,
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing SSE notification:", err);
+      }
+    });
+
+    eventSource.addEventListener('update', () => {
+      void refresh();
+    });
+
+    // Support for existing cross-tab sync if needed
+    const handleLocalUpdate = () => void refresh();
+    window.addEventListener("everprop_notifications_updated", handleLocalUpdate);
     let channel: BroadcastChannel | null = null;
-    try { channel = new BroadcastChannel("everprop_notifications"); channel.onmessage = refresh; } catch { /* ignore */ }
+    try { 
+      channel = new BroadcastChannel("everprop_notifications"); 
+      channel.onmessage = handleLocalUpdate; 
+    } catch { /* ignore */ }
 
     return () => {
       mounted = false;
-      stopPolling();
-      window.removeEventListener("everprop_notifications_updated", refresh);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      eventSource.close();
+      window.removeEventListener("everprop_notifications_updated", handleLocalUpdate);
       channel?.close();
     };
-  }, [user?.id, router]);
+  }, [user?.id, isAdmin, router]);
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
@@ -121,7 +123,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const handleMarkAllAsRead = async () => {
     if (!user?.id) return;
     setNotifications((current) => current.map((n) => ({ ...n, read: true })));
-    await markAllNotificationsAsRead(user.id);
+    await markAllNotificationsAsRead(user.id, isAdmin);
   };
 
   const handleClearAll = async () => {
@@ -146,12 +148,13 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
 
   return (
     <>
-      <header className={cn("z-30 flex flex-col gap-3 border-b border-border bg-card px-3 py-3 text-card-foreground sm:px-4", className)}>
+      <header className={cn("z-30 flex flex-col gap-2 sm:gap-3 border-b border-border bg-card px-3 py-2 sm:px-4 sm:py-3 text-card-foreground", className)}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
+              size="icon"
               onClick={() => {
                 if (isMobile) {
                   setIsMenuOpen(true);
@@ -160,7 +163,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                 setIsMenuOpen(false);
                 toggleSidebar();
               }}
-              className="h-10 shrink-0 gap-2 px-3 text-sm font-semibold"
+              className="size-9 sm:size-10 p-0 shrink-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
               aria-label={
                 isMobile
                   ? "Abrir menú principal"
@@ -171,21 +174,20 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               aria-expanded={isMobile ? isMenuOpen : sidebarState === "expanded"}
             >
               <Menu className="h-5 w-5" aria-hidden="true" />
-              <span className="hidden sm:inline">
-                {isMobile ? "Menú" : sidebarState === "expanded" ? "Ocultar menú" : "Mostrar menú"}
-              </span>
             </Button>
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden items-center gap-2 xl:inline-flex"
-              onClick={() => router.push("/admin/properties/new")}
-            >
-              <Plus className="h-4 w-4" /> Propiedad
-            </Button>
+            {!isAdvisor && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden items-center gap-2 xl:inline-flex"
+                onClick={() => router.push("/admin/properties/new")}
+              >
+                <Plus className="h-4 w-4" /> Propiedad
+              </Button>
+            )}
             {!isEngineer && (
               <Button
                 size="sm"
@@ -196,10 +198,13 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               </Button>
             )}
 
+            {/* Theme Toggle (Icon Only) */}
+            <ThemeToggle />
+
             {/* Notifications Drawer (Sheet) */}
             <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
               <SheetTrigger
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="relative inline-flex size-9 sm:size-10 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Notificaciones"
               >
                 <motion.div animate={bellControls}>
@@ -240,6 +245,32 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                           <Check className="h-3.5 w-3.5" /> Marcar leídas
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const p = await requestDesktopNotificationPermission();
+                          if (p === 'granted') toast.success("Notificaciones de escritorio activadas");
+                          else if (p === 'denied') toast.error("Notificaciones bloqueadas por el navegador");
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        title="Activar notificaciones de escritorio"
+                      >
+                        <Bell className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!user?.id) return;
+                          playCorporateNotificationChime();
+                          createNotification(user.id, "Probando sistema de notificaciones y audio reactivo", {
+                            title: "Alerta de Prueba",
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                        title="Probar sonido y notificación"
+                      >
+                        <Volume2 className="h-3.5 w-3.5" /> Probar
+                      </button>
                       {notifications.length > 0 && (
                         <button
                           type="button"
@@ -326,20 +357,17 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               role="img"
               aria-label={`Usuario actual: ${userInfo.name}`}
               title={`${userInfo.name}${userInfo.role ? ` · ${userInfo.role}` : ""}`}
-              className="relative ml-1 flex h-9 w-9 cursor-default items-center justify-center rounded-full border border-slate-200"
+              className="relative ml-0.5 sm:ml-1 flex size-9 sm:size-10 cursor-default items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs"
             >
-              <Avatar className="h-full w-full">
-                <AvatarFallback className="bg-blue-600 text-xs font-bold text-white">{userInfo.initials}</AvatarFallback>
+              <Avatar className="h-full w-full rounded-xl">
+                <AvatarFallback className="bg-blue-600 text-xs font-bold text-white rounded-xl">{userInfo.initials}</AvatarFallback>
               </Avatar>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="min-w-0 flex-1">
-            <GlobalSearch />
-          </div>
-          <ThemeToggle className="w-full shrink-0 sm:w-auto" />
+        <div className="w-full min-w-0">
+          <GlobalSearch />
         </div>
       </header>
 

@@ -47,6 +47,21 @@ export type LeadFollowUp = {
   nextContactAt?: string;
 };
 
+export const JUJUY_CITIES = [
+  "San Salvador de Jujuy",
+  "Palpalá",
+  "El Carmen",
+  "Perico",
+  "San Pedro de Jujuy",
+  "Yala",
+  "Monterrico",
+  "Tilcara",
+  "Humahuaca",
+  "Libertador General San Martín",
+] as const;
+
+export type JujuyCity = typeof JUJUY_CITIES[number];
+
 export type Project = {
   id: string;
   companyId: string;

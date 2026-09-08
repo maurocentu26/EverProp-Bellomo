@@ -8,7 +8,7 @@ import { useCurrentSession } from "@/hooks/use-current-session";
 import { isMockDataMode } from "@/lib/data-mode";
 import { cn } from "@/lib/utils";
 import { getAvailableNavigationGroups } from "@/components/sidebar/navigation";
-import { quickActionsConfig } from "@/components/sidebar/quick-actions";
+import { getAvailableQuickActions } from "@/components/sidebar/quick-actions";
 import { useSidebarActive } from "@/components/sidebar/use-sidebar-active";
 
 type AdminNavigationMenuProps = {
@@ -29,16 +29,20 @@ export function AdminNavigationMenu({
     () => getAvailableNavigationGroups({ isEngineer, isAdvisor, isMockMode: isMockDataMode }),
     [isEngineer, isAdvisor],
   );
+  const quickActions = useMemo(
+    () => getAvailableQuickActions({ isEngineer, isAdvisor }),
+    [isEngineer, isAdvisor],
+  );
 
   return (
     <div className={cn(fullscreen ? "space-y-7 px-4 py-5 sm:px-6 sm:py-7" : "space-y-4 px-2 pb-3")}>
       {fullscreen && (
         <section aria-labelledby="menu-quick-actions-title">
-          <h2 id="menu-quick-actions-title" className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-sidebar-foreground/65">
+          <h2 id="menu-quick-actions-title" className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground/65">
             Acciones rápidas
           </h2>
           <div className="grid gap-2 sm:grid-cols-3">
-            {quickActionsConfig.map((action) => {
+            {quickActions.map((action) => {
               const ActionIcon = action.icon;
               return (
                 <Link
@@ -46,15 +50,15 @@ export function AdminNavigationMenu({
                   href={action.href}
                   onClick={onNavigate}
                   className={cn(
-                    "flex min-h-13 items-center gap-3 rounded-xl border px-4 text-base font-semibold outline-none transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40",
+                    "flex min-h-10 sm:min-h-12 items-center gap-2.5 sm:gap-3 rounded-xl border px-3 sm:px-4 text-xs sm:text-sm font-semibold outline-none transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40",
                     action.tone === "primary"
-                      ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
+                      ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700 shadow-2xs"
                       : "border-sidebar-border bg-sidebar-accent/45 text-sidebar-foreground hover:bg-sidebar-accent",
                   )}
                 >
-                  <ActionIcon className="size-5 shrink-0" aria-hidden="true" />
+                  <ActionIcon className="size-4.5 sm:size-5 shrink-0" aria-hidden="true" />
                   <span>{action.title}</span>
-                  <ChevronRight className="ml-auto size-4 opacity-60" aria-hidden="true" />
+                  <ChevronRight className="ml-auto size-3.5 sm:size-4 opacity-60" aria-hidden="true" />
                 </Link>
               );
             })}
@@ -64,20 +68,20 @@ export function AdminNavigationMenu({
 
       <nav
         aria-label="Navegación administrativa"
-        className={cn(fullscreen ? "grid gap-6 md:grid-cols-3" : "space-y-4")}
+        className={cn(fullscreen ? "grid gap-5 md:grid-cols-3" : "space-y-3")}
       >
         {groups.map((group) => (
           <section key={group.label}>
             {!collapsed && (
               <h2 className={cn(
                 "font-bold uppercase tracking-[0.14em] text-sidebar-foreground/55",
-                fullscreen ? "mb-3 text-xs" : "mb-2 px-2 text-[10px]",
+                fullscreen ? "mb-2 text-[11px]" : "mb-1.5 px-2 text-[10px]",
               )}>
                 {group.label}
               </h2>
             )}
 
-            <div className={cn(fullscreen ? "space-y-2" : "space-y-1")}>
+            <div className={cn(fullscreen ? "space-y-1.5" : "space-y-1")}>
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const active = isItemActive(item);
@@ -90,21 +94,24 @@ export function AdminNavigationMenu({
                       aria-label={collapsed ? item.title : undefined}
                       title={collapsed ? item.title : undefined}
                       className={cn(
-                        "flex items-center rounded-xl font-semibold outline-none transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40",
-                        fullscreen ? "min-h-13 gap-3 px-3 text-base" : "min-h-11 gap-2 px-2 text-sm",
+                        "group flex items-center rounded-xl font-semibold outline-none transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40",
+                        fullscreen ? "min-h-11 gap-2.5 px-3 text-sm" : "min-h-10 gap-2 px-2.5 text-xs sm:text-sm",
                         collapsed && "justify-center px-0",
                         active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/65 hover:text-sidebar-accent-foreground",
+                          ? "bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/80 font-bold"
+                          : "text-sidebar-foreground/75 border border-transparent hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                       )}
                     >
-                      <span className={cn(
-                        "flex shrink-0 items-center justify-center rounded-lg",
-                        fullscreen ? "size-9" : "size-8",
-                        active ? "bg-blue-100 text-blue-700" : "bg-sidebar-foreground/8 text-blue-600 dark:text-blue-300",
-                      )}>
-                        <Icon className="size-4.5" aria-hidden="true" />
-                      </span>
+                      <Icon
+                        className={cn(
+                          "shrink-0 transition-colors",
+                          fullscreen ? "size-5" : "size-4.5",
+                          active
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground",
+                        )}
+                        aria-hidden="true"
+                      />
                       {!collapsed && (
                         <>
                           <span className="min-w-0 flex-1 truncate">{item.title}</span>
@@ -116,7 +123,7 @@ export function AdminNavigationMenu({
                     </Link>
 
                     {!collapsed && active && item.children && (
-                      <div className={cn("ml-4 mt-1 space-y-1 border-l border-sidebar-border pl-4", !fullscreen && "ml-5 pl-3")}>
+                      <div className={cn("ml-4 mt-1 space-y-1 border-l border-sidebar-border pl-3", !fullscreen && "ml-4 pl-2.5")}>
                         {item.children.map((child) => {
                           const ChildIcon = child.icon;
                           const childActive = isChildActive(child);
@@ -127,13 +134,21 @@ export function AdminNavigationMenu({
                               onClick={onNavigate}
                               aria-current={childActive ? "page" : undefined}
                               className={cn(
-                                "flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40",
+                                "flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-xs font-medium outline-none transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40",
                                 childActive
-                                  ? "bg-sidebar-accent/75 text-sidebar-accent-foreground"
-                                  : "text-sidebar-foreground/65 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                                  ? "bg-blue-50/80 text-blue-700 font-semibold dark:bg-blue-950/50 dark:text-blue-300"
+                                  : "text-sidebar-foreground/65 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground",
                               )}
                             >
-                              {ChildIcon && <ChildIcon className="size-4 text-blue-600 dark:text-blue-300" aria-hidden="true" />}
+                              {ChildIcon && (
+                                <ChildIcon
+                                  className={cn(
+                                    "size-3.5 transition-colors",
+                                    childActive ? "text-blue-600 dark:text-blue-400" : "text-sidebar-foreground/50",
+                                  )}
+                                  aria-hidden="true"
+                                />
+                              )}
                               <span>{child.title}</span>
                             </Link>
                           );
