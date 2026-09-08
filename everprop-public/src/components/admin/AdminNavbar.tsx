@@ -12,7 +12,7 @@ import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
-import { clearAllNotifications, createNotification, fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, requestDesktopNotificationPermission, showDesktopNotification, type AppNotification } from "@/lib/notifications";
+import { clearAllNotifications, createNotification, fetchNotifications, isNotificationForUser, markAllNotificationsAsRead, markNotificationAsRead, requestDesktopNotificationPermission, showDesktopNotification, type AppNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -44,7 +44,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     // Initial fetch
     const refresh = async () => {
       try {
-        const notifs = await fetchNotifications(user.id, isAdmin);
+        const notifs = await fetchNotifications(user);
         if (mounted) setNotifications(notifs);
       } catch (err) {
         console.error("Error fetching notifications:", err);
@@ -57,7 +57,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     eventSource.addEventListener('notification', (e) => {
       try {
         const data = JSON.parse(e.data);
-        const isForMe = isAdmin || !data.targetUserId || data.targetUserId === user.id;
+        const isForMe = isNotificationForUser(data.targetUserId, user);
         if (isForMe) {
           setNotifications(prev => {
             if (prev.some(n => n.id === data.id)) return prev;
@@ -96,7 +96,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
       window.removeEventListener("everprop_notifications_updated", handleLocalUpdate);
       channel?.close();
     };
-  }, [user?.id, isAdmin, router]);
+  }, [user, router]);
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
@@ -123,12 +123,12 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const handleMarkAllAsRead = async () => {
     if (!user?.id) return;
     setNotifications((current) => current.map((n) => ({ ...n, read: true })));
-    await markAllNotificationsAsRead(user.id, isAdmin);
+    await markAllNotificationsAsRead(user);
   };
 
   const handleClearAll = async () => {
     setNotifications([]);
-    await clearAllNotifications(user?.id);
+    await clearAllNotifications(user);
   };
 
   const handleNotificationClick = async (n: AppNotification) => {
