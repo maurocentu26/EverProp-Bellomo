@@ -1563,6 +1563,7 @@ const whatsappHref = useWhatsAppHref();
       />}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,24,36,0.08)_5%,rgba(2,27,42,0.93)_100%)]" />
       <div className="relative flex min-h-[390px] flex-col justify-between p-6 sm:min-h-[460px] sm:p-9">
+        {project.logo && <div className="project-official-logo"><img src={project.logo} alt={`Logo de ${project.name}`} loading="lazy"/></div>}
         <p className="self-end border-b border-white/40 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/85">
           {project.status}
         </p>

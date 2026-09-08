@@ -10,12 +10,13 @@ export type BellomoImage = {
   alt: string;
   intent: string;
   section: string;
-  temporarySource: "bellomojujuy.com.ar" | "Unsplash";
-  temporary: true;
+  temporarySource: "bellomojujuy.com.ar" | "Unsplash" | "Archivo Bellomo";
+  temporary: boolean;
   position?: string;
 };
 
 export type Project = {
+  logo?: string;
   id: string;
   name: string;
   type: string;

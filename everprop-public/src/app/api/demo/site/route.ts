@@ -28,7 +28,7 @@ function save(state: WebsiteState) {
 function valid(value: unknown, sample: unknown, key = ""): boolean {
   if (typeof sample === "string") {
     if (typeof value !== "string" || value.length > 3_000_000) return false;
-    if (["href", "src", "image"].includes(key) && value && !/^(\/(?!\/)|#|https?:\/\/|mailto:|tel:|data:image\/(png|jpeg|webp);base64,)/i.test(value)) return false;
+    if (["href", "src", "image", "logo"].includes(key) && value && !/^(\/(?!\/)|#|https?:\/\/|mailto:|tel:|data:image\/(png|jpeg|webp);base64,)/i.test(value)) return false;
     return true;
   }
   if (typeof sample === "number") return typeof value === "number" && Number.isFinite(value) && value >= 0;
@@ -36,7 +36,7 @@ function valid(value: unknown, sample: unknown, key = ""): boolean {
   if (Array.isArray(sample)) return Array.isArray(value) && value.length <= 100 && (!sample.length || value.every(item => valid(item, sample[0])));
   if (sample && typeof sample === "object") {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-    return Object.entries(sample).every(([k, v]) => (["referenceMedia", "referenceLabel"].includes(k) && !(k in value)) || valid((value as Record<string, unknown>)[k], v, k));
+    return Object.entries(sample).every(([k, v]) => (["referenceMedia", "referenceLabel", "logo"].includes(k) && !(k in value)) || valid((value as Record<string, unknown>)[k], v, k));
   }
   return false;
 }

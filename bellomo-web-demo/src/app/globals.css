@@ -3396,7 +3396,7 @@ html.motion-ready[data-scroll-direction="up"]
 
 .synthesis-metrics dd {
   color: #12394f;
-  font-family: var(--font-cormorant), Georgia, serif;
+  font-family: var(--font-avenir), Georgia, serif;
   font-size: clamp(2.6rem, 4vw, 3.7rem);
   line-height: 0.9;
 }
@@ -3542,7 +3542,7 @@ html.motion-ready[data-scroll-direction="up"]
   right: 1.5rem;
   bottom: 1.4rem;
   color: rgba(255, 255, 255, 0.75);
-  font-family: var(--font-cormorant), Georgia, serif;
+  font-family: var(--font-avenir), Georgia, serif;
   font-size: 1rem;
   letter-spacing: 0.12em;
 }
@@ -4100,12 +4100,12 @@ html.motion-ready[data-scroll-direction="up"]
 
 /* Iteración 09 restaurada: hero editorial full-bleed y tipografía liviana. */
 body {
-  font-family: var(--font-manrope), Arial, Helvetica, sans-serif;
+  font-family: var(--font-avenir), Arial, Helvetica, sans-serif;
   font-weight: 400;
 }
 
 .font-display {
-  font-family: var(--font-cormorant), Georgia, serif;
+  font-family: var(--font-avenir), Georgia, serif;
   font-weight: 400;
 }
 
@@ -4278,7 +4278,7 @@ body {
 
 .counter-cell strong {
   color: #fff !important;
-  font-family: var(--font-cormorant), Georgia, serif;
+  font-family: var(--font-avenir), Georgia, serif;
   font-size: clamp(3.1rem, 4.4vw, 4.25rem) !important;
   font-weight: 300 !important;
 }
@@ -4301,7 +4301,7 @@ body {
 .institutional-section h2,
 .team-section h2,
 .contact-section h2 {
-  font-family: var(--font-cormorant), Georgia, serif;
+  font-family: var(--font-avenir), Georgia, serif;
   font-size: clamp(3.4rem, 5.3vw, 5.5rem) !important;
   font-weight: 400;
   line-height: 0.94 !important;
@@ -4310,7 +4310,7 @@ body {
 .trajectory-section h2,
 .project-card h3,
 .construction-card h3 {
-  font-family: var(--font-cormorant), Georgia, serif;
+  font-family: var(--font-avenir), Georgia, serif;
   font-weight: 400 !important;
 }
 
@@ -4978,3 +4978,18 @@ html.motion-ready
 .promotion-featured.promotion-without-image { grid-template-columns:minmax(220px,.6fr) minmax(0,1.4fr); }
 .promotion-featured.promotion-without-image:has(.promotion-photo:empty) { grid-template-columns:minmax(0,1fr); }
 @media(max-width:700px) { .promotion-featured.promotion-without-image { display:flex; } }
+
+/* Bellomo identity: supplied 2026 archive and institutional brand manual. */
+:root { --bellomo-blue: #00375c; --bellomo-blue-light: #446aa7; --navy-950: #002c49; --navy-900: #00375c; --navy-800: #00375c; }
+body { font-family: var(--font-avenir), Arial, sans-serif; }
+.font-display { font-family: var(--font-avenir), Arial, sans-serif; font-weight: 600; letter-spacing: -.035em; }
+.bellomo-header-logo { width: 7.5rem; height: 3.5rem; object-fit: contain; }
+.project-official-logo { position: absolute; top: 1.25rem; left: 1.25rem; width: 5.5rem; height: 4.5rem; padding: .5rem; background: #fff; border-radius: .25rem; }
+.project-official-logo img { width: 100%; height: 100%; object-fit: contain; }
+.project-card:has(.project-official-logo) > div:last-child > p:first-of-type { max-width: calc(100% - 6rem); text-align: right; }
+.project-card h3 { font-size: clamp(1.6rem, 2.5vw, 2.5rem); line-height: 1.12; overflow-wrap: anywhere; }
+.bellomo-promotions { background-color: var(--bellomo-blue); }
+.promotions-heading h2 { font-size: clamp(2rem, 4vw, 3.7rem); line-height: 1.1; }
+.promotion-copy h3 { font-size: clamp(1.65rem, 2.6vw, 2.5rem); line-height: 1.15; }
+.promotion-benefit { color: var(--bellomo-blue); }
+@media(max-width: 640px) { .bellomo-header-logo { width: 6.5rem; height: 3rem; } }

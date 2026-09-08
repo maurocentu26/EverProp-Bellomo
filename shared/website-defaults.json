@@ -13,40 +13,40 @@
     },
     "bellomoEditorialImages": {
       "about": {
-        "alt": "Interior residencial contemporáneo con materiales cálidos y luz natural",
-        "intent": "Representar calidad material y habitabilidad sin atribuir la obra a Bellomo",
+        "alt": "Huasi VI · Fachada",
+        "intent": "Huasi VI · Fachada",
         "position": "center",
         "section": "Nosotros",
-        "src": "/images/site/about.jpg",
-        "temporary": true,
-        "temporarySource": "Unsplash"
+        "src": "/images/bellomo/huasi-6.webp",
+        "temporary": false,
+        "temporarySource": "Archivo Bellomo"
       },
       "commercial": {
-        "alt": "Referencia conceptual para asesoramiento y decisión inmobiliaria",
-        "intent": "Introducir el servicio comercial sin afirmar disponibilidad concreta",
+        "alt": "Oficina central · Bellomo",
+        "intent": "Oficina central · Bellomo",
         "position": "center",
         "section": "Comercializadora",
-        "src": "/images/site/commercial.jpg",
-        "temporary": true,
-        "temporarySource": "Unsplash"
+        "src": "/images/bellomo/oficina.webp",
+        "temporary": false,
+        "temporarySource": "Archivo Bellomo"
       },
       "contact": {
-        "alt": "Detalle de arquitectura contemporánea con terminaciones cálidas",
-        "intent": "Cerrar el recorrido con una atmósfera arquitectónica sobria",
+        "alt": "Oficina central · Bellomo",
+        "intent": "Oficina central · Bellomo",
         "position": "center",
         "section": "Contacto",
-        "src": "/images/site/contact.jpg",
-        "temporary": true,
-        "temporarySource": "Unsplash"
+        "src": "/images/bellomo/oficina.webp",
+        "temporary": false,
+        "temporarySource": "Archivo Bellomo"
       },
       "team": {
-        "alt": "Espacio de trabajo contemporáneo para coordinación profesional",
-        "intent": "Acompañar la presentación del equipo sin simular integrantes reales",
+        "alt": "La Arbolada · Obra de infraestructura",
+        "intent": "La Arbolada · Obra de infraestructura",
         "position": "center",
         "section": "Equipo",
-        "src": "/images/site/team.jpg",
-        "temporary": true,
-        "temporarySource": "Unsplash"
+        "src": "/images/bellomo/arbolada.webp",
+        "temporary": false,
+        "temporarySource": "Archivo Bellomo"
       }
     },
     "bellomoProjects": [
@@ -58,15 +58,16 @@
         "status": "En desarrollo",
         "description": "Hectáreas destinadas a quintas de fin de semana, en una zona residencial de descanso y contacto con la naturaleza.",
         "media": {
-          "alt": "Extensión de tierra abierta bajo luz de atardecer",
-          "intent": "Comunicar tierra, proyección y horizonte de inversión",
+          "alt": "La Toma · Vista aérea",
+          "intent": "La Toma · Vista aérea",
           "position": "center",
           "section": "Loteos",
-          "src": "/images/site/land-field.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/quintas.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": true
+        "enabled": true,
+        "logo": "/images/bellomo/quintas-color.png"
       },
       {
         "id": "la-arbolada",
@@ -76,15 +77,16 @@
         "status": "Consultar disponibilidad",
         "description": "Una propuesta para proyectar el hogar y resguardar la inversión en un entorno de crecimiento.",
         "media": {
-          "alt": "Entorno natural arbolado como referencia paisajística",
-          "intent": "Acompañar propuestas residenciales vinculadas al entorno",
+          "alt": "La Arbolada · Vista aérea",
+          "intent": "La Arbolada · Vista aérea",
           "position": "center",
           "section": "Loteos",
-          "src": "/images/site/land-forest.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/arbolada-aereo.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": true
+        "enabled": true,
+        "logo": "/images/bellomo/la-arbolada-color.png"
       },
       {
         "id": "las-colinas",
@@ -94,15 +96,16 @@
         "status": "Consultar disponibilidad",
         "description": "Tierra, entorno y proyección urbana para quienes buscan construir una nueva etapa.",
         "media": {
-          "alt": "Paisaje montañoso del norte argentino como referencia territorial",
-          "intent": "Vincular la propuesta con territorio, escala y horizonte",
-          "position": "center 52%",
+          "alt": "Las Colinas · Vista aérea",
+          "intent": "Las Colinas · Vista aérea",
+          "position": "center",
           "section": "Hero y loteos",
-          "src": "/images/hero/territorio-jujuy.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/colinas.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": false
+        "enabled": false,
+        "logo": "/images/bellomo/las-colinas-color.png"
       },
       {
         "id": "edificios-huasi",
@@ -112,15 +115,16 @@
         "status": "En desarrollo",
         "description": "Edificios que integran diseño contemporáneo, conectividad urbana y calidad constructiva.",
         "media": {
-          "alt": "Fachada de un Edificio Huasi publicada en el sitio de Bellomo",
-          "intent": "Representar la línea Huasi con material actualmente publicado",
+          "alt": "Huasi VIII · Fachada",
+          "intent": "Huasi VIII · Fachada",
           "position": "center",
           "section": "Edificios Huasi",
-          "src": "/images/site/official-huasi-facade.jpg",
-          "temporary": true,
-          "temporarySource": "bellomojujuy.com.ar"
+          "src": "/images/bellomo/huasi-8-2.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": true
+        "enabled": true,
+        "logo": ""
       },
       {
         "id": "san-pablo",
@@ -130,15 +134,16 @@
         "status": "Consultar disponibilidad",
         "description": "Una propuesta residencial con proyección, conectividad y entorno para construir.",
         "media": {
-          "alt": "Camino de montaña del norte argentino",
-          "intent": "Representar conectividad territorial sin atribuir ubicación exacta",
+          "alt": "San Pablo · Vista aérea",
+          "intent": "San Pablo · Vista aérea",
           "position": "center",
           "section": "Loteos",
-          "src": "/images/site/land-san-pablo.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/san-pablo-aereo.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": true
+        "enabled": true,
+        "logo": "/images/bellomo/san-pablo-color.png"
       },
       {
         "id": "valle-verde",
@@ -148,15 +153,16 @@
         "status": "Consultar disponibilidad",
         "description": "Naturaleza y expansión urbana para una inversión pensada a largo plazo.",
         "media": {
-          "alt": "Valle del norte argentino con paisaje abierto",
-          "intent": "Representar entorno y expansión territorial",
+          "alt": "Valle Verde · Paisaje",
+          "intent": "Valle Verde · Paisaje",
           "position": "center",
           "section": "Loteos",
-          "src": "/images/site/land-valle-verde.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/valle-verde.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": false
+        "enabled": false,
+        "logo": "/images/bellomo/valle-verde-color.png"
       },
       {
         "id": "los-cardinales",
@@ -166,15 +172,16 @@
         "status": "Consultar disponibilidad",
         "description": "Un entorno para proyectar vivienda propia con tranquilidad y respaldo.",
         "media": {
-          "alt": "Paisaje de escala residencial y horizonte abierto",
-          "intent": "Acompañar la idea de vivienda y tranquilidad",
+          "alt": "Los Cardinales · Vista aérea",
+          "intent": "Los Cardinales · Vista aérea",
           "position": "center",
           "section": "Loteos",
-          "src": "/images/site/land-cardinales.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/cardinales.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": false
+        "enabled": false,
+        "logo": "/images/bellomo/los-cardinales.png"
       },
       {
         "id": "el-rocio",
@@ -184,15 +191,16 @@
         "status": "Consultar disponibilidad",
         "description": "Tierra y paisaje reunidos en una oportunidad residencial de escala humana.",
         "media": {
-          "alt": "Paisaje rural bajo luz cálida de amanecer",
-          "intent": "Representar tierra y escala humana",
+          "alt": "El Rocío · Entorno natural",
+          "intent": "El Rocío · Entorno natural",
           "position": "center",
           "section": "Loteos",
-          "src": "/images/site/land-rocio.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/rocio.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": false
+        "enabled": false,
+        "logo": "/images/bellomo/el-rocio-color.png"
       },
       {
         "id": "santa-emilia",
@@ -202,15 +210,16 @@
         "status": "Consultar disponibilidad",
         "description": "Una propuesta de crecimiento familiar en un sector con proyección urbana.",
         "media": {
-          "alt": "Entorno natural abierto con luz cálida",
-          "intent": "Acompañar una propuesta de crecimiento familiar",
+          "alt": "Santa Emilia · Terrenos",
+          "intent": "Santa Emilia · Terrenos",
           "position": "center",
           "section": "Loteos",
-          "src": "/images/site/land-emilia.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/santa-emilia.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": false
+        "enabled": false,
+        "logo": "/images/bellomo/santa-emilia-color.png"
       },
       {
         "id": "los-arenales",
@@ -220,15 +229,16 @@
         "status": "Consultar disponibilidad",
         "description": "Una alternativa para invertir en suelo y acompañar el desarrollo de la ciudad.",
         "media": {
-          "alt": "Terreno abierto de paisaje árido y horizonte amplio",
-          "intent": "Representar inversión en suelo sin indicar una parcela concreta",
+          "alt": "Los Arenales · Desarrollo",
+          "intent": "Los Arenales · Desarrollo",
           "position": "center",
           "section": "Loteos",
-          "src": "/images/site/land-arenales.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/arenales.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "enabled": false
+        "enabled": false,
+        "logo": "/images/bellomo/los-arenales-color.png"
       }
     ],
     "bellomoStats": [
@@ -264,15 +274,15 @@
         "eyebrow": "Comunidad e infraestructura",
         "description": "Viviendas, caminos, redes de servicios y espacios comunitarios ejecutados con planificación, durabilidad y una mirada de impacto regional.",
         "media": {
-          "alt": "Profesional revisando documentación técnica de una obra",
-          "intent": "Representar planificación técnica sin atribuir la escena a Bellomo",
+          "alt": "Archivo de obra publicado en el sitio de Bellomo",
+          "intent": "Aportar evidencia histórica de obra pública como referencia temporal",
           "position": "center",
           "section": "Obras públicas",
-          "src": "/images/site/public-works.jpg",
+          "src": "/images/site/official-public-works.jpg",
           "temporary": true,
-          "temporarySource": "Unsplash"
+          "temporarySource": "bellomojujuy.com.ar"
         },
-        "imageLabel": "Imagen de referencia",
+        "imageLabel": "Archivo de obras de Bellomo",
         "referenceMedia": {
           "alt": "Archivo de obra publicado en el sitio de Bellomo",
           "intent": "Aportar evidencia histórica de obra pública como referencia temporal",
@@ -298,15 +308,15 @@
         "eyebrow": "Ejecución a medida",
         "description": "Viviendas familiares y espacios comerciales desarrollados desde la planificación hasta los acabados, con soluciones ajustadas a cada proyecto.",
         "media": {
-          "alt": "Arquitectura urbana contemporánea vista desde nivel peatonal",
-          "intent": "Representar escala y ejecución de obra privada",
+          "alt": "Huasi VIII · Fachada",
+          "intent": "Huasi VIII · Fachada",
           "position": "center",
           "section": "Obras privadas",
-          "src": "/images/site/private-works.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/huasi-8-2.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "imageLabel": "Imagen de referencia",
+        "imageLabel": "Huasi VIII · Archivo Bellomo",
         "icon": "store",
         "focusAreas": [
           "Viviendas y comercios",
@@ -322,15 +332,15 @@
         "eyebrow": "Proyectos entregados",
         "description": "Arquitectura residencial contemporánea que combina ubicación, confort y calidad constructiva, con torres entregadas como respaldo y disponibilidad a confirmar.",
         "media": {
-          "alt": "Edificio residencial Huasi publicado en el sitio de Bellomo",
-          "intent": "Representar trayectoria residencial urbana",
+          "alt": "Huasi VI · Fachada",
+          "intent": "Huasi VI · Fachada",
           "position": "center",
           "section": "Edificios Huasi",
-          "src": "/images/site/official-huasi-residential.jpg",
-          "temporary": true,
-          "temporarySource": "bellomojujuy.com.ar"
+          "src": "/images/bellomo/huasi-6.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
-        "imageLabel": "Referencia publicada en bellomojujuy.com.ar",
+        "imageLabel": "Huasi VI · Archivo Bellomo",
         "icon": "building",
         "focusAreas": [
           "Ubicación y confort",
@@ -349,13 +359,13 @@
         "description": "Tierra, arquitectura y ejecución reunidas por una misma idea: crear espacios con respaldo y valor a largo plazo.",
         "eyebrow": "Desarrollos inmobiliarios · Jujuy",
         "media": {
-          "alt": "Vivienda contemporánea integrada a un entorno arbolado",
-          "intent": "Comunicar arquitectura residencial y permanencia",
-          "position": "58% center",
+          "alt": "Huasi VIII · Fachada",
+          "intent": "Huasi VIII · Fachada",
+          "position": "center",
           "section": "Hero",
-          "src": "/images/hero/lugares-que-perduran.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/huasi-8-2.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
         "enabled": true
       },
@@ -366,13 +376,13 @@
         "description": "Desarrollo urbano con conocimiento del territorio. Proyectos para vivir, invertir y acompañar el crecimiento de la provincia.",
         "eyebrow": "Bellomo · Desarrollo urbano",
         "media": {
-          "alt": "Paisaje montañoso del norte argentino como referencia territorial",
-          "intent": "Vincular la propuesta con territorio, escala y horizonte",
-          "position": "center 52%",
+          "alt": "La Toma · Vista aérea",
+          "intent": "La Toma · Vista aérea",
+          "position": "center",
           "section": "Hero y loteos",
-          "src": "/images/hero/territorio-jujuy.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/quintas.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
         "enabled": true
       },
@@ -383,13 +393,13 @@
         "description": "Arquitectura contemporánea, materiales seleccionados y decisiones que sostienen el valor de cada proyecto.",
         "eyebrow": "Calidad que se proyecta",
         "media": {
-          "alt": "Volumen arquitectónico contemporáneo de líneas precisas",
-          "intent": "Representar diseño y calidad constructiva",
+          "alt": "Huasi VI · Fachada",
+          "intent": "Huasi VI · Fachada",
           "position": "center",
           "section": "Hero",
-          "src": "/images/hero/diseno-calidad.jpg",
-          "temporary": true,
-          "temporarySource": "Unsplash"
+          "src": "/images/bellomo/huasi-6.webp",
+          "temporary": false,
+          "temporarySource": "Archivo Bellomo"
         },
         "enabled": true
       }
@@ -750,9 +760,9 @@
   },
   "assets": {
     "imagen-1": {
-      "label": "/brand/logo-bellomo-isotipo.png",
+      "label": "Logo oficial de Bellomo",
       "group": "Marca",
-      "value": "/brand/logo-bellomo-isotipo.png"
+      "value": "/images/bellomo/bellomo-oficial-blanco.svg"
     },
     "imagen-52": {
       "label": "/brand/eversys-isotipo-oficial-blanco.png",

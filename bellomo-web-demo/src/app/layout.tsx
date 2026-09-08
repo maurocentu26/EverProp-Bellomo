@@ -4,28 +4,14 @@ import "./globals.css";
 import { AIChatBubble } from "@/components/ai/AIChatBubble";
 import { WebsiteProvider } from "@/components/WebsiteProvider";
 
-const manrope = localFont({
-  display: "swap",
-  src: "./fonts/manrope.woff2",
-  variable: "--font-manrope",
-  weight: "400 600",
-});
-
-const cormorantGaramond = localFont({
+const avenir = localFont({
   display: "swap",
   src: [
-    {
-      path: "./fonts/cormorant-garamond-roman.woff2",
-      style: "normal",
-      weight: "300 500",
-    },
-    {
-      path: "./fonts/cormorant-garamond-italic.woff2",
-      style: "italic",
-      weight: "300 400",
-    },
+    { path: "./fonts/avenir-regular.otf", weight: "400", style: "normal" },
+    { path: "./fonts/avenir-demi.otf", weight: "600", style: "normal" },
+    { path: "./fonts/avenir-bold.otf", weight: "700", style: "normal" },
   ],
-  variable: "--font-cormorant",
+  variable: "--font-avenir",
 });
 
 export const metadata: Metadata = {
@@ -41,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      className={`${manrope.variable} ${cormorantGaramond.variable}`}
+      className={avenir.variable}
       lang="es-AR"
     >
       <body>
