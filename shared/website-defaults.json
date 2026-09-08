@@ -470,325 +470,425 @@
     ]
   },
   "texts": {
-    "texto-2": {
-      "label": "BELLOMO",
-      "group": "Elementos generales",
-      "value": "BELLOMO"
+    "rami-text-1": {
+      "label": "Somos Bellomo",
+      "group": "AboutSection.tsx",
+      "value": "Somos Bellomo"
     },
-    "texto-3": {
-      "label": "Contactar",
-      "group": "Menú",
-      "value": "Contactar"
+    "rami-text-2": {
+      "label": "Una historia construida para durar.",
+      "group": "AboutSection.tsx",
+      "value": "Una historia construida para durar."
     },
-    "texto-4": {
-      "label": "Navegación",
-      "group": "Menú",
-      "value": "Navegación"
+    "rami-text-3": {
+      "label": "Somos una empresa familiar que planifica, desarrolla y ejecuta ur",
+      "group": "About",
+      "value": "Somos una empresa familiar que planifica, desarrolla y ejecuta urbanizaciones y obras de gran magnitud en Jujuy y otras provincias."
     },
-    "texto-5": {
-      "label": "Contactar",
-      "group": "Menú",
-      "value": "Contactar"
+    "rami-text-4": {
+      "label": "Desde 1976, Bellomo participa de todo el proceso: ingeniería, arq",
+      "group": "About",
+      "value": "Desde 1976, Bellomo participa de todo el proceso: ingeniería, arquitectura, infraestructura, comercialización y administración. Esa visión integral convierte experiencia en decisiones más claras."
     },
-    "texto-6": {
-      "label": "Desarrollos inmobiliarios en Jujuy",
-      "group": "Menú",
-      "value": "Desarrollos inmobiliarios en Jujuy"
+    "rami-text-5": {
+      "label": "La trayectoria incluye los aeropuertos de Catamarca y La Rioja, e",
+      "group": "About",
+      "value": "La trayectoria incluye los aeropuertos de Catamarca y La Rioja, el dique Las Lomitas, fundaciones de Altos Hornos, complejos habitacionales y desarrollos urbanos que acompañan el crecimiento de Jujuy."
     },
-    "texto-7": {
-      "label": "Presentación de Bellomo",
-      "group": "Presentación",
-      "value": "Presentación de Bellomo"
+    "rami-text-6": {
+      "label": "Archivo histórico",
+      "group": "About",
+      "value": "Archivo histórico"
     },
-    "texto-12": {
-      "label": "Ver desarrollos",
-      "group": "Portada",
-      "value": "Ver desarrollos"
+    "rami-text-7": {
+      "label": "50 años de trayectoria Bellomo",
+      "group": "About",
+      "value": "50 años de trayectoria Bellomo"
     },
-    "texto-13": {
-      "label": "Contactar a Bellomo",
-      "group": "Portada",
-      "value": "Contactar a Bellomo"
+    "rami-text-9": {
+      "label": "Hablemos",
+      "group": "ContactSection.tsx",
+      "value": "Hablemos"
     },
-    "texto-14": {
-      "label": "Descubrir",
-      "group": "Portada",
-      "value": "Descubrir"
+    "rami-text-10": {
+      "label": "Tu próximo proyecto empieza con una buena conversación.",
+      "group": "ContactSection.tsx",
+      "value": "Tu próximo proyecto empieza con una buena conversación."
     },
-    "texto-15": {
-      "label": "Ver desarrollo",
-      "group": "Desarrollos",
-      "value": "Ver desarrollo"
+    "rami-text-11": {
+      "label": "Contanos si buscás un lote, una propiedad, un espacio comercial o",
+      "group": "Contact",
+      "value": "Contanos si buscás un lote, una propiedad, un espacio comercial o acompañamiento para una obra. Te orientamos sin compromiso."
     },
-    "texto-16": {
-      "label": "Explorar desarrollos",
-      "group": "Desarrollos",
-      "value": "Explorar desarrollos"
+    "rami-text-12": {
+      "label": "Escribir por WhatsApp",
+      "group": "Contact",
+      "value": "Escribir por WhatsApp"
     },
-    "texto-17": {
-      "label": "desarrollos reales para explorar.",
-      "group": "Desarrollos",
-      "value": "desarrollos reales para explorar."
+    "rami-text-13": {
+      "label": "Cómo llegar",
+      "group": "Contact",
+      "value": "Cómo llegar"
     },
-    "texto-18": {
-      "label": "Dos áreas, una visión",
-      "group": "Áreas de trabajo",
-      "value": "Dos áreas, una visión"
+    "rami-text-14": {
+      "label": "Oficina",
+      "group": "Contact",
+      "value": "Oficina"
     },
-    "texto-19": {
-      "label": "Desarrollamos oportunidades. Construimos futuro.",
-      "group": "Áreas de trabajo",
-      "value": "Desarrollamos oportunidades. Construimos futuro."
+    "rami-text-15": {
+      "label": "Comercial",
+      "group": "Contact",
+      "value": "Comercial"
     },
-    "texto-20": {
-      "label": "Saltar al contenido",
-      "group": "Página principal",
-      "value": "Saltar al contenido"
+    "rami-text-17": {
+      "label": "388 422 8755",
+      "group": "Contact",
+      "value": "388 422 8755"
     },
-    "texto-21": {
-      "label": "Bellomo · Jujuy",
-      "group": "Página principal",
-      "value": "Bellomo · Jujuy"
+    "rami-text-19": {
+      "label": "388 433 1981",
+      "group": "Contact",
+      "value": "388 433 1981"
     },
-    "texto-22": {
-      "label": "Bellomo en síntesis",
-      "group": "Página principal",
-      "value": "Bellomo en síntesis"
-    },
-    "texto-23": {
-      "label": "Experiencia que se construye.",
-      "group": "Página principal",
-      "value": "Experiencia que se construye."
-    },
-    "texto-24": {
-      "label": "Casi 50 años desarrollando espacios para vivir, invertir y crecer",
-      "group": "Página principal",
-      "value": "Casi 50 años desarrollando espacios para vivir, invertir y crecer."
-    },
-    "texto-25": {
-      "label": "Desde Jujuy, Bellomo integra desarrollo, comercialización y capac",
-      "group": "Página principal",
-      "value": "Desde Jujuy, Bellomo integra desarrollo, comercialización y capacidad constructiva con conocimiento del territorio y visión de largo plazo."
-    },
-    "texto-26": {
-      "label": "Desarrollos seleccionados",
-      "group": "Página principal",
-      "value": "Desarrollos seleccionados"
-    },
-    "texto-27": {
-      "label": "Proyectos con respaldo Bellomo.",
-      "group": "Página principal",
-      "value": "Proyectos con respaldo Bellomo."
-    },
-    "texto-28": {
-      "label": "Una selección breve de desarrollos presentes en el archivo local.",
-      "group": "Página principal",
-      "value": "Una selección breve de desarrollos presentes en el archivo local. Estado y disponibilidad se confirman con el equipo."
-    },
-    "texto-29": {
-      "label": "Contacto",
-      "group": "Página principal",
-      "value": "Contacto"
-    },
-    "texto-30": {
-      "label": "Hablemos de tu próximo paso.",
-      "group": "Página principal",
-      "value": "Hablemos de tu próximo paso."
-    },
-    "texto-31": {
-      "label": "Conocé un desarrollo o consultanos por una obra.",
-      "group": "Página principal",
-      "value": "Conocé un desarrollo o consultanos por una obra."
-    },
-    "texto-32": {
-      "label": "WhatsApp",
-      "group": "Página principal",
-      "value": "WhatsApp"
-    },
-    "texto-34": {
-      "label": "Llamar",
-      "group": "Página principal",
-      "value": "Llamar"
-    },
-    "texto-36": {
-      "label": "Ubicación",
-      "group": "Página principal",
-      "value": "Ubicación"
-    },
-    "texto-37": {
-      "label": "Desarrollos inmobiliarios y construcción en Jujuy.",
-      "group": "Página principal",
-      "value": "Desarrollos inmobiliarios y construcción en Jujuy."
-    },
-    "texto-38": {
-      "label": "Ubicación",
-      "group": "Página principal",
-      "value": "Ubicación"
-    },
-    "texto-39": {
-      "label": "Contacto",
-      "group": "Página principal",
-      "value": "Contacto"
-    },
-    "texto-40": {
-      "label": "Comercializadora",
-      "group": "Página principal",
-      "value": "Comercializadora"
-    },
-    "texto-43": {
+    "rami-text-20": {
       "label": "Constructora",
-      "group": "Página principal",
+      "group": "Contact",
       "value": "Constructora"
     },
-    "texto-45": {
+    "rami-text-22": {
+      "label": "388 423 4010",
+      "group": "Contact",
+      "value": "388 423 4010"
+    },
+    "rami-text-23": {
       "label": "Horarios",
-      "group": "Página principal",
+      "group": "Contact",
       "value": "Horarios"
     },
-    "texto-48": {
-      "label": "©",
-      "group": "Página principal",
-      "value": "©"
+    "rami-text-24": {
+      "label": "50 años construyendo futuro en Jujuy.",
+      "group": "Contact",
+      "value": "50 años construyendo futuro en Jujuy."
     },
-    "texto-49": {
-      "label": "Bellomo. Todos los derechos reservados.",
-      "group": "Página principal",
-      "value": "Bellomo. Todos los derechos reservados."
+    "rami-text-25": {
+      "label": "Explorar",
+      "group": "Contact",
+      "value": "Explorar"
     },
-    "texto-51": {
-      "label": "Powered by",
-      "group": "Página principal",
-      "value": "Powered by"
+    "rami-text-27": {
+      "label": "Bellomo",
+      "group": "Contact",
+      "value": "Bellomo"
     },
-    "texto-53": {
-      "label": "EverSys Solutions",
-      "group": "Página principal",
-      "value": "EverSys Solutions"
+    "rami-text-29": {
+      "label": "Proyectos",
+      "group": "Contact",
+      "value": "Proyectos"
     },
-    "texto-54": {
-      "label": "Consultar",
-      "group": "Página principal",
-      "value": "Consultar"
+    "rami-text-31": {
+      "label": "Archivo",
+      "group": "Contact",
+      "value": "Archivo"
     },
-    "texto-100": {
-      "label": "Oportunidades inmobiliarias",
-      "group": "Menú y redes",
-      "value": "Oportunidades inmobiliarias"
+    "rami-text-33": {
+      "label": "Construcción",
+      "group": "Contact",
+      "value": "Construcción"
     },
-    "texto-101": {
-      "label": "Desarrollos actuales",
-      "group": "Menú y redes",
-      "value": "Desarrollos actuales"
+    "rami-text-34": {
+      "label": "Contacto",
+      "group": "Contact",
+      "value": "Contacto"
     },
-    "texto-102": {
-      "label": "Nuevos proyectos",
-      "group": "Menú y redes",
-      "value": "Nuevos proyectos"
+    "rami-text-35": {
+      "label": "Redes",
+      "group": "Contact",
+      "value": "Redes"
     },
-    "texto-103": {
-      "label": "Capacidad constructiva",
-      "group": "Menú y redes",
-      "value": "Capacidad constructiva"
-    },
-    "texto-104": {
-      "label": "Proyectos entregados",
-      "group": "Menú y redes",
-      "value": "Proyectos entregados"
-    },
-    "texto-105": {
-      "label": "Áreas de obra",
-      "group": "Menú y redes",
-      "value": "Áreas de obra"
-    },
-    "texto-106": {
-      "label": "Explorar desarrollos",
-      "group": "Áreas de trabajo",
-      "value": "Explorar desarrollos"
-    },
-    "texto-107": {
-      "label": "Loteos, propiedades, locales y cocheras.",
-      "group": "Áreas de trabajo",
-      "value": "Loteos, propiedades, locales y cocheras."
-    },
-    "texto-108": {
-      "label": "Oportunidades para vivir e invertir.",
-      "group": "Áreas de trabajo",
-      "value": "Oportunidades para vivir e invertir."
-    },
-    "texto-109": {
-      "label": "Consultar una obra",
-      "group": "Áreas de trabajo",
-      "value": "Consultar una obra"
-    },
-    "texto-110": {
-      "label": "Desarrollos privados, edificios y obra pública.",
-      "group": "Áreas de trabajo",
-      "value": "Desarrollos privados, edificios y obra pública."
-    },
-    "texto-111": {
-      "label": "Obras pensadas para durar.",
-      "group": "Áreas de trabajo",
-      "value": "Obras pensadas para durar."
-    },
-    "texto-112": {
+    "rami-text-37": {
       "label": "Instagram",
-      "group": "Menú y redes",
+      "group": "Contact",
       "value": "Instagram"
     },
-    "texto-113": {
+    "rami-text-39": {
       "label": "Facebook",
-      "group": "Menú y redes",
+      "group": "Contact",
       "value": "Facebook"
+    },
+    "rami-text-40": {
+      "label": "©",
+      "group": "Contact",
+      "value": "©"
+    },
+    "rami-text-41": {
+      "label": "Bellomo. Todos los derechos reservados.",
+      "group": "Contact",
+      "value": "Bellomo. Todos los derechos reservados."
+    },
+    "rami-text-43": {
+      "label": "Powered by",
+      "group": "Contact",
+      "value": "Powered by"
+    },
+    "rami-text-45": {
+      "label": "EverSys Solutions",
+      "group": "Contact",
+      "value": "EverSys Solutions"
+    },
+    "rami-text-47": {
+      "label": "Explorar proyectos",
+      "group": "Hero",
+      "value": "Explorar proyectos"
+    },
+    "rami-text-48": {
+      "label": "Hablar con Bellomo",
+      "group": "Hero",
+      "value": "Hablar con Bellomo"
+    },
+    "rami-text-50": {
+      "label": "Descubrir",
+      "group": "Hero",
+      "value": "Descubrir"
+    },
+    "rami-text-51": {
+      "label": "Ver pieza completa",
+      "group": "OfficialGallery",
+      "value": "Ver pieza completa"
+    },
+    "rami-text-52": {
+      "label": "Archivo real Bellomo",
+      "group": "OfficialGallerySection.tsx",
+      "value": "Archivo real Bellomo"
+    },
+    "rami-text-53": {
+      "label": "El territorio, las obras y la historia. Sin imágenes genéricas.",
+      "group": "OfficialGallerySection.tsx",
+      "value": "El territorio, las obras y la historia. Sin imágenes genéricas."
+    },
+    "rami-text-54": {
+      "label": "Selección web del material oficial recibido. Cada render está rot",
+      "group": "OfficialGallery",
+      "value": "Selección web del material oficial recibido. Cada render está rotulado como tal y las fotografías conservan la asociación disponible en el archivo de origen."
+    },
+    "rami-text-55": {
+      "label": "60 piezas oficiales optimizadas",
+      "group": "OfficialGallery",
+      "value": "60 piezas oficiales optimizadas"
+    },
+    "rami-text-56": {
+      "label": "Los originales de alta resolución y los videos permanecen como fu",
+      "group": "OfficialGallery",
+      "value": "Los originales de alta resolución y los videos permanecen como fuente maestra; la web usa copias WebP livianas, sin alterar el archivo original."
+    },
+    "rami-text-57": {
+      "label": "Selección ·",
+      "group": "OfficialGallery",
+      "value": "Selección ·"
+    },
+    "rami-text-58": {
+      "label": "Servicios e infraestructura",
+      "group": "Projects",
+      "value": "Servicios e infraestructura"
+    },
+    "rami-text-59": {
+      "label": "Consultar este proyecto",
+      "group": "Projects",
+      "value": "Consultar este proyecto"
+    },
+    "rami-text-60": {
+      "label": "Proyectos Bellomo",
+      "group": "ProjectsSection.tsx",
+      "value": "Proyectos Bellomo"
+    },
+    "rami-text-61": {
+      "label": "Opciones para cada momento.",
+      "group": "ProjectsSection.tsx",
+      "value": "Opciones para cada momento."
+    },
+    "rami-text-62": {
+      "label": "Preventa, venta, desarrollos entregados y próximos proyectos. La ",
+      "group": "Projects",
+      "value": "Preventa, venta, desarrollos entregados y próximos proyectos. La disponibilidad se valida de forma personalizada antes de cualquier reserva."
+    },
+    "rami-text-63": {
+      "label": "proyectos",
+      "group": "Projects",
+      "value": "proyectos"
+    },
+    "rami-text-64": {
+      "label": "Comercializadora",
+      "group": "ServicesSection.tsx",
+      "value": "Comercializadora"
+    },
+    "rami-text-65": {
+      "label": "Decisiones inmobiliarias con respaldo.",
+      "group": "ServicesSection.tsx",
+      "value": "Decisiones inmobiliarias con respaldo."
+    },
+    "rami-text-66": {
+      "label": "Desde 2003 desarrollamos loteos a gran escala y acompañamos la ve",
+      "group": "Services",
+      "value": "Desde 2003 desarrollamos loteos a gran escala y acompañamos la venta, el alquiler y la administración de inmuebles y fracciones."
+    },
+    "rami-text-67": {
+      "label": "Para familias, inversores y propietarios. Escuchamos el objetivo,",
+      "group": "Services",
+      "value": "Para familias, inversores y propietarios. Escuchamos el objetivo, ordenamos alternativas y conectamos cada consulta con el área adecuada."
+    },
+    "rami-text-68": {
+      "label": "Cartera informada de alquileres",
+      "group": "Services",
+      "value": "Cartera informada de alquileres"
+    },
+    "rami-text-69": {
+      "label": "Locales, oficinas y cocheras.",
+      "group": "Services",
+      "value": "Locales, oficinas y cocheras."
+    },
+    "rami-text-70": {
+      "label": "Constructora",
+      "group": "ServicesSection.tsx",
+      "value": "Constructora"
+    },
+    "rami-text-71": {
+      "label": "Capacidad técnica. Mirada integral.",
+      "group": "ServicesSection.tsx",
+      "value": "Capacidad técnica. Mirada integral."
+    },
+    "rami-text-72": {
+      "label": "Diseñamos, elaboramos y ejecutamos proyectos de ingeniería, arqui",
+      "group": "Services",
+      "value": "Diseñamos, elaboramos y ejecutamos proyectos de ingeniería, arquitectura y urbanización, públicos y privados."
+    },
+    "rami-text-74": {
+      "label": "Desarrollo · Construcción",
+      "group": "shared",
+      "value": "Desarrollo · Construcción"
+    },
+    "rami-text-76": {
+      "label": "Consultar",
+      "group": "SiteHeader",
+      "value": "Consultar"
+    },
+    "rami-text-77": {
+      "label": "Hablar por WhatsApp",
+      "group": "SiteHeader",
+      "value": "Hablar por WhatsApp"
     }
   },
   "links": {
-    "enlace-46": {
+    "rami-link-16": {
+      "label": "tel:+543884228755",
+      "group": "ContactSection.tsx",
+      "value": "tel:+543884228755"
+    },
+    "rami-link-18": {
+      "label": "tel:+543884331981",
+      "group": "ContactSection.tsx",
+      "value": "tel:+543884331981"
+    },
+    "rami-link-21": {
+      "label": "tel:+543884234010",
+      "group": "ContactSection.tsx",
+      "value": "tel:+543884234010"
+    },
+    "rami-link-26": {
+      "label": "#bellomo",
+      "group": "ContactSection.tsx",
+      "value": "#bellomo"
+    },
+    "rami-link-28": {
+      "label": "#proyectos",
+      "group": "ContactSection.tsx",
+      "value": "#proyectos"
+    },
+    "rami-link-30": {
+      "label": "#archivo",
+      "group": "ContactSection.tsx",
+      "value": "#archivo"
+    },
+    "rami-link-32": {
+      "label": "#construccion",
+      "group": "ContactSection.tsx",
+      "value": "#construccion"
+    },
+    "rami-link-36": {
       "label": "https://instagram.com/bellomojujuy",
-      "group": "Página principal",
+      "group": "ContactSection.tsx",
       "value": "https://instagram.com/bellomojujuy"
     },
-    "enlace-47": {
+    "rami-link-38": {
       "label": "https://facebook.com/bellomojujuy",
-      "group": "Página principal",
+      "group": "ContactSection.tsx",
       "value": "https://facebook.com/bellomojujuy"
     },
-    "enlace-50": {
+    "rami-link-42": {
       "label": "https://www.instagram.com/eversys.solutions/",
-      "group": "Página principal",
+      "group": "ContactSection.tsx",
       "value": "https://www.instagram.com/eversys.solutions/"
+    },
+    "rami-link-46": {
+      "label": "#proyectos",
+      "group": "HeroSection.tsx",
+      "value": "#proyectos"
+    },
+    "rami-link-49": {
+      "label": "#bellomo",
+      "group": "HeroSection.tsx",
+      "value": "#bellomo"
+    },
+    "rami-link-75": {
+      "label": "#inicio",
+      "group": "SiteHeader.tsx",
+      "value": "#inicio"
     }
   },
   "assets": {
-    "imagen-1": {
-      "label": "Logo oficial de Bellomo",
-      "group": "Marca",
-      "value": "/images/bellomo/bellomo-oficial-blanco.svg"
+    "rami-image-8": {
+      "label": "belgrano-1383.webp",
+      "group": "ContactSection.tsx",
+      "value": "/images/official/oficina/belgrano-1383.webp"
     },
-    "imagen-52": {
-      "label": "/brand/eversys-isotipo-oficial-blanco.png",
-      "group": "Página principal",
+    "rami-image-44": {
+      "label": "eversys-isotipo-oficial-blanco.png",
+      "group": "ContactSection.tsx",
       "value": "/brand/eversys-isotipo-oficial-blanco.png"
+    },
+    "rami-image-73": {
+      "label": "logo-bellomo-isotipo.png",
+      "group": "shared.tsx",
+      "value": "/brand/logo-bellomo-isotipo.png"
     }
   },
   "sections": [
     {
+      "id": "menu",
+      "title": "Menú",
+      "enabled": true
+    },
+    {
       "id": "inicio",
-      "title": "Portada",
+      "title": "Inicio",
       "enabled": true
     },
     {
       "id": "bellomo",
-      "title": "Sobre Bellomo",
-      "enabled": true
-    },
-    {
-      "id": "comercializadora",
-      "title": "Comercializadora y constructora",
+      "title": "Historia de Bellomo",
       "enabled": true
     },
     {
       "id": "desarrollos-seleccionados",
-      "title": "Desarrollos",
+      "title": "Proyectos y propiedades",
+      "enabled": true
+    },
+    {
+      "id": "archivo",
+      "title": "Galería oficial",
+      "enabled": true
+    },
+    {
+      "id": "servicios",
+      "title": "Comercializadora y construcción",
       "enabled": true
     },
     {
@@ -799,26 +899,6 @@
     {
       "id": "pie",
       "title": "Pie de página",
-      "enabled": true
-    },
-    {
-      "id": "redes",
-      "title": "Redes sociales",
-      "enabled": true
-    },
-    {
-      "id": "flotantes",
-      "title": "Botones flotantes",
-      "enabled": true
-    },
-    {
-      "id": "presentacion",
-      "title": "Animación de entrada",
-      "enabled": true
-    },
-    {
-      "id": "menu",
-      "title": "Menú principal",
       "enabled": true
     }
   ],

@@ -33,11 +33,6 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
   </Context.Provider>;
 }
 export function useWebsite() { return useContext(Context); }
-type Data = Pick<typeof original, "bellomoContact" | "bellomoEditorialImages" | "bellomoProjects" | "bellomoStats" | "constructionHighlights" | "heroSlides" | "navigation" | "propertyCategories">;
-export function useSiteData(): Data {
-  const { content } = useWebsite();
-  return Object.fromEntries(Object.entries(content.data).map(([key, value]) => [key, Array.isArray(value) ? value.filter(item => item.enabled !== false && (key !== "navigation" || content.sections.find(s => `#${s.id}` === (item as { href?: string }).href)?.enabled !== false)) : value])) as unknown as Data;
-}
 export function SiteText({ id }: { id: string }) { const { content } = useWebsite(); return <>{content.texts[id as keyof typeof content.texts]?.value}</>; }
 export function ManagedPage({ children, className }: { children: ReactNode; className?: string }) {
   const { content } = useWebsite();

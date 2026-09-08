@@ -1,0 +1,20 @@
+{
+  "images": {
+    "/images/official/oficina/belgrano-1383.webp": "rami-image-8",
+    "/brand/eversys-isotipo-oficial-blanco.png": "rami-image-44",
+    "/brand/logo-bellomo-isotipo.png": "rami-image-73"
+  },
+  "links": {
+    "tel:+543884228755": "rami-link-16",
+    "tel:+543884331981": "rami-link-18",
+    "tel:+543884234010": "rami-link-21",
+    "#bellomo": "rami-link-49",
+    "#proyectos": "rami-link-46",
+    "#archivo": "rami-link-30",
+    "#construccion": "rami-link-32",
+    "https://instagram.com/bellomojujuy": "rami-link-36",
+    "https://facebook.com/bellomojujuy": "rami-link-38",
+    "https://www.instagram.com/eversys.solutions/": "rami-link-42",
+    "#inicio": "rami-link-75"
+  }
+}

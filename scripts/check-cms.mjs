@@ -10,12 +10,12 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 async function change(action,content){const r=await fetchAsAdmin(api,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:current.revision,action,content})});const data=await r.json();assert.equal(r.status,200,JSON.stringify(data));current=data;return data;}
 const read=async url=>(await (await fetchAsAdmin(url)).json());
 try {
-  const draft=clone(original.draft);draft.texts['texto-24'].value='Prueba controlada del editor';
+  const draft=clone(original.draft);draft.texts['rami-text-1'].value='Prueba controlada del editor';
   await change('save',draft);
-  assert.notEqual((await read(pub)).content.texts['texto-24'].value,'Prueba controlada del editor','Draft must not affect public website');
-  assert.equal((await read(pub+'?preview=1')).content.texts['texto-24'].value,'Prueba controlada del editor','Preview reads draft');
+  assert.notEqual((await read(pub)).content.texts['rami-text-1'].value,'Prueba controlada del editor','Draft must not affect public website');
+  assert.equal((await read(pub+'?preview=1')).content.texts['rami-text-1'].value,'Prueba controlada del editor','Preview reads draft');
   await change('publish',draft);
-  assert.equal((await read(pub)).content.texts['texto-24'].value,'Prueba controlada del editor','Publish changes public website');
+  assert.equal((await read(pub)).content.texts['rami-text-1'].value,'Prueba controlada del editor','Publish changes public website');
   const hidden=clone(draft);hidden.sections.find(s=>s.id==='desarrollos-seleccionados').enabled=false;
   await change('publish',hidden);
   assert.deepEqual(await read('http://127.0.0.1:3002/api/demo/properties'),[],'Hidden catalog exposes no listings to web or bot');

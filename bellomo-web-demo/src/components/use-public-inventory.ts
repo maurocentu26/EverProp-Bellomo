@@ -29,17 +29,17 @@ export function usePublicInventory(projects: Project[]) {
   useEffect(() => {
     const id = new URLSearchParams(location.search).get("propiedad");
     if (!id) return;
-    const timer = setTimeout(() => document.getElementById(`inmueble-${id}`)?.scrollIntoView({ block: "center", inline: "center" }), 300);
+    const timer = setTimeout(() => { const card = document.getElementById(`inmueble-${id}`); const group = card?.closest("details"); if (group) group.open = true; card?.scrollIntoView({ block: "center", inline: "center" }); }, 300);
     return () => clearTimeout(timer);
   }, [properties]);
   const categoryFor = (p: DemoProperty) => p.propertyType === "Lote" ? "loteos" : p.propertyType === "Local" ? "locales-comerciales" : p.propertyType === "Cochera" ? "cocheras" : "propiedades";
   const filtered = ["loteos", "propiedades", "locales-comerciales", "cocheras"].includes(category);
   const inventory: CommercialCard[] = properties.filter(p => !filtered || categoryFor(p) === category).map(p => ({
-    id: `inmueble-${p.id}`, name: p.title, type: p.propertyType, location: [p.neighborhood, p.city].filter(Boolean).join(", "),
+    id: `inmueble-${p.id}`, name: p.title, stage: "venta", stageLabel: p.status === "sold" ? "Vendido" : p.status === "reserved" ? "Reservado" : "Disponible", facts: [`${p.operation === "sale" ? "Venta" : "Alquiler"} · ${p.currency} ${p.price.toLocaleString("es-AR")}`, `${p.area_m2 || 0} m²`], location: [p.neighborhood, p.city].filter(Boolean).join(", "),
     status: p.status === "sold" ? "Vendido" : p.status === "reserved" ? "Reservado" : "Disponible",
-    description: p.description || "", inventory: p,
-    media: { src: p.mainImage || demoPropertyImage(p.propertyType), alt: p.mainImage ? p.title : `Imagen ilustrativa de ${p.propertyType.toLowerCase()} · Demo`, intent: "Propiedad", section: "comercializadora", temporarySource: "bellomojujuy.com.ar", temporary: true },
+    description: (p.description || "") + (!p.mainImage ? " · Imagen ilustrativa de la demo" : ""), inventory: p,
+    media: { src: p.mainImage || demoPropertyImage(p.propertyType), alt: p.mainImage ? p.title : `Imagen ilustrativa de ${p.propertyType.toLowerCase()} · Demo`, source: "referencia editorial" },
   }));
-  const developments = !filtered ? projects : category === "loteos" ? projects.filter(p => /lote|tierra/i.test(p.type)) : [];
+  const developments = !filtered ? projects : category === "loteos" ? projects : [];
   return { cards: [...developments, ...inventory] as CommercialCard[], error };
 }

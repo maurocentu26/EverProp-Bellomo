@@ -28,7 +28,7 @@ function save(state: WebsiteState) {
 function valid(value: unknown, sample: unknown, key = ""): boolean {
   if (typeof sample === "string") {
     if (typeof value !== "string" || value.length > 3_000_000) return false;
-    if (["href", "src", "image", "logo"].includes(key) && value && !/^(\/(?!\/)|#|https?:\/\/|mailto:|tel:|data:image\/(png|jpeg|webp);base64,)/i.test(value)) return false;
+    if (["href", "src", "image", "logo", "mapUrl", "mapsUrl"].includes(key) && value && !/^(\/(?!\/)|#|https?:\/\/|mailto:|tel:|data:image\/(png|jpeg|webp);base64,)/i.test(value)) return false;
     return true;
   }
   if (typeof sample === "number") return typeof value === "number" && Number.isFinite(value) && value >= 0;
@@ -36,12 +36,14 @@ function valid(value: unknown, sample: unknown, key = ""): boolean {
   if (Array.isArray(sample)) return Array.isArray(value) && value.length <= 100 && (!sample.length || value.every(item => valid(item, sample[0])));
   if (sample && typeof sample === "object") {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-    return Object.entries(sample).every(([k, v]) => (["referenceMedia", "referenceLabel", "logo"].includes(k) && !(k in value)) || valid((value as Record<string, unknown>)[k], v, k));
+    return Object.entries(sample).every(([k, v]) => (["referenceMedia", "referenceLabel", "logo", "slogan", "mapUrl", "fit", "services"].includes(k) && !(k in value)) || valid((value as Record<string, unknown>)[k], v, k));
   }
   return false;
 }
 function validContent(content: WebsiteContent) {
   if (!valid(content, defaultWebsite)) return false;
+  const safeUrls = (value: unknown): boolean => !value || typeof value !== "object" || Object.entries(value).every(([key,item]) => (["src","image","logo","href","mapUrl","mapsUrl"].includes(key) ? valid(item,"",key) : safeUrls(item)));
+  if (!safeUrls(content.official) || !content.official.bellomoProjects.every(p => ["preventa","venta","agotado","proximo"].includes(p.stage))) return false;
   if (!content.customSections.every(section => valid(section, { id: "", title: "", body: "", image: "", buttonLabel: "", href: "", enabled: true }))) return false;
   if (!content.promotions.every(promo => valid(promo, { id: "", title: "", eyebrow: "", description: "", image: "", conditions: "", buttonLabel: "", href: "", enabled: true }) && promo.title.trim().length > 0 && promo.title.length <= 140 && promo.conditions.length <= 1200)) return false;
   if (new Set(content.promotions.map(promo => promo.id)).size !== content.promotions.length) return false;

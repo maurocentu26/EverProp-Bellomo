@@ -1,0 +1,1509 @@
+{
+  "bellomoContact": {
+    "address": "Belgrano 1383",
+    "city": "San Salvador de Jujuy",
+    "commercialPhones": "388 422 8755 · 388 433 1981",
+    "constructionPhone": "388 423 4010",
+    "weekdayHours": "Lunes a viernes · 08:00–20:00",
+    "saturdayHours": "Sábados · 09:00–12:00",
+    "location": "Jujuy · Argentina",
+    "whatsappDisplay": "+54 9 388 433 1981",
+    "whatsappPhone": "5493884331981",
+    "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Belgrano%201383%2C%20San%20Salvador%20de%20Jujuy"
+  },
+  "bellomoMedia": {
+    "history": {
+      "src": "/images/official/trayectoria/aniversario-historia.webp",
+      "alt": "Celebración institucional por los 50 años de trayectoria de Bellomo",
+      "source": "archivo Bellomo",
+      "kind": "Archivo histórico",
+      "position": "center"
+    },
+    "huasi": {
+      "src": "/images/official/residencial/huasi-viii-fachada.webp",
+      "alt": "Fachada real de Huasi VIII y sus locales comerciales",
+      "source": "archivo Bellomo",
+      "kind": "Fotografía",
+      "position": "center"
+    },
+    "huasiResidential": {
+      "src": "/images/official/residencial/huasi-iv-fachada.webp",
+      "alt": "Fachada real del edificio Huasi IV",
+      "source": "archivo Bellomo",
+      "kind": "Fotografía",
+      "position": "center"
+    },
+    "sanAntonio": {
+      "src": "/images/official/quintas-san-antonio/vista-aerea-2.webp",
+      "alt": "Vista aérea real del entorno de Quintas de San Antonio",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "publicWorks": {
+      "src": "/images/site/official-public-works.jpg",
+      "alt": "Registro de una obra pública ejecutada por Bellomo",
+      "fit": "contain",
+      "source": "archivo Bellomo",
+      "kind": "Archivo histórico",
+      "position": "center"
+    },
+    "territory": {
+      "src": "/images/official/quintas-san-antonio/vista-aerea-1.webp",
+      "alt": "Vista aérea de territorio desarrollado por Bellomo en Jujuy",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center 52%"
+    },
+    "architecture": {
+      "src": "/images/official/residencial/duplex-higuerillas-frente.webp",
+      "alt": "Dúplex de Higuerillas construido por Bellomo",
+      "source": "archivo Bellomo",
+      "kind": "Fotografía",
+      "position": "center"
+    },
+    "land": {
+      "src": "/images/official/la-toma/vista-aerea-2.webp",
+      "alt": "Vista aérea de un desarrollo Bellomo en Jujuy",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "forest": {
+      "src": "/images/official/la-arbolada/vista-aerea-actual.webp",
+      "alt": "Vista aérea actual de La Arbolada",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "sanPablo": {
+      "src": "/images/official/san-pablo/vista-aerea-1.webp",
+      "alt": "Vista aérea real de San Pablo",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "valleVerde": {
+      "src": "/images/official/valle-verde/vista-aerea.webp",
+      "alt": "Vista aérea real de Valle Verde",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "cardinales": {
+      "src": "/images/official/los-cardinales/vista-aerea-1.webp",
+      "alt": "Vista aérea real de Los Cardinales",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "rocio": {
+      "src": "/images/official/el-rocio/arbol.webp",
+      "alt": "Paisaje real del loteo El Rocío",
+      "source": "archivo Bellomo",
+      "kind": "Fotografía",
+      "position": "center"
+    },
+    "emilia": {
+      "src": "/images/official/santa-emilia/paisaje.webp",
+      "alt": "Paisaje real del loteo Santa Emilia",
+      "source": "archivo Bellomo",
+      "kind": "Fotografía",
+      "position": "center"
+    },
+    "arenales": {
+      "src": "/images/official/los-arenales/acceso.webp",
+      "alt": "Acceso real al loteo Los Arenales",
+      "source": "archivo Bellomo",
+      "kind": "Fotografía",
+      "position": "center"
+    },
+    "lasColinas": {
+      "src": "/images/official/las-colinas/vista-aerea.webp",
+      "alt": "Vista aérea real de Las Colinas",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "losPerales": {
+      "src": "/images/official/los-perales/vista-aerea-1.webp",
+      "alt": "Vista aérea real de Los Perales",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "laToma": {
+      "src": "/images/official/la-toma/vista-aerea-1.webp",
+      "alt": "Vista aérea real del entorno de La Toma",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    },
+    "privateWorks": {
+      "src": "/images/official/residencial/duplex-higuerillas-aerea.webp",
+      "alt": "Vista aérea de los Dúplex de Higuerillas",
+      "source": "archivo Bellomo",
+      "kind": "Vista aérea",
+      "position": "center"
+    }
+  },
+  "officialMediaCollections": [
+    {
+      "id": "archivo-el-rocio",
+      "title": "El Rocío",
+      "category": "Loteos",
+      "description": "Paisaje, apertura de calles y vista aérea del desarrollo en El Carmen.",
+      "images": [
+        {
+          "src": "/images/official/el-rocio/atardecer.webp",
+          "alt": "Atardecer sobre El Rocío",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/el-rocio/arbol.webp",
+          "alt": "Árbol y paisaje natural de El Rocío",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/el-rocio/calles.webp",
+          "alt": "Apertura de calles en El Rocío",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/el-rocio/vista-aerea.webp",
+          "alt": "Vista aérea de la trama de El Rocío",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-san-pablo",
+      "title": "San Pablo",
+      "category": "Loteos",
+      "description": "Registro de territorio, obra e infraestructura con vistas hacia la ciudad.",
+      "images": [
+        {
+          "src": "/images/official/san-pablo/vista-aerea-1.webp",
+          "alt": "Vista aérea de San Pablo",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/san-pablo/vista-aerea-2.webp",
+          "alt": "Camino y entorno arbolado de San Pablo desde el aire",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/san-pablo/urbanizacion.webp",
+          "alt": "Territorio urbanizado en San Pablo",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/san-pablo/obra.webp",
+          "alt": "Maquinaria trabajando en San Pablo",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/san-pablo/vista-ciudad.webp",
+          "alt": "Vista de San Salvador de Jujuy desde San Pablo",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/san-pablo/infraestructura.webp",
+          "alt": "Infraestructura eléctrica y calles de San Pablo",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-santa-emilia",
+      "title": "Santa Emilia",
+      "category": "Loteos",
+      "description": "Entorno productivo, caminos y paisaje abierto de Monterrico.",
+      "images": [
+        {
+          "src": "/images/official/santa-emilia/paisaje.webp",
+          "alt": "Paisaje verde de Santa Emilia",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/santa-emilia/camino.webp",
+          "alt": "Camino interno de Santa Emilia",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/santa-emilia/terreno.webp",
+          "alt": "Terreno y horizonte de Santa Emilia",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/santa-emilia/acceso.webp",
+          "alt": "Acceso entre cultivos en Santa Emilia",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-valle-verde",
+      "title": "Valle Verde",
+      "category": "Loteos",
+      "description": "Vista real del terreno y visualizaciones comerciales del proyecto terminado.",
+      "images": [
+        {
+          "src": "/images/official/valle-verde/paisaje.webp",
+          "alt": "Paisaje real de Valle Verde",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/valle-verde/vista-aerea.webp",
+          "alt": "Vista aérea real de Valle Verde",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/valle-verde/render-acceso.webp",
+          "alt": "Render comercial del acceso proyectado a Valle Verde",
+          "fit": "contain",
+          "kind": "Render",
+          "position": "center",
+          "source": "material comercial Bellomo"
+        },
+        {
+          "src": "/images/official/valle-verde/render-urbanizacion.webp",
+          "alt": "Render comercial de la urbanización proyectada en Valle Verde",
+          "fit": "contain",
+          "kind": "Render",
+          "position": "center",
+          "source": "material comercial Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-los-cardinales",
+      "title": "Los Cardinales",
+      "category": "Loteos",
+      "description": "Tres vistas aéreas oficiales que muestran la trama y el entorno natural.",
+      "images": [
+        {
+          "src": "/images/official/los-cardinales/vista-aerea-1.webp",
+          "alt": "Vista aérea de Los Cardinales y su entorno",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/los-cardinales/vista-aerea-2.webp",
+          "alt": "Trazado de Los Cardinales visto desde el aire",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/los-cardinales/vista-aerea-3.webp",
+          "alt": "Calles y parcelas de Los Cardinales",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-la-arbolada",
+      "title": "La Arbolada I y II",
+      "category": "Loteos",
+      "description": "Evolución del desarrollo: urbanización, obra y tomas profesionales actuales.",
+      "images": [
+        {
+          "src": "/images/official/la-arbolada/cartel-arbolada-ii.webp",
+          "alt": "Cartel oficial de La Arbolada II",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/la-arbolada/infraestructura.webp",
+          "alt": "Infraestructura actual de La Arbolada II",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/la-arbolada/vista-aerea-actual.webp",
+          "alt": "Vista aérea actual de La Arbolada",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/la-arbolada/calle.webp",
+          "alt": "Calle e infraestructura de La Arbolada",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/la-arbolada/vista-aerea-historica.webp",
+          "alt": "Vista aérea histórica de La Arbolada",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/la-arbolada/obra.webp",
+          "alt": "Obra de urbanización en La Arbolada",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-las-colinas",
+      "title": "Las Colinas",
+      "category": "Loteos",
+      "description": "Trazado, infraestructura y crecimiento residencial sobre la RN 9.",
+      "images": [
+        {
+          "src": "/images/official/las-colinas/vista-aerea.webp",
+          "alt": "Vista aérea de Las Colinas",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/las-colinas/urbanizacion.webp",
+          "alt": "Urbanización de Las Colinas",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/las-colinas/desarrollo.webp",
+          "alt": "Desarrollo residencial de Las Colinas",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/las-colinas/infraestructura.webp",
+          "alt": "Infraestructura de Las Colinas",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-los-arenales",
+      "title": "Los Arenales",
+      "category": "Loteos",
+      "description": "Panorámicas reales del terreno, sus accesos y el entorno productivo.",
+      "images": [
+        {
+          "src": "/images/official/los-arenales/panoramica.webp",
+          "alt": "Panorámica real de Los Arenales",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/los-arenales/acceso.webp",
+          "alt": "Acceso a Los Arenales",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/los-arenales/camino.webp",
+          "alt": "Camino interno de Los Arenales",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/los-arenales/terreno.webp",
+          "alt": "Terreno de Los Arenales",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-los-perales",
+      "title": "Los Perales",
+      "category": "Loteos",
+      "description": "Secuencia aérea del desarrollo y su integración con el barrio.",
+      "images": [
+        {
+          "src": "/images/official/los-perales/vista-aerea-1.webp",
+          "alt": "Vista aérea del loteo Los Perales",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/los-perales/vista-aerea-2.webp",
+          "alt": "Entorno urbano de Los Perales",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/los-perales/vista-aerea-3.webp",
+          "alt": "Parcelas y viviendas de Los Perales",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/los-perales/vista-aerea-4.webp",
+          "alt": "Panorámica aérea de Los Perales",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-quintas-san-antonio",
+      "title": "Quintas de San Antonio",
+      "category": "Loteos",
+      "description": "Vistas del bosque, el valle y los caminos del proyecto en San Antonio.",
+      "images": [
+        {
+          "src": "/images/official/quintas-san-antonio/vista-aerea-1.webp",
+          "alt": "Valle de Quintas de San Antonio",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/quintas-san-antonio/vista-aerea-2.webp",
+          "alt": "Bosque de Quintas de San Antonio",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/quintas-san-antonio/camino.webp",
+          "alt": "Camino entre árboles en Quintas de San Antonio",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-la-toma",
+      "title": "La Toma",
+      "category": "Loteos",
+      "description": "Tres vistas aéreas del entorno urbano y natural del futuro desarrollo.",
+      "images": [
+        {
+          "src": "/images/official/la-toma/vista-aerea-1.webp",
+          "alt": "Vista aérea del entorno de La Toma",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/la-toma/vista-aerea-2.webp",
+          "alt": "Área urbana próxima a La Toma",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/la-toma/vista-aerea-3.webp",
+          "alt": "Trazado y vegetación del entorno de La Toma",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-arquitectura",
+      "title": "Arquitectura y vivienda",
+      "category": "Arquitectura",
+      "description": "Obras terminadas y visualizaciones de la línea Huasi, Galería Norte, Higuerillas y viviendas en Perico.",
+      "images": [
+        {
+          "src": "/images/official/residencial/duplex-higuerillas-frente.webp",
+          "alt": "Frente terminado de un Dúplex de Higuerillas",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/duplex-higuerillas-aerea.webp",
+          "alt": "Vista aérea de Dúplex de Higuerillas",
+          "kind": "Vista aérea",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/huasi-iv-fachada.webp",
+          "alt": "Fachada real de Huasi IV",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/huasi-iv-interior.webp",
+          "alt": "Interior terminado de Huasi IV",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/huasi-viii-fachada.webp",
+          "alt": "Fachada real de Huasi VIII",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/huasi-viii-interior.webp",
+          "alt": "Interior real de Huasi VIII",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/galeria-norte-iii-render.webp",
+          "alt": "Render comercial de Galería Norte III",
+          "fit": "contain",
+          "kind": "Render",
+          "position": "center",
+          "source": "material comercial Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/huasi-x-render.webp",
+          "alt": "Render comercial de Huasi X",
+          "fit": "contain",
+          "kind": "Render",
+          "position": "center",
+          "source": "material comercial Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/viviendas-perico-planificacion.webp",
+          "alt": "Visualización del conjunto de viviendas en Perico",
+          "fit": "contain",
+          "kind": "Render",
+          "position": "center",
+          "source": "material comercial Bellomo"
+        },
+        {
+          "src": "/images/official/residencial/viviendas-perico-render.webp",
+          "alt": "Render de vivienda del conjunto en Perico",
+          "fit": "contain",
+          "kind": "Render",
+          "position": "center",
+          "source": "material comercial Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-trayectoria",
+      "title": "50 años Bellomo",
+      "category": "Trayectoria",
+      "description": "Registro institucional del aniversario y de la continuidad familiar de la empresa.",
+      "images": [
+        {
+          "src": "/images/official/trayectoria/aniversario-discurso.webp",
+          "alt": "Presentación institucional por los 50 años de Bellomo",
+          "kind": "Archivo histórico",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/trayectoria/aniversario-historia.webp",
+          "alt": "Proyección del archivo histórico durante el aniversario de Bellomo",
+          "kind": "Archivo histórico",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/trayectoria/aniversario-familia.webp",
+          "alt": "Familia Bellomo en la celebración del 50 aniversario",
+          "kind": "Archivo histórico",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "archivo-oficina",
+      "title": "Oficina central",
+      "category": "Trayectoria",
+      "description": "Fachada real de la sede de Bellomo en Belgrano 1383, San Salvador de Jujuy.",
+      "images": [
+        {
+          "src": "/images/official/oficina/belgrano-1383.webp",
+          "alt": "Oficina central de Bellomo en Belgrano 1383",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        },
+        {
+          "src": "/images/official/oficina/fachada-bellomo.webp",
+          "alt": "Fachada de la oficina central de Bellomo",
+          "kind": "Fotografía",
+          "position": "center",
+          "source": "archivo Bellomo"
+        }
+      ],
+      "enabled": true
+    }
+  ],
+  "heroSlides": [
+    {
+      "id": "trayectoria",
+      "eyebrow": "Desde 1976 · Jujuy",
+      "title": "Construimos presente.",
+      "emphasis": "Proyectamos futuro.",
+      "description": "Tierra, arquitectura e infraestructura reunidas por una empresa familiar con 50 años de trayectoria.",
+      "media": {
+        "src": "/images/official/residencial/huasi-viii-fachada.webp",
+        "alt": "Fachada real de Huasi VIII y sus locales comerciales",
+        "source": "archivo Bellomo",
+        "kind": "Fotografía",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "territorio",
+      "eyebrow": "Desarrollo urbano",
+      "title": "Conocemos la tierra.",
+      "emphasis": "Entendemos Jujuy.",
+      "description": "Urbanizaciones pensadas desde el territorio, la conectividad y el crecimiento de cada comunidad.",
+      "media": {
+        "src": "/images/official/quintas-san-antonio/vista-aerea-1.webp",
+        "alt": "Vista aérea de territorio desarrollado por Bellomo en Jujuy",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center 52%"
+      },
+      "enabled": true
+    },
+    {
+      "id": "respaldo",
+      "eyebrow": "Obra pública y privada",
+      "title": "Experiencia que se ve.",
+      "emphasis": "Respaldo que perdura.",
+      "description": "Diseño, elaboración y ejecución de proyectos de ingeniería, arquitectura y urbanización.",
+      "media": {
+        "src": "/images/official/residencial/duplex-higuerillas-frente.webp",
+        "alt": "Dúplex de Higuerillas construido por Bellomo",
+        "source": "archivo Bellomo",
+        "kind": "Fotografía",
+        "position": "center"
+      },
+      "enabled": true
+    }
+  ],
+  "bellomoStats": [
+    {
+      "label": "Años de trayectoria",
+      "value": "50",
+      "enabled": true
+    },
+    {
+      "label": "Loteos desarrollados",
+      "value": "+15",
+      "enabled": true
+    },
+    {
+      "label": "Obras públicas",
+      "value": "+200",
+      "enabled": true
+    },
+    {
+      "label": "Terrenos vendidos",
+      "value": "+2.000",
+      "enabled": true
+    },
+    {
+      "label": "Edificios residenciales",
+      "value": "+8",
+      "enabled": true
+    },
+    {
+      "label": "Departamentos",
+      "value": "+100",
+      "enabled": true
+    },
+    {
+      "label": "Locales comerciales",
+      "value": "+120",
+      "enabled": true
+    },
+    {
+      "label": "Clientes activos",
+      "value": "+500",
+      "enabled": true
+    }
+  ],
+  "trajectoryMilestones": [
+    {
+      "year": "1950",
+      "title": "Una tradición familiar",
+      "text": "La familia Bellomo inicia una tradición constructora que se sostendrá durante generaciones.",
+      "enabled": true
+    },
+    {
+      "year": "1976",
+      "title": "Nace Bellomo SRL",
+      "text": "El Ing. Pedro V. Bellomo funda la compañía y consolida su presencia en obras civiles de escala regional y nacional.",
+      "enabled": true
+    },
+    {
+      "year": "1989",
+      "title": "Innovación industrial",
+      "text": "Se instala en Jujuy una fábrica de viviendas industrializadas con tecnología de paneles de hormigón armado.",
+      "enabled": true
+    },
+    {
+      "year": "2003",
+      "title": "Desarrollo inmobiliario",
+      "text": "Comienza una etapa pionera de loteos a gran escala, comercialización y administración de propiedades.",
+      "enabled": true
+    },
+    {
+      "year": "Hoy",
+      "title": "Una marca, una visión",
+      "text": "Construcción, urbanización y gestión inmobiliaria vuelven a integrarse bajo el nombre Bellomo.",
+      "enabled": true
+    }
+  ],
+  "propertyCategories": [
+    {
+      "id": "loteos",
+      "title": "Loteos",
+      "description": "Tierra con proyección para construir, invertir y crecer.",
+      "icon": "land",
+      "enabled": true
+    },
+    {
+      "id": "propiedades",
+      "title": "Propiedades",
+      "description": "Opciones residenciales y administración inmobiliaria.",
+      "icon": "home",
+      "enabled": true
+    },
+    {
+      "id": "locales-comerciales",
+      "title": "Locales comerciales",
+      "description": "Espacios para actividad, visibilidad y nuevos negocios.",
+      "icon": "store",
+      "enabled": true
+    },
+    {
+      "id": "cocheras",
+      "title": "Cocheras",
+      "description": "Soluciones urbanas para uso mensual o por hora, según disponibilidad.",
+      "icon": "garage",
+      "enabled": true
+    }
+  ],
+  "constructionHighlights": [
+    {
+      "id": "obras-publicas",
+      "title": "Obras públicas",
+      "eyebrow": "Infraestructura y comunidad",
+      "description": "Más de 200 obras públicas forman parte de una trayectoria que incluye aeropuertos, saneamiento, puentes, pavimentos, líneas férreas y complejos habitacionales.",
+      "media": {
+        "src": "/images/site/official-public-works.jpg",
+        "alt": "Registro de una obra pública ejecutada por Bellomo",
+        "fit": "contain",
+        "source": "archivo Bellomo",
+        "kind": "Archivo histórico",
+        "position": "center"
+      },
+      "icon": "building",
+      "focusAreas": [
+        "Ingeniería e infraestructura",
+        "Vivienda",
+        "Saneamiento y conectividad"
+      ],
+      "cta": "Consultar por obra pública",
+      "enabled": true
+    },
+    {
+      "id": "obras-privadas",
+      "title": "Obras privadas",
+      "eyebrow": "Proyecto y ejecución",
+      "description": "Planificación, arquitectura y construcción para proyectos residenciales, comerciales e institucionales, desde la idea hasta la entrega.",
+      "media": {
+        "src": "/images/official/residencial/duplex-higuerillas-aerea.webp",
+        "alt": "Vista aérea de los Dúplex de Higuerillas",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "icon": "home",
+      "focusAreas": [
+        "Arquitectura",
+        "Dirección y ejecución",
+        "Urbanización"
+      ],
+      "cta": "Consultar una obra privada",
+      "enabled": true
+    },
+    {
+      "id": "edificios-huasi",
+      "title": "Edificios Huasi",
+      "eyebrow": "Trayectoria residencial",
+      "description": "Una línea de edificios iniciada en 1985, con proyectos en Jujuy y Córdoba y más de 100 departamentos construidos.",
+      "media": {
+        "src": "/images/official/residencial/huasi-iv-fachada.webp",
+        "alt": "Fachada real del edificio Huasi IV",
+        "source": "archivo Bellomo",
+        "kind": "Fotografía",
+        "position": "center"
+      },
+      "icon": "building",
+      "focusAreas": [
+        "Vivienda urbana",
+        "Locales y cocheras",
+        "Calidad constructiva"
+      ],
+      "cta": "Conocer la línea Huasi",
+      "enabled": true
+    }
+  ],
+  "bellomoProjects": [
+    {
+      "id": "el-rocio",
+      "name": "El Rocío",
+      "stage": "preventa",
+      "stageLabel": "Preventa · con posesión",
+      "location": "El Carmen",
+      "slogan": "Empapate de frescura y tranquilidad",
+      "description": "Urbanización camino a los diques La Ciénaga y Las Maderas, en el corazón de los valles jujeños.",
+      "facts": [
+        "254 lotes",
+        "Desde 250 hasta 600 m²",
+        "Acceso por RN 9"
+      ],
+      "services": [
+        "Agua potable",
+        "Cordón cuneta",
+        "Apertura de calles",
+        "Red eléctrica"
+      ],
+      "mapUrl": "https://goo.gl/maps/62ajzARyuAPveZix6",
+      "logo": "/brand/projects/el-rocio.png",
+      "media": {
+        "src": "/images/official/el-rocio/arbol.webp",
+        "alt": "Paisaje real del loteo El Rocío",
+        "source": "archivo Bellomo",
+        "kind": "Fotografía",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "san-pablo-1",
+      "name": "San Pablo I",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "B° Coronel Arias · San Salvador de Jujuy",
+      "slogan": "Tu balcón a la ciudad",
+      "description": "Desarrollo en una nueva expansión de la ciudad, cerca de la terminal y rodeado por el paisaje de los cerros.",
+      "facts": [
+        "Lotes de 300 a 1.000 m²",
+        "Aproximadamente 3 minutos del centro"
+      ],
+      "services": [
+        "Agua potable",
+        "Cordón cuneta",
+        "Red eléctrica"
+      ],
+      "mapUrl": "https://goo.gl/maps/1UwnW1CDetpP1zAZ8",
+      "logo": "/brand/projects/san-pablo.png",
+      "media": {
+        "src": "/images/official/san-pablo/vista-aerea-1.webp",
+        "alt": "Vista aérea real de San Pablo",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "san-pablo-2",
+      "name": "San Pablo II",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "B° Coronel Arias · San Salvador de Jujuy",
+      "slogan": "Tu balcón a la ciudad",
+      "description": "Segunda etapa del desarrollo San Pablo, ubicada en la expansión urbana del barrio Coronel Arias.",
+      "facts": [
+        "Expansión urbana",
+        "Consulta de ubicación y lote disponible"
+      ],
+      "services": [
+        "Infraestructura según proyecto",
+        "Servicios a confirmar por lote"
+      ],
+      "mapUrl": "https://goo.gl/maps/1UwnW1CDetpP1zAZ8",
+      "logo": "/brand/projects/san-pablo.png",
+      "media": {
+        "src": "/images/official/san-pablo/vista-aerea-1.webp",
+        "alt": "Vista aérea real de San Pablo",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "santa-emilia",
+      "name": "Santa Emilia",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "Monterrico · El Carmen",
+      "slogan": "Urbanización a tu alcance",
+      "description": "Una urbanización próxima al centro de Monterrico y rodeada por el paisaje productivo de los valles.",
+      "facts": [
+        "Lotes de 300 a 1.000 m²",
+        "A cuadras del centro de Monterrico"
+      ],
+      "services": [
+        "Agua potable",
+        "Cordón cuneta",
+        "Red eléctrica"
+      ],
+      "mapUrl": "https://goo.gl/maps/e4D7Cn3PN2UpFnK39",
+      "logo": "/brand/projects/santa-emilia.png",
+      "media": {
+        "src": "/images/official/santa-emilia/paisaje.webp",
+        "alt": "Paisaje real del loteo Santa Emilia",
+        "source": "archivo Bellomo",
+        "kind": "Fotografía",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "valle-verde",
+      "name": "Valle Verde",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "B° Sargento Cabral · San Salvador de Jujuy",
+      "slogan": "El valle pensado para tu futuro",
+      "description": "Proyecto de expansión con sector comercial privado y una zona recreativa proyectada como parque lineal.",
+      "facts": [
+        "Lotes de 300 a 1.000 m²",
+        "Sector comercial y recreativo proyectado"
+      ],
+      "services": [
+        "Agua potable",
+        "Cordón cuneta",
+        "Red eléctrica"
+      ],
+      "mapUrl": "https://goo.gl/maps/BHCdb2VzC1QdWKVGA",
+      "logo": "/brand/projects/valle-verde.png",
+      "media": {
+        "src": "/images/official/valle-verde/vista-aerea.webp",
+        "alt": "Vista aérea real de Valle Verde",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "los-cardinales",
+      "name": "Los Cardinales",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "B° Sargento Cabral · RN 9",
+      "slogan": "Proyectá tu futuro en el lugar correcto",
+      "description": "Desarrollo en la parte alta de Sargento Cabral, con vegetación, vistas a la ciudad y espacios comunitarios proyectados.",
+      "facts": [
+        "Lotes de 250 a 600 m²",
+        "Aproximadamente 10 minutos del centro"
+      ],
+      "services": [
+        "Agua",
+        "Cordón cuneta",
+        "Cloacas",
+        "Alumbrado",
+        "Calles enripiadas"
+      ],
+      "mapUrl": "https://goo.gl/maps/E6jYRGbHVY3j175i9",
+      "logo": "/brand/projects/los-cardinales.png",
+      "media": {
+        "src": "/images/official/los-cardinales/vista-aerea-1.webp",
+        "alt": "Vista aérea real de Los Cardinales",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "la-arbolada-2",
+      "name": "La Arbolada II",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "B° Sargento Cabral · San Salvador de Jujuy",
+      "slogan": "Respirá tranquilidad",
+      "description": "Continuación de La Arbolada, pensada como una urbanización residencial integrada al entorno.",
+      "facts": [
+        "Lotes desde 300 m²",
+        "Aproximadamente 315 lotes proyectados"
+      ],
+      "services": [
+        "Agua potable",
+        "Red eléctrica",
+        "Calles enripiadas"
+      ],
+      "mapUrl": "https://goo.gl/maps/CdoPKYA4stvWAyWx5",
+      "logo": "/brand/projects/la-arbolada.png",
+      "media": {
+        "src": "/images/official/la-arbolada/vista-aerea-actual.webp",
+        "alt": "Vista aérea actual de La Arbolada",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "los-arenales",
+      "name": "Los Arenales",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "Jujuy",
+      "description": "Propuesta de tierra en Jujuy. La ubicación precisa, las superficies y la disponibilidad se confirman con el equipo comercial.",
+      "facts": [
+        "Proyecto en preventa",
+        "Consulta personalizada"
+      ],
+      "logo": "/brand/projects/los-arenales.png",
+      "media": {
+        "src": "/images/official/los-arenales/acceso.webp",
+        "alt": "Acceso real al loteo Los Arenales",
+        "source": "archivo Bellomo",
+        "kind": "Fotografía",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "el-arrabal",
+      "name": "El Arrabal",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "Jujuy",
+      "description": "Proyecto Bellomo en etapa de preventa. La ubicación, las características y la disponibilidad se confirman con el equipo comercial.",
+      "facts": [
+        "Preventa",
+        "Disponibilidad a confirmar"
+      ],
+      "logo": "/brand/projects/el-arrabal-web.png",
+      "media": {
+        "src": "/brand/projects/el-arrabal-web.png",
+        "alt": "Identidad visual oficial de El Arrabal; no se publica una fotografía asociada sin confirmación",
+        "fit": "contain",
+        "kind": "Identidad visual",
+        "position": "center 30%",
+        "source": "archivo Bellomo"
+      },
+      "enabled": true
+    },
+    {
+      "id": "las-colinas-2",
+      "name": "Las Colinas II",
+      "stage": "preventa",
+      "stageLabel": "Preventa",
+      "location": "RN 9 · Jujuy",
+      "slogan": "Tierra de sueños",
+      "description": "Continuación de Las Colinas, proyectada en dos etapas sobre una superficie aproximada de 70 hectáreas.",
+      "facts": [
+        "Aproximadamente 70 ha",
+        "Plan especial informado para lotes de 300 m²"
+      ],
+      "services": [
+        "Agua potable",
+        "Red eléctrica",
+        "Cloacas",
+        "Calles enripiadas"
+      ],
+      "mapUrl": "https://goo.gl/maps/VUhJxtTkFSLzDxpV8",
+      "logo": "/brand/projects/las-colinas-2-web.png",
+      "media": {
+        "src": "/images/official/las-colinas/vista-aerea.webp",
+        "alt": "Vista aérea real de Las Colinas",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "la-arbolada",
+      "name": "La Arbolada",
+      "stage": "venta",
+      "stageLabel": "Venta · escritura y posesión",
+      "location": "B° Sargento Cabral · San Salvador de Jujuy",
+      "slogan": "Terrenos verdes muy cerca de todo",
+      "description": "Barrio residencial próximo a Sargento Cabral, con posesión y escritura informadas en el material comercial.",
+      "facts": [
+        "28 ha urbanizadas",
+        "Lotes de 300 m²",
+        "Aproximadamente 5 minutos del centro"
+      ],
+      "services": [
+        "Agua potable",
+        "Cordón cuneta",
+        "Cloacas",
+        "Red eléctrica"
+      ],
+      "mapUrl": "https://goo.gl/maps/CdoPKYA4stvWAyWx5",
+      "logo": "/brand/projects/la-arbolada.png",
+      "media": {
+        "src": "/images/official/la-arbolada/vista-aerea-actual.webp",
+        "alt": "Vista aérea actual de La Arbolada",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "las-colinas",
+      "name": "Las Colinas",
+      "stage": "venta",
+      "stageLabel": "Venta · escritura y posesión",
+      "location": "RN 9 · a 8 km de San Salvador de Jujuy",
+      "slogan": "Tierra de sueños",
+      "description": "Urbanización entre la capital y El Carmen, conectada por la Ruta Nacional 9.",
+      "facts": [
+        "20 ha urbanizadas",
+        "Lotes de 250 a 300 m²",
+        "Aproximadamente 8 minutos del centro"
+      ],
+      "services": [
+        "Agua potable",
+        "Cordón cuneta",
+        "Red eléctrica",
+        "Cerco perimetral"
+      ],
+      "mapUrl": "https://goo.gl/maps/VUhJxtTkFSLzDxpV8",
+      "logo": "/brand/projects/las-colinas.png",
+      "media": {
+        "src": "/images/official/las-colinas/vista-aerea.webp",
+        "alt": "Vista aérea real de Las Colinas",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "los-perales",
+      "name": "Los Perales",
+      "stage": "venta",
+      "stageLabel": "Venta · escritura y posesión",
+      "location": "B° Los Perales · San Salvador de Jujuy",
+      "slogan": "Sentite lejos, estando cerca",
+      "description": "Desarrollo residencial próximo al centro, rodeado de vegetación y conectado con la actividad comercial de la zona.",
+      "facts": [
+        "Aproximadamente 5 minutos del centro",
+        "Disponibilidad a confirmar"
+      ],
+      "mapUrl": "https://goo.gl/maps/JUbmLHpR98dkwHPT8",
+      "logo": "/brand/projects/los-perales.png",
+      "media": {
+        "src": "/images/official/los-perales/vista-aerea-1.webp",
+        "alt": "Vista aérea real de Los Perales",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "rincones",
+      "name": "Rincones de San Pedrito I y II",
+      "stage": "agotado",
+      "stageLabel": "Vendido · escritura y posesión",
+      "location": "B° San Pedrito · San Salvador de Jujuy",
+      "slogan": "Es para tu familia, es para tu futuro",
+      "description": "Dos etapas desarrolladas desde 2004 y 2008, con cerca de 450 lotes urbanizados.",
+      "facts": [
+        "Cerca de 450 lotes",
+        "Dos etapas"
+      ],
+      "services": [
+        "Agua potable",
+        "Cloacas",
+        "Red eléctrica",
+        "Cordón cuneta",
+        "Calles enripiadas"
+      ],
+      "mapUrl": "https://goo.gl/maps/S1RJ2siSWyS7BJs77",
+      "logo": "/brand/projects/rincones-san-pedrito.png",
+      "media": {
+        "src": "/brand/projects/rincones-san-pedrito.png",
+        "alt": "Identidad visual oficial de Rincones de San Pedrito; no se publica una fotografía asociada sin confirmación",
+        "fit": "contain",
+        "kind": "Identidad visual",
+        "position": "center 30%",
+        "source": "archivo Bellomo"
+      },
+      "enabled": true
+    },
+    {
+      "id": "palpala",
+      "name": "Loteo Palpalá",
+      "stage": "agotado",
+      "stageLabel": "Vendido · escritura y posesión",
+      "location": "Palpalá",
+      "slogan": "Viví cerca",
+      "description": "Urbanización céntrica iniciada en 2012, próxima a la Ruta 1 y al Paseo de las Flores.",
+      "facts": [
+        "Proyecto entregado",
+        "Lotes de 200 a 900 m² en el conjunto Palpalá–Martín Galán"
+      ],
+      "mapUrl": "https://goo.gl/maps/Wvdq7xFTjBfzkQNP8",
+      "logo": "/brand/projects/palpala.png",
+      "media": {
+        "src": "/brand/projects/palpala.png",
+        "alt": "Identidad visual oficial de Loteo Palpalá; no se publica una fotografía asociada sin confirmación",
+        "fit": "contain",
+        "kind": "Identidad visual",
+        "position": "center 30%",
+        "source": "archivo Bellomo"
+      },
+      "enabled": true
+    },
+    {
+      "id": "martin-galan",
+      "name": "Martín Raúl Galán",
+      "stage": "agotado",
+      "stageLabel": "Vendido · con posesión",
+      "location": "Palpalá",
+      "slogan": "Viví cerca",
+      "description": "Proyecto urbano vinculado a Loteo Palpalá, con plaza central y acceso a servicios de la ciudad.",
+      "facts": [
+        "Proyecto entregado",
+        "Escritura informada como próxima en el material recibido"
+      ],
+      "mapUrl": "https://goo.gl/maps/Wvdq7xFTjBfzkQNP8",
+      "logo": "/brand/projects/martin-galan.png",
+      "media": {
+        "src": "/brand/projects/martin-galan.png",
+        "alt": "Identidad visual oficial de Martín Raúl Galán; no se publica una fotografía asociada sin confirmación",
+        "fit": "contain",
+        "kind": "Identidad visual",
+        "position": "center 30%",
+        "source": "archivo Bellomo"
+      },
+      "enabled": true
+    },
+    {
+      "id": "huasi-7",
+      "name": "Huasi VII",
+      "stage": "proximo",
+      "stageLabel": "Venta en pozo",
+      "location": "Alto Padilla · San Salvador de Jujuy",
+      "description": "Nuevo proyecto residencial de la línea Huasi. Tipologías, precios y cronograma deben confirmarse con el área comercial.",
+      "facts": [
+        "Proyecto residencial",
+        "Venta en pozo"
+      ],
+      "media": {
+        "src": "/brand/logo-bellomo-isotipo.png",
+        "alt": "Marca Bellomo usada como referencia visual de Huasi VII ante la ausencia de una fotografía confirmada",
+        "fit": "contain",
+        "kind": "Identidad visual",
+        "position": "center 30%",
+        "source": "archivo Bellomo"
+      },
+      "enabled": true
+    },
+    {
+      "id": "terrazas-galan",
+      "name": "Terrazas de Galán",
+      "stage": "proximo",
+      "stageLabel": "Proyecto futuro",
+      "location": "Juan Galán · Jujuy",
+      "description": "Proyecto futuro incorporado al portafolio Bellomo. Información técnica y comercial en preparación.",
+      "facts": [
+        "Próximo desarrollo",
+        "Consulta anticipada"
+      ],
+      "media": {
+        "src": "/brand/logo-bellomo-isotipo.png",
+        "alt": "Marca Bellomo usada como referencia visual de Terrazas de Galán ante la ausencia de una fotografía confirmada",
+        "fit": "contain",
+        "kind": "Identidad visual",
+        "position": "center 30%",
+        "source": "archivo Bellomo"
+      },
+      "enabled": true
+    },
+    {
+      "id": "quintas-san-antonio",
+      "name": "Quintas de San Antonio",
+      "stage": "proximo",
+      "stageLabel": "Proyecto futuro",
+      "location": "La Toma · San Antonio",
+      "description": "Proyecto de cinco etapas destinado a quintas de fin de semana, esparcimiento y descanso.",
+      "facts": [
+        "5 etapas proyectadas",
+        "Fracciones de aproximadamente 1 ha",
+        "A 2 km del pueblo"
+      ],
+      "services": [
+        "Agua",
+        "Alumbrado público"
+      ],
+      "logo": "/brand/projects/quintas-san-antonio.png",
+      "media": {
+        "src": "/images/official/quintas-san-antonio/vista-aerea-2.webp",
+        "alt": "Vista aérea real del entorno de Quintas de San Antonio",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    },
+    {
+      "id": "la-toma",
+      "name": "Loteo La Toma",
+      "stage": "proximo",
+      "stageLabel": "Proyecto futuro",
+      "location": "San Antonio · Jujuy",
+      "description": "Nuevo desarrollo de tierra en etapa de definición. Se reciben consultas anticipadas sin compromiso.",
+      "facts": [
+        "Proyecto futuro",
+        "Información en preparación"
+      ],
+      "media": {
+        "src": "/images/official/la-toma/vista-aerea-1.webp",
+        "alt": "Vista aérea real del entorno de La Toma",
+        "source": "archivo Bellomo",
+        "kind": "Vista aérea",
+        "position": "center"
+      },
+      "enabled": true
+    }
+  ],
+  "projectStages": [
+    {
+      "id": "preventa",
+      "label": "Preventa",
+      "description": "Escritura y posesión estimadas en aproximadamente 48/60 meses, según documentación y avance de cada proyecto.",
+      "enabled": true
+    },
+    {
+      "id": "venta",
+      "label": "Venta",
+      "description": "Proyectos informados con escritura y posesión. La disponibilidad puntual se confirma antes de reservar.",
+      "enabled": true
+    },
+    {
+      "id": "agotado",
+      "label": "Trayectoria",
+      "description": "Urbanizaciones vendidas que documentan la experiencia y continuidad de Bellomo.",
+      "enabled": true
+    },
+    {
+      "id": "proximo",
+      "label": "Próximos",
+      "description": "Proyectos en pozo o futuros, sujetos a definición técnica y comercial.",
+      "enabled": true
+    }
+  ],
+  "rentalPortfolio": [
+    "Galería Norte I · Chijra · 36 locales",
+    "Galería Norte II · Chijra · 80 locales",
+    "Huasi VIII · Alvear · 3 plantas y 4 locales comerciales",
+    "Cocheras Alvear · mensual y por hora",
+    "Cocheras Huasi III · Chijra · mensual"
+  ],
+  "navigation": [
+    {
+      "label": "Inicio",
+      "href": "#inicio",
+      "enabled": true
+    },
+    {
+      "label": "Bellomo",
+      "href": "#bellomo",
+      "enabled": true
+    },
+    {
+      "label": "Proyectos",
+      "href": "#proyectos",
+      "enabled": true
+    },
+    {
+      "label": "Archivo",
+      "href": "#archivo",
+      "enabled": true
+    },
+    {
+      "label": "Construcción",
+      "href": "#construccion",
+      "enabled": true
+    },
+    {
+      "label": "Contacto",
+      "href": "#contacto",
+      "enabled": true
+    }
+  ]
+}
