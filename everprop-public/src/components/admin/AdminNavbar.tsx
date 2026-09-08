@@ -24,7 +24,7 @@ type Props = {
 
 export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const router = useRouter();
-  const { user, isEngineer } = useCurrentSession();
+  const { user, isEngineer, isAdvisor, canCreate } = useCurrentSession();
   const { state: sidebarState, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -178,15 +178,17 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden items-center gap-2 xl:inline-flex"
-              onClick={() => router.push("/admin/properties/new")}
-            >
-              <Plus className="h-4 w-4" /> Propiedad
-            </Button>
-            {!isEngineer && (
+            {canCreate && !isAdvisor && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden items-center gap-2 xl:inline-flex"
+                onClick={() => router.push("/admin/properties/new")}
+              >
+                <Plus className="h-4 w-4" /> Propiedad
+              </Button>
+            )}
+            {canCreate && !isEngineer && (
               <Button
                 size="sm"
                 className="hidden items-center gap-2 bg-blue-600 text-white hover:bg-blue-700 xl:inline-flex"

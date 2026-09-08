@@ -22,6 +22,8 @@ export default function ProjectDetailView() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "matrix" | "log">("overview");
   const [isGenerateLotsOpen, setIsGenerateLotsOpen] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -34,10 +36,23 @@ export default function ProjectDetailView() {
           if (p) {
             setProject(p);
             setProperties(catalog.properties.filter((prop) => prop.projectId === projectId));
+            setLoadError("");
+            setIsLoaded(true);
             return;
           }
+          setProject(null);
+          setProperties([]);
+          setLoadError("El proyecto solicitado no existe o no está disponible para tu sesión.");
+          setIsLoaded(true);
+          return;
         } catch (e) {
           console.error("Error loading project from API:", e);
+          if (!active) return;
+          setProject(null);
+          setProperties([]);
+          setLoadError(e instanceof Error ? e.message : "No se pudo cargar el proyecto desde la API.");
+          setIsLoaded(true);
+          return;
         }
       }
       if (!active) return;
@@ -48,6 +63,7 @@ export default function ProjectDetailView() {
         const allProps = loadPropertyList(sampleProperties, "c1");
         setProperties(allProps.filter((prop) => prop.projectId === projectId));
       }
+      setIsLoaded(true);
     }
     void fetchProject();
     return () => {
@@ -55,10 +71,16 @@ export default function ProjectDetailView() {
     };
   }, [projectId]);
 
-  if (!project) return (
+  if (!isLoaded) return (
     <div className="flex flex-col items-center justify-center py-20 text-slate-500">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
       Cargando proyecto...
+    </div>
+  );
+
+  if (!project) return (
+    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-sm text-rose-900" role="alert">
+      {loadError || "Proyecto no encontrado."} No se muestran datos de demostración.
     </div>
   );
 

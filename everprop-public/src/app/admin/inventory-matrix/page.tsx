@@ -16,6 +16,7 @@ export default function GlobalInventoryMatrixPage() {
   const [projects, setProjects] = useState<typeof sampleProjects>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isGenerateLotsOpen, setIsGenerateLotsOpen] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
@@ -29,10 +30,17 @@ export default function GlobalInventoryMatrixPage() {
           if (!active) return;
           setProperties(catalog.properties);
           setProjects(catalog.projects);
+          setLoadError("");
           setIsLoaded(true);
           return;
         } catch (e) {
           console.error("Error loading inventory matrix from API:", e);
+          if (!active) return;
+          setProperties([]);
+          setProjects([]);
+          setLoadError(e instanceof Error ? e.message : "No se pudo cargar el inventario desde la API.");
+          setIsLoaded(true);
+          return;
         }
       }
       if (!active) return;
@@ -69,6 +77,11 @@ export default function GlobalInventoryMatrixPage() {
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 pb-10">
+      {loadError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+          {loadError} No se muestran datos de demostración.
+        </div>
+      )}
       {/* Header & Global Project Filter */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
@@ -99,6 +112,7 @@ export default function GlobalInventoryMatrixPage() {
           <Button
             size="sm"
             onClick={() => setIsGenerateLotsOpen(true)}
+            disabled={Boolean(loadError) || projects.length === 0}
             className="h-10 px-4 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm rounded-xl"
           >
             <Layers className="h-4 w-4" /> + Cargar Manzana / Lotes

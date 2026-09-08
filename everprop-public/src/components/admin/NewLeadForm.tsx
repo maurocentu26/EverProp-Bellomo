@@ -155,7 +155,8 @@ type Props = {
 
 export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing = false }: Props) {
   const router = useRouter();
-  const { user, isAdvisor } = useCurrentSession();
+  const { user, isAdvisor, isEngineer, canCreate, canUpdate, canAssign, isReady } = useCurrentSession();
+  const canSave = !isEngineer && (isEditing ? canUpdate : canCreate);
   const [activeLead, setActiveLead] = useState<Lead | null>(initialLead ?? null);
   const [isLoadingLead, setIsLoadingLead] = useState(Boolean(leadId && !initialLead));
   const [selectedCategory, setSelectedCategory] = useState<AssetCategory | null>(null);
@@ -165,6 +166,11 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    if (isReady && !canSave) router.replace("/admin/leads");
+  }, [canSave, isReady, router]);
 
   const advisorList = useMemo(() => {
     return isMockDataMode
@@ -184,8 +190,19 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               setIsLoadingLead(false);
               return;
             }
-          } catch {
-            // fallback to storage
+            if (active) {
+              setActiveLead(null);
+              setLoadError("El lead solicitado no existe o no está disponible para tu sesión.");
+              setIsLoadingLead(false);
+            }
+            return;
+          } catch (reason) {
+            if (active) {
+              setActiveLead(null);
+              setLoadError(reason instanceof Error ? reason.message : "No se pudo cargar el lead desde la API.");
+              setIsLoadingLead(false);
+            }
+            return;
           }
         }
         if (active) {
@@ -211,9 +228,14 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           if (!active) return;
           setAllProperties(catalog.properties);
           setAllProjects(catalog.projects);
+          setLoadError("");
           return;
-        } catch {
-          // fallback to storage
+        } catch (reason) {
+          if (!active) return;
+          setAllProperties([]);
+          setAllProjects([]);
+          setLoadError(reason instanceof Error ? reason.message : "No se pudo cargar el catálogo desde la API.");
+          return;
         }
       }
       if (!active) return;
@@ -376,7 +398,6 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   };
 
   const onFormError = (errors: any) => {
-    console.error("Form validation errors:", errors);
     const firstKey = Object.keys(errors)[0];
     const firstError = errors[firstKey];
     if (firstError?.message) {
@@ -389,7 +410,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     const trimmedName = data.name.trim();
-    const assignedAgentId = isAdvisor ? user?.id : (data.agentId || undefined);
+    const assignedAgentId = canAssign ? (data.agentId || undefined) : user?.id;
     const projectId = selectedAsset?.projectId ?? (selectedProjectId || undefined);
     const selectedAssetIsUnit = isProjectUnit(selectedAsset ?? undefined);
     const targetCategory = selectedCategory ?? (selectedAsset ? inferLeadInterestCategory(selectedAsset) : undefined);
@@ -465,11 +486,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
         }
       }
 
-      const stored = loadLeadList(sampleLeads, companyId);
-      const nextLeads = stored.some((l) => l.id === updatedLead.id)
-        ? stored.map((l) => (l.id === updatedLead.id ? updatedLead : l))
-        : [updatedLead, ...stored];
-      saveLeadList(nextLeads, companyId);
+      if (isMockDataMode) {
+        const stored = loadLeadList(sampleLeads, companyId);
+        const nextLeads = stored.some((l) => l.id === updatedLead.id)
+          ? stored.map((l) => (l.id === updatedLead.id ? updatedLead : l))
+          : [updatedLead, ...stored];
+        saveLeadList(nextLeads, companyId);
+      }
 
       toast.success("Ficha del lead completada con éxito.");
       router.push(`/admin/leads/${activeLead.id}`);
@@ -522,7 +545,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     }
 
     try {
-      appendLeadToStorage(nextLead, sampleLeads, companyId);
+      if (isMockDataMode) {
+        appendLeadToStorage(nextLead, sampleLeads, companyId);
+      }
 
       if (nextLead.agentId) {
         try {
@@ -553,6 +578,10 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     }
   };
 
+  if (!isReady || !canSave) {
+    return <div className="p-8 text-center text-sm text-slate-500">Verificando permisos…</div>;
+  }
+
   if (isEditing && isLoadingLead) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">
@@ -564,6 +593,11 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      {loadError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+          {loadError} No se muestran datos de demostración.
+        </div>
+      )}
       <Link
         href={isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads"}
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-100"
@@ -777,7 +811,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   )}
                 />
 
-                {!isAdvisor && (
+                {canAssign && (
                   <Controller
                     name="agentId"
                     control={form.control}

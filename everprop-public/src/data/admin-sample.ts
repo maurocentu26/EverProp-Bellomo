@@ -49,6 +49,7 @@ export type LeadFollowUp = {
 
 export type Project = {
   id: string;
+  backendId?: number;
   companyId: string;
   name: string;
   type: ProjectType;
@@ -81,6 +82,7 @@ export type Visit = {
 
 export type Property = {
   id: string;
+  version?: number;
   companyId: string;
   title: string;
   operation: 'sale' | 'rent' | 'temporal';

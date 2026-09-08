@@ -38,7 +38,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::apiResource('properties.media', AdminPropertyMediaController::class)
             ->parameters(['media' => 'media']);
 
-        Route::apiResource('leads', AdminLeadController::class);
+        Route::apiResource('leads', AdminLeadController::class)->except(['destroy']);
         Route::post('/leads/{lead}/properties', [AdminLeadController::class, 'attachProperty'])->name('leads.properties.attach');
         Route::patch('/leads/{lead}/properties/{property}', [AdminLeadController::class, 'updateProperty'])->name('leads.properties.update');
         Route::delete('/leads/{lead}/properties/{property}', [AdminLeadController::class, 'detachProperty'])->name('leads.properties.detach');
@@ -52,15 +52,6 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::patch('/notifications/{id}/read', [AdminNotificationController::class, 'markAsRead'])->name('notifications.read');
         Route::delete('/notifications', [AdminNotificationController::class, 'destroyAll'])->name('notifications.destroy-all');
     });
-});
-
-Route::get('/setup-simulation-database', function () {
-    \Illuminate\Support\Facades\Artisan::call('db:setup-simulation');
-    return response()->json([
-        'status' => 'ok',
-        'message' => 'Base de datos de simulación configurada con éxito en Bellomo CRM',
-        'output' => \Illuminate\Support\Facades\Artisan::output(),
-    ]);
 });
 
 Route::middleware('tenant')->group(function (): void {

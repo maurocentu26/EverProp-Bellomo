@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, Command, FlaskConical, Loader2, ShieldCheck } from "lucide-react";
 import { MOCK_USERS } from "@/data/auth-sample";
 import { useAuth } from "@/lib/auth-context";
-import { isMockDataMode } from "@/lib/data-mode";
+import { isLocalQaToolsEnabled, isMockDataMode } from "@/lib/data-mode";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
@@ -30,22 +30,6 @@ export default function LoginPage() {
 
     try {
       await login(email.trim(), password);
-      router.push("/admin");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "No fue posible iniciar sesión.");
-      setIsLoading(false);
-    }
-  };
-
-  const handleQuickApiLogin = async (quickEmail: string) => {
-    setEmail(quickEmail);
-    setPassword("password123");
-    setIsLoading(true);
-    setLoadingLabel(`Iniciando sesión como ${quickEmail}…`);
-    setError("");
-
-    try {
-      await login(quickEmail, "password123");
       router.push("/admin");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No fue posible iniciar sesión.");
@@ -159,16 +143,20 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="mb-5">
+              {isLocalQaToolsEnabled && <div className="mb-5">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Acceso Rápido de Prueba (1 clic)
+                  Perfiles locales de prueba
                 </p>
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {MOCK_USERS.map((user) => (
                     <button
                       key={user.id}
                       type="button"
-                      onClick={() => void handleQuickApiLogin(user.email)}
+                      onClick={() => {
+                        setEmail(user.email);
+                        setPassword("");
+                        setError("");
+                      }}
                       className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition-all hover:border-blue-500/50 hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-slate-800 text-xs font-bold text-white shadow-inner group-hover:from-blue-500 group-hover:to-blue-700">
@@ -181,7 +169,10 @@ export default function LoginPage() {
                     </button>
                   ))}
                 </div>
-              </div>
+                <p className="mt-2 text-[11px] leading-5 text-slate-400">
+                  Sólo completa el email. La contraseña nunca se incluye en el frontend.
+                </p>
+              </div>}
 
               <div className="relative my-5 flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">

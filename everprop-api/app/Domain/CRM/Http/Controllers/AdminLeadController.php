@@ -3,25 +3,38 @@
 namespace App\Domain\CRM\Http\Controllers;
 
 use App\Domain\CRM\Notifications\LeadAssignedNotification;
+use App\Domain\Identity\Enums\Capability;
 use App\Domain\Identity\Enums\RoleCode;
+use App\Domain\Identity\Services\AuthorizationService;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 final class AdminLeadController extends Controller
 {
-    public function __construct(private readonly TenantContext $tenantContext) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly AuthorizationService $authorization,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
         try {
             $tenantId = $this->tenantContext->id();
-            $user = $request->user();
+            $user = $this->authorizedUser($request, Capability::VIEW_ANY);
+            $pagination = $request->validate([
+                'page' => ['sometimes', 'integer', 'min:1'],
+                'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ]);
+            $page = (int) ($pagination['page'] ?? 1);
+            $perPage = (int) ($pagination['per_page'] ?? 100);
 
             $query = DB::table('leads')
                 ->join('contacts', 'contacts.id', '=', 'leads.contact_id')
@@ -53,14 +66,16 @@ final class AdminLeadController extends Controller
                     'users.public_id as assigned_user_id',
                     'users.display_name as assigned_user_name',
                 ])
-                ->orderByDesc('leads.updated_at');
+                ->orderByDesc('leads.updated_at')
+                ->orderByDesc('leads.id');
 
             // Advisor isolation: Advisors only see their assigned leads
-            if ($user && isset($user->role_code) && $user->role_code === RoleCode::SALES_ADVISOR) {
+            if ($user->role() === RoleCode::SALES_ADVISOR) {
                 $query->where('leads.assigned_user_id', $user->id);
             }
 
-            $leads = $query->limit(200)->get();
+            $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+            $leads = collect($paginator->items());
 
             $leadIds = $leads->pluck('id')->all();
             $linkedPropertiesMap = [];
@@ -133,13 +148,15 @@ final class AdminLeadController extends Controller
                         'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                     ];
                 }),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                ],
             ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ], 500);
+        } catch (\Throwable $exception) {
+            throw $exception;
         }
     }
 
@@ -147,7 +164,7 @@ final class AdminLeadController extends Controller
     {
         try {
             $tenantId = $this->tenantContext->id();
-            $user = $request->user();
+            $user = $this->authorizedUser($request, Capability::CREATE);
 
             $validated = $request->validate([
                 'name' => 'required|string|max:200',
@@ -162,7 +179,17 @@ final class AdminLeadController extends Controller
                 'property_id' => 'nullable|string',
             ]);
 
-            return DB::transaction(function () use ($tenantId, $user, $validated) {
+            $requestedAgentId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId);
+            if (! empty($validated['agent_id']) && $requestedAgentId === null) {
+                throw ValidationException::withMessages([
+                    'agent_id' => ['The selected advisor is not available for this tenant.'],
+                ]);
+            }
+            if ($requestedAgentId !== null && $requestedAgentId !== (int) $user->id) {
+                $this->authorization->authorize($user, Capability::ASSIGN);
+            }
+
+            return DB::transaction(function () use ($tenantId, $user, $validated, $requestedAgentId) {
                 $now = Carbon::now('UTC');
                 $contactUuid = (string) Str::uuid();
 
@@ -171,7 +198,7 @@ final class AdminLeadController extends Controller
                     'tenant_id' => $tenantId,
                     'public_id' => $contactUuid,
                     'display_name' => $validated['name'],
-                    'first_name' => explode(' ', $validated['name'])[0] ?? $validated['name'],
+                    'first_name' => explode(' ', $validated['name'])[0],
                     'email' => $validated['email'] ?? null,
                     'phone_e164' => $validated['phone'] ?? null,
                     'first_seen_at' => $now,
@@ -195,8 +222,7 @@ final class AdminLeadController extends Controller
                 }
 
                 // 3. Resolve assigned agent
-                $assignedId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId)
-                    ?? ($user ? $user->id : null);
+                $assignedId = $requestedAgentId ?? $user->id;
 
                 // 4. Create lead
                 $leadUuid = (string) Str::uuid();
@@ -209,7 +235,7 @@ final class AdminLeadController extends Controller
                     'assignment_method' => $assignedId ? 'MANUAL' : 'UNASSIGNED',
                     'source_channel' => 'WEB_FORM',
                     'source_kind' => 'ADMIN_MANUAL',
-                    'title' => 'Interés: ' . $validated['name'],
+                    'title' => 'Interés: '.$validated['name'],
                     'priority' => strtoupper($validated['priority'] ?? 'NORMAL'),
                     'budget_max' => $validated['budget'] ?? null,
                     'currency_code' => $validated['currency'] ?? 'USD',
@@ -257,7 +283,9 @@ final class AdminLeadController extends Controller
                 // 5. Notify assigned agent
                 if ($assignedId) {
                     try {
-                        $assignedUser = User::find($assignedId);
+                        $assignedUser = User::query()
+                            ->where('tenant_id', $tenantId)
+                            ->find($assignedId);
                         if ($assignedUser) {
                             $assignedUser->notify(new LeadAssignedNotification(
                                 leadPublicId: $leadUuid,
@@ -286,12 +314,8 @@ final class AdminLeadController extends Controller
                     ],
                 ], 201);
             });
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ], 500);
+        } catch (\Throwable $exception) {
+            throw $exception;
         }
     }
 
@@ -299,7 +323,7 @@ final class AdminLeadController extends Controller
     {
         try {
             $tenantId = $this->tenantContext->id();
-            $user = $request->user();
+            $user = $this->authorizedUser($request, Capability::VIEW);
 
             $query = DB::table('leads')
                 ->join('contacts', 'contacts.id', '=', 'leads.contact_id')
@@ -333,7 +357,7 @@ final class AdminLeadController extends Controller
                     'users.display_name as assigned_user_name',
                 ]);
 
-            if ($user && isset($user->role_code) && $user->role_code === RoleCode::SALES_ADVISOR) {
+            if ($user->role() === RoleCode::SALES_ADVISOR) {
                 $query->where('leads.assigned_user_id', $user->id);
             }
 
@@ -406,10 +430,8 @@ final class AdminLeadController extends Controller
                     'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                 ],
             ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Throwable $exception) {
+            throw $exception;
         }
     }
 
@@ -417,6 +439,7 @@ final class AdminLeadController extends Controller
     {
         try {
             $tenantId = $this->tenantContext->id();
+            $user = $this->authorizedUser($request, Capability::UPDATE);
 
             $validated = $request->validate([
                 'name' => 'nullable|string|max:160',
@@ -428,10 +451,15 @@ final class AdminLeadController extends Controller
                 'agent_id' => 'nullable',
             ]);
 
-            $lead = DB::table('leads')
+            $leadQuery = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('public_id', $leadPublicId)
-                ->first();
+                ->where('public_id', $leadPublicId);
+
+            if ($user->role() === RoleCode::SALES_ADVISOR) {
+                $leadQuery->where('assigned_user_id', $user->id);
+            }
+
+            $lead = $leadQuery->first();
 
             if (! $lead) {
                 return response()->json(['error' => 'Lead not found'], 404);
@@ -445,7 +473,7 @@ final class AdminLeadController extends Controller
             if (array_key_exists('name', $validated) && ! empty($validated['name'])) {
                 $contactUpdates['first_name'] = $validated['name'];
                 $contactUpdates['display_name'] = $validated['name'];
-                $updates['title'] = 'Interés: ' . $validated['name'];
+                $updates['title'] = 'Interés: '.$validated['name'];
             }
             if (array_key_exists('email', $validated)) {
                 $contactUpdates['email'] = $validated['email'];
@@ -456,7 +484,10 @@ final class AdminLeadController extends Controller
 
             if (! empty($contactUpdates) && $lead->contact_id) {
                 $contactUpdates['updated_at'] = Carbon::now('UTC');
-                DB::table('contacts')->where('id', $lead->contact_id)->update($contactUpdates);
+                DB::table('contacts')
+                    ->where('tenant_id', $tenantId)
+                    ->where('id', $lead->contact_id)
+                    ->update($contactUpdates);
             }
 
             if (! empty($validated['stage'])) {
@@ -481,13 +512,27 @@ final class AdminLeadController extends Controller
                 $newAssignedId = $this->resolveUserId($validated['agent_id'], $tenantId);
                 $oldAssignedId = $lead->assigned_user_id ? (int) $lead->assigned_user_id : null;
 
+                if (! empty($validated['agent_id']) && $newAssignedId === null) {
+                    throw ValidationException::withMessages([
+                        'agent_id' => ['The selected advisor is not available for this tenant.'],
+                    ]);
+                }
+                if ($newAssignedId !== $oldAssignedId) {
+                    $this->authorization->authorize($user, Capability::ASSIGN);
+                }
+
                 $updates['assigned_user_id'] = $newAssignedId;
 
                 if ($newAssignedId && $newAssignedId !== $oldAssignedId) {
                     try {
-                        $assignedUser = User::find($newAssignedId);
+                        $assignedUser = User::query()
+                            ->where('tenant_id', $tenantId)
+                            ->find($newAssignedId);
                         if ($assignedUser) {
-                            $contact = DB::table('contacts')->where('id', $lead->contact_id)->first(['display_name']);
+                            $contact = DB::table('contacts')
+                                ->where('tenant_id', $tenantId)
+                                ->where('id', $lead->contact_id)
+                                ->first(['display_name']);
                             $leadName = $contact?->display_name ?: $lead->title;
                             $assignedUser->notify(new LeadAssignedNotification(
                                 leadPublicId: $lead->public_id,
@@ -505,14 +550,13 @@ final class AdminLeadController extends Controller
             }
 
             DB::table('leads')
+                ->where('tenant_id', $tenantId)
                 ->where('id', $lead->id)
                 ->update($updates);
 
             return response()->json(['status' => 'updated']);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Throwable $exception) {
+            throw $exception;
         }
     }
 
@@ -520,12 +564,17 @@ final class AdminLeadController extends Controller
     {
         try {
             $tenantId = $this->tenantContext->id();
-            $user = $request->user();
+            $user = $this->authorizedUser($request, Capability::UPDATE);
 
-            $lead = DB::table('leads')
+            $leadQuery = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('public_id', $leadPublicId)
-                ->first();
+                ->where('public_id', $leadPublicId);
+
+            if ($user->role() === RoleCode::SALES_ADVISOR) {
+                $leadQuery->where('assigned_user_id', $user->id);
+            }
+
+            $lead = $leadQuery->first();
 
             if (! $lead) {
                 return response()->json(['error' => 'Lead not found'], 404);
@@ -566,7 +615,7 @@ final class AdminLeadController extends Controller
                     'property_id' => $property->id,
                 ],
                 [
-                    'linked_by_user_id' => $user?->id ?? $lead->assigned_user_id,
+                    'linked_by_user_id' => $user->id,
                     'interest_level' => $interestLevel,
                     'status' => $status,
                     'notes' => $validated['notes'] ?? null,
@@ -588,10 +637,8 @@ final class AdminLeadController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ],
             ], 200);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Throwable $exception) {
+            throw $exception;
         }
     }
 
@@ -599,11 +646,17 @@ final class AdminLeadController extends Controller
     {
         try {
             $tenantId = $this->tenantContext->id();
+            $user = $this->authorizedUser($request, Capability::UPDATE);
 
-            $lead = DB::table('leads')
+            $leadQuery = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('public_id', $leadPublicId)
-                ->first();
+                ->where('public_id', $leadPublicId);
+
+            if ($user->role() === RoleCode::SALES_ADVISOR) {
+                $leadQuery->where('assigned_user_id', $user->id);
+            }
+
+            $lead = $leadQuery->first();
 
             if (! $lead) {
                 return response()->json(['error' => 'Lead not found'], 404);
@@ -689,10 +742,8 @@ final class AdminLeadController extends Controller
                     'status' => $updates['status'] ?? null,
                 ],
             ], 200);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Throwable $exception) {
+            throw $exception;
         }
     }
 
@@ -700,11 +751,17 @@ final class AdminLeadController extends Controller
     {
         try {
             $tenantId = $this->tenantContext->id();
+            $user = $this->authorizedUser($request, Capability::UPDATE);
 
-            $lead = DB::table('leads')
+            $leadQuery = DB::table('leads')
                 ->where('tenant_id', $tenantId)
-                ->where('public_id', $leadPublicId)
-                ->first();
+                ->where('public_id', $leadPublicId);
+
+            if ($user->role() === RoleCode::SALES_ADVISOR) {
+                $leadQuery->where('assigned_user_id', $user->id);
+            }
+
+            $lead = $leadQuery->first();
 
             if (! $lead) {
                 return response()->json(['error' => 'Lead not found'], 404);
@@ -731,11 +788,22 @@ final class AdminLeadController extends Controller
                 ->delete();
 
             return response()->json(['status' => 'ok'], 200);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Throwable $exception) {
+            throw $exception;
         }
+    }
+
+    private function authorizedUser(Request $request, Capability $capability): User
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            throw new AuthenticationException;
+        }
+
+        $this->authorization->authorize($user, $capability);
+
+        return $user;
     }
 
     private function resolveUserId(mixed $agentId, int $tenantId): ?int
@@ -749,6 +817,7 @@ final class AdminLeadController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('id', (int) $agentId)
                 ->first(['id']);
+
             return $user ? (int) $user->id : null;
         }
 
@@ -757,6 +826,7 @@ final class AdminLeadController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('public_id', $agentId)
                 ->first(['id']);
+
             return $user ? (int) $user->id : null;
         }
 

@@ -22,13 +22,20 @@ export function AdminNavigationMenu({
   collapsed = false,
   onNavigate,
 }: AdminNavigationMenuProps) {
-  const { isEngineer, isAdvisor } = useCurrentSession();
+  const { isEngineer, isAdvisor, canCreate, canManageUsers } = useCurrentSession();
   const { isItemActive, isChildActive } = useSidebarActive();
   const fullscreen = surface === "fullscreen";
   const groups = useMemo(
-    () => getAvailableNavigationGroups({ isEngineer, isAdvisor, isMockMode: isMockDataMode }),
-    [isEngineer, isAdvisor],
+    () => getAvailableNavigationGroups({ isEngineer, isAdvisor, isMockMode: isMockDataMode, canCreate, canManageUsers }),
+    [canCreate, canManageUsers, isEngineer, isAdvisor],
   );
+
+  const quickActions = quickActionsConfig.filter((action) => {
+    if (!canCreate) return false;
+    if (action.href.includes("/leads/") && isEngineer) return false;
+    if (action.href.includes("/properties/") && isAdvisor) return false;
+    return true;
+  });
 
   return (
     <div className={cn(fullscreen ? "space-y-7 px-4 py-5 sm:px-6 sm:py-7" : "space-y-4 px-2 pb-3")}>
@@ -38,7 +45,7 @@ export function AdminNavigationMenu({
             Acciones rápidas
           </h2>
           <div className="grid gap-2 sm:grid-cols-3">
-            {quickActionsConfig.map((action) => {
+            {quickActions.map((action) => {
               const ActionIcon = action.icon;
               return (
                 <Link

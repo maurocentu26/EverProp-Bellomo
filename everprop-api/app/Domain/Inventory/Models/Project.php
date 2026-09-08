@@ -27,6 +27,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $address
  * @property string|null $description
  * @property string|null $masterplan_image_url
+ * @property int|null $legacy_id
+ * @property array<mixed>|null $legacy_data_json
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */

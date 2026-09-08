@@ -42,7 +42,7 @@ import {
   savePropertyList 
 } from "@/lib/admin-storage";
 import { createNotification } from "@/lib/notifications";
-import { isMockDataMode } from "@/lib/data-mode";
+import { isLocalQaToolsEnabled, isMockDataMode } from "@/lib/data-mode";
 import { createEverpropLead, createEverpropLeadFollowUp } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +55,8 @@ export function SidebarSimulations() {
   const [modalOpen, setModalOpen] = useState(false);
   const [newLeadName, setNewLeadName] = useState("");
   const [activeDialogTab, setActiveDialogTab] = useState<"assign" | "all">("assign");
+
+  if (!isLocalQaToolsEnabled) return null;
 
   // Helper para notificar cambios en tiempo real
   const dispatchRealtimeUpdates = (leadName: string, eventTitle: string, message: string, leadId?: string) => {

@@ -35,7 +35,7 @@ import {
   normalizeLeadInterests,
   syncLeadWithInterests,
 } from "@/lib/lead-interests";
-import { useAuth } from "@/lib/auth-context";
+import { useCurrentSession } from "@/hooks/use-current-session";
 import { createNotification } from "@/lib/notifications";
 import { isCommercialContact } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -74,7 +74,7 @@ const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
 type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInterest } | null;
 
 export default function LeadDetailView({ leadId }: { leadId: string }) {
-  const { currentUser } = useAuth();
+  const { canUpdate, canAssign } = useCurrentSession();
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [lead, setLead] = useState<Lead | null>(null);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
@@ -86,6 +86,8 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const [interestEditor, setInterestEditor] = useState<InterestEditorState>(null);
   const [interestToDelete, setInterestToDelete] = useState<LeadInterest | null>(null);
   const [stageUpdateModalOpen, setStageUpdateModalOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -93,22 +95,32 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       if (!isMockDataMode) {
         try {
           const [singleLead, apiLeads, catalog, apiFollowUps] = await Promise.all([
-            loadEverpropLeadById(leadId).catch(() => null),
-            loadEverpropLeads().catch(() => []),
-            loadEverpropCatalog().catch(() => ({ properties: sampleProperties, projects: sampleProjects })),
-            loadEverpropLeadFollowUps(leadId).catch(() => []),
+            loadEverpropLeadById(leadId),
+            loadEverpropLeads(),
+            loadEverpropCatalog(),
+            loadEverpropLeadFollowUps(leadId),
           ]);
           if (!active) return;
           const foundLead = singleLead ?? (apiLeads.find((candidate) => candidate.id === leadId) ?? null);
           setAllLeads(apiLeads.length > 0 ? apiLeads : (singleLead ? [singleLead] : []));
           setAllProperties(catalog.properties);
           setAllProjects(catalog.projects);
-          const localFollowUps = loadLeadFollowUpList([], foundLead?.companyId ?? "c1").filter((f) => f.leadId === leadId);
-          setFollowUps(apiFollowUps.length > 0 ? apiFollowUps : localFollowUps);
+          setFollowUps(apiFollowUps);
           setLead(foundLead);
+          setLoadError(foundLead ? "" : "El lead solicitado no existe o no está disponible para tu sesión.");
+          setIsLoaded(true);
           return;
         } catch (e) {
           console.error("Error loading lead detail from API:", e);
+          if (!active) return;
+          setAllLeads([]);
+          setAllProperties([]);
+          setAllProjects([]);
+          setFollowUps([]);
+          setLead(null);
+          setLoadError(e instanceof Error ? e.message : "No se pudo cargar el lead desde la API.");
+          setIsLoaded(true);
+          return;
         }
       }
       if (!active) return;
@@ -120,6 +132,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       setAllProjects(loadProjectList(sampleProjects, companyId));
       setFollowUps(loadLeadFollowUpList([], companyId));
       setLead(foundLead);
+      setIsLoaded(true);
     }
     void loadData();
     return () => {
@@ -137,7 +150,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       return;
     }
     const nextLeads = allLeads.map((candidate) => candidate.id === nextLead.id ? nextLead : candidate);
-    saveLeadList(nextLeads, nextLead.companyId);
+    if (isMockDataMode) saveLeadList(nextLeads, nextLead.companyId);
     setAllLeads(nextLeads);
     setLead(nextLead);
   }
@@ -183,9 +196,6 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       ? interests.map((interest) => interest.id === nextInterest.id ? nextInterest : interest)
       : [...interests, nextInterest];
     const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
-    updateLeadData(syncedLead);
-    setInterestEditor(null);
-
     const targetPropertyId = nextInterest.unitId || nextInterest.propertyId;
     if (!isMockDataMode && targetPropertyId) {
       try {
@@ -194,9 +204,13 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         });
       } catch (err: any) {
         console.error("Error linking property in backend:", err);
+        toast.error("No se pudo guardar el interés en el servidor.");
+        return;
       }
     }
 
+    updateLeadData(syncedLead);
+    setInterestEditor(null);
     toast.success(interestEditor?.mode === "edit" ? "Interés actualizado" : "Interés agregado");
   }
 
@@ -204,23 +218,28 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     if (!lead || !interestToDelete) return;
     const nextInterests = interests.filter((interest) => interest.id !== interestToDelete.id);
     const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
-    updateLeadData(syncedLead);
-
     const targetPropertyId = interestToDelete.unitId || interestToDelete.propertyId;
     if (!isMockDataMode && targetPropertyId) {
       try {
         await detachEverpropLeadProperty(lead.id, targetPropertyId);
       } catch (err: any) {
         console.error("Error unlinking property in backend:", err);
+        toast.error("No se pudo eliminar el interés en el servidor.");
+        return;
       }
     }
 
+    updateLeadData(syncedLead);
     setInterestToDelete(null);
     toast.success("Interés eliminado", { description: `${lead.name} continúa registrado y conserva sus demás intereses.` });
   }
 
   function handleScheduleVisit(visit: Visit) {
     if (!lead) return;
+    if (!isMockDataMode) {
+      toast.error("Las visitas todavía no tienen persistencia en la API.");
+      return;
+    }
     const finalVisit: Visit = {
       ...visit,
       leadId: lead.id,
@@ -233,11 +252,6 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       const property = allProperties.find((candidate) => candidate.id === propertyId);
       if (property) {
         nextInterests = [...interests, createInterestForProperty(lead, property)];
-        if (!isMockDataMode) {
-          attachEverpropLeadProperty(lead.id, propertyId).catch((err) =>
-            console.error("Error linking property on visit:", err)
-          );
-        }
       }
     }
     const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
@@ -262,11 +276,6 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       agentId,
       agentName: newAdvisor?.name,
     };
-    const nextLeads = allLeads.map((candidate) => candidate.id === lead.id ? updatedLead : candidate);
-    setAllLeads(nextLeads);
-    setLead(updatedLead);
-    saveLeadList(nextLeads, lead.companyId);
-
     if (!isMockDataMode) {
       try {
         await updateEverpropLead(lead.id, {
@@ -274,8 +283,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         });
       } catch (err: any) {
         console.error("Error updating lead agent in backend:", err);
+        toast.error("No se pudo reasignar el lead en el servidor.");
+        return;
       }
     }
+
+    const nextLeads = allLeads.map((candidate) => candidate.id === lead.id ? updatedLead : candidate);
+    setAllLeads(nextLeads);
+    setLead(updatedLead);
+    if (isMockDataMode) saveLeadList(nextLeads, lead.companyId);
 
     if (agentId) {
       try {
@@ -302,16 +318,10 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       return;
     }
 
-    const nextFollowUps = appendLeadFollowUpToStorage(
-      followUp,
-      followUps,
-      lead.companyId,
-    );
-    setFollowUps(nextFollowUps);
-
+    let recordedFollowUp = followUp;
     if (!isMockDataMode) {
       try {
-        const created = await createEverpropLeadFollowUp(lead.id, {
+        recordedFollowUp = await createEverpropLeadFollowUp(lead.id, {
           type: followUp.type,
           occurredAt: followUp.occurredAt,
           summary: followUp.summary,
@@ -320,11 +330,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           nextContactAt: followUp.nextContactAt,
           agentId: followUp.agentId,
         });
-        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
       } catch (err: any) {
         console.error("Error saving follow up to API:", err);
+        toast.error("No se pudo registrar el seguimiento en el servidor.");
+        return;
       }
+    } else {
+      appendLeadFollowUpToStorage(followUp, followUps, lead.companyId);
     }
+    setFollowUps((prev) => [recordedFollowUp, ...prev.filter((item) => item.id !== followUp.id)]);
 
     // Sync nextContactAt → lead.visits so it appears in Calendar/Agenda
     let nextLead = lead;
@@ -384,10 +398,6 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       stage: newStage,
       lastActivity: new Date().toISOString(),
     };
-    updateLeadData(updatedLead);
-    setStageUpdateModalOpen(false);
-    toast.success(`Etapa comercial actualizada a "${stageLabels[newStage] || newStage}"`);
-
     if (!isMockDataMode) {
       try {
         await updateEverpropLead(lead.id, {
@@ -395,11 +405,21 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         });
       } catch (err) {
         console.error("Error al actualizar etapa en backend:", err);
+        toast.error("No se pudo actualizar la etapa en el servidor.");
+        return;
       }
     }
+    updateLeadData(updatedLead);
+    setStageUpdateModalOpen(false);
+    toast.success(`Etapa comercial actualizada a "${stageLabels[newStage] || newStage}"`);
   }
 
-  if (!lead) return null;
+  if (!isLoaded) return <div className="p-8 text-center text-sm text-slate-500">Cargando lead…</div>;
+  if (!lead) return (
+    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center text-sm font-medium text-rose-900" role="alert">
+      {loadError || "Lead no encontrado."} No se muestran datos de demostración.
+    </div>
+  );
 
   const generalPendingData = [
     !lead.phone ? "Teléfono" : null,
@@ -431,7 +451,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
                 <div>
                   <p className="text-xs font-bold text-amber-950">Información pendiente</p>
-                  <p className="mt-0.5 text-xs text-amber-800">El cliente ya está registrado. Podés completar estos datos con el botón "Completar ficha".</p>
+                  <p className="mt-0.5 text-xs text-amber-800">El cliente ya está registrado. Podés completar estos datos con el botón «Completar ficha».</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {generalPendingData.map((item) => (
                       <span key={item} className="rounded-md border border-amber-200 bg-white px-2 py-0.5 text-xs font-semibold text-amber-900">
@@ -466,9 +486,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <h2 id="lead-follow-up-timeline-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950">Línea de tiempo</h2>
                 <p className="mt-0.5 text-xs text-slate-500">Cada contacto conserva su asesor, fecha, tipo, resumen, resultado y próximo paso.</p>
               </div>
-              <Button onClick={() => setFollowUpEditorOpen(true)} disabled={!lead.agentId} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                <Plus className="size-3.5" aria-hidden="true" /> Nuevo seguimiento
-              </Button>
+              {canUpdate && (
+                <Button onClick={() => setFollowUpEditorOpen(true)} disabled={!lead.agentId} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Plus className="size-3.5" aria-hidden="true" /> Nuevo seguimiento
+                </Button>
+              )}
             </div>
             <div className="mt-5">
               <LeadFollowUpTimeline leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
@@ -483,9 +505,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <h2 id="lead-interests-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950">Intereses independientes</h2>
                 <p className="mt-0.5 text-xs text-slate-500">Cada ficha conserva su propio proyecto, propiedad, unidad, preferencias y notas.</p>
               </div>
-              <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
-                <Plus className="size-3.5" aria-hidden="true" /> Agregar interés
-              </Button>
+              {canUpdate && (
+                <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
+                  <Plus className="size-3.5" aria-hidden="true" /> Agregar interés
+                </Button>
+              )}
             </div>
 
             {interests.length === 0 ? (
@@ -531,14 +555,16 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                           )}
                         </div>
                       </div>
-                      <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
-                        <Button variant="outline" size="sm" onClick={() => setInterestEditor({ mode: "edit", interest })} className="h-8 gap-1.5 text-xs font-semibold">
-                          <Edit3 className="size-3" aria-hidden="true" /> Editar
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setInterestToDelete(interest)} className="h-8 gap-1.5 border-rose-200 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800">
-                          <Trash2 className="size-3" aria-hidden="true" /> Eliminar
-                        </Button>
-                      </div>
+                      {canUpdate && (
+                        <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+                          <Button variant="outline" size="sm" onClick={() => setInterestEditor({ mode: "edit", interest })} className="h-8 gap-1.5 text-xs font-semibold">
+                            <Edit3 className="size-3" aria-hidden="true" /> Editar
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setInterestToDelete(interest)} className="h-8 gap-1.5 border-rose-200 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800">
+                            <Trash2 className="size-3" aria-hidden="true" /> Eliminar
+                          </Button>
+                        </div>
+                      )}
                       {(property || unit || interest.propertyId || interest.unitId) && (
                         <Link href={`/admin/properties/${(unit ?? property)?.id || interest.propertyId || interest.unitId}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors">
                           Ver activo <ExternalLink className="size-3" aria-hidden="true" />
@@ -553,17 +579,25 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
 
           {/* Visits & Agenda */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <VisitManager
-              title="Gestión de visitas y citas"
-              subtitle="Agendá citas para cualquiera de sus activos de interés."
-              visits={lead.visits ?? []}
-              onSchedule={handleScheduleVisit}
-              defaultGuestName={lead.name}
-              defaultPhone={lead.phone}
-              defaultEmail={lead.email}
-              defaultAgentId={lead.agentId}
-              propertyOptions={allProperties.filter((property) => interestAssetIds.includes(property.id))}
-            />
+            {isMockDataMode && canUpdate ? (
+              <VisitManager
+                title="Gestión de visitas y citas"
+                subtitle="Agendá citas para cualquiera de sus activos de interés."
+                visits={lead.visits ?? []}
+                onSchedule={handleScheduleVisit}
+                defaultGuestName={lead.name}
+                defaultPhone={lead.phone}
+                defaultEmail={lead.email}
+                defaultAgentId={lead.agentId}
+                propertyOptions={allProperties.filter((property) => interestAssetIds.includes(property.id))}
+              />
+            ) : (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-900" role="status">
+                {isMockDataMode
+                  ? "Tu cuenta tiene acceso de consulta; la gestión de visitas está deshabilitada."
+                  : "La agenda de visitas todavía no tiene persistencia en la API. La carga está deshabilitada para evitar falsos guardados."}
+              </div>
+            )}
           </section>
         </div>
 
@@ -609,11 +643,13 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </div>
             </div>
 
-            <Link href={`/admin/leads/${lead.id}/edit`} className="w-full">
-              <Button className="mt-4 h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
-                <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
-              </Button>
-            </Link>
+            {canUpdate && (
+              <Link href={`/admin/leads/${lead.id}/edit`} className="w-full">
+                <Button className="mt-4 h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
+                  <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
+                </Button>
+              </Link>
+            )}
           </section>
 
           {/* Assigned Advisor Card */}
@@ -621,7 +657,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500">Asesor responsable</p>
             <p className="mt-1 text-base font-bold text-slate-900">{assignedAgent?.name ?? "Sin asignar"}</p>
             <p className="mt-0.5 text-xs leading-5 text-slate-500">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
-            {currentUser?.role === "ADMIN" && (
+            {canAssign && (
               <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold">
                 Cambiar asesor
               </Button>
@@ -644,14 +680,16 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             {!lead.agentId && (
               <p className="mt-2 text-xs text-amber-700 font-medium">Asigná un asesor antes de registrar un seguimiento.</p>
             )}
-            <Button
-              onClick={() => setFollowUpEditorOpen(true)}
-              disabled={!lead.agentId}
-              className="mt-3 h-9 w-full gap-1.5 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            >
-              <Plus className="size-3.5" />
-              Registrar seguimiento
-            </Button>
+            {canUpdate && (
+              <Button
+                onClick={() => setFollowUpEditorOpen(true)}
+                disabled={!lead.agentId}
+                className="mt-3 h-9 w-full gap-1.5 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                <Plus className="size-3.5" />
+                Registrar seguimiento
+              </Button>
+            )}
           </section>
 
           {/* Financing Calculator Card */}
@@ -661,10 +699,10 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         </div>
       </div>
 
-      {profileEditorOpen && <LeadProfileEditor key={lead.lastActivity} lead={lead} onClose={() => setProfileEditorOpen(false)} onSave={handleSaveProfile} />}
-      {interestEditor && <LeadInterestEditor key={interestEditor.mode === "edit" ? interestEditor.interest.id : "new-interest"} companyId={lead.companyId} interest={interestEditor.mode === "edit" ? interestEditor.interest : undefined} projects={allProjects} properties={allProperties} onClose={() => setInterestEditor(null)} onSave={handleSaveInterest} />}
-      {followUpEditorOpen && <LeadFollowUpEditor lead={lead} onClose={() => setFollowUpEditorOpen(false)} onConfirm={handleSaveFollowUp} />}
-      {lead && (
+      {profileEditorOpen && canUpdate && <LeadProfileEditor key={lead.lastActivity} lead={lead} onClose={() => setProfileEditorOpen(false)} onSave={handleSaveProfile} />}
+      {interestEditor && canUpdate && <LeadInterestEditor key={interestEditor.mode === "edit" ? interestEditor.interest.id : "new-interest"} companyId={lead.companyId} interest={interestEditor.mode === "edit" ? interestEditor.interest : undefined} projects={allProjects} properties={allProperties} onClose={() => setInterestEditor(null)} onSave={handleSaveInterest} />}
+      {followUpEditorOpen && canUpdate && <LeadFollowUpEditor lead={lead} onClose={() => setFollowUpEditorOpen(false)} onConfirm={handleSaveFollowUp} />}
+      {lead && canUpdate && (
         <LeadStageUpdateModal
           open={stageUpdateModalOpen}
           leadName={lead.name}
@@ -673,9 +711,9 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           onConfirm={handleConfirmStageUpdate}
         />
       )}
-      {advisorEditorOpen && currentUser?.role === "ADMIN" && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
+      {advisorEditorOpen && canAssign && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
 
-      <Dialog open={Boolean(interestToDelete)} onOpenChange={(open) => !open && setInterestToDelete(null)}>
+      <Dialog open={Boolean(interestToDelete) && canUpdate} onOpenChange={(open) => !open && setInterestToDelete(null)}>
         <DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Eliminar este interés</DialogTitle><DialogDescription>Se quitará solamente esta ficha. El cliente y sus demás intereses no serán eliminados.</DialogDescription></DialogHeader><DialogFooter className="mt-4 gap-2"><Button variant="outline" onClick={() => setInterestToDelete(null)}>Cancelar</Button><Button variant="destructive" onClick={handleDeleteInterest}>Eliminar interés</Button></DialogFooter></DialogContent>
       </Dialog>
     </div>

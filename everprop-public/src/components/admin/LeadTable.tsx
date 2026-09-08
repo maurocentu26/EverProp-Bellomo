@@ -128,9 +128,10 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
                 <select
                   aria-label={`Cambiar estado de ${lead.name}`}
                   value={lead.stage}
+                  disabled={!onStageChange}
                   onChange={(e) => onStageChange?.(lead.id, e.target.value as Lead["stage"])}
                   className={cn(
-                    "cursor-pointer shrink-0 rounded-lg border px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-400",
+                    "shrink-0 rounded-lg border px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-70",
                     currentStage.class
                   )}
                 >
@@ -230,9 +231,10 @@ export default function LeadTable({ leads, followUps, onStageChange, onFollowUp 
                     <select
                       aria-label={`Cambiar estado de ${lead.name}`}
                       value={lead.stage}
+                      disabled={!onStageChange}
                       onChange={(e) => onStageChange?.(lead.id, e.target.value as Lead["stage"])}
                       className={cn(
-                        "cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-400",
+                        "rounded-lg border px-2.5 py-1 text-xs font-bold shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-70",
                         currentStage.class
                       )}
                     >

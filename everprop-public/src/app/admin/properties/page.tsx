@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
+import { useCurrentSession } from "@/hooks/use-current-session";
 
 type DataState =
   | { status: "loading" }
@@ -26,6 +27,7 @@ const statusFilters = [
 
 export default function AllPropertiesPage() {
   const { invalidateSession } = useAuth();
+  const { isAdvisor, canCreate } = useCurrentSession();
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
@@ -155,12 +157,14 @@ export default function AllPropertiesPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          <Link href="/admin/properties/new">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
-                <Plus className="h-4 w-4" />
-                Nueva Propiedad
-            </Button>
-          </Link>
+          {canCreate && !isAdvisor && (
+            <Link href="/admin/properties/new">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nueva Propiedad
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -177,7 +181,7 @@ export default function AllPropertiesPage() {
         )}
         <p>
           {dataState.source === "admin-api"
-            ? `Inventario real conectado a la base de datos (${allProperties.length} activos en cartera). Modo interactivo habilitado: podés abrir cada ficha, consultar datos y actualizar estados.`
+            ? `Inventario real conectado a la base de datos (${allProperties.length} activos en cartera). ${canCreate ? "Las acciones habilitadas respetan los permisos de tu cuenta." : "Tu cuenta tiene acceso de consulta."}`
             : "QA visual mock: inventario de muestra local, sin confirmación de la API."}
         </p>
       </div>

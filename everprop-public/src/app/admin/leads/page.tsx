@@ -8,6 +8,7 @@ import Link from "next/link";
 import { 
   type Lead, 
   type LeadFollowUp, 
+  type Property,
   leads as sampleLeads, 
   properties as sampleProperties 
 } from "@/data/admin-sample";
@@ -21,7 +22,7 @@ import { getLeadFollowUpState } from "@/lib/lead-follow-up";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropLeads, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
+import { loadEverpropLeads, loadEverpropCatalog, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useDashboardMode } from "@/lib/dashboard-context";
@@ -50,7 +51,7 @@ const FOLLOW_UP_FILTERS: { id: FollowUpFilter; label: string }[] = [
 
 export default function AllLeadsPage() {
   const { mode: dashboardMode } = useDashboardMode();
-  const { isEngineer, isAdvisor, user } = useCurrentSession();
+  const { isEngineer, isAdvisor, canCreate, canUpdate, user } = useCurrentSession();
   
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
@@ -61,24 +62,35 @@ export default function AllLeadsPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
+  const [catalogProperties, setCatalogProperties] = useState<Property[]>(isMockDataMode ? sampleProperties : []);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let active = true;
     async function fetchLeads() {
       if (!isMockDataMode) {
         try {
-          const [apiLeads, apiFollowUps] = await Promise.all([
+          const [apiLeads, apiFollowUps, catalog] = await Promise.all([
             loadEverpropLeads(),
-            loadEverpropAllFollowUps().catch(() => []),
+            loadEverpropAllFollowUps(),
+            loadEverpropCatalog(),
           ]);
           if (!active) return;
           setAllLeads(apiLeads);
-          const localFollowUps = loadLeadFollowUpList([], "c1");
-          setFollowUps(apiFollowUps.length > 0 ? apiFollowUps : localFollowUps);
+          setFollowUps(apiFollowUps);
+          setCatalogProperties(catalog.properties);
+          setLoadError("");
           setIsLoaded(true);
           return;
         } catch (e) {
-          console.error("Error loading leads from API, falling back:", e);
+          console.error("Error loading leads from API:", e);
+          if (!active) return;
+          setAllLeads([]);
+          setFollowUps([]);
+          setCatalogProperties([]);
+          setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los leads desde la API.");
+          setIsLoaded(true);
+          return;
         }
       }
       if (!active) return;
@@ -139,7 +151,7 @@ export default function AllLeadsPage() {
         const matchesName = l.name.toLowerCase().includes(query);
         const matchesEmail = l.email?.toLowerCase().includes(query);
         const matchesPhone = l.phone?.includes(query);
-        const linkedProps = l.propertyIds.map(pid => sampleProperties.find(p => p.id === pid)?.title.toLowerCase() || "");
+        const linkedProps = l.propertyIds.map(pid => catalogProperties.find(p => p.id === pid)?.title.toLowerCase() || "");
         const matchesProp = linkedProps.some(title => title.includes(query));
         
         return matchesName || matchesEmail || matchesPhone || matchesProp;
@@ -154,7 +166,7 @@ export default function AllLeadsPage() {
     // 3. Asset Type Filter
     if (assetType !== "all") {
       filtered = filtered.filter(l => {
-        const leadProps = l.propertyIds.map(pid => sampleProperties.find(p => p.id === pid));
+        const leadProps = l.propertyIds.map(pid => catalogProperties.find(p => p.id === pid));
         if (assetType === "lote") return leadProps.some(p => p?.propertyType === "Lote");
         if (assetType === "departamento") return leadProps.some(p => p?.propertyType === "Departamento");
         if (assetType === "comercial") return leadProps.some(p => p?.propertyType === "Local" || p?.propertyType === "Cochera");
@@ -192,11 +204,10 @@ export default function AllLeadsPage() {
     }
 
     return filtered;
-  }, [allLeads, searchQuery, activeStage, assetType, followUpFilter, followUps, isAdvisor, user]);
+  }, [allLeads, searchQuery, activeStage, assetType, followUpFilter, followUps, isAdvisor, user, catalogProperties]);
 
   // Actualización de estado en 1 clic
   async function handleStageChange(leadId: string, newStage: Lead["stage"]) {
-    const prevLeads = [...allLeads];
     const targetLead = allLeads.find((l) => l.id === leadId);
     if (!targetLead) return;
 
@@ -210,8 +221,6 @@ export default function AllLeadsPage() {
     }
 
     const updated = allLeads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
-    setAllLeads(updated);
-    saveLeadList(updated, "c1");
 
     const stageMap: Record<Lead["stage"], string> = {
       new: "NEW",
@@ -222,40 +231,29 @@ export default function AllLeadsPage() {
     };
 
     const stageLabel = STAGE_LABELS[newStage]?.label || newStage;
-    toast.success(`Etapa cambiada a "${stageLabel}"`);
-
     if (!isMockDataMode) {
       try {
         await updateEverpropLead(leadId, { stage: stageMap[newStage] || "NEW" });
       } catch (err) {
         console.error("Error updating lead stage in backend:", err);
-        toast.error("Error al sincronizar con el servidor, guardado localmente.");
-        setAllLeads(prevLeads);
+        toast.error("No se pudo cambiar la etapa en el servidor.");
+        return;
       }
+    } else {
+      saveLeadList(updated, "c1");
     }
+    setAllLeads(updated);
+    toast.success(`Etapa cambiada a "${stageLabel}"`);
   }
 
   // Guardar seguimiento
   async function handleConfirmFollowUp(followUp: LeadFollowUp) {
     if (!followUpLead) return;
 
-    const nextFollowUps = appendLeadFollowUpToStorage(
-      followUp,
-      followUps,
-      followUpLead.companyId
-    );
-    setFollowUps(nextFollowUps);
-    setAllLeads((prev) =>
-      prev.map((l) =>
-        l.id === followUpLead.id
-          ? { ...l, followUpUpdatedAt: followUp.occurredAt, lastActivity: followUp.occurredAt }
-          : l
-      )
-    );
-
+    let recordedFollowUp = followUp;
     if (!isMockDataMode) {
       try {
-        const created = await createEverpropLeadFollowUp(followUpLead.id, {
+        recordedFollowUp = await createEverpropLeadFollowUp(followUpLead.id, {
           type: followUp.type,
           occurredAt: followUp.occurredAt,
           summary: followUp.summary,
@@ -264,12 +262,23 @@ export default function AllLeadsPage() {
           nextContactAt: followUp.nextContactAt,
           agentId: followUp.agentId,
         });
-        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
       } catch (e) {
         console.error("Error saving follow up to API:", e);
+        toast.error("No se pudo registrar el seguimiento en el servidor.");
+        return;
       }
+    } else {
+      appendLeadFollowUpToStorage(followUp, followUps, followUpLead.companyId);
     }
 
+    setFollowUps((prev) => [recordedFollowUp, ...prev.filter((item) => item.id !== followUp.id)]);
+    setAllLeads((prev) =>
+      prev.map((l) =>
+        l.id === followUpLead.id
+          ? { ...l, followUpUpdatedAt: recordedFollowUp.occurredAt, lastActivity: recordedFollowUp.occurredAt }
+          : l
+      )
+    );
     toast.success("Seguimiento registrado con éxito.");
     const recordedLead = followUpLead;
     setFollowUpLead(null);
@@ -296,6 +305,11 @@ export default function AllLeadsPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 pb-10 sm:space-y-8">
+      {loadError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+          {loadError} No se muestran datos de demostración.
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-center">
         <div className="min-w-0">
@@ -316,14 +330,16 @@ export default function AllLeadsPage() {
             />
           </InputGroup>
           
-          <div className="flex w-full gap-2 sm:w-auto">
-            <Link href="/admin/leads/new" className="flex-1 sm:flex-none">
-              <Button className="min-h-11 w-full gap-2 bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-sm">
-                <Plus className="h-4 w-4" />
-                Nuevo Lead
-              </Button>
-            </Link>
-          </div>
+          {canCreate && (
+            <div className="flex w-full gap-2 sm:w-auto">
+              <Link href="/admin/leads/new" className="flex-1 sm:flex-none">
+                <Button className="min-h-11 w-full gap-2 bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-sm">
+                  <Plus className="h-4 w-4" />
+                  Nuevo Lead
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -429,8 +445,8 @@ export default function AllLeadsPage() {
           <LeadTable 
             leads={filteredLeads} 
             followUps={followUps} 
-            onStageChange={handleStageChange}
-            onFollowUp={(lead) => setFollowUpLead(lead)}
+            onStageChange={canUpdate ? handleStageChange : undefined}
+            onFollowUp={canUpdate ? (lead) => setFollowUpLead(lead) : undefined}
           />
         ) : (
           <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50">

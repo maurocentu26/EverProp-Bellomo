@@ -59,9 +59,14 @@ final class AuthenticationTest extends TestCase
     {
         [$tenant] = $this->identity();
 
-        $this->withHeaders($this->tenantHeaders($tenant))
+        $response = $this->withHeaders($this->tenantHeaders($tenant))
             ->getJson('/api/v1/auth/me')
-            ->assertUnauthorized();
+            ->assertUnauthorized()
+            ->assertJsonPath('code', 'UNAUTHENTICATED');
+
+        $response->assertJsonMissingPath('exception')
+            ->assertJsonMissingPath('file')
+            ->assertJsonMissingPath('trace');
     }
 
     public function test_logout_invalidates_the_authenticated_session(): void

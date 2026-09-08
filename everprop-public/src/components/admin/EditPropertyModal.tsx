@@ -62,7 +62,7 @@ export function EditPropertyModal({
       };
 
       if (!isMockDataMode) {
-        await updateEverpropProperty(property.id, {
+        const updatedFromApi = await updateEverpropProperty(property.id, {
           title: updatedData.title,
           price: updatedData.price,
           currency: updatedData.currency,
@@ -75,7 +75,12 @@ export function EditPropertyModal({
           city: updatedData.city,
           neighborhood: updatedData.neighborhood,
           description: updatedData.description,
+          version: property.version,
         });
+        toast.success("Propiedad actualizada correctamente");
+        onSuccess(updatedFromApi);
+        onOpenChange(false);
+        return;
       }
 
       toast.success("Propiedad actualizada correctamente");

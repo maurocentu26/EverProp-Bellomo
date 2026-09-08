@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { userHasCapability } from "@/data/auth-sample";
 
 export function useCurrentSession() {
   const { currentUser, isLoaded } = useAuth();
@@ -22,6 +23,12 @@ export function useCurrentSession() {
       isAdmin: currentUser?.role === "ADMIN",
       isAdvisor: currentUser?.role === "ADVISOR",
       isEngineer: currentUser?.role === "ENGINEER",
+      isReadOnly: currentUser?.source === "api" && currentUser.apiRole === "READ_ONLY",
+      canCreate: userHasCapability(currentUser, "create"),
+      canUpdate: userHasCapability(currentUser, "update"),
+      canDelete: userHasCapability(currentUser, "delete"),
+      canAssign: userHasCapability(currentUser, "assign"),
+      canManageUsers: userHasCapability(currentUser, "manageUsers"),
       isReady: isLoaded,
     };
   }, [currentUser, isLoaded]);

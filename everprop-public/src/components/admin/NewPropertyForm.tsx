@@ -17,6 +17,7 @@ import { createEverpropProperty } from "@/lib/everprop-api";
 import { Car, Store, Map, Building2, Home, ArrowLeft, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { useCurrentSession } from "@/hooks/use-current-session";
 
 import CategorySelector from "./property-form/CategorySelector";
 import TraditionalFields from "./property-form/TraditionalFields";
@@ -31,6 +32,8 @@ type Props = {
 
 export default function NewPropertyForm({ companyId = "c1" }: Props) {
   const router = useRouter();
+  const { isAdvisor, canCreate, isReady } = useCurrentSession();
+  const canCreateProperty = canCreate && !isAdvisor;
   const searchParams = useSearchParams();
   const paramCategory = searchParams.get("category") as Category | null;
   const paramType = searchParams.get("type") as "Casa" | "Departamento" | "Lote" | "Cochera" | "Local" | null;
@@ -50,6 +53,10 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     return "Casa";
   });
   const [isGenerateLotsOpen, setIsGenerateLotsOpen] = useState(false);
+
+  useEffect(() => {
+    if (isReady && !canCreateProperty) router.replace("/admin/properties");
+  }, [canCreateProperty, isReady, router]);
 
   useEffect(() => {
     if (paramCategory) {
@@ -162,6 +169,10 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
 
   if (step === 1) {
     return <CategorySelector onSelect={handleCategorySelect} />;
+  }
+
+  if (!isReady || !canCreateProperty) {
+    return <div className="p-8 text-center text-sm text-slate-500">Verificando permisos…</div>;
   }
 
   return (

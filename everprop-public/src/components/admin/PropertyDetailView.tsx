@@ -32,11 +32,14 @@ type Props = {
 };
 
 export default function PropertyDetailView({ propertyId }: Props) {
-  const { isEngineer } = useCurrentSession();
+  const { isEngineer, isAdvisor, canUpdate } = useCurrentSession();
+  const canManageProperty = canUpdate && !isAdvisor;
   const [property, setProperty] = useState<Property | null>(null);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   // Carga inicial de datos
   useEffect(() => {
@@ -46,20 +49,26 @@ export default function PropertyDetailView({ propertyId }: Props) {
         try {
           const [catalog, apiLeads] = await Promise.all([
             loadEverpropCatalog(),
-            loadEverpropLeads().catch(() => []),
+            loadEverpropLeads(),
           ]);
           if (!active) return;
           setAllProperties(catalog.properties);
-          const localLeads = loadLeadList(sampleLeads, "c1");
-          const apiIds = new Set(apiLeads.map((l) => l.id));
-          const extraLocalLeads = localLeads.filter((l) => !apiIds.has(l.id));
-          setAllLeads([...apiLeads, ...extraLocalLeads]);
+          setAllLeads(apiLeads);
 
           const found = catalog.properties.find((item) => item.id === propertyId);
           setProperty(found ?? null);
+          setLoadError(found ? "" : "La propiedad solicitada no existe o no está disponible para tu sesión.");
+          setIsLoaded(true);
           return;
         } catch (e) {
           console.error("Error loading property from catalog:", e);
+          if (!active) return;
+          setProperty(null);
+          setAllProperties([]);
+          setAllLeads([]);
+          setLoadError(e instanceof Error ? e.message : "No se pudo cargar la propiedad desde la API.");
+          setIsLoaded(true);
+          return;
         }
       }
       if (!active) return;
@@ -71,6 +80,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
 
       const foundProperty = initialProperties.find((item) => item.id === propertyId);
       setProperty(foundProperty ?? null);
+      setIsLoaded(true);
     }
     void loadData();
     return () => {
@@ -161,7 +171,13 @@ export default function PropertyDetailView({ propertyId }: Props) {
     toast.info("Visita eliminada");
   }
 
-  if (!property) return <div className="p-8 text-center text-slate-500 font-medium">Propiedad no encontrada.</div>;
+  if (!isLoaded) return <div className="p-8 text-center text-slate-500 font-medium">Cargando propiedad…</div>;
+
+  if (!property) return (
+    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center text-sm font-medium text-rose-900" role="alert">
+      {loadError || "Propiedad no encontrada."} No se muestran datos de demostración.
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20 animate-in fade-in duration-500">
@@ -185,14 +201,16 @@ export default function PropertyDetailView({ propertyId }: Props) {
             >
               <Share2 className="h-3.5 w-3.5" /> Compartir
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditModalOpen(true)}
-              className="gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-            >
-              <Edit3 className="h-3.5 w-3.5" /> Editar
-            </Button>
+            {canManageProperty && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditModalOpen(true)}
+                className="gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              >
+                <Edit3 className="h-3.5 w-3.5" /> Editar
+              </Button>
+            )}
         </div>
       </div>
 
@@ -264,18 +282,21 @@ export default function PropertyDetailView({ propertyId }: Props) {
                 {(['available', 'reserved', 'sold'] as const).map((st) => (
                   <button
                     key={st}
-                    disabled={isEngineer}
+                    disabled={!canManageProperty}
                     onClick={async () => {
-                      const updated = { ...property, status: st };
-                      setProperty(updated);
                       if (!isMockDataMode) {
                         try {
-                          await updateEverpropPropertyStatus(property.id, st);
+                          if (!property.version) throw new Error("La API no informó la versión de la propiedad. Recargá la página.");
+                          const updated = await updateEverpropPropertyStatus(property.id, st, property.version);
+                          setProperty(updated);
+                          setAllProperties((current) => current.map((item) => item.id === updated.id ? updated : item));
                           toast.success(`Estado actualizado a ${st === 'available' ? 'Disponible' : st === 'reserved' ? 'Reservado' : 'Vendido'}`);
                         } catch (e: any) {
                           toast.error("Error al actualizar estado en API: " + e.message);
                         }
                       } else {
+                        const updated = { ...property, status: st };
+                        setProperty(updated);
                         const nextProps = allProperties.map(p => p.id === property.id ? updated : p);
                         setAllProperties(nextProps);
                         savePropertyList(nextProps, property.companyId);
@@ -297,9 +318,14 @@ export default function PropertyDetailView({ propertyId }: Props) {
               </div>
             </div>
 
-            {!isEngineer && (
-              <Button className="w-full mt-5 bg-blue-600 hover:bg-blue-700 h-10 rounded-lg text-sm font-semibold">
-                  Agendar Visita
+            {canUpdate && !isEngineer && (
+              <Button
+                disabled={!isMockDataMode}
+                onClick={() => document.getElementById("property-visit-manager")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="w-full mt-5 bg-blue-600 hover:bg-blue-700 h-10 rounded-lg text-sm font-semibold"
+                title={!isMockDataMode ? "Las visitas todavía no tienen persistencia en la API" : undefined}
+              >
+                  {isMockDataMode ? "Agendar Visita" : "Visitas no disponibles en API"}
               </Button>
             )}
           </div>
@@ -338,8 +364,8 @@ export default function PropertyDetailView({ propertyId }: Props) {
         </div>
       </div>
 
-      {!isEngineer && (
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+      {canUpdate && !isEngineer && isMockDataMode && (
+        <div id="property-visit-manager" className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
           <div className="p-6">
               <VisitManager
                   title="Calendario de Visitas"
@@ -353,7 +379,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
         </div>
       )}
 
-      {isEditModalOpen && property && (
+      {isEditModalOpen && property && canManageProperty && (
         <EditPropertyModal
           open={isEditModalOpen}
           onOpenChange={setIsEditModalOpen}

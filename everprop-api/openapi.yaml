@@ -33,6 +33,14 @@
             "description": "Authenticated tenant-scoped inventory management."
         },
         {
+            "name": "Admin CRM",
+            "description": "Authenticated tenant-scoped lead and follow-up management."
+        },
+        {
+            "name": "Notifications",
+            "description": "Authenticated per-user notification inbox."
+        },
+        {
             "name": "CRM",
             "description": "Public lead intake and idempotency."
         },
@@ -802,6 +810,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     }
                 }
             },
@@ -896,6 +907,55 @@
                 ],
                 "operationId": "updateProject",
                 "summary": "Update a tenant project",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProjectWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Project updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "updateProjectPut",
+                "summary": "Update a tenant project through the PUT compatibility alias",
+                "deprecated": true,
                 "security": [
                     {
                         "cookieAuth": []
@@ -1283,6 +1343,74 @@
                     }
                 }
             },
+            "put": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "updatePropertyPut",
+                "summary": "Update a property through the PUT compatibility alias",
+                "deprecated": true,
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/PropertyWrite"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "version"
+                                        ],
+                                        "properties": {
+                                            "version": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Property updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "Admin inventory"
@@ -1548,6 +1676,48 @@
                     }
                 }
             },
+            "put": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "updatePropertyFeaturePut",
+                "summary": "Update a property feature through the PUT compatibility alias",
+                "deprecated": true,
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyFeatureWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Feature updated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "Admin inventory"
@@ -1749,6 +1919,48 @@
                     }
                 }
             },
+            "put": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "updatePropertyMediaPut",
+                "summary": "Update property media through the PUT compatibility alias",
+                "deprecated": true,
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PropertyMediaWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Media updated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "Admin inventory"
@@ -1774,6 +1986,779 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/properties/batch-generate": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "batchGenerateProperties",
+                "summary": "Generate a contiguous range of lots for a tenant project",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BatchGeneratePropertiesWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Lots generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/leads": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "listAdminLeads",
+                "summary": "List tenant leads visible to the authenticated user",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Scoped lead list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeadListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "createAdminLead",
+                "summary": "Create and optionally assign a tenant lead",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LeadWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Lead created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeadEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/leads/{lead}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/LeadPublicId"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "getAdminLead",
+                "summary": "Get a tenant lead visible to the authenticated user",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lead",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LeadEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "updateAdminLead",
+                "summary": "Update a tenant lead",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LeadUpdate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Lead updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatusEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "updateAdminLeadPut",
+                "summary": "Update a tenant lead through the PUT compatibility alias",
+                "deprecated": true,
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LeadUpdate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Lead updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatusEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/leads/{lead}/properties": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/LeadPublicId"
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "attachLeadProperty",
+                "summary": "Attach a tenant property to a lead",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LeadPropertyWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Property attached"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/leads/{lead}/properties/{property}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/LeadPublicId"
+                },
+                {
+                    "$ref": "#/components/parameters/PropertyPublicId"
+                }
+            ],
+            "patch": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "updateLeadProperty",
+                "summary": "Update a lead-property association",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LeadPropertyUpdate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Association updated"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "detachLeadProperty",
+                "summary": "Detach a tenant property from a lead",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Property detached"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/follow-ups": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "listAdminFollowUps",
+                "summary": "List recent follow-ups visible to the authenticated user",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Follow-up list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FollowUpListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/leads/{lead}/follow-ups": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/LeadPublicId"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "listLeadFollowUps",
+                "summary": "List follow-ups for a tenant lead",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Follow-up list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FollowUpListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Admin CRM"
+                ],
+                "operationId": "createLeadFollowUp",
+                "summary": "Record a lead follow-up and optionally schedule its next contact",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FollowUpWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Follow-up created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FollowUpEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/notifications": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "operationId": "listNotifications",
+                "summary": "List the authenticated user's notifications",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification inbox",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Notifications"
+                ],
+                "operationId": "deleteAllNotifications",
+                "summary": "Delete all notifications for the authenticated user",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notifications deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatusEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/notifications/count": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "operationId": "getNotificationCount",
+                "summary": "Get unread notification count and latest notification metadata",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unread count",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationCount"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/notifications/mark-all-read": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "operationId": "markAllNotificationsRead",
+                "summary": "Mark all notifications as read for the authenticated user",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notifications marked as read",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatusEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/notifications/{id}/read": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "$ref": "#/components/parameters/NotificationId"
+                }
+            ],
+            "patch": {
+                "tags": [
+                    "Notifications"
+                ],
+                "operationId": "markNotificationRead",
+                "summary": "Mark one notification as read for the authenticated user",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification marked as read",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatusEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
                     }
                 }
             }
@@ -1860,6 +2845,24 @@
             },
             "PropertyPublicId": {
                 "name": "property",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "LeadPublicId": {
+                "name": "lead",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "format": "uuid"
+                }
+            },
+            "NotificationId": {
+                "name": "id",
                 "in": "path",
                 "required": true,
                 "schema": {
@@ -2878,6 +3881,841 @@
                     },
                     "is_primary": {
                         "type": "boolean"
+                    }
+                }
+            },
+            "BatchGeneratePropertiesWrite": {
+                "type": "object",
+                "required": [
+                    "project_id",
+                    "sector_name",
+                    "lot_from",
+                    "lot_to",
+                    "area_m2"
+                ],
+                "properties": {
+                    "project_id": {
+                        "type": "integer"
+                    },
+                    "sector_name": {
+                        "type": "string",
+                        "maxLength": 160
+                    },
+                    "lot_from": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "lot_to": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 500
+                    },
+                    "area_m2": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                    },
+                    "frente_m": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "fondo_m": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "ochava_m2": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "price": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "currency_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "USD",
+                            "ARS",
+                            null
+                        ]
+                    },
+                    "corner_lots": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "corner_price": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "corner_area_m2": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "services": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "PropertyListEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Property"
+                        }
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "LeadWrite": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    },
+                    "email": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "email",
+                        "maxLength": 320
+                    },
+                    "phone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 32
+                    },
+                    "stage": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 40
+                    },
+                    "priority": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "LOW",
+                            "NORMAL",
+                            "HIGH",
+                            "URGENT",
+                            "low",
+                            "normal",
+                            "high",
+                            "urgent",
+                            null
+                        ]
+                    },
+                    "budget": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "currency": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "USD",
+                            "ARS",
+                            null
+                        ]
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 10000
+                    },
+                    "agent_id": {
+                        "type": [
+                            "integer",
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "property_id": {
+                        "type": [
+                            "integer",
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "LeadUpdate": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 160
+                    },
+                    "email": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 160
+                    },
+                    "phone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 40
+                    },
+                    "stage": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 40
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 10000
+                    },
+                    "priority": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "LOW",
+                            "NORMAL",
+                            "HIGH",
+                            "URGENT",
+                            null
+                        ]
+                    },
+                    "agent_id": {
+                        "type": [
+                            "integer",
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "LeadProperty": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "interest_level": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                }
+            },
+            "Lead": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "stage",
+                    "priority"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "db_id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "phone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "stage": {
+                        "type": "string"
+                    },
+                    "stage_label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "normal",
+                            "high",
+                            "urgent"
+                        ]
+                    },
+                    "budget": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "currency": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "agent_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "agent_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "property_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    "properties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LeadProperty"
+                        }
+                    },
+                    "last_touch_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "LeadEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Lead"
+                    }
+                }
+            },
+            "LeadListEnvelope": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/PageBase"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "data",
+                            "meta"
+                        ],
+                        "properties": {
+                            "data": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Lead"
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "LeadPropertyWrite": {
+                "type": "object",
+                "required": [
+                    "property_id"
+                ],
+                "properties": {
+                    "property_id": {
+                        "type": [
+                            "integer",
+                            "string"
+                        ]
+                    },
+                    "interest_level": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH",
+                            "HOT",
+                            "low",
+                            "medium",
+                            "high",
+                            "hot",
+                            null
+                        ]
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 24
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 5000
+                    },
+                    "quoted_price": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "quoted_currency_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "USD",
+                            "ARS",
+                            null
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "LeadPropertyUpdate": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 24
+                    },
+                    "interest_level": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 16
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 5000
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FollowUpWrite": {
+                "type": "object",
+                "required": [
+                    "type",
+                    "occurred_at",
+                    "summary",
+                    "result"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "call",
+                            "whatsapp",
+                            "email",
+                            "meeting",
+                            "visit",
+                            "note"
+                        ]
+                    },
+                    "occurred_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "maxLength": 500
+                    },
+                    "result": {
+                        "type": "string",
+                        "maxLength": 5000
+                    },
+                    "next_action": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 500
+                    },
+                    "next_contact_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "agent_id": {
+                        "type": [
+                            "integer",
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FollowUp": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "leadId",
+                    "type",
+                    "summary",
+                    "result"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "companyId": {
+                        "type": "string"
+                    },
+                    "leadId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "agentId": {
+                        "type": "string"
+                    },
+                    "agentName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "agentAvatar": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "occurredAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "result": {
+                        "type": "string"
+                    },
+                    "nextAction": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "nextContactAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "createdAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "FollowUpEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/FollowUp"
+                    }
+                }
+            },
+            "FollowUpListEnvelope": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/PageBase"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "data",
+                            "meta"
+                        ],
+                        "properties": {
+                            "data": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/FollowUp"
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "Notification": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "targetUserId",
+                    "title",
+                    "message",
+                    "timestamp",
+                    "read"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "targetUserId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "leadId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid"
+                    },
+                    "actionUrl": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "eventType": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "read": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "NotificationListEnvelope": {
+                "type": "object",
+                "required": [
+                    "data",
+                    "meta"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Notification"
+                        }
+                    },
+                    "meta": {
+                        "type": "object",
+                        "required": [
+                            "unread_count"
+                        ],
+                        "properties": {
+                            "unread_count": {
+                                "type": "integer",
+                                "minimum": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "NotificationCount": {
+                "type": "object",
+                "required": [
+                    "unread_count"
+                ],
+                "properties": {
+                    "unread_count": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "latest_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid"
+                    },
+                    "latest_timestamp": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
+            },
+            "StatusEnvelope": {
+                "type": "object",
+                "required": [
+                    "status"
+                ],
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
                     }
                 }
             },

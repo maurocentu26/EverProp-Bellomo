@@ -7,6 +7,7 @@ use App\Domain\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 final readonly class ResolveTenant
@@ -18,6 +19,12 @@ final readonly class ResolveTenant
 
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->exists('tenant_id')) {
+            throw ValidationException::withMessages([
+                'tenant_id' => ['Clients cannot select the tenant.'],
+            ]);
+        }
+
         $context = TenantContext::forTenant($this->resolver->resolve($request));
 
         $this->container->instance(TenantContext::class, $context);

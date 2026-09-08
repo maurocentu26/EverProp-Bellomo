@@ -110,6 +110,6 @@ final class PublicLeadEndpointTest extends TestCase
         $this->withHeaders($headers + ['Idempotency-Key' => 'public-endpoint-delivery-0002'])
             ->postJson('/api/v1/public/leads', $payload + ['tenant_id' => $this->tenantId])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('payload');
+            ->assertJsonValidationErrors('tenant_id');
     }
 }

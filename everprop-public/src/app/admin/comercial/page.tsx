@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 export default function CommercialAssetsPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -23,10 +24,16 @@ export default function CommercialAssetsPage() {
           const cat = await loadEverpropCatalog();
           if (!active) return;
           setProperties(cat.properties);
+          setLoadError("");
           setIsLoaded(true);
           return;
         } catch (e) {
           console.error("Error loading commercial properties:", e);
+          if (!active) return;
+          setProperties([]);
+          setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los activos comerciales desde la API.");
+          setIsLoaded(true);
+          return;
         }
       }
       if (!active) return;
@@ -53,6 +60,11 @@ export default function CommercialAssetsPage() {
 
   return (
     <div className="space-y-8">
+      {loadError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+          {loadError} No se muestran datos de demostración.
+        </div>
+      )}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2">

@@ -1,4 +1,5 @@
 import { HardHat, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { type Project } from "@/data/admin-sample";
 import { cn } from "@/lib/utils";
 
@@ -43,9 +44,9 @@ export default function ProjectsOverviewWidget({ activeProjects }: Props) {
             </div>
             <div className="pt-3 border-t border-slate-100 text-xs text-slate-600 font-medium flex justify-between items-center">
               <span>{project.totalUnits} Unidades Totales</span>
-              <button className="text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1">
+              <Link href={`/admin/desarrollos/${project.id}`} className="text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1">
                 Ver detalle <ArrowRight className="h-3 w-3" />
-              </button>
+              </Link>
             </div>
           </div>
         ))}

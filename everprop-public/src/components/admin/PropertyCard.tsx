@@ -75,14 +75,14 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
       <td className="px-4 py-4 align-middle sm:px-5">
         <span
           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-            property.status === "available"
+            (property.status ?? "available") === "available"
               ? "bg-emerald-100 text-emerald-700"
               : property.status === "reserved"
               ? "bg-amber-100 text-amber-700"
               : "bg-slate-100 text-slate-500"
           }`}
         >
-          {property.status === "available"
+          {(property.status ?? "available") === "available"
             ? "Disponible"
             : property.status === "reserved"
             ? "Reservado"

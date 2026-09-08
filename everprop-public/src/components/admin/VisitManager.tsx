@@ -313,7 +313,7 @@ export default function VisitManager({
                         ) : (
                           <div className="p-4 text-center">
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                              No se encontraron leads con "{searchQuery}"
+                              No se encontraron leads con «{searchQuery}»
                             </p>
                             {searchQuery.trim() && (
                               <button
@@ -324,7 +324,7 @@ export default function VisitManager({
                                 }}
                                 className="mt-2 text-xs font-bold text-blue-600 hover:underline dark:text-blue-400"
                               >
-                                Usar "{searchQuery.trim()}" como visitante nuevo
+                                Usar «{searchQuery.trim()}» como visitante nuevo
                               </button>
                             )}
                           </div>

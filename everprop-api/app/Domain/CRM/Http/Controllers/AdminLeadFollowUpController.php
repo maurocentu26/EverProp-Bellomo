@@ -2,30 +2,43 @@
 
 namespace App\Domain\CRM\Http\Controllers;
 
+use App\Domain\Identity\Enums\Capability;
 use App\Domain\Identity\Enums\RoleCode;
+use App\Domain\Identity\Services\AuthorizationService;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 final class AdminLeadFollowUpController extends Controller
 {
-    public function __construct(private readonly TenantContext $tenantContext) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly AuthorizationService $authorization,
+    ) {}
 
     public function indexAll(Request $request): JsonResponse
     {
-        $this->ensureTableExists();
-
         $tenantId = $this->tenantContext->id();
-        $user = $request->user();
+        $user = $this->authorizedUser($request, Capability::VIEW_ANY);
+        $pagination = $this->pagination($request);
 
         $query = DB::table('lead_follow_ups')
-            ->join('leads', 'leads.id', '=', 'lead_follow_ups.lead_id')
-            ->leftJoin('users', 'users.id', '=', 'lead_follow_ups.user_id')
+            ->join('leads', function ($join): void {
+                $join->on('leads.id', '=', 'lead_follow_ups.lead_id')
+                    ->on('leads.tenant_id', '=', 'lead_follow_ups.tenant_id');
+            })
+            ->leftJoin('users', function ($join): void {
+                $join->on('users.id', '=', 'lead_follow_ups.user_id')
+                    ->on('users.tenant_id', '=', 'lead_follow_ups.tenant_id');
+            })
             ->where('lead_follow_ups.tenant_id', $tenantId)
             ->whereNull('leads.deleted_at')
             ->select([
@@ -43,16 +56,18 @@ final class AdminLeadFollowUpController extends Controller
                 'users.public_id as user_public_id',
                 'users.display_name as user_name',
             ])
-            ->orderByDesc('lead_follow_ups.occurred_at');
+            ->orderByDesc('lead_follow_ups.occurred_at')
+            ->orderByDesc('lead_follow_ups.id');
 
-        if ($user && isset($user->role_code) && $user->role_code === RoleCode::SALES_ADVISOR) {
+        if ($user->role() === RoleCode::SALES_ADVISOR) {
             $query->where(function ($q) use ($user) {
                 $q->where('leads.assigned_user_id', $user->id)
-                  ->orWhere('lead_follow_ups.user_id', $user->id);
+                    ->orWhere('lead_follow_ups.user_id', $user->id);
             });
         }
 
-        $followUps = $query->limit(500)->get();
+        $paginator = $query->paginate($pagination['per_page'], ['*'], 'page', $pagination['page']);
+        $followUps = collect($paginator->items());
 
         return response()->json([
             'data' => $followUps->map(function ($item) {
@@ -72,26 +87,35 @@ final class AdminLeadFollowUpController extends Controller
                     'createdAt' => $item->created_at ? Carbon::parse($item->created_at, 'UTC')->toISOString() : null,
                 ];
             }),
+            'meta' => $this->paginationMeta($paginator),
         ]);
     }
 
     public function index(Request $request, string $leadPublicId): JsonResponse
     {
-        $this->ensureTableExists();
-
         $tenantId = $this->tenantContext->id();
+        $user = $this->authorizedUser($request, Capability::VIEW);
+        $pagination = $this->pagination($request);
 
-        $lead = DB::table('leads')
+        $leadQuery = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->where('public_id', $leadPublicId)
-            ->first();
+            ->where('public_id', $leadPublicId);
+
+        if ($user->role() === RoleCode::SALES_ADVISOR) {
+            $leadQuery->where('assigned_user_id', $user->id);
+        }
+
+        $lead = $leadQuery->first();
 
         if (! $lead) {
             return response()->json(['error' => 'Lead not found'], 404);
         }
 
         $followUps = DB::table('lead_follow_ups')
-            ->leftJoin('users', 'users.id', '=', 'lead_follow_ups.user_id')
+            ->leftJoin('users', function ($join): void {
+                $join->on('users.id', '=', 'lead_follow_ups.user_id')
+                    ->on('users.tenant_id', '=', 'lead_follow_ups.tenant_id');
+            })
             ->where('lead_follow_ups.tenant_id', $tenantId)
             ->where('lead_follow_ups.lead_id', $lead->id)
             ->select([
@@ -109,10 +133,13 @@ final class AdminLeadFollowUpController extends Controller
                 'users.display_name as user_name',
             ])
             ->orderByDesc('lead_follow_ups.occurred_at')
-            ->get();
+            ->orderByDesc('lead_follow_ups.id')
+            ->paginate($pagination['per_page'], ['*'], 'page', $pagination['page']);
+
+        $items = collect($followUps->items());
 
         return response()->json([
-            'data' => $followUps->map(function ($item) use ($leadPublicId) {
+            'data' => $items->map(function ($item) use ($leadPublicId) {
                 return [
                     'id' => $item->public_id,
                     'companyId' => 'c1',
@@ -129,19 +156,24 @@ final class AdminLeadFollowUpController extends Controller
                     'createdAt' => $item->created_at ? Carbon::parse($item->created_at, 'UTC')->toISOString() : null,
                 ];
             }),
+            'meta' => $this->paginationMeta($followUps),
         ]);
     }
 
     public function store(Request $request, string $leadPublicId): JsonResponse
     {
-        $this->ensureTableExists();
-
         $tenantId = $this->tenantContext->id();
+        $user = $this->authorizedUser($request, Capability::CREATE);
 
-        $lead = DB::table('leads')
+        $leadQuery = DB::table('leads')
             ->where('tenant_id', $tenantId)
-            ->where('public_id', $leadPublicId)
-            ->first();
+            ->where('public_id', $leadPublicId);
+
+        if ($user->role() === RoleCode::SALES_ADVISOR) {
+            $leadQuery->where('assigned_user_id', $user->id);
+        }
+
+        $lead = $leadQuery->first();
 
         if (! $lead) {
             return response()->json(['error' => 'Lead not found'], 404);
@@ -157,13 +189,21 @@ final class AdminLeadFollowUpController extends Controller
             'agent_id' => 'nullable',
         ]);
 
-        $userId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId)
-            ?? $request->user()?->id
-            ?? $lead->assigned_user_id;
+        $requestedAgentId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId);
+        if (! empty($validated['agent_id']) && $requestedAgentId === null) {
+            throw ValidationException::withMessages([
+                'agent_id' => ['The selected advisor is not available for this tenant.'],
+            ]);
+        }
+        if ($requestedAgentId !== null && $requestedAgentId !== (int) $user->id) {
+            $this->authorization->authorize($user, Capability::ASSIGN);
+        }
+
+        $userId = $requestedAgentId ?? $user->id ?? $lead->assigned_user_id;
 
         if (! $userId) {
             return response()->json([
-                'error' => 'El lead debe tener un asesor asignado antes de registrar un seguimiento.'
+                'error' => 'El lead debe tener un asesor asignado antes de registrar un seguimiento.',
             ], 422);
         }
 
@@ -185,7 +225,7 @@ final class AdminLeadFollowUpController extends Controller
             $nextContactAt,
             $now,
             $followUpUuid,
-            $request
+            $user,
         ) {
             // 1. Insert follow-up record
             DB::table('lead_follow_ups')->insert([
@@ -205,6 +245,7 @@ final class AdminLeadFollowUpController extends Controller
 
             // 2. Update lead's last_touch_at
             DB::table('leads')
+                ->where('tenant_id', $tenantId)
                 ->where('id', $lead->id)
                 ->update([
                     'last_touch_at' => $occurredAt,
@@ -212,7 +253,7 @@ final class AdminLeadFollowUpController extends Controller
                 ]);
 
             // 3. Sychronize next contact date with `visits` for Calendar / Agenda
-            if ($nextContactAt && Schema::hasTable('visits')) {
+            if ($nextContactAt) {
                 $visitUuid = (string) Str::uuid();
                 DB::table('visits')->insert([
                     'tenant_id' => $tenantId,
@@ -220,12 +261,12 @@ final class AdminLeadFollowUpController extends Controller
                     'lead_id' => $lead->id,
                     'property_id' => null,
                     'assigned_user_id' => $userId,
-                    'created_by_user_id' => $request->user()?->id ?? $userId,
+                    'created_by_user_id' => $user->id,
                     'visit_type' => in_array($validated['type'], ['visit', 'meeting']) ? 'PHYSICAL' : 'VIRTUAL',
                     'scheduled_at' => $nextContactAt,
                     'scheduled_end_at' => (clone $nextContactAt)->addHour(),
                     'status' => 'SCHEDULED',
-                    'notes' => $validated['next_action'] ?: ("Próximo contacto · " . ucfirst($validated['type'])),
+                    'notes' => $validated['next_action'] ?: ('Próximo contacto · '.ucfirst($validated['type'])),
                     'outcome' => null,
                     'created_at' => $now,
                     'updated_at' => $now,
@@ -233,15 +274,18 @@ final class AdminLeadFollowUpController extends Controller
             }
 
             // Retrieve advisor display info
-            $user = DB::table('users')->where('id', $userId)->first(['public_id', 'display_name']);
+            $followUpUser = DB::table('users')
+                ->where('tenant_id', $tenantId)
+                ->where('id', $userId)
+                ->first(['public_id', 'display_name']);
 
             return response()->json([
                 'data' => [
                     'id' => $followUpUuid,
                     'companyId' => 'c1',
                     'leadId' => $leadPublicId,
-                    'agentId' => $user?->public_id ?: (string) $userId,
-                    'agentName' => $user?->display_name,
+                    'agentId' => $followUpUser?->public_id ?: (string) $userId,
+                    'agentName' => $followUpUser?->display_name,
                     'agentAvatar' => null,
                     'type' => $validated['type'],
                     'occurredAt' => $occurredAt->toIso8601String(),
@@ -255,6 +299,47 @@ final class AdminLeadFollowUpController extends Controller
         });
     }
 
+    /** @return array{page: int, per_page: int} */
+    private function pagination(Request $request): array
+    {
+        $validated = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        return [
+            'page' => (int) ($validated['page'] ?? 1),
+            'per_page' => (int) ($validated['per_page'] ?? 100),
+        ];
+    }
+
+    /**
+     * @param  LengthAwarePaginator<int, \stdClass>  $paginator
+     * @return array{current_page: int, last_page: int, per_page: int, total: int}
+     */
+    private function paginationMeta(LengthAwarePaginator $paginator): array
+    {
+        return [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
+    }
+
+    private function authorizedUser(Request $request, Capability $capability): User
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            throw new AuthenticationException;
+        }
+
+        $this->authorization->authorize($user, $capability);
+
+        return $user;
+    }
+
     private function resolveUserId(mixed $agentId, int $tenantId): ?int
     {
         if (empty($agentId)) {
@@ -266,6 +351,7 @@ final class AdminLeadFollowUpController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('id', (int) $agentId)
                 ->first(['id']);
+
             return $user ? (int) $user->id : null;
         }
 
@@ -274,39 +360,10 @@ final class AdminLeadFollowUpController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('public_id', $agentId)
                 ->first(['id']);
+
             return $user ? (int) $user->id : null;
         }
 
         return null;
-    }
-
-    private function ensureTableExists(): void
-    {
-        if (! Schema::hasTable('lead_follow_ups')) {
-            DB::unprepared("
-                CREATE TABLE IF NOT EXISTS `lead_follow_ups` (
-                    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                    `tenant_id` BIGINT UNSIGNED NOT NULL,
-                    `public_id` CHAR(36) NOT NULL,
-                    `lead_id` BIGINT UNSIGNED NOT NULL,
-                    `user_id` BIGINT UNSIGNED NOT NULL,
-                    `type` VARCHAR(32) NOT NULL,
-                    `occurred_at` DATETIME(3) NOT NULL,
-                    `summary` VARCHAR(500) NOT NULL,
-                    `result` TEXT NOT NULL,
-                    `next_action` VARCHAR(500) NULL,
-                    `next_contact_at` DATETIME(3) NULL,
-                    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-                    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-                    PRIMARY KEY (`id`),
-                    UNIQUE KEY `uq_lead_follow_ups_public_id` (`public_id`),
-                    KEY `ix_lead_follow_ups_lead` (`tenant_id`, `lead_id`, `occurred_at`),
-                    KEY `ix_lead_follow_ups_user` (`tenant_id`, `user_id`, `occurred_at`),
-                    CONSTRAINT `fk_lead_follow_ups_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-                    CONSTRAINT `fk_lead_follow_ups_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
-                    CONSTRAINT `fk_lead_follow_ups_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            ");
-        }
     }
 }

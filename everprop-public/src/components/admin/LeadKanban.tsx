@@ -24,8 +24,9 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropLeads, loadEverpropCatalog, updateEverpropLead } from "@/lib/everprop-api";
+import { loadEverpropLeads, loadEverpropCatalog, loadEverpropAllFollowUps, updateEverpropLead } from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { toast } from "sonner";
 
 // --- Componente Principal ---
 export default function LeadKanban({ companyId = "c1", dashboardMode = "enterprise" }: { companyId?: string, dashboardMode?: "agency" | "enterprise" }) {
@@ -37,8 +38,9 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
   
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [projects, setProjects] = useState<typeof sampleProjects>(() => loadProjectList(sampleProjects, companyId));
-  const { isAdvisor, isAdmin, user } = useCurrentSession();
+  const [projects, setProjects] = useState<typeof sampleProjects>(() => isMockDataMode ? loadProjectList(sampleProjects, companyId) : []);
+  const [loadError, setLoadError] = useState("");
+  const { isAdvisor, isAdmin, canUpdate, user } = useCurrentSession();
   const { globalSelectedAgentId } = useDashboardMode();
 
   // Sensores optimizados para Mobile y Desktop
@@ -59,18 +61,27 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const [apiLeads, catalog] = await Promise.all([
+          const [apiLeads, catalog, apiFollowUps] = await Promise.all([
             loadEverpropLeads(),
             loadEverpropCatalog(),
+            loadEverpropAllFollowUps(),
           ]);
           if (!active) return;
           setLeads(apiLeads);
           setProjects(catalog.projects);
-          setFollowUps(loadLeadFollowUpList([], companyId));
+          setFollowUps(apiFollowUps);
+          setLoadError("");
           setHydrated(true);
           return;
         } catch (e) {
           console.error("Error loading leads in kanban:", e);
+          if (!active) return;
+          setLeads([]);
+          setProjects([]);
+          setFollowUps([]);
+          setLoadError(e instanceof Error ? e.message : "No se pudo cargar el pipeline desde la API.");
+          setHydrated(true);
+          return;
         }
       }
       if (!active) return;
@@ -99,11 +110,13 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
 
   // Handlers de Arrastre
   const handleDragStart = (event: DragStartEvent) => {
+    if (!canUpdate) return;
     setActiveDragId(event.active.id);
     setOverStageId(findStage(event.active.id));
   };
 
   const handleDragOver = (event: DragOverEvent) => {
+    if (!canUpdate) return;
     const { over } = event;
     if (!over) {
       setOverStageId(null);
@@ -113,7 +126,8 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
     setOverStageId(stage);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (!canUpdate) return;
     const { active, over } = event;
     
     setActiveDragId(null);
@@ -126,9 +140,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
 
     if (!targetStage) return;
 
-    setLeads((prev) => 
-      prev.map((lead) => (lead.id === leadId ? { ...lead, stage: targetStage } : lead))
-    );
+    const updatedLeads = leads.map((lead) => (lead.id === leadId ? { ...lead, stage: targetStage } : lead));
 
     if (!isMockDataMode) {
       const STAGE_API_MAP: Record<string, string> = {
@@ -139,10 +151,15 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
         closing: "WON",
       };
       const stageCode = STAGE_API_MAP[targetStage] || targetStage.toUpperCase();
-      updateEverpropLead(leadId, { stage: stageCode }).catch((err) => {
+      try {
+        await updateEverpropLead(leadId, { stage: stageCode });
+      } catch (err) {
         console.error("Error updating lead stage in API:", err);
-      });
+        toast.error("No se pudo cambiar la etapa en el servidor.");
+        return;
+      }
     }
+    setLeads(updatedLeads);
   };
 
   const activeLead = leads.find((l) => l.id === activeDragId) ?? null;
@@ -191,6 +208,11 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
 
   return (
     <div className="space-y-4">
+      {loadError && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+          {loadError} No se muestran datos de demostración.
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Selector de Proyecto - Only show if in Enterprise Mode */}
         {dashboardMode === "enterprise" ? (
@@ -230,9 +252,9 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
       id="everprop-kanban"
       sensors={sensors}
       collisionDetection={pointerWithin}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
+      onDragStart={canUpdate ? handleDragStart : undefined}
+      onDragOver={canUpdate ? handleDragOver : undefined}
+      onDragEnd={canUpdate ? handleDragEnd : undefined}
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {STAGE_ORDER.map((stage) => {
@@ -259,6 +281,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
                   lead={lead} 
                   followUps={followUps}
                   isActive={activeDragId === lead.id} 
+                  disabled={!canUpdate}
                 />
               ))}
             </KanbanColumn>

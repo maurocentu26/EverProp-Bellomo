@@ -25,23 +25,29 @@ import AdvisorCockpit from "@/components/admin/advisor/AdvisorCockpit";
 export default function AdminPage() {
   const { mode: dashboardMode, setMode: setDashboardMode } = useDashboardMode();
   const { isEngineer, isAdmin, isAdvisor } = useCurrentSession();
-  const [liveProperties, setLiveProperties] = useState<typeof properties>(properties);
+  const [liveProperties, setLiveProperties] = useState<typeof properties>(isMockDataMode ? properties : []);
+  const [catalogError, setCatalogError] = useState("");
 
   useEffect(() => {
     let active = true;
     if (!isMockDataMode) {
       loadEverpropCatalog().then((cat) => {
-        if (active && cat.properties.length > 0) {
+        if (active) {
           setLiveProperties(cat.properties);
+          setCatalogError("");
         }
-      }).catch(() => {});
+      }).catch((reason) => {
+        if (!active) return;
+        setLiveProperties([]);
+        setCatalogError(reason instanceof Error ? reason.message : "No se pudo cargar el catálogo desde la API.");
+      });
     }
     return () => {
       active = false;
     };
   }, []);
 
-  if (!isEngineer) {
+  if (isAdvisor) {
     return <AdvisorCockpit />;
   }
 
@@ -52,10 +58,15 @@ export default function AdminPage() {
       transition={{ duration: 0.5 }}
       className="space-y-10"
     >
-      {!isEngineer && <AdvisorFollowUpPriority />}
+      {catalogError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+          {catalogError} No se muestran datos de demostración.
+        </div>
+      )}
+      {!isEngineer && isMockDataMode && <AdvisorFollowUpPriority />}
 
       {/* ── QUICK STATS BANNER ── */}
-      {!isEngineer && (
+      {!isEngineer && isMockDataMode && (
         <section id="stats-banner">
           <QuickStatsBanner />
         </section>
@@ -104,8 +115,12 @@ export default function AdminPage() {
             {/* Engineers always see EnterpriseDashboard; Advisors always see DashboardStats (commercial) */}
             {isEngineer || (dashboardMode === "enterprise" && isAdmin) ? (
               <EnterpriseDashboard />
-            ) : (
+            ) : isMockDataMode ? (
               <DashboardStats />
+            ) : (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-900" role="status">
+                Las métricas consolidadas de la comercializadora todavía no tienen una fuente API certificada. Se ocultaron los valores de demostración.
+              </div>
             )}
           </motion.div>
         </AnimatePresence>
@@ -114,16 +129,18 @@ export default function AdminPage() {
       {!isEngineer && (
         <>
           {/* ── PIPELINE FUNNEL + NEXT VISIT (side by side) ── */}
-          <section id="pipeline" className="scroll-mt-24">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              <div className="lg:col-span-3">
-                <PipelineFunnelWidget />
+          {isMockDataMode && (
+            <section id="pipeline" className="scroll-mt-24">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <div className="lg:col-span-3">
+                  <PipelineFunnelWidget />
+                </div>
+                <div className="lg:col-span-2">
+                  <NextVisitCountdown />
+                </div>
               </div>
-              <div className="lg:col-span-2">
-                <NextVisitCountdown />
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           {/* ── LEADS KANBAN ── */}
           <section id="leads" className="scroll-mt-24">
@@ -168,7 +185,13 @@ export default function AdminPage() {
 
           {/* ── AGENDA ── */}
           <section id="agenda" className="scroll-mt-24">
-            <MonthlyAgendaSummary />
+            {isMockDataMode ? (
+              <MonthlyAgendaSummary />
+            ) : (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-900" role="status">
+                La agenda de visitas todavía no tiene persistencia en la API. Se ocultaron los eventos locales para evitar confundirlos con datos reales.
+              </div>
+            )}
           </section>
         </>
       )}

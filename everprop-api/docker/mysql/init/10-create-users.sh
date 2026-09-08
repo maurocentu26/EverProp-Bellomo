@@ -12,9 +12,9 @@ CREATE DATABASE IF NOT EXISTS bellomo_crm_test CHARACTER SET utf8mb4 COLLATE utf
 CREATE USER IF NOT EXISTS 'everprop_app'@'%' IDENTIFIED BY '${app_password}';
 CREATE USER IF NOT EXISTS 'everprop_test'@'%' IDENTIFIED BY '${test_password}';
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'everprop_app'@'%';
-GRANT ALL PRIVILEGES ON bellomo_crm.* TO 'everprop_app'@'%';
-GRANT ALL PRIVILEGES ON bellomo_crm_test.* TO 'everprop_test'@'%';
-GRANT SYSTEM_USER ON *.* TO 'everprop_app'@'%';
+REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'everprop_test'@'%';
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON bellomo_crm.* TO 'everprop_app'@'%';
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON bellomo_crm_test.* TO 'everprop_test'@'%';
 FLUSH PRIVILEGES;
 SQL
 

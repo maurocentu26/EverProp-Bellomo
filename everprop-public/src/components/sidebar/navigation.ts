@@ -35,6 +35,8 @@ type NavigationAccess = {
   isEngineer: boolean;
   isMockMode: boolean;
   isAdvisor?: boolean;
+  canCreate?: boolean;
+  canManageUsers?: boolean;
 };
 
 export const advisorNavigationGroups: NavGroup[] = [
@@ -59,8 +61,7 @@ export const advisorNavigationGroups: NavGroup[] = [
         title: "Propiedades & Unidades", 
         href: "/admin/properties", 
         icon: Building2, 
-        matchPath: "/admin/properties",
-        children: [{ title: "Nueva Unidad", href: "/admin/properties/new", icon: Plus }]
+        matchPath: "/admin/properties"
       },
       { title: "Proyectos & Desarrollos", href: "/admin/desarrollos", icon: HardHat, matchPath: "/admin/desarrollos" },
       { title: "Matriz de Lotes", href: "/admin/inventory-matrix", icon: Map, matchPath: "/admin/inventory-matrix" },
@@ -111,9 +112,18 @@ export const navigationConfig: NavItem[] = navigationGroups.flatMap(g => g.items
 export function getAvailableNavigationGroups({
   isEngineer,
   isAdvisor,
+  isMockMode,
+  canCreate = false,
+  canManageUsers = false,
 }: NavigationAccess): NavGroup[] {
   if (isAdvisor) {
-    return advisorNavigationGroups;
+    return advisorNavigationGroups.map((group) => ({
+      ...group,
+      items: (isMockMode ? group.items : group.items.filter((item) => item.title !== "Mi Agenda")).map((item) => ({
+        ...item,
+        children: canCreate ? item.children : undefined,
+      })),
+    }));
   }
 
   if (isEngineer) {
@@ -122,11 +132,21 @@ export function getAvailableNavigationGroups({
         if (group.label !== "Activos Comerciales") return group;
         return {
           ...group,
-          items: group.items.filter((item) => item.title !== "Agenda"),
+          items: group.items.filter((item) => item.title !== "Agenda" && item.title !== "Configuración"),
         };
       })
       .filter((group) => group.label !== "Comercializadora");
   }
 
-  return navigationGroups;
+  return navigationGroups.map((group) => ({
+    ...group,
+    items: (isMockMode
+      ? group.items
+      : group.items.filter((item) => item.title !== "Agenda"))
+      .filter((item) => item.title !== "Configuración" || canManageUsers)
+      .map((item) => ({
+        ...item,
+        children: canCreate ? item.children : undefined,
+      })),
+  }));
 }

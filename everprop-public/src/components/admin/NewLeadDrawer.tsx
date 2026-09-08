@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -46,10 +46,9 @@ import {
 import { MOCK_USERS } from "@/data/auth-sample";
 import { appendLeadToStorage, loadLeadList, loadProjectList, loadPropertyList, saveLeadList } from "@/lib/admin-storage";
 import { useAuth } from "@/lib/auth-context";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { createLeadInterest, isProjectUnit } from "@/lib/lead-interests";
 import { isMockDataMode } from "@/lib/data-mode";
-import { createEverpropLead, updateEverpropLead } from "@/lib/everprop-api";
+import { createEverpropLead, loadEverpropCatalog, updateEverpropLead } from "@/lib/everprop-api";
 import { createNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
@@ -142,14 +141,7 @@ export function NewLeadDrawer({
   const [assetSearchQuery, setAssetSearchQuery] = useState("");
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
-
-  useEffect(() => {
-    return deferEffectUpdate(() => {
-      if (!open) return;
-      setAllProperties(loadPropertyList(sampleProperties, companyId));
-      setAllProjects(loadProjectList(sampleProjects, companyId));
-    });
-  }, [open, companyId]);
+  const [catalogError, setCatalogError] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(leadSchema),
@@ -164,6 +156,68 @@ export function NewLeadDrawer({
     },
   });
 
+  const handleReset = useCallback(() => {
+    if (isCompleting && initialLead) {
+      form.reset({
+        name: initialLead.name || "",
+        origin: initialLead.origin || "WhatsApp",
+        email: initialLead.email || "",
+        phone: initialLead.phone || "",
+        stage: initialLead.stage || "new",
+        notes: initialLead.notes || "",
+        agentId: initialLead.agentId || (currentUser?.role === "ADVISOR" ? currentUser.id : ""),
+      });
+      setSelectedCategory(initialLead.interestCategory ?? null);
+      setSelectedProjectId(initialLead.projectId ?? "");
+      setSelectedAsset(null);
+      setAssetSearchQuery("");
+      return;
+    }
+    setSelectedCategory(null);
+    setSelectedProjectId("");
+    setSelectedAsset(null);
+    setAssetSearchQuery("");
+    form.reset({
+      name: "",
+      origin: "WhatsApp",
+      email: "",
+      phone: "",
+      stage: "new",
+      notes: "",
+      agentId: currentUser?.role === "ADVISOR" ? currentUser.id : "",
+    });
+  }, [currentUser, form, initialLead, isCompleting]);
+
+  useEffect(() => {
+    let active = true;
+    if (!open) return () => { active = false; };
+
+    async function loadCatalog() {
+      if (isMockDataMode) {
+        setAllProperties(loadPropertyList(sampleProperties, companyId));
+        setAllProjects(loadProjectList(sampleProjects, companyId));
+        setCatalogError("");
+        return;
+      }
+
+      try {
+        const catalog = await loadEverpropCatalog();
+        if (!active) return;
+        setAllProperties(catalog.properties);
+        setAllProjects(catalog.projects);
+        setCatalogError("");
+      } catch (reason) {
+        if (!active) return;
+        setAllProperties([]);
+        setAllProjects([]);
+        setCatalogError(reason instanceof Error ? reason.message : "No se pudo cargar el catálogo desde la API.");
+      }
+    }
+
+    void loadCatalog();
+    return () => { active = false; };
+  }, [companyId, open]);
+
   useEffect(() => {
     if (open && initialLead) {
       form.reset({
@@ -175,20 +229,16 @@ export function NewLeadDrawer({
         notes: initialLead.notes || "",
         agentId: initialLead.agentId || (currentUser?.role === "ADVISOR" ? currentUser.id : ""),
       });
-      if (initialLead.interestCategory) {
-        setSelectedCategory(initialLead.interestCategory);
-      }
-      if (initialLead.projectId) {
-        setSelectedProjectId(initialLead.projectId);
-      }
+      if (initialLead.interestCategory) setSelectedCategory(initialLead.interestCategory);
+      if (initialLead.projectId) setSelectedProjectId(initialLead.projectId);
       if (initialLead.propertyIds && initialLead.propertyIds.length > 0) {
-        const prop = allProperties.find((p) => p.id === initialLead.propertyIds[0]);
+        const prop = allProperties.find((p) => p.id === initialLead.propertyIds?.[0]);
         if (prop) setSelectedAsset(prop);
       }
     } else if (open && !initialLead) {
       handleReset();
     }
-  }, [open, initialLead, allProperties]);
+  }, [allProperties, currentUser?.id, currentUser?.role, form, handleReset, initialLead, open]);
 
   const availableAssets = useMemo(() => {
     const query = assetSearchQuery.toLowerCase().trim();
@@ -251,38 +301,6 @@ export function NewLeadDrawer({
     setSelectedAsset(asset);
     setSelectedCategory(inferLeadInterestCategory(asset));
     setSelectedProjectId(asset.projectId ?? "");
-  };
-
-  const handleReset = () => {
-    if (isCompleting && initialLead) {
-      form.reset({
-        name: initialLead.name || "",
-        origin: initialLead.origin || "WhatsApp",
-        email: initialLead.email || "",
-        phone: initialLead.phone || "",
-        stage: initialLead.stage || "new",
-        notes: initialLead.notes || "",
-        agentId: initialLead.agentId || (currentUser?.role === "ADVISOR" ? currentUser.id : ""),
-      });
-      setSelectedCategory(initialLead.interestCategory ?? null);
-      setSelectedProjectId(initialLead.projectId ?? "");
-      setSelectedAsset(null);
-      setAssetSearchQuery("");
-      return;
-    }
-    setSelectedCategory(null);
-    setSelectedProjectId("");
-    setSelectedAsset(null);
-    setAssetSearchQuery("");
-    form.reset({
-      name: "",
-      origin: "WhatsApp",
-      email: "",
-      phone: "",
-      stage: "new",
-      notes: "",
-      agentId: currentUser?.role === "ADVISOR" ? currentUser.id : "",
-    });
   };
 
   const handleClose = () => {
@@ -400,7 +418,9 @@ export function NewLeadDrawer({
     }
 
     try {
-      appendLeadToStorage(nextLead, sampleLeads, companyId);
+      if (isMockDataMode) {
+        appendLeadToStorage(nextLead, sampleLeads, companyId);
+      }
 
       if (nextLead.agentId) {
         try {
@@ -481,6 +501,11 @@ export function NewLeadDrawer({
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-950 p-6 sm:p-8">
           <form id="drawer-lead-form" onSubmit={form.handleSubmit(onSubmit)} className="mx-auto w-full max-w-7xl">
+            {catalogError && (
+              <div className="mb-5 rounded-xl border border-rose-700 bg-rose-950/60 px-4 py-3 text-sm text-rose-100" role="alert">
+                {catalogError} No se muestran propiedades de demostración.
+              </div>
+            )}
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
               <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm" aria-labelledby="lead-basic-data">
                 <div className="flex items-center gap-2.5 border-b border-slate-800 pb-3">

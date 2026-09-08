@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, BellRing, Building2, CheckCircle2, ChevronRight, Globe, Paintbrush, ShieldCheck, SlidersHorizontal, Sparkles, Wifi, Zap } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import Badge from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useCurrentSession } from "@/hooks/use-current-session";
+import { isMockDataMode } from "@/lib/data-mode";
 
 const sections = [
     { id: "company", label: "Empresa", icon: Building2 },
@@ -23,10 +26,11 @@ const highlights = [
     "Modo visual para personalizar la marca",
 ];
 
-function SectionPill({ active, label, icon: Icon }: { active: boolean; label: string; icon: typeof Globe }) {
+function SectionPill({ active, id, label, icon: Icon }: { active: boolean; id: string; label: string; icon: typeof Globe }) {
     return (
         <button
             type="button"
+            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
             className={cn(
                 "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all",
                 active
@@ -44,8 +48,14 @@ function SectionPill({ active, label, icon: Icon }: { active: boolean; label: st
 }
 
 export default function SettingsPage() {
+    const router = useRouter();
+    const { canManageUsers, isReady } = useCurrentSession();
     const [progress, setProgress] = useState(0);
     const [activeSection, setActiveSection] = useState("company");
+
+    useEffect(() => {
+        if (isReady && !canManageUsers) router.replace("/admin");
+    }, [canManageUsers, isReady, router]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -79,6 +89,24 @@ export default function SettingsPage() {
             window.removeEventListener("resize", handleScroll);
         };
     }, []);
+
+    if (!isReady || !canManageUsers) {
+        return <div className="p-8 text-center text-sm text-slate-500">Verificando permisos…</div>;
+    }
+
+    if (!isMockDataMode) {
+        return (
+            <section className="rounded-3xl border border-amber-200 bg-white p-8 shadow-sm" role="status">
+                <h1 className="text-2xl font-bold text-slate-900">Configuración no disponible</h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                    Este módulo todavía no tiene un modelo de persistencia en la API. Se ocultaron los controles de ejemplo para evitar cambios que aparenten guardarse.
+                </p>
+                <Link href="/admin" className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700">
+                    <ArrowLeft className="size-4" /> Volver al dashboard
+                </Link>
+            </section>
+        );
+    }
 
     return (
         <div className="scroll-smooth pb-16">
@@ -114,7 +142,7 @@ export default function SettingsPage() {
                         <CardContent className="space-y-3">
                             {sections.map((section) => {
                                 const Icon = section.icon;
-                                return <SectionPill key={section.id} active={activeSection === section.id} label={section.label} icon={Icon} />;
+                                return <SectionPill key={section.id} id={section.id} active={activeSection === section.id} label={section.label} icon={Icon} />;
                             })}
                         </CardContent>
                     </Card>
@@ -192,11 +220,11 @@ export default function SettingsPage() {
                                 <CardDescription>Small utilities for a smoother setup.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                <Button className="w-full justify-between" variant="secondary">
+                                <Button disabled className="w-full justify-between" variant="secondary">
                                     Duplicate current theme
                                     <SlidersHorizontal className="size-4" />
                                 </Button>
-                                <Button className="w-full justify-between" variant="outline">
+                                <Button disabled className="w-full justify-between" variant="outline">
                                     Preview public site
                                     <ChevronRight className="size-4" />
                                 </Button>
@@ -263,7 +291,7 @@ export default function SettingsPage() {
                             <p className="font-medium text-slate-900">Ready for the real form</p>
                             <p className="text-sm text-slate-500">This page is a polished placeholder until the settings model is ready.</p>
                         </div>
-                        <Button>Save changes</Button>
+                        <Button disabled>Save changes</Button>
                     </div>
                 </div>
             </div>

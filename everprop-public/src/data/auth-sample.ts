@@ -1,5 +1,24 @@
 export type UserRole = "ADMIN" | "ENGINEER" | "ADVISOR";
 
+export type ApiRoleCode =
+  | "SUPER_ADMIN"
+  | "TENANT_ADMIN"
+  | "SALES_MANAGER"
+  | "SALES_ADVISOR"
+  | "BOT_OPERATOR"
+  | "READ_ONLY";
+
+export type ApiCapability =
+  | "viewAny"
+  | "view"
+  | "create"
+  | "update"
+  | "delete"
+  | "publish"
+  | "assign"
+  | "manageUsers"
+  | "manageIntegrations";
+
 export type UserProfile = {
   id: string;
   email: string;
@@ -9,8 +28,24 @@ export type UserProfile = {
   title: string;
   permissions: string[];
   source?: "api" | "demo";
-  apiRole?: string;
+  apiRole?: ApiRoleCode | string;
 };
+
+const DEMO_CAPABILITIES: Record<UserRole, readonly ApiCapability[]> = {
+  ADMIN: ["viewAny", "view", "create", "update", "delete", "publish", "assign", "manageUsers", "manageIntegrations"],
+  ENGINEER: ["viewAny", "view", "create", "update", "publish"],
+  ADVISOR: ["viewAny", "view", "create", "update"],
+};
+
+/**
+ * API capabilities are authoritative. Demo users retain their legacy role-based
+ * behavior so visual QA keeps working without broadening real-account access.
+ */
+export function userHasCapability(user: UserProfile | null | undefined, capability: ApiCapability): boolean {
+  if (!user) return false;
+  if (user.source === "api") return user.permissions.includes(capability);
+  return DEMO_CAPABILITIES[user.role].includes(capability);
+}
 
 export const MOCK_USERS: UserProfile[] = [
   {

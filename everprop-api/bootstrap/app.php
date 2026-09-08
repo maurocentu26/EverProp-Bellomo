@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Tenancy\Http\Middleware\ResolveTenant;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,10 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
-        $middleware->validateCsrfTokens(except: [
-            'api/v1/*',
-            'sanctum/csrf-cookie',
-        ]);
         $middleware->trustHosts(
             at: static fn (): array => array_map(
                 static fn (string $host): string => '^'.preg_quote($host, '/').'$',
@@ -31,6 +28,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(static function (AuthenticationException $exception, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                    'code' => 'UNAUTHENTICATED',
+                ], 401);
+            }
+
+            return null;
+        });
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );

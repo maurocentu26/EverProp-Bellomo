@@ -80,21 +80,22 @@ export function GenerateLotsModal({
 
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [projectLoadError, setProjectLoadError] = useState("");
 
   useEffect(() => {
     async function loadProjects() {
       if (!isMockDataMode) {
         try {
+          setProjectLoadError("");
           const catalog = await loadEverpropCatalog();
           setProjects(catalog.projects);
           if (!projectId && catalog.projects.length > 0) {
             setProjectId(defaultProjectId || catalog.projects[0].id);
           }
-        } catch {
-          setProjects(sampleProjects);
-          if (!projectId && sampleProjects.length > 0) {
-            setProjectId(defaultProjectId || sampleProjects[0].id);
-          }
+        } catch (error) {
+          setProjects([]);
+          setProjectId("");
+          setProjectLoadError(error instanceof Error ? error.message : "No se pudieron cargar los proyectos desde la API.");
         }
       } else {
         setProjects(sampleProjects);
@@ -185,8 +186,11 @@ export function GenerateLotsModal({
     try {
       if (!isMockDataMode) {
         const selectedProj = projects.find((p) => p.id === projectId);
+        if (!selectedProj?.backendId) {
+          throw new Error("El proyecto seleccionado no tiene un identificador válido de la API.");
+        }
         const payload: GenerateLotsPayload = {
-          projectId: selectedProj?.id || projectId,
+          projectId: selectedProj.backendId,
           sectorName: sectorName.trim(),
           lotFrom,
           lotTo,
@@ -266,6 +270,11 @@ export function GenerateLotsModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+          {projectLoadError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900" role="alert">
+              {projectLoadError} No se muestran proyectos de demostración.
+            </div>
+          )}
           {/* SECCIÓN 1: PROYECTO Y MANZANA */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
             <div className="sm:col-span-2">
@@ -275,6 +284,7 @@ export function GenerateLotsModal({
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
+                disabled={Boolean(projectLoadError) || projects.length === 0}
                 required
                 className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-blue-500"
               >
@@ -530,7 +540,7 @@ export function GenerateLotsModal({
             <Button
               type="submit"
               size="sm"
-              disabled={isSubmitting || totalCount <= 0}
+              disabled={isSubmitting || totalCount <= 0 || Boolean(projectLoadError) || projects.length === 0}
               className="h-9 px-5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
             >
               {isSubmitting ? (

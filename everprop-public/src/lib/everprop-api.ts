@@ -1,5 +1,6 @@
 import type { Project, Property, Lead, LeadFollowUp, LeadFollowUpType, LeadInterestCategory } from "@/data/admin-sample";
 import type { UserProfile, UserRole } from "@/data/auth-sample";
+import { isLocalTenantHeaderEnabled } from "@/lib/data-mode";
 
 const CONFIGURED_API_URL =
   process.env.NEXT_PUBLIC_EVERPROP_API_URL ||
@@ -21,7 +22,15 @@ export function resolveApiUrl(): string {
 }
 
 type ApiEnvelope<T> = { data: T };
-type ApiPage<T> = { data: T[]; meta?: { total?: number } };
+type ApiPage<T> = {
+  data: T[];
+  meta?: {
+    current_page?: number;
+    last_page?: number;
+    per_page?: number;
+    total?: number;
+  };
+};
 
 type ApiUser = {
   id: string;
@@ -33,6 +42,7 @@ type ApiUser = {
 };
 
 type ApiProject = {
+  id?: number | null;
   public_id: string;
   name: string;
   project_type: string;
@@ -48,6 +58,7 @@ type ApiProject = {
 
 type ApiProperty = {
   public_id: string;
+  version?: number | null;
   title: string;
   operation: string;
   category: string;
@@ -94,7 +105,9 @@ function xsrfToken() {
 async function apiFetch<T>(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  headers.set("X-Everprop-Tenant", TENANT);
+  if (isLocalTenantHeaderEnabled) {
+    headers.set("X-Everprop-Tenant", TENANT);
+  }
 
   if (init.body) headers.set("Content-Type", "application/json");
   if (init.method && !["GET", "HEAD"].includes(init.method.toUpperCase())) {
@@ -139,6 +152,40 @@ async function apiFetch<T>(path: string, init: RequestInit = {}) {
   return payload as T;
 }
 
+const API_PAGE_SIZE = 100;
+const MAX_API_PAGES = 100;
+
+function paginatedPath(path: string, page: number): string {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}page=${page}&per_page=${API_PAGE_SIZE}`;
+}
+
+async function fetchAllApiPages<T>(path: string): Promise<T[]> {
+  const first = await apiFetch<ApiPage<T>>(paginatedPath(path, 1));
+  const lastPage = Number(first.meta?.last_page ?? 1);
+
+  if (!Number.isInteger(lastPage) || lastPage < 1) {
+    throw new EverpropApiError("La API devolvió metadatos de paginación inválidos.", 502);
+  }
+  if (lastPage > MAX_API_PAGES) {
+    throw new EverpropApiError(
+      `El listado supera el límite seguro de ${MAX_API_PAGES * API_PAGE_SIZE} registros. Aplicá filtros o paginación visible.`,
+      413,
+    );
+  }
+
+  const items = [...(first.data || [])];
+  for (let page = 2; page <= lastPage; page += 1) {
+    const response = await apiFetch<ApiPage<T>>(paginatedPath(path, page));
+    if (response.meta?.current_page !== undefined && response.meta.current_page !== page) {
+      throw new EverpropApiError("La API devolvió una página distinta de la solicitada.", 502);
+    }
+    items.push(...(response.data || []));
+  }
+
+  return items;
+}
+
 function mapRole(role: string): UserRole {
   if (role === "SUPER_ADMIN" || role === "TENANT_ADMIN" || role === "SALES_MANAGER") return "ADMIN";
   return "ADVISOR";
@@ -181,6 +228,7 @@ function mapProject(project: ApiProject): Project {
 
   return {
     id: project.public_id,
+    backendId: project.id ?? undefined,
     companyId: "c1",
     name: cleanText(project.name),
     type: type.includes("LAND") ? "land_development" : type.includes("BUILD") ? "building" : "commercial",
@@ -219,6 +267,7 @@ function mapProperty(property: ApiProperty): Property {
 
   return {
     id: property.public_id,
+    version: property.version ?? undefined,
     companyId: "c1",
     title: cleanText(property.title),
     operation: operation === "RENT" ? "rent" : operation === "TEMPORARY" ? "temporal" : "sale",
@@ -266,13 +315,13 @@ export async function logoutEverprop() {
 
 async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   const [projects, properties] = await Promise.all([
-    apiFetch<ApiPage<ApiProject>>(`${prefix}/projects?per_page=100`),
-    apiFetch<ApiPage<ApiProperty>>(`${prefix}/properties?per_page=100`),
+    fetchAllApiPages<ApiProject>(`${prefix}/projects`),
+    fetchAllApiPages<ApiProperty>(`${prefix}/properties`),
   ]);
 
   return {
-    projects: projects.data.map(mapProject),
-    properties: properties.data.map(mapProperty),
+    projects: projects.map(mapProject),
+    properties: properties.map(mapProperty),
     source: prefix.includes("admin") ? ("admin-api" as const) : ("public-api" as const),
   };
 }
@@ -295,7 +344,7 @@ export type CreatePropertyPayload = {
   city: string;
   province?: string;
   neighborhood?: string;
-  projectId?: string;
+  projectId?: number;
   sectorName?: string;
   unitNumber?: string;
   bedrooms?: number;
@@ -306,7 +355,7 @@ export type CreatePropertyPayload = {
   commercialFeatures?: Record<string, any>;
 };
 
-export async function createEverpropProperty(data: CreatePropertyPayload) {
+export function toCreatePropertyPayload(data: CreatePropertyPayload) {
   const categoryMap: Record<string, string> = {
     Lote: "LOT",
     Departamento: "APARTMENT",
@@ -316,7 +365,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     Propiedad: "TRADITIONAL",
   };
 
-  const payload = {
+  return {
     title: data.title,
     operation: (data.operation || "sale").toUpperCase(),
     category: categoryMap[data.propertyType || ""] || "LOT",
@@ -326,7 +375,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     city: data.city,
     province: data.province || "Jujuy",
     neighborhood: data.neighborhood || null,
-    project_id: data.projectId ? 1 : 1, // Bellomo project ID
+    project_id: data.projectId ?? null,
     sector_name: data.sectorName || null,
     unit_number: data.unitNumber || null,
     bedrooms: data.bedrooms ?? null,
@@ -336,6 +385,10 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     services_json: data.services || null,
     commercial_features_json: data.commercialFeatures || null,
   };
+}
+
+export async function createEverpropProperty(data: CreatePropertyPayload) {
+  const payload = toCreatePropertyPayload(data);
 
   const response = await apiFetch<ApiEnvelope<ApiProperty>>("/api/v1/admin/properties", {
     method: "POST",
@@ -345,14 +398,14 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
   return mapProperty(response.data);
 }
 
-export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold", version = 1) {
+export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold", version: number) {
   const statusMap: Record<string, string> = {
     available: "AVAILABLE",
     reserved: "RESERVED",
     sold: "SOLD",
   };
 
-  const response = await apiFetch<ApiEnvelope<ApiProperty>>(`/api/v1/admin/properties/${publicId}/publish`, {
+  const response = await apiFetch<ApiEnvelope<ApiProperty>>(`/api/v1/admin/properties/${publicId}`, {
     method: "PATCH",
     body: JSON.stringify({
       status: statusMap[status] || "AVAILABLE",
@@ -512,8 +565,8 @@ export function mapLead(apiLead: ApiLead): Lead {
 }
 
 export async function loadEverpropLeads(): Promise<Lead[]> {
-  const response = await apiFetch<{ data: ApiLead[] }>("/api/v1/admin/leads");
-  return (response.data || []).map(mapLead);
+  const leads = await fetchAllApiPages<ApiLead>("/api/v1/admin/leads");
+  return leads.map(mapLead);
 }
 
 export async function createEverpropLead(data: {
@@ -598,8 +651,8 @@ export type ApiLeadFollowUp = {
 };
 
 export async function loadEverpropLeadFollowUps(leadPublicId: string): Promise<LeadFollowUp[]> {
-  const response = await apiFetch<{ data: ApiLeadFollowUp[] }>(`/api/v1/admin/leads/${leadPublicId}/follow-ups`);
-  return (response.data || []).map((item) => ({
+  const followUps = await fetchAllApiPages<ApiLeadFollowUp>(`/api/v1/admin/leads/${leadPublicId}/follow-ups`);
+  return followUps.map((item) => ({
     id: item.id,
     companyId: item.companyId || "c1",
     leadId: item.leadId,
@@ -656,8 +709,8 @@ export async function createEverpropLeadFollowUp(
 }
 
 export async function loadEverpropAllFollowUps(): Promise<LeadFollowUp[]> {
-  const response = await apiFetch<{ data: ApiLeadFollowUp[] }>("/api/v1/admin/follow-ups");
-  return (response.data || []).map((item) => ({
+  const followUps = await fetchAllApiPages<ApiLeadFollowUp>("/api/v1/admin/follow-ups");
+  return followUps.map((item) => ({
     id: item.id,
     companyId: item.companyId || "c1",
     leadId: item.leadId,
@@ -785,8 +838,12 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
     sold: "SOLD",
   };
 
+  if (!data.version) {
+    throw new Error("La API no informó una versión válida para actualizar la propiedad.");
+  }
+
   const payload: Record<string, any> = {
-    version: data.version ?? 1,
+    version: data.version,
   };
 
   if (data.title !== undefined) payload.title = data.title;

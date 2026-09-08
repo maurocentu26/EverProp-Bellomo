@@ -67,12 +67,13 @@ const STAGE_OPTIONS: { id: Lead["stage"]; label: string; apiCode: string; color:
 ];
 
 export default function AdvisorCockpit() {
-  const { user } = useCurrentSession();
+  const { user, canCreate, canUpdate } = useCurrentSession();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
-  const [properties, setProperties] = useState<Property[]>(sampleProperties);
-  const [projects, setProjects] = useState<Project[]>(sampleProjects);
+  const [properties, setProperties] = useState<Property[]>(isMockDataMode ? sampleProperties : []);
+  const [projects, setProjects] = useState<Project[]>(isMockDataMode ? sampleProjects : []);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQueueFilter, setActiveQueueFilter] = useState<"all" | "overdue" | "today" | "new">("all");
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
@@ -87,37 +88,32 @@ export default function AdvisorCockpit() {
     async function loadData() {
       let loadedLeads: Lead[] = [];
       let loadedFollowUps: LeadFollowUp[] = [];
-      let loadedProperties: Property[] = sampleProperties;
-      let loadedProjects: Project[] = sampleProjects;
+      let loadedProperties: Property[] = isMockDataMode ? sampleProperties : [];
+      let loadedProjects: Project[] = isMockDataMode ? sampleProjects : [];
 
       if (!isMockDataMode) {
         try {
           const [apiLeads, catalog, apiFollowUps] = await Promise.all([
             loadEverpropLeads(),
-            loadEverpropCatalog().catch(() => ({ properties: sampleProperties, projects: sampleProjects })),
-            loadEverpropAllFollowUps().catch(() => []),
+            loadEverpropCatalog(),
+            loadEverpropAllFollowUps(),
           ]);
           if (active) {
-            const localLeads = loadLeadList([], "c1");
-            const apiIds = new Set(apiLeads.map((l) => l.id));
-            const extraLocalLeads = localLeads.filter((l) => !apiIds.has(l.id));
-            loadedLeads = [...apiLeads, ...extraLocalLeads];
-
-            if (catalog.properties && catalog.properties.length > 0) {
-              loadedProperties = catalog.properties;
-            }
-            if (catalog.projects && catalog.projects.length > 0) {
-              loadedProjects = catalog.projects;
-            }
-            const localFollowUps = loadLeadFollowUpList([], "c1");
-            const apiFuIds = new Set(apiFollowUps.map((f) => f.id));
-            const extraLocalFus = localFollowUps.filter((f) => !apiFuIds.has(f.id));
-            loadedFollowUps = [...apiFollowUps, ...extraLocalFus];
+            loadedLeads = apiLeads;
+            loadedProperties = catalog.properties;
+            loadedProjects = catalog.projects;
+            loadedFollowUps = apiFollowUps;
+            setLoadError("");
           }
         } catch (err) {
           console.error("Error loading leads from API:", err);
-          loadedLeads = loadLeadList(sampleLeads, "c1");
-          loadedFollowUps = loadLeadFollowUpList([], "c1");
+          loadedLeads = [];
+          loadedFollowUps = [];
+          loadedProperties = [];
+          loadedProjects = [];
+          if (active) {
+            setLoadError(err instanceof Error ? err.message : "No se pudo cargar el panel desde la API.");
+          }
         }
       } else {
         loadedLeads = loadLeadList(sampleLeads, "c1");
@@ -176,8 +172,7 @@ export default function AdvisorCockpit() {
       if (!lead.agentId) return true; // Mostrar también sin asignar si está en cola
       return String(lead.agentId) === String(user.id);
     });
-    // Si no tiene asignados ninguno todavía, mostrar todos los leads para no dejarlo vacío
-    return filtered.length > 0 ? filtered : leads;
+    return filtered;
   }, [leads, user]);
 
   // Derivar métricas y categorizaciones para Mi Día
@@ -276,7 +271,7 @@ export default function AdvisorCockpit() {
 
   // Manejo de cambio de etapa en 1 clic (por propiedad o general)
   async function handleStageChange(leadId: string, newStage: Lead["stage"], propertyId?: string) {
-    const previousLeads = [...leads];
+    if (!canUpdate) return;
     const targetLead = leads.find((l) => l.id === leadId);
     if (!targetLead) return;
 
@@ -291,7 +286,6 @@ export default function AdvisorCockpit() {
 
     const targetPropId = propertyId || selectedPropertyByLead[leadId] || targetLead.propertyIds?.[0] || targetLead.interests?.[0]?.propertyId || targetLead.interests?.[0]?.unitId;
 
-    // Actualización optimista local
     const updated = leads.map((l) => {
       if (l.id !== leadId) return l;
 
@@ -312,9 +306,28 @@ export default function AdvisorCockpit() {
       };
     });
 
-    setLeads(updated);
-    saveLeadList(updated, "c1");
+    const stageConfig = STAGE_OPTIONS.find((s) => s.id === newStage);
+    if (!isMockDataMode) {
+      try {
+        await updateEverpropLead(leadId, {
+          stage: stageConfig?.apiCode || "NEW",
+        });
 
+        if (targetPropId) {
+          await updateEverpropLeadProperty(leadId, targetPropId, {
+            status: stageConfig?.apiCode || "NEW",
+          });
+        }
+      } catch (err) {
+        console.error("Error al actualizar etapa en backend:", err);
+        toast.error("No se pudo cambiar la etapa en el servidor. No se guardaron cambios locales.");
+        return;
+      }
+    } else {
+      saveLeadList(updated, "c1");
+    }
+
+    setLeads(updated);
     try {
       window.dispatchEvent(new Event("everprop_leads_updated"));
       const ch = new BroadcastChannel("everprop_leads");
@@ -323,55 +336,18 @@ export default function AdvisorCockpit() {
     } catch {
       // ignore
     }
-
-    const stageConfig = STAGE_OPTIONS.find((s) => s.id === newStage);
     toast.success(`Etapa cambiada a "${stageConfig?.label || newStage}"`);
-
-    // Sincronización API
-    if (!isMockDataMode) {
-      try {
-        const promises: Promise<unknown>[] = [
-          updateEverpropLead(leadId, {
-            stage: stageConfig?.apiCode || "NEW",
-          }),
-        ];
-
-        if (targetPropId) {
-          promises.push(
-            updateEverpropLeadProperty(leadId, targetPropId, {
-              status: stageConfig?.apiCode || "NEW",
-            }).catch((err) => {
-              console.warn("Could not update property interest status on backend:", err);
-            })
-          );
-        }
-
-        await Promise.all(promises);
-      } catch (err) {
-        console.error("Error al actualizar etapa en backend:", err);
-        toast.error("Error al sincronizar con el servidor, guardado localmente.");
-        setLeads(previousLeads);
-      }
-    }
   }
 
   // Guardar seguimiento
   async function handleConfirmFollowUp(followUp: LeadFollowUp) {
+    if (!canUpdate) return;
     if (!followUpLead) return;
 
-    const nextFollowUps = appendLeadFollowUpToStorage(followUp, followUps, followUpLead.companyId);
-    setFollowUps(nextFollowUps);
-    setLeads((prev) =>
-      prev.map((l) =>
-        l.id === followUpLead.id
-          ? { ...l, followUpUpdatedAt: followUp.occurredAt, lastActivity: followUp.occurredAt }
-          : l
-      )
-    );
-
+    let recordedFollowUp = followUp;
     if (!isMockDataMode) {
       try {
-        const created = await createEverpropLeadFollowUp(followUpLead.id, {
+        recordedFollowUp = await createEverpropLeadFollowUp(followUpLead.id, {
           type: followUp.type,
           occurredAt: followUp.occurredAt,
           summary: followUp.summary,
@@ -380,12 +356,23 @@ export default function AdvisorCockpit() {
           nextContactAt: followUp.nextContactAt,
           agentId: followUp.agentId,
         });
-        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
       } catch (e) {
         console.error("Error al registrar seguimiento en API:", e);
+        toast.error("No se pudo registrar el seguimiento en el servidor.");
+        return;
       }
+    } else {
+      appendLeadFollowUpToStorage(followUp, followUps, followUpLead.companyId);
     }
 
+    setFollowUps((prev) => [recordedFollowUp, ...prev.filter((f) => f.id !== followUp.id)]);
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === followUpLead.id
+          ? { ...l, followUpUpdatedAt: recordedFollowUp.occurredAt, lastActivity: recordedFollowUp.occurredAt }
+          : l
+      )
+    );
     toast.success("Seguimiento registrado con éxito.");
     const recordedLead = followUpLead;
     setFollowUpLead(null);
@@ -394,6 +381,7 @@ export default function AdvisorCockpit() {
 
   // Confirmación de nueva etapa post-seguimiento
   async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
+    if (!canUpdate) return;
     if (!stageUpdateLead) return;
     const activePropId = selectedPropertyByLead[stageUpdateLead.id] || stageUpdateLead.propertyIds?.[0] || stageUpdateLead.interests?.[0]?.propertyId;
     await handleStageChange(stageUpdateLead.id, newStage, activePropId);
@@ -416,6 +404,11 @@ export default function AdvisorCockpit() {
 
   return (
     <div className="space-y-6 pb-12">
+      {loadError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+          {loadError} No se muestran datos de demostración.
+        </div>
+      )}
       {/* ── CABECERA CORPORATIVA SOBRIA: BIENVENIDA AL ASESOR ── */}
       <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:p-6">
         <div>
@@ -442,12 +435,14 @@ export default function AdvisorCockpit() {
             <BarChart3 className="size-4" />
             {showMonthBalance ? "Ocultar Balance" : "Balance del Mes & Números"}
           </Button>
-          <Link href="/admin/leads/new">
-            <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs">
-              <Plus className="size-4" />
-              Nuevo Lead
-            </Button>
-          </Link>
+          {canCreate && (
+            <Link href="/admin/leads/new">
+              <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs">
+                <Plus className="size-4" />
+                Nuevo Lead
+              </Button>
+            </Link>
+          )}
           <Link href="/admin/agenda">
             <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs">
               <CalendarDays className="size-4" />
@@ -788,9 +783,10 @@ export default function AdvisorCockpit() {
                         </span>
                         <select
                           value={activePropStage}
+                          disabled={!canUpdate}
                           onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
                           className={cn(
-                            "h-7 w-full rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate shadow-2xs",
+                            "h-7 w-full rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 truncate shadow-2xs disabled:cursor-not-allowed disabled:opacity-70",
                             currentStageObj.color
                           )}
                           title={matchedProperty ? `Etapa comercial para ${matchedProperty.title}` : "Etapa comercial del lead"}
@@ -856,16 +852,18 @@ export default function AdvisorCockpit() {
                           <div />
                         )}
 
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setFollowUpLead(lead)}
-                          className="col-span-2 h-10 gap-1.5 rounded-xl border-blue-200 bg-blue-50/60 text-xs font-bold text-blue-700 active:bg-blue-100"
-                        >
-                          <ClipboardCheck className="size-4" />
-                          Registrar Seguimiento
-                        </Button>
+                        {canUpdate && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFollowUpLead(lead)}
+                            className="col-span-2 h-10 gap-1.5 rounded-xl border-blue-200 bg-blue-50/60 text-xs font-bold text-blue-700 active:bg-blue-100"
+                          >
+                            <ClipboardCheck className="size-4" />
+                            Registrar Seguimiento
+                          </Button>
+                        )}
 
                         <Link
                           href={`/admin/leads/${lead.id}`}
@@ -900,16 +898,18 @@ export default function AdvisorCockpit() {
                             </a>
                           )}
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setFollowUpLead(lead)}
-                            className="h-9 gap-1.5 rounded-lg border-blue-200 bg-blue-50/50 px-3 text-xs font-bold text-blue-700 hover:bg-blue-100 hover:text-blue-800"
-                          >
-                            <ClipboardCheck className="size-4" />
-                            Registrar Seguimiento
-                          </Button>
+                          {canUpdate && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setFollowUpLead(lead)}
+                              className="h-9 gap-1.5 rounded-lg border-blue-200 bg-blue-50/50 px-3 text-xs font-bold text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+                            >
+                              <ClipboardCheck className="size-4" />
+                              Registrar Seguimiento
+                            </Button>
+                          )}
                         </div>
 
                         <Link
@@ -1007,7 +1007,7 @@ export default function AdvisorCockpit() {
       </div>
 
       {/* Modal de Registro de Seguimiento en 1 Clic */}
-      {followUpLead && (
+      {followUpLead && canUpdate && (
         <LeadFollowUpEditor
           lead={followUpLead}
           onClose={() => setFollowUpLead(null)}
@@ -1016,7 +1016,7 @@ export default function AdvisorCockpit() {
       )}
 
       {/* Modal de Actualización de Etapa Post-Seguimiento */}
-      {stageUpdateLead && (
+      {stageUpdateLead && canUpdate && (
         <LeadStageUpdateModal
           open={Boolean(stageUpdateLead)}
           leadName={stageUpdateLead.name}

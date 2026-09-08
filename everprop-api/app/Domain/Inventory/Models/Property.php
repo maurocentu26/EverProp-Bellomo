@@ -40,6 +40,12 @@ use Illuminate\Support\Carbon;
  * @property string|null $main_image_url
  * @property array<mixed>|null $services_json
  * @property array<mixed>|null $commercial_features_json
+ * @property int|null $legacy_ed_id
+ * @property string|null $legacy_pis
+ * @property string|null $legacy_dep
+ * @property int|null $legacy_status_id
+ * @property int|null $legacy_type_id
+ * @property array<mixed>|null $legacy_data_json
  * @property int $version
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at

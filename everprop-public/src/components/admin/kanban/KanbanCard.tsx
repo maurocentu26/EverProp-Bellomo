@@ -5,8 +5,8 @@ import { type Lead, type LeadFollowUp, properties as sampleProperties } from "@/
 import CardLead from "@/components/admin/CardLead";
 import { cn } from "@/lib/utils";
 
-export function KanbanCard({ lead, followUps, isActive }: { lead: Lead; followUps: LeadFollowUp[]; isActive: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
+export function KanbanCard({ lead, followUps, isActive, disabled = false }: { lead: Lead; followUps: LeadFollowUp[]; isActive: boolean; disabled?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id, disabled });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -22,7 +22,7 @@ export function KanbanCard({ lead, followUps, isActive }: { lead: Lead; followUp
 
   return (
     <div ref={setNodeRef} style={style} className={cn(isActive && "z-10")}>
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+      <div {...attributes} {...listeners} className={cn(!disabled && "cursor-grab active:cursor-grabbing")}>
         <CardLead
           className="hover:border-blue-400 hover:shadow-md transition-shadow"
           id={lead.id}

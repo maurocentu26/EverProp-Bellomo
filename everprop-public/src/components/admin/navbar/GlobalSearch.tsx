@@ -5,9 +5,10 @@ import { Search, Building2, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { leads as sampleLeads, properties as sampleProperties, projects as sampleProjects, type Lead, type Property, type Project } from "@/data/admin-sample";
 import { loadLeadList, loadPropertyList, loadProjectList } from "@/lib/admin-storage";
+import { isMockDataMode } from "@/lib/data-mode";
+import { loadEverpropCatalog, loadEverpropLeads } from "@/lib/everprop-api";
 import { SearchPropertyItem } from "../SearchPropertyItem";
 import { SearchLeadItem } from "../SearchLeadItem";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
 import {
   Dialog,
   DialogContent,
@@ -28,13 +29,33 @@ export function GlobalSearch() {
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const cancelDeferredUpdate = deferEffectUpdate(() => {
-      setAllProperties(loadPropertyList(sampleProperties, "c1"));
-      setAllLeads(loadLeadList(sampleLeads, "c1"));
-      setAllProjects(loadProjectList(sampleProjects, "c1"));
-    });
+    let active = true;
+    async function loadSearchData() {
+      if (isMockDataMode) {
+        setAllProperties(loadPropertyList(sampleProperties, "c1"));
+        setAllLeads(loadLeadList(sampleLeads, "c1"));
+        setAllProjects(loadProjectList(sampleProjects, "c1"));
+        return;
+      }
+      try {
+        const [catalog, leads] = await Promise.all([loadEverpropCatalog(), loadEverpropLeads()]);
+        if (!active) return;
+        setAllProperties(catalog.properties);
+        setAllProjects(catalog.projects);
+        setAllLeads(leads);
+        setLoadError("");
+      } catch (reason) {
+        if (!active) return;
+        setAllProperties([]);
+        setAllProjects([]);
+        setAllLeads([]);
+        setLoadError(reason instanceof Error ? reason.message : "No se pudo cargar la búsqueda desde la API.");
+      }
+    }
+    void loadSearchData();
 
     // Cerrar buscador con ESC
     const handleEsc = (e: KeyboardEvent) => {
@@ -42,7 +63,7 @@ export function GlobalSearch() {
     };
     window.addEventListener("keydown", handleEsc);
     return () => {
-      cancelDeferredUpdate();
+      active = false;
       window.removeEventListener("keydown", handleEsc);
     };
   }, []);
@@ -136,6 +157,11 @@ export function GlobalSearch() {
                     className="border-none text-base focus-visible:ring-0 sm:text-lg"
                   />
                 </InputGroup>
+                {loadError && (
+                  <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900" role="alert">
+                    {loadError} No se muestran datos de demostración.
+                  </p>
+                )}
               </div>
             </header>
 

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 class SetupSimulationDatabaseCommand extends Command
 {
+    private const BASELINE_SHA256 = '4C8B170BC6F8B6827E9B85E756ACB2254CCF392B0FF4C11459C775366BAE472D';
+
     /**
      * The name and signature of the console command.
      *
@@ -26,6 +28,12 @@ class SetupSimulationDatabaseCommand extends Command
      */
     public function handle(): int
     {
+        if (! $this->laravel->environment(['local', 'testing'])) {
+            $this->error('Simulation database setup is restricted to local and testing environments.');
+
+            return Command::FAILURE;
+        }
+
         $this->info('Starting database setup for Bellomo simulation...');
 
         $baselinePath = database_path('schema/bellomo_crm_omnichannel_mysql8.baseline.sql');
@@ -33,11 +41,19 @@ class SetupSimulationDatabaseCommand extends Command
 
         if (! file_exists($baselinePath)) {
             $this->error("Baseline SQL not found at: {$baselinePath}");
+
             return Command::FAILURE;
         }
 
         if (! file_exists($seedPath)) {
             $this->error("Seed SQL not found at: {$seedPath}");
+
+            return Command::FAILURE;
+        }
+
+        if (! hash_equals(self::BASELINE_SHA256, strtoupper((string) hash_file('sha256', $baselinePath)))) {
+            $this->error('The baseline SQL does not match the canonical SHA-256.');
+
             return Command::FAILURE;
         }
 
@@ -60,7 +76,8 @@ class SetupSimulationDatabaseCommand extends Command
                 DB::unprepared($part1);
                 $this->info('   ✓ Baseline Part 1 (CRM & core tables) created.');
             } catch (\Throwable $e) {
-                $this->error('Error in Baseline Part 1: ' . $e->getMessage());
+                $this->error('Error in Baseline Part 1: '.$e->getMessage());
+
                 return Command::FAILURE;
             }
 
@@ -85,7 +102,7 @@ class SetupSimulationDatabaseCommand extends Command
         }
 
         $this->info('   ✓ Creating cache and sessions tables...');
-        DB::unprepared("
+        DB::unprepared('
             CREATE TABLE IF NOT EXISTS `cache` (
                 `key` VARCHAR(255) NOT NULL,
                 `value` MEDIUMTEXT NOT NULL,
@@ -125,13 +142,13 @@ class SetupSimulationDatabaseCommand extends Command
                 KEY `notifications_notifiable_type_notifiable_id_index` (`notifiable_type`, `notifiable_id`),
                 KEY `notifications_read_at_index` (`read_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ");
+        ');
         $this->info('   ✓ Cache, sessions and notifications tables created successfully.');
 
         $forwardDir = database_path('schema/forward');
         if (is_dir($forwardDir)) {
             $this->info('2. Executing forward schema migrations (password_hash & interop)...');
-            $files = glob($forwardDir . '/*.sql');
+            $files = glob($forwardDir.'/*.sql');
             sort($files);
             foreach ($files as $migrationFile) {
                 $filename = basename($migrationFile);
@@ -139,7 +156,7 @@ class SetupSimulationDatabaseCommand extends Command
                     DB::unprepared(file_get_contents($migrationFile));
                     $this->info("   ✓ Migration {$filename} applied.");
                 } catch (\Throwable $e) {
-                    $this->warn("   Notice on {$filename}: " . $e->getMessage());
+                    $this->warn("   Notice on {$filename}: ".$e->getMessage());
                 }
             }
         }
@@ -152,11 +169,7 @@ class SetupSimulationDatabaseCommand extends Command
         $this->newLine();
         $this->info('=============================================');
         $this->info('🎉 DATABASE SETUP COMPLETE!');
-        $this->info('Users ready with password: password123');
-        $this->info('- admin@bellomo.com (Marcos Bellomo)');
-        $this->info('- sofia@bellomo.com (Ing. Sofía Bellomo)');
-        $this->info('- lucas.albarracin@bellomo.com (Lucas Albarracín)');
-        $this->info('- valentina.morales@bellomo.com (Valentina Morales)');
+        $this->info('Simulation users and data are ready for local testing.');
         $this->info('=============================================');
 
         return Command::SUCCESS;

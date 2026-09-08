@@ -15,6 +15,7 @@ export default function EnterpriseDashboard({ companyId = "c1" }: { companyId?: 
   const [projects, setProjects] = useState<Project[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -25,10 +26,17 @@ export default function EnterpriseDashboard({ companyId = "c1" }: { companyId?: 
           if (!active) return;
           setProjects(catalog.projects);
           setProperties(catalog.properties);
+          setError("");
           setHydrated(true);
           return;
         } catch (e) {
           console.error("Error loading enterprise dashboard:", e);
+          if (!active) return;
+          setProjects([]);
+          setProperties([]);
+          setError(e instanceof Error ? e.message : "No se pudo cargar el dashboard desde la API.");
+          setHydrated(true);
+          return;
         }
       }
       if (!active) return;
@@ -73,6 +81,11 @@ export default function EnterpriseDashboard({ companyId = "c1" }: { companyId?: 
 
   return (
     <div className="space-y-8">
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900" role="alert">
+          {error} No se muestran datos de demostración.
+        </div>
+      )}
       {/* 1. Construction Progress Widget */}
       <ProjectsOverviewWidget activeProjects={activeProjects} />
 

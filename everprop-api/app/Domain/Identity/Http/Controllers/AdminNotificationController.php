@@ -20,9 +20,6 @@ final class AdminNotificationController extends Controller
 
         $data = $notifications->map(function ($n) use ($user) {
             $payload = $n->data;
-            if (is_string($payload)) {
-                $payload = json_decode($payload, true) ?: [];
-            }
 
             return [
                 'id' => $n->id,
@@ -108,4 +105,3 @@ final class AdminNotificationController extends Controller
         ]);
     }
 }
-
