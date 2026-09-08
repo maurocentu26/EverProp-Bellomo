@@ -39,9 +39,15 @@ CMD ["php-fpm", "-F"]
 FROM runtime AS development
 
 FROM runtime AS production
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends nginx supervisor \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+USER everprop
 COPY --chown=everprop:everprop . /var/www/html
 RUN APP_ENV=build composer install --no-dev --classmap-authoritative --no-interaction --no-progress \
-    && APP_ENV=build php artisan package:discover --ansi
+    && APP_ENV=build php artisan package:discover --ansi \
+    && mkdir -p storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 
 EXPOSE 8080
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+ENTRYPOINT ["sh", "/var/www/html/docker/production/entrypoint.sh"]
+CMD ["web"]

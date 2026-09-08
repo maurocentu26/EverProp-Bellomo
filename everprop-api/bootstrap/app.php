@@ -15,10 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
-        $middleware->validateCsrfTokens(except: [
-            'api/v1/*',
-            'sanctum/csrf-cookie',
-        ]);
+        $middleware->trustProxies(
+            headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO,
+        );
         $middleware->trustHosts(
             at: static fn (): array => array_map(
                 static fn (string $host): string => '^'.preg_quote($host, '/').'$',

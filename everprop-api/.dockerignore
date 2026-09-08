@@ -1,6 +1,6 @@
 .git
 .github
-.docker/secrets
+.docker
 .env
 .env.*
 !.env.example
@@ -10,5 +10,11 @@ storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
+storage/app/*
+bootstrap/cache/*.php
+tests
+docs
+scripts
+import_bellomo_data.py
 .phpunit.cache
 .phpstan.cache

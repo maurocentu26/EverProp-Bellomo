@@ -2,6 +2,8 @@
 
 ## Deployment order
 
+Backend image, Railway service configuration and environment setup: see [railway-backend.md](railway-backend.md).
+
 1. Back up the production MySQL database. Inspect existing `schema_versions` and constraints. Apply pending forward changes only, never the baseline or demo seeders.
 2. Apply `database/schema/forward/2026-09-08.001_create_collections.sql` if not already applied, followed by `2026-09-08.002_inventory_manager_role.sql`. The latter replaces `ck_users_role` and preserves all current users. Do not roll back its allowlist while inventory managers exist.
 3. Deploy the API with `APP_ENV=production`, `APP_DEBUG=false`, HTTPS session cookies, the real frontend in Sanctum/CORS configuration, and persistent shared Redis for sessions, queue, activation tokens and locks. Keep the hourly collections scheduler running. Do not point production at local Docker URLs.
