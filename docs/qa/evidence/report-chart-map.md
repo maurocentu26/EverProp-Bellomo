@@ -16,7 +16,7 @@
 ## Resumen visual secundario
 
 - Tipo: tira de métricas ejecutivas.
-- Valores: Vitest `21/21`, Playwright mock `6/6`, Playwright API `2/2`, PHPUnit `63/63`, HTTP `7/7`, OpenAPI `55/55`.
+- Valores: Vitest `22/22`, Playwright mock `6/6`, Playwright API `2/2`, PHPUnit `63/63`, HTTP `7/7`, OpenAPI `55/55`.
 - Finalidad: separar evidencia local reproducible de la decisión operativa live.
 
 ## Proveniencia y transformación
@@ -30,4 +30,4 @@ No se consultan datos personales ni se muta producción. Los conteos se cargan c
 
 ## Validación y entrega
 
-El artefacto MCP pasó `validate_artifact` con estado `ready`, 3 datasets y 3 fuentes. Después se ejecutó una única llamada a `render_artifact`, completada correctamente. Si los números cambian, se actualizan simultáneamente este mapa, el registro de defectos y el informe maestro.
+La revisión final del artefacto MCP, actualizada a `origin/main@64003ba`, pasó `validate_artifact` con estado `ready`, 3 datasets y 3 fuentes. Después se ejecutó una única llamada a `render_artifact` para esa revisión, completada correctamente. La primera versión visual quedó explícitamente reemplazada porque Mauro publicó dos commits mientras se cerraba el informe. Si los números cambian, se actualizan simultáneamente este mapa, el registro de defectos y el informe maestro.

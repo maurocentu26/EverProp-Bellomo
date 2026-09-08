@@ -1,6 +1,6 @@
 # Registro de defectos
 
-Ambiente base inicial: `main@11e93b15acf97241b7720de9d518905fadc54db2`. Corte integrado: `origin/main@bf7018118ee683725c20d43e472b0722f05708af`, 8 de septiembre de 2026 ART, en `codex/preproduction-audit-20260908`. Toda evidencia live fue GET no destructiva y sanitizada.
+Ambiente base inicial: `main@11e93b15acf97241b7720de9d518905fadc54db2`. Corte integrado: `origin/main@64003ba2d849519a5f030b56d582f16e5d3e523b`, 8 de septiembre de 2026 ART, en `codex/preproduction-audit-20260908`. Toda evidencia live fue GET no destructiva y sanitizada.
 
 ## EP-QA-001 — P0 — Setup destructivo público
 
@@ -190,7 +190,7 @@ Ambiente base inicial: `main@11e93b15acf97241b7720de9d518905fadc54db2`. Corte in
 - **Baseline:** leads y follow-ups usaban `limit(200/500)` y el frontend pedía una sola página de catálogo, con truncamiento silencioso al crecer la base.
 - **Impacto:** registros operativos podían faltar sin aviso.
 - **Corrección/test:** leads y follow-ups ahora exponen paginación determinista con metadata y máximo de 100 por página; el cliente recorre todas las páginas de catálogo/CRM y falla explícitamente por encima de 10.000 registros. OpenAPI documenta parámetros, metadata y 422.
-- **Evidencia:** `AdminLeadPaginationTest` 2 casos/24 aserciones, Vitest multipágina/cap 2 casos, PHPUnit 63/63, Vitest 21/21, PHPStan, TypeScript, Redocly y paridad 55/55 PASS.
+- **Evidencia:** `AdminLeadPaginationTest` 2 casos/24 aserciones, Vitest multipágina/cap 2 casos, PHPUnit 63/63, Vitest 22/22, PHPStan, TypeScript, Redocly y paridad 55/55 PASS.
 - **Riesgo residual:** para más de 10.000 registros hace falta paginación/filtros visibles server-side; no hay truncamiento silencioso.
 
 ## EP-QA-020 — P2 — Runtime web de Railway no usa hardening Nginx
@@ -228,7 +228,7 @@ Ambiente base inicial: `main@11e93b15acf97241b7720de9d518905fadc54db2`. Corte in
 - **Actual detectado:** una respuesta API vacía o fallida podía reponer notificaciones de `localStorage`; `actionUrl` aceptaba destinos externos o esquemas peligrosos.
 - **Impacto:** datos viejos de otro usuario, falsos positivos operativos y navegación no confiable.
 - **Corrección/test:** la API es autoritativa incluso para `[]`, los fallos se muestran sin fallback y sólo se permiten rutas same-origin bajo `/admin`.
-- **Evidencia:** 6 archivos/21 tests Vitest PASS, incluidos error propagado y allowlist de URL.
+- **Evidencia:** 6 archivos/22 tests Vitest PASS, incluidos error propagado, allowlist de URL y destinatario estricto sin override/alias/broadcast.
 
 ## EP-QA-025 — P1 — Regresiones del merge en navegación, filtros y permisos
 

@@ -4,10 +4,10 @@
 
 **Veredicto senior: GO para revisión, CI y staging; NO-GO para habilitar usuarios reales en el despliegue actual.** El candidato integrado está técnicamente verde en local, pero Railway continúa con `/readyz` 503 y todavía faltan pruebas operativas de backup/restore, storage durable, worker/scheduler y matriz real de seis roles.
 
-- **Fuente integrada:** `origin/main@bf7018118ee683725c20d43e472b0722f05708af`, que contiene los dos últimos commits de Mauro.
+- **Fuente integrada:** `origin/main@64003ba2d849519a5f030b56d582f16e5d3e523b`, incluido el último ajuste de Mauro sobre destinatarios de notificaciones.
 - **Rama aislada:** `codex/preproduction-audit-20260908`; no se trabajó sobre `main` ni sobre una rama de Mauro.
 - **Alcance correcto:** panel Bellomo `/admin` mostrado por el usuario.
-- **Merge:** 39 archivos upstream, 3.311 altas, 1.083 bajas y 10 conflictos resueltos manualmente.
+- **Merge:** 39 archivos upstream, 3.374 altas, 1.094 bajas y 12 conflictos resueltos manualmente.
 - **Candidato local:** frontend, backend, contrato, navegador desktop/mobile e imagen productiva en verde.
 - **Hallazgos nuevos del merge:** 5 defectos P0/P1 encontrados y cerrados antes de publicar la rama.
 - **Live read-only:** Vercel `/admin` 200 y catálogo 200; Railway catálogo 200, pero readiness sigue 503.
@@ -46,19 +46,20 @@ El candidato está en el primer nodo; saltear los controles intermedios no está
 1. **Notificaciones P0:** se eliminaron Route Handlers/SSE globales en memoria que no exigían sesión, tenant, CSRF ni límites. El navbar vuelve a usar polling contra Laravel autenticado y tenant-scoped.
 2. **Sin falsos datos:** una API vacía o fallida ya no repone notificaciones desde `localStorage`; los errores permanecen visibles.
 3. **Navegación segura:** `actionUrl` sólo acepta rutas same-origin bajo `/admin`; se rechazan URL externas, protocol-relative y esquemas ejecutables.
-4. **RBAC de UI:** creación, edición, asignación, etapas, settings y quick actions respetan capabilities en desktop y móvil.
-5. **Filtros coherentes:** al cambiar de proyecto se limpia una manzana incompatible; chips con ARIA y cierre por Escape.
-6. **Alta sin flash de permisos:** el guard se evalúa antes de montar el formulario de propiedad.
-7. **Merge compilable:** se eliminó una declaración duplicada introducida al resolver navegación.
-8. **Tenancy en leads:** un tenant sin etapa ya no intenta usar `stage_id=1` ajeno ni devuelve 500; responde 422 y revierte la transacción.
-9. **Datos AP8:** lotes 12/14/15/16 vuelven a `AVAILABLE`, 17/18 quedan `RESERVED`; una migración forward-only aplica el cambio de Mauro a bases existentes.
-10. **Texto y estados:** se corrigieron mojibake visibles y defaults de estado; agenda/visitas demo continúan ocultas o explícitamente no persistentes en modo API.
+4. **Destinatario estricto:** el último cambio de Mauro se conservó sin privilegio especial para admin, aliases personales hardcodeados ni pseudo-broadcast; API y mock exigen coincidencia explícita de ID/email.
+5. **RBAC de UI:** creación, edición, asignación, etapas, settings y quick actions respetan capabilities en desktop y móvil.
+6. **Filtros coherentes:** al cambiar de proyecto se limpia una manzana incompatible; chips con ARIA y cierre por Escape.
+7. **Alta sin flash de permisos:** el guard se evalúa antes de montar el formulario de propiedad.
+8. **Merge compilable:** se eliminó una declaración duplicada introducida al resolver navegación.
+9. **Tenancy en leads:** un tenant sin etapa ya no intenta usar `stage_id=1` ajeno ni devuelve 500; responde 422 y revierte la transacción.
+10. **Datos AP8:** lotes 12/14/15/16 vuelven a `AVAILABLE`, 17/18 quedan `RESERVED`; una migración forward-only aplica el cambio de Mauro a bases existentes.
+11. **Texto y estados:** se corrigieron mojibake visibles y defaults de estado; agenda/visitas demo continúan ocultas o explícitamente no persistentes en modo API.
 
 ## Evidencia cuantitativa final
 
 | Gate | Resultado |
 |---|---|
-| Vitest | 6 archivos, 21/21 PASS |
+| Vitest | 6 archivos, 22/22 PASS |
 | TypeScript | PASS |
 | ESLint estricto | PASS, 0 errores |
 | ESLint completo | 83 warnings |
@@ -90,7 +91,7 @@ El inventario normalizado previo al merge contiene 90 comportamientos únicos so
 | BLOCKED | 14 | 15,6% |
 | Total | 90 | 100% |
 
-Ese número es una línea base auditada, no una afirmación artificial de que cada instancia repetida sea un caso distinto. El delta de Mauro se cubrió con revisión de los 39 archivos, resolución de 10 conflictos, nuevas regresiones unitarias, build y los 8 recorridos Playwright. El detalle botón/acción sigue en `INTERACTION_INVENTORY.csv`.
+Ese número es una línea base auditada, no una afirmación artificial de que cada instancia repetida sea un caso distinto. El delta de Mauro se cubrió con revisión de los 39 archivos, resolución de 12 conflictos, nuevas regresiones unitarias, build y los 8 recorridos Playwright. El detalle botón/acción sigue en `INTERACTION_INVENTORY.csv`.
 
 ## Defectos
 

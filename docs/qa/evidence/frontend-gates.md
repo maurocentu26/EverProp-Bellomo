@@ -12,7 +12,7 @@
 
 | Gate | Resultado |
 |---|---|
-| Vitest | PASS, 6 archivos y 21 tests; incluye capabilities, navegación, paginación, notificaciones seguras y 73 lotes únicos |
+| Vitest | PASS, 6 archivos y 22 tests; incluye capabilities, navegación, paginación, destinatario estricto de notificaciones y 73 lotes únicos |
 | TypeScript | PASS |
 | ESLint | PASS técnico: 0 errores; deuda de 83 warnings |
 | Next build API | PASS, Next 16.3.4; 15 entradas del router, 14 `/admin`; los dos endpoints Next inseguros de notificaciones no existen |

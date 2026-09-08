@@ -18,7 +18,35 @@ export type AppNotification = {
   read: boolean;
 };
 
+export type UserIdentifier = {
+  id: string;
+  email?: string | null;
+} | string | null | undefined;
+
 const STORAGE_KEY = "everprop:notifications";
+
+function normalized(value?: string | null): string {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+/**
+ * Enforces exact recipient matching without role-based overrides or hard-coded
+ * identity aliases. The authenticated API remains the authority in API mode.
+ */
+export function isNotificationForUser(
+  targetUserId: string | null | undefined,
+  currentUser: UserIdentifier
+): boolean {
+  const target = normalized(targetUserId);
+  if (!target || !currentUser) return false;
+
+  if (typeof currentUser === "string") {
+    return target === normalized(currentUser);
+  }
+
+  return target === normalized(currentUser.id)
+    || Boolean(currentUser.email && target === normalized(currentUser.email));
+}
 
 export function safeAdminActionUrl(value?: string | null): string | null {
   if (!value) return null;
@@ -62,24 +90,30 @@ export function saveNotifications(notifications: AppNotification[]) {
   }
 }
 
-export async function fetchNotifications(targetUserId?: string): Promise<AppNotification[]> {
+export async function fetchNotifications(currentUser?: UserIdentifier): Promise<AppNotification[]> {
+  if (!currentUser) return [];
+
   if (!isMockDataMode) {
-    const res = await loadEverpropNotifications();
-    return res.data;
+    const response = await loadEverpropNotifications();
+    return response.data.filter((notification) =>
+      isNotificationForUser(notification.targetUserId, currentUser)
+    );
   }
 
-  const local = loadNotifications();
-  if (!targetUserId) return local;
-  return local.filter((n) => n.targetUserId === targetUserId);
+  return loadNotifications().filter((notification) =>
+    isNotificationForUser(notification.targetUserId, currentUser)
+  );
 }
 
-export async function markAllNotificationsAsRead(targetUserId?: string): Promise<void> {
+export async function markAllNotificationsAsRead(currentUser?: UserIdentifier): Promise<void> {
+  if (!currentUser) return;
+
   if (!isMockDataMode) {
     await markAllEverpropNotificationsRead();
     return;
   }
 
-  if (targetUserId) markAllAsRead(targetUserId);
+  markAllAsRead(currentUser);
 }
 
 export async function markNotificationAsRead(id: string): Promise<void> {
@@ -89,7 +123,9 @@ export async function markNotificationAsRead(id: string): Promise<void> {
   }
 
   const notifs = loadNotifications();
-  const updated = notifs.map((n) => (n.id === id ? { ...n, read: true } : n));
+  const updated = notifs.map((notification) =>
+    notification.id === id ? { ...notification, read: true } : notification
+  );
   saveNotifications(updated);
 }
 
@@ -115,57 +151,55 @@ export function createNotification(
   saveNotifications([newNotif, ...notifs].slice(0, 50));
 }
 
-export function markAllAsRead(targetUserId: string) {
+export function markAllAsRead(currentUser: UserIdentifier) {
+  if (!currentUser) return;
+
   const notifs = loadNotifications();
-  const updated = notifs.map((n) =>
-    n.targetUserId === targetUserId ? { ...n, read: true } : n
+  const updated = notifs.map((notification) =>
+    isNotificationForUser(notification.targetUserId, currentUser)
+      ? { ...notification, read: true }
+      : notification
   );
   saveNotifications(updated);
 }
 
-export async function clearAllNotifications(targetUserId?: string): Promise<void> {
+export async function clearAllNotifications(currentUser?: UserIdentifier): Promise<void> {
+  if (!currentUser) return;
+
   if (!isMockDataMode) {
     await clearAllEverpropNotifications();
     return;
   }
 
   if (typeof window !== "undefined") {
-    const remaining = targetUserId
-      ? loadNotifications().filter((notification) => notification.targetUserId !== targetUserId)
-      : [];
+    const remaining = loadNotifications().filter((notification) =>
+      !isNotificationForUser(notification.targetUserId, currentUser)
+    );
     saveNotifications(remaining);
-    try {
-      const channel = new BroadcastChannel("everprop_notifications");
-      channel.postMessage({ type: "NOTIFICATIONS_UPDATED" });
-      channel.close();
-      window.dispatchEvent(new Event("everprop_notifications_updated"));
-    } catch (e) {
-      console.error(e);
-    }
   }
 }
 
 // ── Desktop Notification Permissions ──
 
-export async function requestDesktopNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
-  if (typeof window === 'undefined' || !('Notification' in window)) {
-    return 'unsupported';
+export async function requestDesktopNotificationPermission(): Promise<NotificationPermission | "unsupported"> {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return "unsupported";
   }
-  if (Notification.permission === 'granted') return 'granted';
-  if (Notification.permission === 'denied') return 'denied';
+  if (Notification.permission === "granted") return "granted";
+  if (Notification.permission === "denied") return "denied";
   return Notification.requestPermission();
 }
 
 export function showDesktopNotification(title: string, options?: NotificationOptions): void {
-  if (typeof window === 'undefined' || !('Notification' in window)) return;
-  if (Notification.permission !== 'granted') return;
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
   try {
     new Notification(title, {
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      icon: "/favicon.ico",
+      badge: "/favicon.ico",
       ...options,
     });
   } catch {
-    // Silently fail
+    // Desktop notification support varies by browser and OS policy.
   }
 }

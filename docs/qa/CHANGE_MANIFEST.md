@@ -1,6 +1,6 @@
 # Manifiesto de cambios de la rama de auditoría
 
-La rama `codex/preproduction-audit-20260908` integra `origin/main@bf7018118ee683725c20d43e472b0722f05708af` sobre el checkpoint QA `9e43ee8`. No se modificó `main` ni una rama de Mauro; no hubo deploy.
+La rama `codex/preproduction-audit-20260908` integra `origin/main@64003ba2d849519a5f030b56d582f16e5d3e523b` sobre el checkpoint QA `9e43ee8`. No se modificó `main` ni una rama de Mauro; no hubo deploy.
 
 ## Backend
 
@@ -107,4 +107,4 @@ La rama `codex/preproduction-audit-20260908` integra `origin/main@bf7018118ee683
 
 ## Delta de Mauro preservado
 
-Se conservaron sus dos commits de inventario/loteos y rediseño móvil: 39 archivos, 3.311 altas y 1.083 bajas. La resolución manual abarcó 10 archivos con conflictos y preservó modo oscuro, filtros, navegación de propiedades, quick schedule, audio y experiencia responsive. Se excluyeron únicamente los Route Handlers/SSE de notificaciones globales por riesgo P0; la función quedó conectada a la API Laravel existente.
+Se conservaron sus tres commits funcionales de inventario/loteos, rediseño móvil y destinatario estricto de notificaciones: 39 archivos, 3.374 altas y 1.094 bajas. La resolución manual acumulada abarcó 12 conflictos y preservó modo oscuro, filtros, navegación de propiedades, quick schedule, audio y experiencia responsive. Se excluyeron los Route Handlers/SSE globales por riesgo P0 y los aliases personales hardcodeados; la función quedó conectada a la API Laravel autenticada y tenant/user-scoped.

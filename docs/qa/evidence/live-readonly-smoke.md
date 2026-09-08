@@ -1,6 +1,6 @@
 # Smoke live read-only — 8 de septiembre de 2026 ART
 
-No se usaron credenciales ni métodos mutantes. Se repitieron los probes luego de integrar `origin/main@bf7018118ee683725c20d43e472b0722f05708af`.
+No se usaron credenciales ni métodos mutantes. Se repitieron los probes antes del último delta frontend-only y se confirmó que `origin/main@64003ba2d849519a5f030b56d582f16e5d3e523b` no modifica backend ni infraestructura live.
 
 | Destino | Request | Resultado final |
 |---|---|---|

@@ -1,6 +1,6 @@
 # Production readiness — EverProp Bellomo
 
-**Veredicto: GO para CI/staging; NO-GO para habilitar mañana el despliegue actual.** Corte integrado: 8 de septiembre de 2026 ART. Fuente Mauro `origin/main@bf7018118ee683725c20d43e472b0722f05708af`; fixes en rama aislada `codex/preproduction-audit-20260908`.
+**Veredicto: GO para CI/staging; NO-GO para habilitar mañana el despliegue actual.** Corte integrado: 8 de septiembre de 2026 ART. Fuente Mauro `origin/main@64003ba2d849519a5f030b56d582f16e5d3e523b`; fixes en rama aislada `codex/preproduction-audit-20260908`.
 
 El candidato local mejoró de forma sustancial y supera todos los gates backend, frontend y de imagen que pudieron ejecutarse. El NO-GO se mantiene porque lo desplegado continúa con readiness 503 y catálogo 404, y porque agenda, operación de colas/storage y recuperación no están listas.
 
@@ -8,10 +8,10 @@ El candidato local mejoró de forma sustancial y supera todos los gates backend,
 
 | Gate | Estado | Evidencia / condición |
 |---|---|---|
-| Fuente trazable | PASS | Dos commits nuevos de Mauro integrados; 10 conflictos resueltos en rama aislada. |
+| Fuente trazable | PASS | Tres commits funcionales nuevos de Mauro y sus merges integrados; 12 conflictos resueltos en rama aislada. |
 | Baseline SQL inmutable | PASS | Hash `4C8B...472D`, sin modificación. |
 | Frontend lint/types/build | PASS con deuda | 0 errores, 83 warnings; TypeScript/build PASS. |
-| Frontend unitario | PASS | Vitest 21/21 en 6 archivos, incluidos RBAC, paginación, notificaciones e inventario de 73 lotes. |
+| Frontend unitario | PASS | Vitest 22/22 en 6 archivos, incluidos RBAC, paginación, destinatario estricto de notificaciones e inventario de 73 lotes. |
 | Frontend navegador mock | PASS | Playwright Chrome desktop 3/3 y mobile 3/3. |
 | Frontend API real | PASS local | Build productivo, login, alta 201, render, reload, logout 204 y back/forward: 2/2 desktop/mobile. |
 | Dependencias frontend | PASS | npm audit 0. |

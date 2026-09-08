@@ -10,7 +10,12 @@ const api = vi.hoisted(() => ({
 vi.mock("./data-mode", () => ({ isMockDataMode: false }));
 vi.mock("./everprop-api", () => api);
 
-import { fetchNotifications, markNotificationAsRead, safeAdminActionUrl } from "./notifications";
+import {
+  fetchNotifications,
+  isNotificationForUser,
+  markNotificationAsRead,
+  safeAdminActionUrl,
+} from "./notifications";
 
 describe("production notification boundary", () => {
   beforeEach(() => {
@@ -39,5 +44,16 @@ describe("production notification boundary", () => {
     expect(safeAdminActionUrl("https://evil.example/admin")).toBeNull();
     expect(safeAdminActionUrl("//evil.example/admin")).toBeNull();
     expect(safeAdminActionUrl("/login")).toBeNull();
+  });
+
+  it("matches only the explicit recipient without admin or alias overrides", () => {
+    const admin = { id: "usr-admin", email: "admin@bellomo.com" };
+
+    expect(isNotificationForUser("usr-admin", admin)).toBe(true);
+    expect(isNotificationForUser("ADMIN@BELLOMO.COM", admin)).toBe(true);
+    expect(isNotificationForUser("usr-sales", admin)).toBe(false);
+    expect(isNotificationForUser("b1100000-0000-4000-8000-000000000100", admin)).toBe(false);
+    expect(isNotificationForUser("broadcast", admin)).toBe(false);
+    expect(isNotificationForUser(null, admin)).toBe(false);
   });
 });

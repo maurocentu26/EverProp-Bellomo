@@ -43,7 +43,7 @@ export function AdminNavbar({ className }: Props) {
 
     const refresh = async () => {
       try {
-        const notifs = await fetchNotifications(user.id);
+        const notifs = await fetchNotifications(user);
         if (!mounted) return;
 
         const newest = notifs.find((notification) => !notification.read);
@@ -105,7 +105,7 @@ export function AdminNavbar({ className }: Props) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       channel?.close();
     };
-  }, [user?.id, router]);
+  }, [user, router]);
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
@@ -132,7 +132,7 @@ export function AdminNavbar({ className }: Props) {
   const handleMarkAllAsRead = async () => {
     if (!user?.id) return;
     try {
-      await markAllNotificationsAsRead(user.id);
+      await markAllNotificationsAsRead(user);
       setNotifications((current) => current.map((notification) => ({ ...notification, read: true })));
     } catch (error) {
       console.error("Error marking notifications as read:", error);
@@ -143,7 +143,7 @@ export function AdminNavbar({ className }: Props) {
   const handleClearAll = async () => {
     if (!user?.id) return;
     try {
-      await clearAllNotifications(user.id);
+      await clearAllNotifications(user);
       setNotifications([]);
     } catch (error) {
       console.error("Error clearing notifications:", error);
