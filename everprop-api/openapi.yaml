@@ -39,6 +39,10 @@
         {
             "name": "Webhooks",
             "description": "Signed durable integration deliveries."
+        },
+        {
+            "name": "Collections",
+            "description": "Tenant-scoped fixed agreements, installments and payment ledger."
         }
     ],
     "security": [],
@@ -154,6 +158,9 @@
                             }
                         }
                     },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
                     "419": {
                         "$ref": "#/components/responses/CsrfMismatch"
                     },
@@ -162,9 +169,6 @@
                     },
                     "429": {
                         "$ref": "#/components/responses/TooManyRequests"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
                     }
                 }
             }
@@ -590,10 +594,10 @@
                     }
                 },
                 "responses": {
-                    "201": {
+                    "200": {
                         "$ref": "#/components/responses/LeadAccepted"
                     },
-                    "200": {
+                    "201": {
                         "$ref": "#/components/responses/LeadAccepted"
                     },
                     "409": {
@@ -688,10 +692,10 @@
                     }
                 },
                 "responses": {
-                    "202": {
+                    "200": {
                         "$ref": "#/components/responses/WebhookAccepted"
                     },
-                    "200": {
+                    "202": {
                         "$ref": "#/components/responses/WebhookAccepted"
                     },
                     "401": {
@@ -1402,15 +1406,6 @@
                     }
                 ],
                 "responses": {
-                    "401": {
-                        "$ref": "#/components/responses/Unauthenticated"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/Forbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
-                    },
                     "200": {
                         "description": "Features",
                         "content": {
@@ -1428,6 +1423,15 @@
                                 }
                             }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 }
             },
@@ -1598,15 +1602,6 @@
                     }
                 ],
                 "responses": {
-                    "401": {
-                        "$ref": "#/components/responses/Unauthenticated"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/Forbidden"
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/NotFound"
-                    },
                     "200": {
                         "description": "Media",
                         "content": {
@@ -1624,6 +1619,15 @@
                                 }
                             }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
                     }
                 }
             },
@@ -1774,6 +1778,600 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/payment-agreements": {
+            "get": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "listAgreements",
+                "summary": "Paginated authorized agreements",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "leadId",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation; JSON data envelope"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "createAgreement",
+                "summary": "Create fixed agreement and schedule atomically",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CollectionAgreementInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created or idempotently replayed agreement"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "409": {
+                        "description": "Idempotency key reused with different input"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/payment-agreements/{agreement}": {
+            "get": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "showAgreement",
+                "summary": "Read agreement",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "agreement",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation; JSON data envelope"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/installments": {
+            "get": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "listInstallments",
+                "summary": "Paginated schedules with paid totals, remaining balances and tenant-timezone statuses",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "leadId",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "agreementId",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "projectName",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "dueFrom",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "dueTo",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation; JSON data envelope"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/installments/{installment}/payments": {
+            "get": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "listInstallmentPayments",
+                "summary": "Payment ledger including reversals",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "installment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation; JSON data envelope"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "recordInstallmentPayment",
+                "summary": "Record full or partial payment",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "installment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CollectionPaymentInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created or replayed payment"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "409": {
+                        "description": "Idempotency key conflicts"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/payments/{payment}/reverse": {
+            "post": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "reverseCollectionPayment",
+                "summary": "Reverse payment as tenant admin or sales manager",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "payment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CollectionReversalInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful operation; JSON data envelope"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/collections/summary": {
+            "get": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "collectionsSummary",
+                "summary": "Outstanding, overdue and paid totals grouped by currency",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation; JSON data envelope"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/collections/leads": {
+            "get": {
+                "tags": [
+                    "Collections"
+                ],
+                "operationId": "collectionsLeads",
+                "summary": "Paginated real lead selectors with advisor scope",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful operation; JSON data envelope"
+                    },
+                    "401": {
+                        "description": "Authentication required"
+                    },
+                    "403": {
+                        "description": "Role cannot perform this operation"
+                    },
+                    "404": {
+                        "description": "Record absent or outside authorized tenant/advisor scope"
+                    },
+                    "422": {
+                        "description": "Invalid input, unsupported modality or overpayment"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users": {
+            "get": {
+                "summary": "List tenant users",
+                "responses": {
+                    "200": {
+                        "description": "Tenant users"
+                    },
+                    "403": {
+                        "description": "Requires user administration"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a pending advisor or inventory manager",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "firstName",
+                                    "lastName",
+                                    "email",
+                                    "phone",
+                                    "role"
+                                ],
+                                "properties": {
+                                    "role": {
+                                        "enum": [
+                                            "SALES_ADVISOR",
+                                            "INVENTORY_MANAGER"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "firstName": {
+                                        "maxLength": 79,
+                                        "type": "string"
+                                    },
+                                    "lastName": {
+                                        "maxLength": 79,
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "format": "email",
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "description": "E.164",
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created; activation token returned once, valid 24h"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "422": {
+                        "description": "Invalid or duplicate details"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/activate": {
+            "post": {
+                "summary": "Activate pending account using a single-use tenant-bound token",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "token",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "token": {
+                                        "maxLength": 64,
+                                        "minLength": 64,
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "format": "password",
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "minLength": 12,
+                                        "format": "password",
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Activated"
+                    },
+                    "422": {
+                        "description": "Invalid, expired or already used token"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users/{user}/activation": {
+            "post": {
+                "summary": "Issue an activation link for an existing pending account",
+                "parameters": [
+                    {
+                        "schema": {
+                            "format": "uuid",
+                            "type": "string"
+                        },
+                        "in": "path",
+                        "required": true,
+                        "name": "user"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "New activation token"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "User not found in tenant"
+                    },
+                    "422": {
+                        "description": "Already activated"
                     }
                 }
             }
@@ -2126,7 +2724,8 @@
                             "SALES_MANAGER",
                             "SALES_ADVISOR",
                             "BOT_OPERATOR",
-                            "READ_ONLY"
+                            "READ_ONLY",
+                            "INVENTORY_MANAGER"
                         ]
                     },
                     "status": {
@@ -3119,6 +3718,145 @@
                                 "type": "boolean"
                             }
                         }
+                    }
+                }
+            },
+            "CollectionAgreementInput": {
+                "type": "object",
+                "required": [
+                    "leadId",
+                    "currency",
+                    "modality",
+                    "totalPrice",
+                    "downPayment",
+                    "totalInstallments",
+                    "dayOfMonthDue",
+                    "startDate",
+                    "idempotencyKey"
+                ],
+                "properties": {
+                    "leadId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "propertyId": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "currency": {
+                        "enum": [
+                            "ARS",
+                            "USD"
+                        ]
+                    },
+                    "modality": {
+                        "const": "FIXED"
+                    },
+                    "totalPrice": {
+                        "type": "number",
+                        "multipleOf": 0.01,
+                        "minimum": 0.01,
+                        "maximum": 1000000000
+                    },
+                    "downPayment": {
+                        "type": "number",
+                        "multipleOf": 0.01,
+                        "minimum": 0,
+                        "maximum": 1000000000
+                    },
+                    "monthlyRatePct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "multipleOf": 0.0001,
+                        "default": 0
+                    },
+                    "totalInstallments": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 360
+                    },
+                    "dayOfMonthDue": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 31
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "projectName": {
+                        "type": "string",
+                        "maxLength": 160
+                    },
+                    "propertyTitle": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "notes": {
+                        "type": "string",
+                        "maxLength": 10000
+                    },
+                    "idempotencyKey": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "description": "tenant_id/companyId prohibited. First installment follows start month. Advisor and financed balance are server-derived."
+            },
+            "CollectionPaymentInput": {
+                "type": "object",
+                "required": [
+                    "amountPaid",
+                    "paymentMethod",
+                    "paymentReceiptNumber",
+                    "paidAt",
+                    "idempotencyKey"
+                ],
+                "properties": {
+                    "amountPaid": {
+                        "type": "number",
+                        "multipleOf": 0.01,
+                        "minimum": 0.01,
+                        "maximum": 1000000000
+                    },
+                    "paymentMethod": {
+                        "enum": [
+                            "TRANSFER",
+                            "CASH",
+                            "CHECK",
+                            "DEPOSIT"
+                        ]
+                    },
+                    "paymentReceiptNumber": {
+                        "type": "string",
+                        "maxLength": 120
+                    },
+                    "paidAt": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Not later than tenant business today"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "maxLength": 10000
+                    },
+                    "idempotencyKey": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                }
+            },
+            "CollectionReversalInput": {
+                "type": "object",
+                "required": [
+                    "reason"
+                ],
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 500
                     }
                 }
             }

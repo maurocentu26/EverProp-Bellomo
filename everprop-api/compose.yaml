@@ -144,6 +144,14 @@ services:
         max-size: 10m
         max-file: "3"
 
+  everprop-api-scheduler:
+    extends:
+      service: everprop-api-worker
+    container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-scheduler
+    command: ["php", "artisan", "schedule:work"]
+    healthcheck:
+      test: ["CMD", "php", "-r", "$$c=file_get_contents('/proc/1/cmdline'); exit(str_contains($$c, 'schedule:work') ? 0 : 1);"]
+
   everprop-api-mysql:
     image: mysql:8.4
     container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-mysql

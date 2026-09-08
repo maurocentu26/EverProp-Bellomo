@@ -10,12 +10,14 @@ enum RoleCode: string
     case SALES_ADVISOR = 'SALES_ADVISOR';
     case BOT_OPERATOR = 'BOT_OPERATOR';
     case READ_ONLY = 'READ_ONLY';
+    case INVENTORY_MANAGER = 'INVENTORY_MANAGER';
 
     /** @return list<Capability> */
     public function capabilities(): array
     {
         return match ($this) {
             self::SUPER_ADMIN, self::TENANT_ADMIN => Capability::cases(),
+            self::INVENTORY_MANAGER => [Capability::VIEW_ANY, Capability::VIEW, Capability::CREATE, Capability::UPDATE, Capability::PUBLISH],
             self::SALES_MANAGER => [
                 Capability::VIEW_ANY,
                 Capability::VIEW,

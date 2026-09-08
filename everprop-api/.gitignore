@@ -5,6 +5,8 @@
 .env.backup
 .env.production
 .docker/secrets/
+.docker/collections-secrets/
+.docker/collections-compose.yaml
 .phpstan.cache
 .phpactor.json
 .phpunit.result.cache

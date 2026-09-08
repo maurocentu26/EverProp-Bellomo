@@ -1,10 +1,13 @@
 <?php
 
+use App\Domain\Collections\CollectionsController;
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
 use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
 use App\Domain\CRM\Http\Controllers\PublicLeadController;
 use App\Domain\Identity\Http\Controllers\AdminNotificationController;
+use App\Domain\Identity\Http\Controllers\AdminUserController;
 use App\Domain\Identity\Http\Controllers\AuthController;
+use App\Domain\Identity\InventoryRoleBoundary;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
 use App\Domain\Inventory\Http\Controllers\AdminProjectController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyController;
@@ -16,13 +19,26 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['tenant', 'throttle:login'])->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
+    Route::post('/auth/activate', [AdminUserController::class, 'activate']);
 });
 
 Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
-    Route::prefix('admin')->name('admin.')->group(function (): void {
+    Route::prefix('admin')->name('admin.')->middleware(InventoryRoleBoundary::class)->group(function (): void {
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::post('/users', [AdminUserController::class, 'store']);
+        Route::post('/users/{user}/activation', [AdminUserController::class, 'renew']);
+        Route::get('/payment-agreements', [CollectionsController::class, 'agreements']);
+        Route::post('/payment-agreements', [CollectionsController::class, 'store']);
+        Route::get('/payment-agreements/{agreement}', [CollectionsController::class, 'show']);
+        Route::get('/installments', [CollectionsController::class, 'installments']);
+        Route::get('/installments/{installment}/payments', [CollectionsController::class, 'payments']);
+        Route::post('/installments/{installment}/payments', [CollectionsController::class, 'pay']);
+        Route::post('/payments/{payment}/reverse', [CollectionsController::class, 'reverse']);
+        Route::get('/collections/summary', [CollectionsController::class, 'summary']);
+        Route::get('/collections/leads', [CollectionsController::class, 'leads']);
         Route::apiResource('projects', AdminProjectController::class);
         Route::patch('/projects/{project}/publish', [AdminProjectController::class, 'publish'])
             ->name('projects.publish');
@@ -52,15 +68,6 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::patch('/notifications/{id}/read', [AdminNotificationController::class, 'markAsRead'])->name('notifications.read');
         Route::delete('/notifications', [AdminNotificationController::class, 'destroyAll'])->name('notifications.destroy-all');
     });
-});
-
-Route::get('/setup-simulation-database', function () {
-    \Illuminate\Support\Facades\Artisan::call('db:setup-simulation');
-    return response()->json([
-        'status' => 'ok',
-        'message' => 'Base de datos de simulación configurada con éxito en Bellomo CRM',
-        'output' => \Illuminate\Support\Facades\Artisan::output(),
-    ]);
 });
 
 Route::middleware('tenant')->group(function (): void {
