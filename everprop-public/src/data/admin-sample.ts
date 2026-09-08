@@ -1703,6 +1703,97 @@ export const properties: Property[] = [
 
 
 // Generar Leads realistas de Bellomo
-export const leads: Lead[] = [];
+const leadScenarios = [
+  { name: "Esteban Benítez", origin: "WhatsApp", stage: "new" as const, phone: "+54 9 388 456-7890", email: "esteban.benitez@gmail.com", notes: "Ingresó por consulta de WhatsApp. Busca lote de 250m2 para construir vivienda familiar. Consulta por anticipo y 36 cuotas en pesos CAC.", agentId: "usr-sales" },
+  { name: "Dra. Mariana Tolaba", origin: "Portal Inmobiliario", stage: "new" as const, phone: "", email: "mariana.tolaba@saludjujuy.com", notes: "Contactó por portal inmobiliario interesada en local comercial en PB para consultorio de kinesiología. Falta registrar teléfono celular.", agentId: "usr-sales-2" },
+  { name: "Gonzalo Argañaraz", origin: "Instagram", stage: "contacted" as const, phone: "+54 9 388 512-3456", email: "gonzalo.arganaraz@hotmail.com", notes: "Primer llamado telefónico muy positivo. Vive en Palpalá y busca construir su primera vivienda en Loteo San Pablo 1.", agentId: "usr-sales" },
+  { name: "Carlos & Viviana Pereyra", origin: "Referido", stage: "contacted" as const, phone: "+54 9 388 498-1122", email: "carlos.pereyra@empresa.com", notes: "Interesados en combo de lote en Valle Verde + cochera mensual en centro de Jujuy.", agentId: "usr-sales-2" },
+  { name: "Arq. Jorge Bustos (Martín Fierro S.R.L.)", origin: "Web", stage: "contacted" as const, phone: "+54 9 388 421-9988", email: "jbustos@bustosarq.com.ar", notes: "Calificado financieramente. Disponen del 60% al contado y solicitan 12 cuotas fijas en dólares por 2 lotes contiguos.", agentId: "usr-sales" },
+  { name: "Facundo Carrillo", origin: "Web", stage: "visiting" as const, phone: "+54 9 388 587-6543", email: "facundo.carrillo@outlook.com", notes: "Visita presencial coordinada para este sábado a las 10:30 hs en el pórtico de acceso de San Pablo 1.", agentId: "usr-sales" },
+  { name: "Ing. Fernando Quispe", origin: "WhatsApp", stage: "visiting" as const, phone: "+54 9 388 405-2233", email: "fquispe@mineriajujuy.com", notes: "Visita técnica agendada para el viernes a las 16:00 hs para revisar potencia eléctrica y acometidas de gas en Local Comercial 1.", agentId: "usr-sales-2" },
+  { name: "Romina Gutiérrez", origin: "Web", stage: "negotiation" as const, phone: "+54 9 388 477-8899", email: "romi.gutierrez@estudiocivil.com", notes: "Propuesta comercial enviada: entrega inicial del 35% y saldo en 24 cuotas ajustables por CAC. Pendiente firma de reserva.", agentId: "usr-sales" },
+  { name: "Estudio Jurídico Morales & Asoc.", origin: "Referido", stage: "negotiation" as const, phone: "+54 9 388 423-0011", email: "secretaria@moralesabogados.com", notes: "Borrador de contrato de locación comercial por 36 meses en revisión legal con garantías propietarias presentadas.", agentId: "usr-sales-2" },
+  { name: "Dr. Marcelo Iriarte", origin: "WhatsApp", stage: "closing" as const, phone: "+54 9 388 501-4455", email: "miriarte@clinicaperico.com.ar", notes: "Operación cerrada con éxito. Firma de boleto de compraventa y pago de anticipo completados en escribanía.", agentId: "usr-sales" },
+];
+
+const availableOrReservedProps = properties.filter(p => p.status === 'available' || p.status === 'reserved' || !p.status);
+const unassignedProps = [...availableOrReservedProps];
+
+export const leads: Lead[] = leadScenarios.map((sc, index) => {
+  const stage = sc.stage;
+  const agentId = sc.agentId;
+  const leadId = `l${index + 1}`;
+  const propertyIds: string[] = [];
+  let projectId: string | undefined = undefined;
+  
+  // Asignar unidades a este lead asegurando que cubrimos el pool de unassignedProps
+  if (unassignedProps.length > 0) {
+    const toTake = Math.min(Math.floor(Math.random() * 2) + 1, unassignedProps.length);
+    for (let i=0; i<toTake; i++) {
+      const p = unassignedProps.pop()!;
+      propertyIds.push(p.id);
+      if (!projectId && p.projectId) projectId = p.projectId;
+    }
+  } else {
+    const rndP = availableOrReservedProps[Math.floor(Math.random() * availableOrReservedProps.length)];
+    propertyIds.push(rndP.id);
+    if (rndP.projectId) projectId = rndP.projectId;
+  }
+  
+  // Crear una visita para este lead si está en etapa 'visiting' o superior
+  const visits: Visit[] = [];
+  if (['visiting', 'negotiation', 'closing'].includes(stage)) {
+    const v: Visit = {
+      id: `v-${leadId}`,
+      leadId,
+      propertyId: propertyIds[0],
+      leadName: sc.name,
+      propertyTitle: properties.find(p => p.id === propertyIds[0])?.title,
+      scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * ((index % 3) + 1)).toISOString(),
+      status: stage === 'visiting' ? 'scheduled' : 'completed',
+      agentId,
+      phone: sc.phone,
+      email: sc.email,
+      notes: sc.notes,
+    };
+    visits.push(v);
+    
+    // Sincronizar visita en la propiedad
+    const prop = properties.find(p => p.id === propertyIds[0]);
+    if (prop) {
+      if (!prop.visits) prop.visits = [];
+      prop.visits.push(v);
+    }
+  }
+
+  return {
+    id: leadId,
+    companyId: 'c1',
+    name: sc.name,
+    origin: sc.origin,
+    propertyIds,
+    projectId,
+    stage,
+    lastActivity: new Date(Date.now() - 1000 * 60 * 60 * (index + 1)).toISOString(),
+    followUpUpdatedAt: index % 4 === 0
+      ? undefined
+      : new Date(Date.now() - 1000 * 60 * 60 * 24 * (
+        index % 4 === 1 ? 4 : index % 4 === 2 ? 9 : 12
+      )).toISOString(),
+    phone: sc.phone,
+    email: sc.email,
+    notes: sc.notes,
+    visits,
+    agentId
+  };
+});
+
+// Fallback: Si quedaron propiedades disponibles/reservadas sin asignar por la matemática, asignarlas al primer lead
+if (unassignedProps.length > 0) {
+  unassignedProps.forEach(p => {
+    leads[0].propertyIds.push(p.id);
+  });
+}
+
 const adminSample = { companies, projects, properties, leads };
-export default adminSample;
+export default adminSample; 
