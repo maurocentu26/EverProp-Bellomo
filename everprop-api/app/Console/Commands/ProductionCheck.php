@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Support\ProductionDependencies;
 use Illuminate\Console\Command;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -25,7 +25,7 @@ final class ProductionCheck extends Command
             'APP_KEY configured' => is_string($key) && Encrypter::supported($key, config('app.cipher')),
             'APP_URL uses HTTPS' => str_starts_with((string) config('app.url'), 'https://'),
             'MySQL connection' => config('database.default') === 'mysql',
-            'Redis sessions/cache/queue' => config('session.driver') === 'redis' && config('cache.default') === 'redis' && config('queue.default') === 'redis',
+            'Persistent sessions/cache and supported queue' => in_array(config('session.driver'), ['redis', 'database'], true) && in_array(config('cache.default'), ['redis', 'database'], true) && in_array(config('queue.default'), ['redis', 'sync'], true),
             'Secure HTTP-only encrypted sessions' => config('session.secure') && config('session.http_only') && config('session.encrypt'),
             'Trusted tenant hosts configured' => config('tenancy.hosts') !== [] && config('tenancy.trusted_hosts') !== [] && ! config('tenancy.allow_local_resolver'),
             'Explicit frontend origins' => config('cors.allowed_origins') !== [] && ! in_array('*', config('cors.allowed_origins'), true),
@@ -35,10 +35,7 @@ final class ProductionCheck extends Command
         }
         if ($this->option('connections')) {
             try {
-                DB::select('SELECT 1');
-                foreach (['default', 'cache', 'session', 'queue'] as $connection) {
-                    Redis::connection($connection)->ping();
-                }
+                ProductionDependencies::check();
                 foreach (['payment_agreements', 'installments', 'installment_payments', 'user_inventory_settings'] as $table) {
                     $checks['Schema: '.$table] = Schema::hasTable($table);
                 }

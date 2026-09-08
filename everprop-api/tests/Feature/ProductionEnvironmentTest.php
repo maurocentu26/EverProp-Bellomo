@@ -26,6 +26,11 @@ final class ProductionEnvironmentTest extends TestCase
             'tenancy.allow_local_resolver' => false, 'cors.allowed_origins' => ['https://app.example.com'],
         ]);
         $this->artisan('everprop:production-check')->assertSuccessful();
+        config(['session.driver' => 'database', 'cache.default' => 'database', 'queue.default' => 'sync']);
+        $this->artisan('everprop:production-check')->assertSuccessful();
+        config(['session.driver' => 'file']);
+        $this->artisan('everprop:production-check')->assertFailed();
+        config(['session.driver' => 'database']);
         config(['app.key' => 'REPLACE_WITH_EXISTING_PRODUCTION_KEY']);
         $this->artisan('everprop:production-check')->assertFailed();
     }

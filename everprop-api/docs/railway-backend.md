@@ -4,6 +4,14 @@ La imagen `production` usa Nginx + PHP-FPM con usuario 10001. No usa el servidor
 
 ## Servicios
 
+### Servicio existente `awake-dedication`
+
+Este proyecto ya dispone de API y MySQL. Para actualizarlo, conservar ambos servicios y aplicar únicamente los forward SQL pendientes. No importar el baseline ni los seeds. Configurar `SESSION_DRIVER=database`, `CACHE_STORE=database` y `QUEUE_CONNECTION=sync`; las tablas `sessions`, `cache` y `cache_locks` deben existir. No requiere Redis para este modo. Readiness verifica las dependencias seleccionadas. La cola síncrona ejecuta los trabajos durante la petición; los recordatorios requieren ejecutar el scheduler por separado.
+
+El frontend publicado es `https://ever-prop-bellomo.vercel.app`. Configurar ese origen exacto para CORS y su hostname para Sanctum. La raíz del frontend redirige a `/login`.
+
+### Alternativa con Redis y procesos separados
+
 Crear/configurar tres servicios desde el mismo repositorio y commit, con raíz `/everprop-api` y estos archivos de configuración (el selector de Railway usa rutas desde la raíz del repositorio):
 
 | Servicio | Archivo | Función |
