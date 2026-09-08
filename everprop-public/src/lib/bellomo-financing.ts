@@ -33,7 +33,9 @@ export const FINANCING_PLANS: FinancingPlan[] = [
 ];
 export function findFinancingPlan(name?: string) {
   const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-  return FINANCING_PLANS.find(plan => normalize(plan.name) === normalize(name ?? ''));
+  const aliases: Record<string, string> = { 'loteo san pablo 1': 'san pablo 1', 'valle verde loteo': 'valle verde' };
+  const normalized = normalize(name ?? '');
+  return FINANCING_PLANS.find(plan => normalize(plan.name) === (aliases[normalized] ?? normalized));
 }
 export function financingSummary(plan: FinancingPlan, price: number, discount: boolean, currency: 'ARS' | 'USD', exchange: number, advance?: number) {
   if (!Number.isFinite(price) || price <= 0) return null;
