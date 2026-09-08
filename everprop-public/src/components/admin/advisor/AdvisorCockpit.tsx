@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   AlertTriangle, 
   Calendar, 
@@ -22,7 +23,8 @@ import {
   Lightbulb,
   Building2,
   BarChart3,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -76,8 +78,10 @@ export default function AdvisorCockpit() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQueueFilter, setActiveQueueFilter] = useState<"all" | "overdue" | "today" | "new">("all");
+  const router = useRouter();
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
+  const [updatingStageLeadId, setUpdatingStageLeadId] = useState<string | null>(null);
   const [selectedPropertyByLead, setSelectedPropertyByLead] = useState<Record<string, string>>({});
   const [showMonthBalance, setShowMonthBalance] = useState(false);
 
@@ -291,46 +295,13 @@ export default function AdvisorCockpit() {
     }
 
     const targetPropId = propertyId || selectedPropertyByLead[leadId] || targetLead.propertyIds?.[0] || targetLead.interests?.[0]?.propertyId || targetLead.interests?.[0]?.unitId;
+    const stageConfig = STAGE_OPTIONS.find((s) => s.id === newStage);
 
-    // Actualización optimista local
-    const updated = leads.map((l) => {
-      if (l.id !== leadId) return l;
-
-      let updatedInterests = l.interests;
-      if (targetPropId && l.interests && l.interests.length > 0) {
-        updatedInterests = l.interests.map((interest) => {
-          if (interest.propertyId === targetPropId || interest.unitId === targetPropId) {
-            return { ...interest, status: newStage };
-          }
-          return interest;
-        });
-      }
-
-      return {
-        ...l,
-        stage: newStage,
-        interests: updatedInterests,
-      };
-    });
-
-    setLeads(updated);
-    saveLeadList(updated, "c1");
+    setUpdatingStageLeadId(leadId);
 
     try {
-      window.dispatchEvent(new Event("everprop_leads_updated"));
-      const ch = new BroadcastChannel("everprop_leads");
-      ch.postMessage({ type: "LEADS_UPDATED" });
-      ch.close();
-    } catch {
-      // ignore
-    }
-
-    const stageConfig = STAGE_OPTIONS.find((s) => s.id === newStage);
-    toast.success(`Etapa cambiada a "${stageConfig?.label || newStage}"`);
-
-    // Sincronización API
-    if (!isMockDataMode) {
-      try {
+      // Sincronización API antes de confirmar el cambio
+      if (!isMockDataMode) {
         const promises: Promise<unknown>[] = [
           updateEverpropLead(leadId, {
             stage: stageConfig?.apiCode || "NEW",
@@ -348,11 +319,47 @@ export default function AdvisorCockpit() {
         }
 
         await Promise.all(promises);
-      } catch (err) {
-        console.error("Error al actualizar etapa en backend:", err);
-        toast.error("Error al sincronizar con el servidor, guardado localmente.");
-        setLeads(previousLeads);
       }
+
+      // Actualización local una vez confirmado el patch
+      const updated = leads.map((l) => {
+        if (l.id !== leadId) return l;
+
+        let updatedInterests = l.interests;
+        if (targetPropId && l.interests && l.interests.length > 0) {
+          updatedInterests = l.interests.map((interest) => {
+            if (interest.propertyId === targetPropId || interest.unitId === targetPropId) {
+              return { ...interest, status: newStage };
+            }
+            return interest;
+          });
+        }
+
+        return {
+          ...l,
+          stage: newStage,
+          interests: updatedInterests,
+        };
+      });
+
+      setLeads(updated);
+      saveLeadList(updated, "c1");
+
+      try {
+        window.dispatchEvent(new Event("everprop_leads_updated"));
+        const ch = new BroadcastChannel("everprop_leads");
+        ch.postMessage({ type: "LEADS_UPDATED" });
+        ch.close();
+      } catch {
+        // ignore
+      }
+
+      toast.success(`Etapa cambiada a "${stageConfig?.label || newStage}"`);
+    } catch (err) {
+      console.error("Error al actualizar etapa en backend:", err);
+      toast.error("No se pudo actualizar la etapa en el servidor.");
+    } finally {
+      setUpdatingStageLeadId(null);
     }
   }
 
@@ -723,8 +730,12 @@ export default function AdvisorCockpit() {
                 return (
                   <article
                     key={lead.id}
+                    onClick={(e) => {
+                      if ((e.target as HTMLElement).closest("button, a, select, input, label")) return;
+                      router.push(`/admin/leads/${lead.id}`);
+                    }}
                     className={cn(
-                      "rounded-2xl border bg-white p-3.5 shadow-sm transition-all sm:p-5 dark:bg-card dark:border-border",
+                      "rounded-2xl border bg-white p-3.5 shadow-sm transition-all sm:p-5 dark:bg-card dark:border-border cursor-pointer hover:shadow-md",
                       isOverdue
                         ? "border-rose-200 hover:border-rose-400 dark:border-rose-900/60"
                         : isDueToday
@@ -771,21 +782,30 @@ export default function AdvisorCockpit() {
                       </div>
 
                       {/* Stage selector - compact on mobile */}
-                      <select
-                        value={activePropStage}
-                        onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
-                        className={cn(
-                          "hidden sm:block h-7 shrink-0 rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs",
-                          currentStageObj.color
+                      <div className="relative inline-flex items-center">
+                        {updatingStageLeadId === lead.id && (
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center z-10 pointer-events-none">
+                            <Loader2 className="size-3 animate-spin text-blue-600 dark:text-blue-400" />
+                          </span>
                         )}
-                        title={matchedProperty ? `Etapa comercial para ${matchedProperty.title}` : "Etapa comercial del lead"}
-                      >
-                        {STAGE_OPTIONS.map((opt) => (
-                          <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        <select
+                          disabled={updatingStageLeadId === lead.id}
+                          value={activePropStage}
+                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
+                          className={cn(
+                            "hidden sm:block h-7 shrink-0 rounded-lg border px-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed",
+                            updatingStageLeadId === lead.id && "pl-6",
+                            currentStageObj.color
+                          )}
+                          title={matchedProperty ? `Etapa comercial para ${matchedProperty.title}` : "Etapa comercial del lead"}
+                        >
+                          {STAGE_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     {/* Switcher de Propiedades si el lead tiene múltiples intereses con estados independientes */}
@@ -849,20 +869,29 @@ export default function AdvisorCockpit() {
                         </div>
                       )}
                       {/* Mobile-only stage selector */}
-                      <select
-                        value={activePropStage}
-                        onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
-                        className={cn(
-                          "sm:hidden h-7 shrink-0 rounded-lg border px-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs max-w-[100px]",
-                          currentStageObj.color
+                      <div className="relative inline-flex items-center sm:hidden shrink-0">
+                        {updatingStageLeadId === lead.id && (
+                          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center z-10 pointer-events-none">
+                            <Loader2 className="size-3 animate-spin text-blue-600 dark:text-blue-400" />
+                          </span>
                         )}
-                      >
-                        {STAGE_OPTIONS.map((opt) => (
-                          <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        <select
+                          disabled={updatingStageLeadId === lead.id}
+                          value={activePropStage}
+                          onChange={(e) => handleStageChange(lead.id, e.target.value as Lead["stage"], activePropId)}
+                          className={cn(
+                            "h-7 shrink-0 rounded-lg border px-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs max-w-[110px] disabled:opacity-60 disabled:cursor-not-allowed",
+                            updatingStageLeadId === lead.id && "pl-5",
+                            currentStageObj.color
+                          )}
+                        >
+                          {STAGE_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id} className="bg-white text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-medium">
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     {/* Row 3: Contact data + last follow-up (compact) */}

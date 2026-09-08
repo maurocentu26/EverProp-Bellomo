@@ -209,10 +209,6 @@ export default function AllLeadsPage() {
       return;
     }
 
-    const updated = allLeads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
-    setAllLeads(updated);
-    saveLeadList(updated, "c1");
-
     const stageMap: Record<Lead["stage"], string> = {
       new: "NEW",
       contacted: "CONTACTED",
@@ -222,16 +218,24 @@ export default function AllLeadsPage() {
     };
 
     const stageLabel = STAGE_LABELS[newStage]?.label || newStage;
-    toast.success(`Etapa cambiada a "${stageLabel}"`);
 
     if (!isMockDataMode) {
       try {
         await updateEverpropLead(leadId, { stage: stageMap[newStage] || "NEW" });
+        const updated = allLeads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
+        setAllLeads(updated);
+        saveLeadList(updated, "c1");
+        toast.success(`Etapa cambiada a "${stageLabel}"`);
       } catch (err) {
         console.error("Error updating lead stage in backend:", err);
-        toast.error("Error al sincronizar con el servidor, guardado localmente.");
-        setAllLeads(prevLeads);
+        toast.error("No se pudo actualizar la etapa en el servidor.");
+        throw err;
       }
+    } else {
+      const updated = allLeads.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l));
+      setAllLeads(updated);
+      saveLeadList(updated, "c1");
+      toast.success(`Etapa cambiada a "${stageLabel}"`);
     }
   }
 

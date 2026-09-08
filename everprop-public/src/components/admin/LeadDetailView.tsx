@@ -428,6 +428,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const primaryProperty = interestAssetIds[0]
     ? (propertyById.get(interestAssetIds[0]) || allProperties.find((p) => p.id === interestAssetIds[0]))
     : undefined;
+  const primaryProject = primaryProperty?.projectId
+    ? allProjects.find((p) => p.id === primaryProperty.projectId)
+    : interests[0]?.projectId
+    ? allProjects.find((p) => p.id === interests[0].projectId)
+    : undefined;
   const assignedAgent = getAdvisor(lead.agentId, lead.agentName);
 
   const cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
@@ -437,6 +442,17 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       <Link href="/admin/leads" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-blue-700">
         <ArrowLeft className="size-4" aria-hidden="true" /> Volver al pipeline
       </Link>
+
+      {/* Financing Calculator Card */}
+      <div className="min-w-0">
+        <FinancingCalculator
+          key={`${lead.id}-${primaryProperty?.id ?? "none"}`}
+          defaultPrice={primaryProperty?.price}
+          defaultCurrency={(primaryProperty?.currency as "USD" | "ARS") ?? "USD"}
+          leadName={lead.name}
+          projectName={primaryProject?.name}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* ── Main Column (8 cols): Deep content ── */}
@@ -672,11 +688,6 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               Registrar seguimiento
             </Button>
           </section>
-
-          {/* Financing Calculator Card */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
-            <FinancingCalculator defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "USD"} leadName={lead.name} />
-          </div>
         </div>
       </div>
 
