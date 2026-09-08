@@ -144,6 +144,65 @@ export type Lead = {
   agentName?: string;
 };
 
+export type PaymentAgreementModality = "FIXED" | "CAC" | "STEPPED";
+export type PaymentAgreementStatus = "ACTIVE" | "COMPLETED" | "DEFAULTED" | "CANCELLED";
+
+export type PaymentAgreement = {
+  id: string;
+  publicId: string;
+  companyId: string;
+  leadId: string;              // Vinculación directa al cliente (desacoplado del activo)
+  advisorId?: string;          // Asesor comercial responsable de la cartera/cobranza
+  propertyId?: string;         // Referencia informativa
+  propertyTitle?: string;      // ej: "Lote 14 — Manzana B"
+  projectName?: string;        // ej: "San Pablo 1"
+  currency: "ARS" | "USD";
+  modality: PaymentAgreementModality;
+  totalPrice: number;
+  downPayment: number;
+  financedBalance: number;
+  totalInstallments: number;
+  monthlyRatePct?: number;
+  dayOfMonthDue: number;
+  status: PaymentAgreementStatus;
+  startDate: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InstallmentStatus = 
+  | "PENDING"
+  | "DUE_TODAY"
+  | "OVERDUE"
+  | "PAID"
+  | "PARTIALLY_PAID"
+  | "CANCELLED";
+
+export type InstallmentPaymentMethod = "TRANSFER" | "CASH" | "CHECK" | "DEPOSIT";
+
+export type Installment = {
+  id: string;
+  agreementId: string;
+  leadId: string;
+  advisorId?: string;
+  companyId?: string;
+  installmentNumber: number;
+  dueDate: string; // YYYY-MM-DD
+  amountExpected: number;
+  currency: "ARS" | "USD";
+  status: InstallmentStatus;
+  daysOverdue: number;
+  penaltyInterest?: number;
+  paidAt?: string;
+  amountPaid?: number;
+  paymentReceiptNumber?: string;
+  paymentMethod?: InstallmentPaymentMethod;
+  lastNoticeSentAt?: string;
+  noticeCount: number;
+  notes?: string;
+};
+
 export function inferLeadInterestCategory(property: Property): LeadInterestCategory {
   const type = (property.propertyType || '').toLowerCase();
   const sector = (property.sectorName || '').toLowerCase();
@@ -1794,5 +1853,385 @@ if (unassignedProps.length > 0) {
   });
 }
 
-const adminSample = { companies, projects, properties, leads };
-export default adminSample; 
+function getRelativeDateStr(dayOffset: number): string {
+  const d = new Date(Date.now() + dayOffset * 86400000);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export const samplePaymentAgreements: PaymentAgreement[] = [
+  {
+    id: "agr-1",
+    publicId: "ACU-2026-0041",
+    companyId: "c1",
+    leadId: "l10", // Dr. Marcelo Iriarte
+    advisorId: "usr-sales",
+    propertyTitle: "Lote 14 — Manzana B",
+    projectName: "San Pablo 1",
+    currency: "ARS",
+    modality: "FIXED",
+    totalPrice: 18000000,
+    downPayment: 7200000,
+    financedBalance: 10800000,
+    totalInstallments: 36,
+    monthlyRatePct: 2.5,
+    dayOfMonthDue: 10,
+    status: "ACTIVE",
+    startDate: getRelativeDateStr(-60),
+    notes: "Adquisición Lote 14 en San Pablo 1 con 40% de anticipo y 36 cuotas fijas.",
+    createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+  {
+    id: "agr-2",
+    publicId: "ACU-2026-0052",
+    companyId: "c1",
+    leadId: "l8", // Romina Gutiérrez
+    advisorId: "usr-sales",
+    propertyTitle: "Lote 08 — Manzana C",
+    projectName: "Valle Verde",
+    currency: "ARS",
+    modality: "CAC",
+    totalPrice: 24000000,
+    downPayment: 9600000,
+    financedBalance: 14400000,
+    totalInstallments: 24,
+    dayOfMonthDue: new Date().getDate(),
+    status: "ACTIVE",
+    startDate: getRelativeDateStr(-30),
+    notes: "Plan ajustable CAC en Valle Verde. 24 cuotas con vencimiento día del mes.",
+    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "agr-3",
+    publicId: "ACU-2026-0063",
+    companyId: "c1",
+    leadId: "l1", // Esteban Benítez
+    advisorId: "usr-sales",
+    propertyTitle: "Lote 22 — Manzana AP4",
+    projectName: "San Pablo 1",
+    currency: "USD",
+    modality: "FIXED",
+    totalPrice: 35000,
+    downPayment: 15000,
+    financedBalance: 20000,
+    totalInstallments: 40,
+    dayOfMonthDue: 15,
+    status: "ACTIVE",
+    startDate: getRelativeDateStr(-25),
+    notes: "Plan en dólares billete. 40 cuotas de USD 500.",
+    createdAt: new Date(Date.now() - 25 * 86400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "agr-4",
+    publicId: "ACU-2026-0074",
+    companyId: "c1",
+    leadId: "l5", // Arq. Jorge Bustos
+    advisorId: "usr-sales",
+    propertyTitle: "Lote 03 y 04 — Manzana F",
+    projectName: "El Rocío",
+    currency: "USD",
+    modality: "FIXED",
+    totalPrice: 45000,
+    downPayment: 25000,
+    financedBalance: 20000,
+    totalInstallments: 12,
+    dayOfMonthDue: 1,
+    status: "ACTIVE",
+    startDate: getRelativeDateStr(-40),
+    notes: "Plan corto 12 cuotas fijas en USD.",
+    createdAt: new Date(Date.now() - 40 * 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
+  },
+  {
+    id: "agr-5",
+    publicId: "ACU-2026-0085",
+    companyId: "c1",
+    leadId: "l9", // Estudio Jurídico Morales
+    advisorId: "usr-sales-2",
+    propertyTitle: "Local Comercial 1 — PB",
+    projectName: "Torre Libertad",
+    currency: "ARS",
+    modality: "FIXED",
+    totalPrice: 40000000,
+    downPayment: 16000000,
+    financedBalance: 24000000,
+    totalInstallments: 24,
+    dayOfMonthDue: 5,
+    status: "ACTIVE",
+    startDate: getRelativeDateStr(-35),
+    notes: "Locación con opción / financiación comercial.",
+    createdAt: new Date(Date.now() - 35 * 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+];
+
+export const sampleInstallments: Installment[] = [
+  // Agreement 1 (Marcelo Iriarte, $300.000 / mes)
+  {
+    id: "inst-1-1",
+    agreementId: "agr-1",
+    leadId: "l10",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 1,
+    dueDate: getRelativeDateStr(-60),
+    amountExpected: 300000,
+    currency: "ARS",
+    status: "PAID",
+    daysOverdue: 0,
+    paidAt: getRelativeDateStr(-60),
+    amountPaid: 300000,
+    paymentReceiptNumber: "TRF-882910",
+    paymentMethod: "TRANSFER",
+    noticeCount: 0,
+  },
+  {
+    id: "inst-1-2",
+    agreementId: "agr-1",
+    leadId: "l10",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 2,
+    dueDate: getRelativeDateStr(-30),
+    amountExpected: 300000,
+    currency: "ARS",
+    status: "PAID",
+    daysOverdue: 0,
+    paidAt: getRelativeDateStr(-29),
+    amountPaid: 300000,
+    paymentReceiptNumber: "TRF-903124",
+    paymentMethod: "TRANSFER",
+    noticeCount: 0,
+  },
+  {
+    id: "inst-1-3",
+    agreementId: "agr-1",
+    leadId: "l10",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 3,
+    dueDate: getRelativeDateStr(-3), // Vencida hace 3 días
+    amountExpected: 300000,
+    currency: "ARS",
+    status: "OVERDUE",
+    daysOverdue: 3,
+    noticeCount: 1,
+    lastNoticeSentAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+  },
+  {
+    id: "inst-1-4",
+    agreementId: "agr-1",
+    leadId: "l10",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 4,
+    dueDate: getRelativeDateStr(27),
+    amountExpected: 300000,
+    currency: "ARS",
+    status: "PENDING",
+    daysOverdue: 0,
+    noticeCount: 0,
+  },
+
+  // Agreement 2 (Romina Gutiérrez, $600.000 / mes)
+  {
+    id: "inst-2-1",
+    agreementId: "agr-2",
+    leadId: "l8",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 1,
+    dueDate: getRelativeDateStr(-30),
+    amountExpected: 600000,
+    currency: "ARS",
+    status: "PAID",
+    daysOverdue: 0,
+    paidAt: getRelativeDateStr(-30),
+    amountPaid: 600000,
+    paymentReceiptNumber: "REC-44102",
+    paymentMethod: "TRANSFER",
+    noticeCount: 0,
+  },
+  {
+    id: "inst-2-2",
+    agreementId: "agr-2",
+    leadId: "l8",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 2,
+    dueDate: getRelativeDateStr(0), // VENCE HOY!
+    amountExpected: 600000,
+    currency: "ARS",
+    status: "DUE_TODAY",
+    daysOverdue: 0,
+    noticeCount: 0,
+  },
+  {
+    id: "inst-2-3",
+    agreementId: "agr-2",
+    leadId: "l8",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 3,
+    dueDate: getRelativeDateStr(30),
+    amountExpected: 600000,
+    currency: "ARS",
+    status: "PENDING",
+    daysOverdue: 0,
+    noticeCount: 0,
+  },
+
+  // Agreement 3 (Esteban Benítez, USD 500 / mes)
+  {
+    id: "inst-3-1",
+    agreementId: "agr-3",
+    leadId: "l1",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 1,
+    dueDate: getRelativeDateStr(-23),
+    amountExpected: 500,
+    currency: "USD",
+    status: "PAID",
+    daysOverdue: 0,
+    paidAt: getRelativeDateStr(-23),
+    amountPaid: 500,
+    paymentReceiptNumber: "DEP-01928",
+    paymentMethod: "DEPOSIT",
+    noticeCount: 0,
+  },
+  {
+    id: "inst-3-2",
+    agreementId: "agr-3",
+    leadId: "l1",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 2,
+    dueDate: getRelativeDateStr(7), // Vence en 7 días
+    amountExpected: 500,
+    currency: "USD",
+    status: "PENDING",
+    daysOverdue: 0,
+    noticeCount: 0,
+  },
+  {
+    id: "inst-3-3",
+    agreementId: "agr-3",
+    leadId: "l1",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 3,
+    dueDate: getRelativeDateStr(37),
+    amountExpected: 500,
+    currency: "USD",
+    status: "PENDING",
+    daysOverdue: 0,
+    noticeCount: 0,
+  },
+
+  // Agreement 4 (Jorge Bustos, USD 1.666 / mes)
+  {
+    id: "inst-4-1",
+    agreementId: "agr-4",
+    leadId: "l5",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 1,
+    dueDate: getRelativeDateStr(-37),
+    amountExpected: 1666,
+    currency: "USD",
+    status: "PAID",
+    daysOverdue: 0,
+    paidAt: getRelativeDateStr(-37),
+    amountPaid: 1666,
+    paymentReceiptNumber: "TRF-55110",
+    paymentMethod: "TRANSFER",
+    noticeCount: 0,
+  },
+  {
+    id: "inst-4-2",
+    agreementId: "agr-4",
+    leadId: "l5",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 2,
+    dueDate: getRelativeDateStr(-7), // Vencida hace 7 días
+    amountExpected: 1666,
+    currency: "USD",
+    status: "OVERDUE",
+    daysOverdue: 7,
+    noticeCount: 2,
+    lastNoticeSentAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+  },
+  {
+    id: "inst-4-3",
+    agreementId: "agr-4",
+    leadId: "l5",
+    advisorId: "usr-sales",
+    companyId: "c1",
+    installmentNumber: 3,
+    dueDate: getRelativeDateStr(23),
+    amountExpected: 1666,
+    currency: "USD",
+    status: "PENDING",
+    daysOverdue: 0,
+    noticeCount: 0,
+  },
+
+  // Agreement 5 (Estudio Jurídico Morales, advisor: usr-sales-2)
+  {
+    id: "inst-5-1",
+    agreementId: "agr-5",
+    leadId: "l9",
+    advisorId: "usr-sales-2",
+    companyId: "c1",
+    installmentNumber: 1,
+    dueDate: getRelativeDateStr(-33),
+    amountExpected: 1000000,
+    currency: "ARS",
+    status: "PAID",
+    daysOverdue: 0,
+    paidAt: getRelativeDateStr(-33),
+    amountPaid: 1000000,
+    paymentReceiptNumber: "TRF-77441",
+    paymentMethod: "TRANSFER",
+    noticeCount: 0,
+  },
+  {
+    id: "inst-5-2",
+    agreementId: "agr-5",
+    leadId: "l9",
+    advisorId: "usr-sales-2",
+    companyId: "c1",
+    installmentNumber: 2,
+    dueDate: getRelativeDateStr(-3), // Vencida hace 3 días
+    amountExpected: 1000000,
+    currency: "ARS",
+    status: "OVERDUE",
+    daysOverdue: 3,
+    noticeCount: 1,
+    lastNoticeSentAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: "inst-5-3",
+    agreementId: "agr-5",
+    leadId: "l9",
+    advisorId: "usr-sales-2",
+    companyId: "c1",
+    installmentNumber: 3,
+    dueDate: getRelativeDateStr(27),
+    amountExpected: 1000000,
+    currency: "ARS",
+    status: "PENDING",
+    daysOverdue: 0,
+    noticeCount: 0,
+  },
+];
+
+const adminSample = { companies, projects, properties, leads, samplePaymentAgreements, sampleInstallments };
+export default adminSample;

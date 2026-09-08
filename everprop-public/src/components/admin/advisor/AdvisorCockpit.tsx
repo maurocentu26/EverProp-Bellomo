@@ -24,7 +24,8 @@ import {
   Building2,
   BarChart3,
   Users,
-  Loader2
+  Loader2,
+  ReceiptText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -32,16 +33,21 @@ import {
   type LeadFollowUp, 
   type Property, 
   type Project,
+  type Installment,
   leads as sampleLeads, 
   properties as sampleProperties,
-  projects as sampleProjects 
+  projects as sampleProjects,
+  sampleInstallments,
 } from "@/data/admin-sample";
 import { 
   loadLeadFollowUpList, 
   loadLeadList, 
   appendLeadFollowUpToStorage,
-  saveLeadList 
+  saveLeadList,
+  loadInstallmentList,
 } from "@/lib/admin-storage";
+import { evaluateInstallmentStatus, getTodayDateString } from "@/lib/installment-notifications";
+import { isNotificationForUser } from "@/lib/notifications";
 import { getLeadFollowUpState } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
 import { 
@@ -84,6 +90,7 @@ export default function AdvisorCockpit() {
   const [updatingStageLeadId, setUpdatingStageLeadId] = useState<string | null>(null);
   const [selectedPropertyByLead, setSelectedPropertyByLead] = useState<Record<string, string>>({});
   const [showMonthBalance, setShowMonthBalance] = useState(false);
+  const [installments, setInstallments] = useState<Installment[]>([]);
 
   // Carga de datos inicial y sincronización en tiempo real
   useEffect(() => {
@@ -94,6 +101,7 @@ export default function AdvisorCockpit() {
       let loadedFollowUps: LeadFollowUp[] = [];
       let loadedProperties: Property[] = sampleProperties;
       let loadedProjects: Project[] = sampleProjects;
+      const loadedInst = loadInstallmentList(sampleInstallments, "c1");
 
       if (!isMockDataMode) {
         try {
@@ -115,7 +123,7 @@ export default function AdvisorCockpit() {
               loadedProjects = catalog.projects;
             }
             const localFollowUps = loadLeadFollowUpList([], "c1");
-            const apiFuIds = new Set(apiFollowUps.map((f) => f.id));
+            const apiFuIds = new Set(apiFollowUps.map((f: LeadFollowUp) => f.id));
             const extraLocalFus = localFollowUps.filter((f) => !apiFuIds.has(f.id));
             loadedFollowUps = [...apiFollowUps, ...extraLocalFus];
           }
@@ -134,6 +142,7 @@ export default function AdvisorCockpit() {
         setFollowUps(loadedFollowUps);
         setProperties(loadedProperties);
         setProjects(loadedProjects);
+        setInstallments(loadedInst);
         setIsLoaded(true);
       }
     }
@@ -173,6 +182,15 @@ export default function AdvisorCockpit() {
       month: "long",
     });
   }, []);
+
+  const overdueInstallmentsCount = useMemo(() => {
+    const today = getTodayDateString();
+    return installments.filter((inst) => {
+      if (user && !isNotificationForUser(inst.advisorId, user)) return false;
+      const { status } = evaluateInstallmentStatus(inst, today);
+      return status === "OVERDUE";
+    }).length;
+  }, [installments, user]);
 
   // Filtrar leads del asesor comercial (si es admin, ve todos los leads de la empresa)
   const myLeads = useMemo(() => {
@@ -471,6 +489,12 @@ export default function AdvisorCockpit() {
                 Agenda
               </Button>
             </Link>
+            <Link href="/admin/cobranzas" className="flex-1">
+              <Button variant="outline" className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                <ReceiptText className="size-3.5 text-blue-600 dark:text-blue-400" />
+                Cuotas
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -513,9 +537,15 @@ export default function AdvisorCockpit() {
               </Button>
             </Link>
             <Link href="/admin/agenda">
-              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs">
+              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
                 <CalendarDays className="size-4" />
                 Mi Agenda
+              </Button>
+            </Link>
+            <Link href="/admin/cobranzas">
+              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                <ReceiptText className="size-4 text-blue-600 dark:text-blue-400" />
+                Cobranzas & Cuotas
               </Button>
             </Link>
           </div>
@@ -624,6 +654,32 @@ export default function AdvisorCockpit() {
           </div>
         </Link>
       </div>
+
+      {/* ── ALERTA DE MORA EN CUOTAS DE CLIENTES ── */}
+      {overdueInstallmentsCount > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/20">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 shrink-0">
+              <ReceiptText className="size-5" />
+            </span>
+            <div>
+              <p className="text-xs font-bold text-rose-950 dark:text-rose-100">
+                Alerta de Mora: Tenés {overdueInstallmentsCount} cuota(s) vencida(s) en tu cartera de leads
+              </p>
+              <p className="text-[11px] text-rose-700 dark:text-rose-400">
+                Registrá el cobro recibido o enviá el recordatorio personalizado por WhatsApp con 1 clic.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/cobranzas?status=overdue"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-rose-700 shrink-0"
+          >
+            <span>Gestionar Mora</span>
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* ── CUERPO PRINCIPAL: COLA DE ACCIÓN + AGENDA LATERAL ── */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">

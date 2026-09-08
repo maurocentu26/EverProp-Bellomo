@@ -8,6 +8,7 @@ import {
   HardHat,
   Map,
   Store,
+  ReceiptText,
   type LucideIcon 
 } from "lucide-react";
 
@@ -50,6 +51,7 @@ export const advisorNavigationGroups: NavGroup[] = [
         children: [{ title: "Nuevo Lead", href: "/admin/leads/new", icon: Plus }]
       },
       { title: "Mi Agenda", href: "/admin/agenda", icon: CalendarDays, matchPath: "/admin/agenda" },
+      { title: "Cobranzas & Cuotas", href: "/admin/cobranzas", icon: ReceiptText, matchPath: "/admin/cobranzas" },
     ]
   },
   {
@@ -99,6 +101,7 @@ export const navigationGroups: NavGroup[] = [
     label: "Gestión",
     items: [
       { title: "Agenda", href: "/admin/agenda", icon: CalendarDays, matchPath: "/admin/agenda" },
+      { title: "Cobranzas", href: "/admin/cobranzas", icon: ReceiptText, matchPath: "/admin/cobranzas" },
       { title: "Configuración", href: "/admin/settings", icon: Settings, matchPath: "/admin/settings" },
     ]
   }
