@@ -438,6 +438,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         <ArrowLeft className="size-4" aria-hidden="true" /> Volver al pipeline
       </Link>
 
+          {/* Financing Calculator Card */}
+          <div className="min-w-0">
+            <FinancingCalculator key={`${lead.id}-${primaryProperty?.id ?? ''}`} defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "ARS"} leadName={lead.name} projectName={projectById.get(primaryProperty?.projectId ?? interests[0]?.projectId ?? '')?.name} />
+          </div>
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         {/* ── Main Column (8 cols): Deep content ── */}
         <div className="min-w-0 space-y-6 xl:col-span-8">
@@ -677,10 +682,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         </div>
       </div>
 
-          {/* Financing Calculator Card */}
-          <div className="min-w-0">
-            <FinancingCalculator key={`${lead.id}-${primaryProperty?.id ?? ''}`} defaultPrice={primaryProperty?.price} defaultCurrency={primaryProperty?.currency ?? "ARS"} leadName={lead.name} projectName={projectById.get(primaryProperty?.projectId ?? interests[0]?.projectId ?? '')?.name} />
-          </div>
+
 
       {profileEditorOpen && <LeadProfileEditor key={lead.lastActivity} lead={lead} onClose={() => setProfileEditorOpen(false)} onSave={handleSaveProfile} />}
       {interestEditor && <LeadInterestEditor key={interestEditor.mode === "edit" ? interestEditor.interest.id : "new-interest"} companyId={lead.companyId} interest={interestEditor.mode === "edit" ? interestEditor.interest : undefined} projects={allProjects} properties={allProperties} onClose={() => setInterestEditor(null)} onSave={handleSaveInterest} />}
