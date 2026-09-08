@@ -94,7 +94,9 @@ function xsrfToken() {
 export async function apiFetch<T>(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  headers.set("X-Everprop-Tenant", TENANT);
+  if (process.env.NODE_ENV === "development") {
+    headers.set("X-Everprop-Tenant", TENANT);
+  }
 
   if (init.body) headers.set("Content-Type", "application/json");
   if (init.method && !["GET", "HEAD"].includes(init.method.toUpperCase())) {
