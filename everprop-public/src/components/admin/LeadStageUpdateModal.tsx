@@ -100,10 +100,10 @@ export function LeadStageUpdateModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden border border-border shadow-2xl">
-        <DialogHeader className="border-b border-border bg-card p-5 text-left">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg max-h-[calc(100dvh-2rem)] flex flex-col p-0 gap-0 overflow-hidden border border-border shadow-2xl">
+        <DialogHeader className="border-b border-border bg-card p-4 pr-12 sm:p-5 sm:pr-12 text-left shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-400">
+            <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-400">
               <ArrowRightLeft className="h-4 w-4" />
             </div>
             <div>
@@ -117,7 +117,7 @@ export function LeadStageUpdateModal({
           </div>
         </DialogHeader>
 
-        <div className="p-5 space-y-2.5 max-h-[60vh] overflow-y-auto">
+        <div className="p-4 sm:p-5 space-y-2.5 min-h-0 flex-1 overflow-y-auto">
           {STAGE_OPTIONS.map((option) => {
             const Icon = option.icon;
             const isSelected = selectedStage === option.key;
@@ -126,6 +126,7 @@ export function LeadStageUpdateModal({
               <button
                 key={option.key}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => setSelectedStage(option.key)}
                 className={cn(
                   "w-full flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all",
@@ -147,7 +148,7 @@ export function LeadStageUpdateModal({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={cn(
                           "text-xs font-bold",
@@ -182,7 +183,7 @@ export function LeadStageUpdateModal({
           })}
         </div>
 
-        <DialogFooter className="border-t border-border bg-muted/20 px-5 py-3.5 sm:justify-between gap-2">
+        <DialogFooter className="shrink-0 border-t border-border bg-muted/20 px-5 py-3.5 sm:justify-between gap-2">
           <Button
             type="button"
             variant="ghost"

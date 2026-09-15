@@ -71,7 +71,7 @@ export function getLeadFollowUps(
     .filter((followUp) => (
       followUp.leadId === leadId && (!companyId || followUp.companyId === companyId)
     ))
-    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+    .sort((a, b) => parseArgentinaDate(b.occurredAt).getTime() - parseArgentinaDate(a.occurredAt).getTime() || (b.sequence ?? 0) - (a.sequence ?? 0) || b.id.localeCompare(a.id));
 }
 
 export function getLastCommercialContactAt(
@@ -84,12 +84,13 @@ export function getLastCommercialContactAt(
     .filter(isCommercialContact)
     .map((followUp) => followUp.occurredAt);
 
-  if (legacyUpdatedAt) candidates.push(legacyUpdatedAt);
+  // Creation and note timestamps are not evidence of a commercial contact.
+  void legacyUpdatedAt;
 
   return candidates.reduce<string | undefined>((latest, value) => {
-    const timestamp = new Date(value).getTime();
+    const timestamp = parseArgentinaDate(value).getTime();
     if (Number.isNaN(timestamp)) return latest;
-    if (!latest || timestamp > new Date(latest).getTime()) return value;
+    if (!latest || timestamp > parseArgentinaDate(latest).getTime()) return value;
     return latest;
   }, undefined);
 }
@@ -116,7 +117,11 @@ export function getLeadFollowUpState(
     };
   }
 
-  const lastContact = new Date(lastContactAt);
+  const lastContact = parseArgentinaDate(lastContactAt);
+  const latestContact = getLeadFollowUps(followUps, leadId, companyId).find(isCommercialContact);
+  const nextContact = latestContact?.nextContactAt ? parseArgentinaDate(latestContact.nextContactAt) : undefined;
+  const businessDay = (date: Date) => toArgentinaDateTimeInputValue(date).slice(0, 10);
+  const validNext = nextContact && !Number.isNaN(nextContact.getTime()) ? nextContact : undefined;
   const deadline = new Date(lastContact.getTime() + FOLLOW_UP_LIMIT_DAYS * DAY_IN_MS);
   const elapsedMs = Math.max(0, now.getTime() - lastContact.getTime());
   const remainingMs = deadline.getTime() - now.getTime();
@@ -132,6 +137,21 @@ export function getLeadFollowUpState(
       detail: `Venció hace ${overdueDays} ${overdueDays === 1 ? "día" : "días"}`,
       formattedDate,
       formattedDeadline,
+      lastContactAt,
+      elapsedDays,
+      remainingDays: 0,
+    };
+  }
+
+  // A promised contact can expire before the ten-day inactivity limit.
+  if (validNext && businessDay(validNext) <= businessDay(now)) {
+    const overdue = businessDay(validNext) < businessDay(now);
+    return {
+      kind: overdue ? "overdue" : "dueSoon",
+      title: overdue ? "Vencido" : "Vence hoy",
+      detail: overdue ? "El contacto acordado quedó pendiente." : "Tenés un contacto acordado para hoy.",
+      formattedDate,
+      formattedDeadline: formatArgentinaDateTime(validNext),
       lastContactAt,
       elapsedDays,
       remainingDays: 0,

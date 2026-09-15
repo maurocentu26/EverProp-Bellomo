@@ -1,27 +1,30 @@
 "use client";
+import { hasRecordedContact } from "@/lib/commercial-queue";
+import { isCommercialContact } from "@/lib/lead-follow-up";
 
 import { useState, useMemo, useEffect } from "react";
 import LeadTable, { STAGE_LABELS } from "@/components/admin/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Plus, Filter, Search, RotateCcw, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { 
-  type Lead, 
-  type LeadFollowUp, 
-  leads as sampleLeads, 
-  properties as sampleProperties 
+import {
+  type Lead,
+  type Property,
+  type LeadFollowUp,
+  leads as sampleLeads,
+  properties as sampleProperties
 } from "@/data/admin-sample";
-import { 
-  loadLeadFollowUpList, 
-  loadLeadList, 
-  appendLeadFollowUpToStorage, 
-  saveLeadList 
+import {
+  loadLeadFollowUpList,
+  loadLeadList,
+  appendLeadFollowUpToStorage,
+  saveLeadList
 } from "@/lib/admin-storage";
 import { getLeadFollowUpState } from "@/lib/lead-follow-up";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropLeads, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
+import { loadEverpropCatalog, loadEverpropLeads, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useDashboardMode } from "@/lib/dashboard-context";
@@ -29,7 +32,7 @@ import { useCurrentSession } from "@/hooks/use-current-session";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 
-type LeadStageFilter = "all" | "new" | "contacted" | "visiting" | "negotiation" | "closing";
+type LeadStageFilter = "all" | "new" | "contacted" | "visiting" | "negotiation" | "closing" | "discarded";
 type AssetTypeFilter = "all" | "lote" | "departamento" | "comercial" | "tradicional";
 type FollowUpFilter = "all" | "dueSoon" | "overdue";
 
@@ -40,6 +43,7 @@ const LEAD_STAGE_FILTERS: { id: LeadStageFilter; label: string }[] = [
   { id: "visiting", label: "Visitas" },
   { id: "negotiation", label: "Negociación" },
   { id: "closing", label: "Cerrados" },
+  { id: "discarded", label: "Descartados" },
 ];
 
 const FOLLOW_UP_FILTERS: { id: FollowUpFilter; label: string }[] = [
@@ -51,13 +55,17 @@ const FOLLOW_UP_FILTERS: { id: FollowUpFilter; label: string }[] = [
 export default function AllLeadsPage() {
   const { mode: dashboardMode } = useDashboardMode();
   const { isEngineer, isAdvisor, user } = useCurrentSession();
-  
+
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [catalogProperties, setCatalogProperties] = useState<Property[]>(isMockDataMode ? sampleProperties : []);
+  const [originFilter, setOriginFilter] = useState("all");
+  const [advisorFilter, setAdvisorFilter] = useState("all");
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeStage, setActiveStage] = useState<LeadStageFilter>("all");
   const [assetType, setAssetType] = useState<AssetTypeFilter>("all");
   const [followUpFilter, setFollowUpFilter] = useState<FollowUpFilter>("all");
+  const [loadError, setLoadError] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
@@ -67,18 +75,22 @@ export default function AllLeadsPage() {
     async function fetchLeads() {
       if (!isMockDataMode) {
         try {
-          const [apiLeads, apiFollowUps] = await Promise.all([
+          const [apiLeads, apiFollowUps, catalog] = await Promise.all([
             loadEverpropLeads(),
-            loadEverpropAllFollowUps().catch(() => []),
+            loadEverpropAllFollowUps(),
+            loadEverpropCatalog(),
           ]);
           if (!active) return;
           setAllLeads(apiLeads);
-          const localFollowUps = loadLeadFollowUpList([], "c1");
-          setFollowUps(apiFollowUps.length > 0 ? apiFollowUps : localFollowUps);
+          setCatalogProperties(catalog.properties);
+          setLoadError("");
+          setFollowUps(apiFollowUps);
           setIsLoaded(true);
           return;
         } catch (e) {
-          console.error("Error loading leads from API, falling back:", e);
+          console.error("Error loading leads from API:", e);
+          if (active) { setLoadError("No se pudieron cargar los leads. Volvé a cargar la página para reintentar."); setIsLoaded(true); }
+          return;
         }
       }
       if (!active) return;
@@ -104,9 +116,11 @@ export default function AllLeadsPage() {
     });
   }, [dashboardMode]);
 
-  const hasActiveFilters = searchQuery !== "" || activeStage !== "all" || assetType !== "all" || followUpFilter !== "all";
+  const hasActiveFilters = originFilter !== "all" || advisorFilter !== "all" || searchQuery !== "" || activeStage !== "all" || assetType !== "all" || followUpFilter !== "all";
 
   const handleClearFilters = () => {
+    setOriginFilter("all");
+    setAdvisorFilter("all");
     setSearchQuery("");
     setActiveStage("all");
     setAssetType("all");
@@ -125,6 +139,7 @@ export default function AllLeadsPage() {
       contacted: base.filter((l) => l.stage === "contacted").length,
       visiting: base.filter((l) => l.stage === "visiting").length,
       negotiation: base.filter((l) => l.stage === "negotiation").length,
+      discarded: base.filter((l) => l.stage === "discarded").length,
       closing: base.filter((l) => l.stage === "closing").length,
     };
   }, [allLeads, isAdvisor, user]);
@@ -139,12 +154,15 @@ export default function AllLeadsPage() {
         const matchesName = l.name.toLowerCase().includes(query);
         const matchesEmail = l.email?.toLowerCase().includes(query);
         const matchesPhone = l.phone?.includes(query);
-        const linkedProps = l.propertyIds.map(pid => sampleProperties.find(p => p.id === pid)?.title.toLowerCase() || "");
+        const linkedProps = l.propertyIds.map(pid => catalogProperties.find(p => p.id === pid)?.title.toLowerCase() || "");
         const matchesProp = linkedProps.some(title => title.includes(query));
-        
+
         return matchesName || matchesEmail || matchesPhone || matchesProp;
       });
     }
+
+    if (originFilter !== "all") filtered = filtered.filter((lead) => lead.origin === originFilter);
+    if (advisorFilter !== "all") filtered = filtered.filter((lead) => (lead.agentId || "unassigned") === advisorFilter);
 
     // 2. Stage Filter
     if (activeStage !== "all") {
@@ -154,7 +172,7 @@ export default function AllLeadsPage() {
     // 3. Asset Type Filter
     if (assetType !== "all") {
       filtered = filtered.filter(l => {
-        const leadProps = l.propertyIds.map(pid => sampleProperties.find(p => p.id === pid));
+        const leadProps = l.propertyIds.map(pid => catalogProperties.find(p => p.id === pid));
         if (assetType === "lote") return leadProps.some(p => p?.propertyType === "Lote");
         if (assetType === "departamento") return leadProps.some(p => p?.propertyType === "Departamento");
         if (assetType === "comercial") return leadProps.some(p => p?.propertyType === "Local" || p?.propertyType === "Cochera");
@@ -192,7 +210,7 @@ export default function AllLeadsPage() {
     }
 
     return filtered;
-  }, [allLeads, searchQuery, activeStage, assetType, followUpFilter, followUps, isAdvisor, user]);
+  }, [allLeads, catalogProperties, originFilter, advisorFilter, searchQuery, activeStage, assetType, followUpFilter, followUps, isAdvisor, user]);
 
   // Actualización de estado en 1 clic
   async function handleStageChange(leadId: string, newStage: Lead["stage"]) {
@@ -201,9 +219,8 @@ export default function AllLeadsPage() {
     if (!targetLead) return;
 
     // Validación comercial: No se puede cambiar de etapa sin haber realizado al menos un seguimiento previo
-    const leadFollowUps = followUps.filter((f) => f.leadId === leadId);
-    const hasFollowUp = leadFollowUps.length > 0 || Boolean(targetLead.followUpUpdatedAt);
-    if (!hasFollowUp && newStage !== "new") {
+    const hasFollowUp = hasRecordedContact(followUps, targetLead);
+    if (!hasFollowUp && ["contacted", "visiting", "negotiation"].includes(newStage)) {
       toast.error("Es obligatorio registrar un seguimiento comercial antes de cambiar la etapa del lead.");
       setFollowUpLead(targetLead);
       return;
@@ -215,6 +232,7 @@ export default function AllLeadsPage() {
       visiting: "VISIT_SCHEDULED",
       negotiation: "NEGOTIATION",
       closing: "WON",
+      discarded: "LOST",
     };
 
     const stageLabel = STAGE_LABELS[newStage]?.label || newStage;
@@ -243,41 +261,26 @@ export default function AllLeadsPage() {
   async function handleConfirmFollowUp(followUp: LeadFollowUp) {
     if (!followUpLead) return;
 
-    const nextFollowUps = appendLeadFollowUpToStorage(
-      followUp,
-      followUps,
-      followUpLead.companyId
-    );
-    setFollowUps(nextFollowUps);
-    setAllLeads((prev) =>
-      prev.map((l) =>
-        l.id === followUpLead.id
-          ? { ...l, followUpUpdatedAt: followUp.occurredAt, lastActivity: followUp.occurredAt }
-          : l
-      )
-    );
-
-    if (!isMockDataMode) {
-      try {
-        const created = await createEverpropLeadFollowUp(followUpLead.id, {
-          type: followUp.type,
-          occurredAt: followUp.occurredAt,
-          summary: followUp.summary,
-          result: followUp.result,
-          nextAction: followUp.nextAction,
-          nextContactAt: followUp.nextContactAt,
-          agentId: followUp.agentId,
-        });
-        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
-      } catch (e) {
-        console.error("Error saving follow up to API:", e);
-      }
-    }
+    // Confirm persistence before mutating the UI. Errors stay in the editor for retry.
+    const recorded = isMockDataMode ? followUp : await createEverpropLeadFollowUp(followUpLead.id, {
+      type: followUp.type, occurredAt: followUp.occurredAt, summary: followUp.summary,
+      result: followUp.result, nextAction: followUp.nextAction,
+      nextContactAt: followUp.nextContactAt, agentId: followUp.agentId,
+    });
+    setFollowUps(isMockDataMode
+      ? appendLeadFollowUpToStorage(recorded, followUps, followUpLead.companyId)
+      : [recorded, ...followUps]);
+    setAllLeads((prev) => prev.map((item) => item.id === followUpLead.id ? {
+      ...item,
+      followUpUpdatedAt: isCommercialContact(recorded) && (!item.followUpUpdatedAt || recorded.occurredAt > item.followUpUpdatedAt)
+        ? recorded.occurredAt : item.followUpUpdatedAt,
+      lastActivity: recorded.occurredAt,
+    } : item));
 
     toast.success("Seguimiento registrado con éxito.");
     const recordedLead = followUpLead;
     setFollowUpLead(null);
-    setStageUpdateLead(recordedLead);
+    if (isCommercialContact(recorded)) setStageUpdateLead(recordedLead);
   }
 
   async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
@@ -305,50 +308,58 @@ export default function AllLeadsPage() {
         <div className="min-w-0">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Leads Comerciales</h1>
           <p className="mt-1 max-w-xl text-base leading-6 text-slate-500">
-            Gestioná y avanzá rápidamente los interesados en el pipeline de ventas.
+            Gestioná tus clientes y próximos contactos.
           </p>
         </div>
-        
+
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center xl:w-auto">
           <InputGroup className="w-full rounded-xl border-slate-200 bg-white shadow-sm sm:min-w-72 xl:w-72">
             <InputGroupAddon><Search className="h-4 w-4 text-slate-400" /></InputGroupAddon>
-            <InputGroupInput 
-              placeholder="Buscar lead, teléfono o lote..." 
+            <InputGroupInput
+              aria-label="Buscar leads por nombre, teléfono o lote"
+              placeholder="Buscar cliente…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="border-none focus-visible:ring-0 text-sm"
             />
           </InputGroup>
-          
+
           {!isEngineer && (
             <div className="flex w-full gap-2 sm:w-auto">
-              <Link href="/admin/leads/new" className="flex-1 sm:flex-none">
-                <Button className="min-h-11 w-full gap-2 bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-sm">
+              <Button nativeButton={false} role="link" render={<Link href="/admin/leads/new" />} className="min-h-11 flex-1 sm:flex-none w-full gap-2 bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-sm">
                   <Plus className="h-4 w-4" />
                   Nuevo Lead
                 </Button>
-              </Link>
             </div>
           )}
         </div>
       </div>
 
       {/* Compact Filter Bar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="lead-filters grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex sm:flex-wrap sm:items-end gap-3">
+        <label className="min-[380px]:col-span-2 flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground sm:hidden">
+          Etapa comercial
+          <select aria-label="Filtrar por etapa comercial" value={activeStage}
+            onChange={event => setActiveStage(event.target.value as typeof activeStage)}
+            className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+            {LEAD_STAGE_FILTERS.map(tab => <option key={tab.id} value={tab.id}>{tab.label} ({stageCounts[tab.id]})</option>)}
+          </select>
+        </label>
         {/* Stage chip-tabs: compact pills */}
-        <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-1">
+        <div role="group" aria-label="Filtrar por etapa comercial" className="hidden sm:flex max-w-full flex-wrap items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-1">
           {LEAD_STAGE_FILTERS.map(tab => {
             const count = stageCounts[tab.id];
             const isActive = activeStage === tab.id;
             return (
-              <button 
+              <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveStage(tab.id)}
+                aria-pressed={isActive}
                 className={cn(
-                  "rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap",
-                  isActive 
-                    ? "bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-300" 
+                  "min-h-10 rounded-lg px-3 py-2 text-xs font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
+                  isActive
+                    ? "bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-300"
                     : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
@@ -368,31 +379,48 @@ export default function AllLeadsPage() {
         <div className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-800" />
 
         {/* Asset type chip */}
-        <select 
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Tipo de interés
+<select
           aria-label="Filtrar por tipo de interés"
-          className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 cursor-pointer"
+          className="min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 cursor-pointer"
           value={assetType}
           onChange={(e) => setAssetType(e.target.value as AssetTypeFilter)}
         >
-          <option value="all">Tipo: Todos</option>
+          <option value="all">Todos</option>
           <option value="lote">Loteos</option>
           <option value="departamento">Edificios</option>
           <option value="comercial">Comercial</option>
           <option value="tradicional">Tradicional</option>
         </select>
+</label>
 
         {/* Follow-up urgency chip */}
-        <select
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Seguimiento
+<select
           aria-label="Filtrar por urgencia de seguimiento"
-          className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 cursor-pointer"
+          className="min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 cursor-pointer"
           value={followUpFilter}
           onChange={(e) => setFollowUpFilter(e.target.value as FollowUpFilter)}
         >
-          <option value="all">Seguimiento: Todos</option>
+          <option value="all">Todos</option>
           <option value="dueSoon">Próximos a vencer</option>
           <option value="overdue">Vencidos</option>
         </select>
+</label>
 
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Origen
+<select aria-label="Filtrar por origen" value={originFilter} onChange={(event) => setOriginFilter(event.target.value)} className="min-h-11 w-full min-w-0 max-w-full rounded-lg border border-border bg-card px-3 text-xs text-card-foreground">
+          <option value="all">Todos</option>
+          {[...new Set(allLeads.map((lead) => lead.origin))].sort().map((origin) => <option key={origin} value={origin}>{origin}</option>)}
+        </select>
+</label>
+        {!isAdvisor && <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Asesor
+<select aria-label="Filtrar por asesor" value={advisorFilter} onChange={(event) => setAdvisorFilter(event.target.value)} className="min-h-11 w-full min-w-0 max-w-full rounded-lg border border-border bg-card px-3 text-xs text-card-foreground">
+          <option value="all">Todos</option>
+          <option value="unassigned">Sin asignar</option>
+          {[...new Map(allLeads.filter((lead) => lead.agentId).map((lead) => [lead.agentId!, lead.agentName || "Asesor asignado"])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select>
+</label>}
         {/* Clear filters */}
         {hasActiveFilters && (
           <Button
@@ -408,10 +436,11 @@ export default function AllLeadsPage() {
 
       {/* Tabla Pro de Leads */}
       <div className="min-h-[500px]">
-        {filteredLeads.length > 0 ? (
-          <LeadTable 
-            leads={filteredLeads} 
-            followUps={followUps} 
+        {loadError ? <p role="alert" className="rounded-xl border border-amber-500/40 p-4 text-sm">{loadError}</p> : filteredLeads.length > 0 ? (
+          <LeadTable
+            properties={catalogProperties}
+            leads={filteredLeads}
+            followUps={followUps}
             onStageChange={handleStageChange}
             onFollowUp={(lead) => setFollowUpLead(lead)}
           />

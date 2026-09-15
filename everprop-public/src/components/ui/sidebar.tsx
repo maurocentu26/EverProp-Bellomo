@@ -272,24 +272,64 @@ function SidebarTrigger({
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">Mostrar u ocultar menú lateral</span>
     </Button>
   )
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, setOpen } = useSidebar()
+  const dragStart = React.useRef<{ x: number; y: number; direction: number } | null>(null)
+  const suppressClick = React.useRef(false)
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Toggle Sidebar"
+      aria-label="Mostrar u ocultar menú lateral"
       tabIndex={-1}
-      onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      onPointerDown={(event) => {
+        if (!event.isPrimary || event.button !== 0) return
+        suppressClick.current = false
+        dragStart.current = {
+          x: event.clientX,
+          y: event.clientY,
+          direction: event.currentTarget.closest('[data-slot="sidebar"]')?.getAttribute("data-side") === "right" ? -1 : 1,
+        }
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }}
+      onPointerMove={(event) => {
+        const start = dragStart.current
+        if (!start) return
+        const dx = event.clientX - start.x
+        const dy = event.clientY - start.y
+        if (Math.abs(dx) < 24 || Math.abs(dx) <= Math.abs(dy)) return
+        suppressClick.current = true
+        setOpen(dx * start.direction > 0)
+      }}
+      onPointerUp={(event) => {
+        dragStart.current = null
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId)
+        }
+      }}
+      onPointerCancel={() => {
+        dragStart.current = null
+        suppressClick.current = true
+      }}
+      onLostPointerCapture={() => {
+        dragStart.current = null
+      }}
+      onClick={() => {
+        if (suppressClick.current) {
+          suppressClick.current = false
+          return
+        }
+        toggleSidebar()
+      }}
+      title="Clic o arrastrá para expandir o contraer el menú"
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
+        "absolute inset-y-0 z-20 hidden w-4 touch-none select-none transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",

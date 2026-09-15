@@ -198,6 +198,27 @@ final class TenantIsolationAndRbacTest extends TestCase
     }
 
     /** @return array<string, string> */
+    public function test_technical_lot_details_persist_within_the_tenant(): void
+    {
+        [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $land = ['frente_m' => 10, 'fondo_m' => 25, 'ochava_m2' => 0, 'padron' => 'QA-123', 'curb' => true, 'lighting' => true];
+        $response = $this->actingAs($admin)->withHeaders($this->tenantHeaders($tenant))
+            ->postJson('/api/v1/admin/properties', [
+                'title' => 'Lote técnico de prueba', 'operation' => 'SALE', 'category' => 'LOT',
+                'status' => 'AVAILABLE', 'city' => 'Jujuy', 'province' => 'Jujuy',
+                'price' => 0, 'currency_code' => 'ARS',
+                'commercial_features_json' => ['land' => $land],
+                'services_json' => ['water' => true, 'gas' => false],
+            ])->assertCreated();
+        $id = $response->json('data.public_id');
+        $this->getJson('/api/v1/admin/properties/'.$id)->assertOk()
+            ->assertJsonPath('data.commercial_features.land', function ($actual) use ($land) { ksort($actual); ksort($land); return $actual === $land; })
+            ->assertJsonPath('data.services.water', true);
+        [$otherTenant, $otherAdmin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $this->actingAs($otherAdmin)->withHeaders($this->tenantHeaders($otherTenant))
+            ->getJson('/api/v1/admin/properties/'.$id)->assertNotFound();
+    }
+
     private function tenantHeaders(Tenant $tenant): array
     {
         return [

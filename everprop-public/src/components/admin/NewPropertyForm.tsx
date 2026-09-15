@@ -10,10 +10,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { properties as sampleProperties, type Property, JUJUY_CITIES } from "@/data/admin-sample";
-import { loadPropertyList, savePropertyList } from "@/lib/admin-storage";
+import { properties as sampleProperties, type Property, type Project, projects as sampleProjects, JUJUY_CITIES } from "@/data/admin-sample";
+import { loadPropertyList, savePropertyList, loadProjectList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { createEverpropProperty } from "@/lib/everprop-api";
+import { createEverpropProperty, loadEverpropCatalog } from "@/lib/everprop-api";
 import { Car, Store, Map, Building2, Home, ArrowLeft, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
@@ -39,6 +39,15 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
   const paramType = searchParams.get("type") as "Casa" | "Departamento" | "Lote" | "Cochera" | "Local" | null;
 
   const [error, setError] = useState("");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectId, setProjectId] = useState("");
+  const [projectsError, setProjectsError] = useState("");
+  useEffect(() => {
+    let active = true;
+    if (isMockDataMode) setProjects(loadProjectList(sampleProjects, companyId));
+    else loadEverpropCatalog().then(catalog => { if (active) setProjects(catalog.projects); }).catch(() => { if (active) setProjectsError("No se pudieron cargar los desarrollos. Recargá el formulario para reintentar."); });
+    return () => { active = false; };
+  }, [companyId]);
   const [isSaving, setIsSaving] = useState(false);
   
   // Stepper State
@@ -72,6 +81,7 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       propertyType: "Casa",
+      currency: "USD",
       spaceType: "Abierto",
       operation: "sale",
     },
@@ -80,11 +90,12 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
   // When category changes, update the default active tab
   useEffect(() => {
     return deferEffectUpdate(() => {
+      if (paramType && category === paramCategory) { setActiveTab(paramType); return; }
       if (category === "tradicional") setActiveTab("Casa");
       if (category === "loteo") setActiveTab("Lote");
       if (category === "comercial") setActiveTab("Local");
     });
-  }, [category]);
+  }, [category, paramCategory, paramType]);
 
   // Sync activeTab to form
   useEffect(() => {
@@ -97,6 +108,7 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
       toast.error("Acceso restringido: Los asesores no tienen permisos para crear propiedades.");
       return;
     }
+    if (projectsError) { setError(projectsError); return; }
     setError("");
     setIsSaving(true);
 
@@ -111,11 +123,12 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
       const nextProperty: Property = {
         id: crypto.randomUUID(),
         companyId,
+        projectId: projectId || undefined,
         title: data.title.trim(),
         operation: data.operation || "sale",
         propertyType: data.propertyType,
         price: Number(data.price),
-        currency: "USD",
+        currency: data.currency,
         city: data.city.trim(),
         neighborhood: data.neighborhood.trim(),
         bedrooms: data.bedrooms ? Number(data.bedrooms) : 0,
@@ -125,6 +138,14 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
         sectorName: data.propertyType === "Lote" ? data.sectorName : undefined,
         unitNumber: data.floor ? `${data.floor}-${data.unitNumber}` : data.unitNumber,
         status: "available",
+        commercialFeatures: data.propertyType === "Lote" ? { land: {
+          frente_m: data.frente_m ? Number(data.frente_m) : undefined,
+          fondo_m: data.fondo_m ? Number(data.fondo_m) : undefined,
+          ochava_m2: data.ochava_m2 ? Number(data.ochava_m2) : undefined,
+          padron: data.padron?.trim() || undefined,
+          curb: Boolean(data.curb), gravel: Boolean(data.gravel), lighting: Boolean(data.lighting),
+          spaceType: data.spaceType,
+        }} : undefined,
         landFeatures: data.propertyType === "Lote" ? {
           water: !!data.water,
           electricity: !!data.electricity,
@@ -138,6 +159,9 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
       if (!isMockDataMode) {
         await createEverpropProperty({
           title: nextProperty.title,
+          projectId: nextProperty.projectId,
+          commercialFeatures: nextProperty.commercialFeatures,
+          services: {water: Boolean(data.water), electricity: Boolean(data.electricity), gas: Boolean(data.gas), sewage: Boolean(data.sewage)},
           operation: nextProperty.operation,
           propertyType: nextProperty.propertyType,
           price: nextProperty.price,
@@ -179,49 +203,49 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
       </button>
 
       <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-lg rounded-2xl p-0">
-        <div className="bg-slate-950 px-6 py-6 text-white flex flex-col items-center">
-          <CardTitle className="text-xl font-bold mb-1">
+        <div className="border-b border-border bg-card px-4 py-5 text-card-foreground sm:px-6 sm:py-6">
+          <h1 className="text-xl font-bold leading-tight mb-2">
             {category === "tradicional" && "Añadir Propiedad Tradicional"}
             {category === "loteo" && "Añadir Lote o Terreno"}
             {category === "comercial" && "Añadir Activo Comercial"}
-          </CardTitle>
-          <CardDescription className="text-xs text-slate-400">
+          </h1>
+          <CardDescription className="text-sm leading-relaxed text-muted-foreground">
             Completá los datos requeridos para ingresar la unidad al inventario.
           </CardDescription>
 
           {/* Sub-Tabs based on category */}
-          <div className="flex gap-2 mt-4 p-1 bg-slate-900 rounded-lg overflow-x-auto w-full sm:w-auto">
+          <div role="group" aria-label="Tipo de propiedad" className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex gap-1 mt-5 p-1 bg-muted rounded-xl w-full">
             {category === "tradicional" && (
               <>
-                <button type="button" onClick={() => setActiveTab("Casa")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all whitespace-nowrap", activeTab === "Casa" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800")}>
-                  <Home className="w-3.5 h-3.5" /> Casa
+                <button type="button" aria-pressed={activeTab === "Casa"} onClick={() => setActiveTab("Casa")} className={cn("flex min-h-11 min-w-0 items-center justify-center gap-2 px-2 py-2.5 rounded-lg text-sm font-semibold transition-colors sm:flex-1", activeTab === "Casa" ? "bg-indigo-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
+                  <Home aria-hidden="true" className="hidden size-4 shrink-0 sm:block" /> Casa
                 </button>
-                <button type="button" onClick={() => setActiveTab("Departamento")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all whitespace-nowrap", activeTab === "Departamento" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800")}>
-                  <Building2 className="w-3.5 h-3.5" /> Departamento
+                <button type="button" aria-pressed={activeTab === "Departamento"} onClick={() => setActiveTab("Departamento")} className={cn("flex min-h-11 min-w-0 items-center justify-center gap-2 px-2 py-2.5 rounded-lg text-sm font-semibold transition-colors sm:flex-1", activeTab === "Departamento" ? "bg-indigo-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
+                  <Building2 aria-hidden="true" className="hidden size-4 shrink-0 sm:block" /> Departamento
                 </button>
               </>
             )}
 
             {category === "loteo" && (
-              <button type="button" onClick={() => setActiveTab("Lote")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all whitespace-nowrap", activeTab === "Lote" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800")}>
-                <Map className="w-3.5 h-3.5" /> Lote
+              <button type="button" aria-pressed={activeTab === "Lote"} onClick={() => setActiveTab("Lote")} className={cn("flex min-h-11 min-w-0 items-center justify-center gap-2 px-2 py-2.5 rounded-lg text-sm font-semibold transition-colors sm:flex-1", activeTab === "Lote" ? "bg-emerald-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
+                <Map aria-hidden="true" className="hidden size-4 shrink-0 sm:block" /> Lote
               </button>
             )}
 
             {category === "comercial" && (
               <>
-                <button type="button" onClick={() => setActiveTab("Local")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all whitespace-nowrap", activeTab === "Local" ? "bg-amber-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800")}>
-                  <Store className="w-3.5 h-3.5" /> Local Comercial
+                <button type="button" aria-pressed={activeTab === "Local"} onClick={() => setActiveTab("Local")} className={cn("flex min-h-11 min-w-0 items-center justify-center gap-2 px-2 py-2.5 rounded-lg text-sm font-semibold transition-colors sm:flex-1", activeTab === "Local" ? "bg-amber-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
+                  <Store aria-hidden="true" className="hidden size-4 shrink-0 sm:block" /> Local Comercial
                 </button>
-                <button type="button" onClick={() => setActiveTab("Cochera")} className={cn("flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all whitespace-nowrap", activeTab === "Cochera" ? "bg-amber-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800")}>
-                  <Car className="w-3.5 h-3.5" /> Cochera
+                <button type="button" aria-pressed={activeTab === "Cochera"} onClick={() => setActiveTab("Cochera")} className={cn("flex min-h-11 min-w-0 items-center justify-center gap-2 px-2 py-2.5 rounded-lg text-sm font-semibold transition-colors sm:flex-1", activeTab === "Cochera" ? "bg-amber-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
+                  <Car aria-hidden="true" className="hidden size-4 shrink-0 sm:block" /> Cochera
                 </button>
               </>
             )}
           </div>
         </div>
 
-        <CardContent className="px-6 py-6">
+        <CardContent className="px-4 py-5 sm:px-6 sm:py-6">
           {category === "loteo" && (
             <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/70 text-xs text-emerald-900">
               <div className="flex items-center gap-2.5">
@@ -244,7 +268,8 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit, invalid => setError(Object.values(invalid).map(field => field?.message).filter(Boolean).join(" ")))} className="space-y-5">
+            <Field><FieldLabel htmlFor="property-project">Desarrollo / Proyecto</FieldLabel><select id="property-project" value={projectId} onChange={e => setProjectId(e.target.value)} className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"><option value="">Propiedad independiente</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select>{projectsError && <p role="alert" className="text-sm text-red-600">{projectsError}</p>}</Field>
             <FieldGroup className="grid gap-4 md:grid-cols-2">
               
               <Field className="md:col-span-2">
@@ -293,7 +318,8 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="price" className="text-xs font-semibold text-slate-700">Precio (USD) <span className="text-rose-500">*</span></FieldLabel>
+                <FieldLabel htmlFor="price" className="text-xs font-semibold text-slate-700">Precio <span className="text-rose-500">*</span></FieldLabel>
+                <select aria-label="Moneda del precio" {...register("currency")} className="mb-2 h-10 rounded-lg border border-border bg-background px-3 text-sm"><option value="USD">USD · Dólares</option><option value="ARS">ARS · Pesos</option></select>
                 <Input id="price" type="number" step="0.01" {...register("price")} placeholder="15000" className="h-10 rounded-lg bg-slate-50 text-sm" />
                 {errors.price && <FieldError>{errors.price.message}</FieldError>}
               </Field>

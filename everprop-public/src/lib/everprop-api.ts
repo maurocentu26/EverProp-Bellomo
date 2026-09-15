@@ -1,4 +1,4 @@
-import type { Project, Property, Lead, LeadFollowUp, LeadFollowUpType, LeadInterestCategory } from "@/data/admin-sample";
+import type { Project, Property, Visit, Lead, LeadFollowUp, LeadFollowUpType, LeadInterestCategory } from "@/data/admin-sample";
 import type { UserProfile, UserRole } from "@/data/auth-sample";
 
 const CONFIGURED_API_URL =
@@ -21,7 +21,7 @@ export function resolveApiUrl(): string {
 }
 
 type ApiEnvelope<T> = { data: T };
-type ApiPage<T> = { data: T[]; meta?: { total?: number } };
+type ApiPage<T> = { data: T[]; meta?: { total?: number; current_page?: number; last_page?: number } };
 
 type ApiUser = {
   id: string;
@@ -47,6 +47,7 @@ type ApiProject = {
 };
 
 type ApiProperty = {
+  version?: number;
   public_id: string;
   title: string;
   operation: string;
@@ -222,6 +223,7 @@ function mapProperty(property: ApiProperty): Property {
 
   return {
     id: property.public_id,
+    version: property.version,
     companyId: "c1",
     title: cleanText(property.title),
     operation: operation === "RENT" ? "rent" : operation === "TEMPORARY" ? "temporal" : "sale",
@@ -238,7 +240,7 @@ function mapProperty(property: ApiProperty): Property {
     projectId: property.project?.public_id || undefined,
     sectorName: property.sector_name || undefined,
     unitNumber: property.unit_number || undefined,
-    status: status === "SOLD" ? "sold" : status === "RESERVED" ? "reserved" : "available",
+    status: status === "RENTED" ? "rented" : status === "SOLD" ? "sold" : status === "RESERVED" ? "reserved" : "available",
     services: property.services || undefined,
     commercialFeatures: property.commercial_features || undefined,
   };
@@ -263,19 +265,54 @@ export async function currentEverpropUser() {
   }
 }
 
+async function finishBrowserCleanup<T>(operation: Promise<T>): Promise<T | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([operation, new Promise<undefined>(resolve => {
+      timer = setTimeout(() => resolve(undefined), 1500);
+    })]);
+  } finally { if (timer !== undefined) clearTimeout(timer); }
+}
+
 export async function logoutEverprop() {
-  await apiFetch<null>("/api/v1/auth/logout", { method: "POST" });
+  try {
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      const registration = await finishBrowserCleanup(navigator.serviceWorker.getRegistration("/"));
+      const subscription = registration?.pushManager ? await finishBrowserCleanup(registration.pushManager.getSubscription()) : undefined;
+      if (subscription) {
+        try {
+          await apiFetch("/api/v1/admin/push/subscriptions", { method: "DELETE", body: JSON.stringify({ endpoint: subscription.endpoint }) });
+        } finally {
+          await finishBrowserCleanup(subscription.unsubscribe());
+        }
+      }
+    }
+  } finally {
+    await apiFetch<null>("/api/v1/auth/logout", { method: "POST" });
+  }
+}
+
+async function loadCatalogPages<T>(path: string): Promise<T[]> {
+  const rows: T[] = [];
+  let page = 1;
+  let lastPage = 1;
+  do {
+    const response = await apiFetch<ApiPage<T>>(`${path}?per_page=100&page=${page}`);
+    rows.push(...response.data);
+    lastPage = response.meta?.last_page ?? 1;
+    page += 1;
+  } while (page <= lastPage);
+  return rows;
 }
 
 async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   const [projects, properties] = await Promise.all([
-    apiFetch<ApiPage<ApiProject>>(`${prefix}/projects?per_page=100`),
-    apiFetch<ApiPage<ApiProperty>>(`${prefix}/properties?per_page=100`),
+    loadCatalogPages<ApiProject>(`${prefix}/projects`),
+    loadCatalogPages<ApiProperty>(`${prefix}/properties`),
   ]);
-
   return {
-    projects: projects.data.map(mapProject),
-    properties: properties.data.map(mapProperty),
+    projects: projects.map(mapProject),
+    properties: properties.map(mapProperty),
     source: prefix.includes("admin") ? ("admin-api" as const) : ("public-api" as const),
   };
 }
@@ -305,7 +342,7 @@ export type CreatePropertyPayload = {
   bathrooms?: number;
   area_m2?: number;
   description?: string;
-  services?: string[];
+  services?: Property["services"];
   commercialFeatures?: Record<string, any>;
 };
 
@@ -319,17 +356,23 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     Propiedad: "TRADITIONAL",
   };
 
+  let projectId: number | null = null;
+  if (data.projectId) {
+    const project = await apiFetch<ApiEnvelope<{id: number}>>(`/api/v1/admin/projects/${encodeURIComponent(data.projectId)}`);
+    projectId = project.data.id;
+    if (!Number.isInteger(projectId)) throw new Error("No se pudo identificar el proyecto seleccionado.");
+  }
   const payload = {
     title: data.title,
-    operation: (data.operation || "sale").toUpperCase(),
+    operation: (data.operation === "temporal" ? "TEMPORARY" : (data.operation || "sale").toUpperCase()),
     category: categoryMap[data.propertyType || ""] || "LOT",
     status: "AVAILABLE",
-    price: data.price ? Number(data.price) : null,
-    currency_code: data.price ? (data.currency || "USD") : null,
+    price: data.price == null ? null : Number(data.price),
+    currency_code: data.price == null ? null : (data.currency || "USD"),
     city: data.city,
     province: data.province || "Jujuy",
     neighborhood: data.neighborhood || null,
-    project_id: data.projectId ? 1 : 1, // Bellomo project ID
+    project_id: projectId,
     sector_name: data.sectorName || null,
     unit_number: data.unitNumber || null,
     bedrooms: data.bedrooms ?? null,
@@ -348,22 +391,8 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
   return mapProperty(response.data);
 }
 
-export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold", version = 1) {
-  const statusMap: Record<string, string> = {
-    available: "AVAILABLE",
-    reserved: "RESERVED",
-    sold: "SOLD",
-  };
-
-  const response = await apiFetch<ApiEnvelope<ApiProperty>>(`/api/v1/admin/properties/${publicId}/publish`, {
-    method: "PATCH",
-    body: JSON.stringify({
-      status: statusMap[status] || "AVAILABLE",
-      version,
-    }),
-  });
-
-  return mapProperty(response.data);
+export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold", version?: number) {
+  return updateEverpropProperty(publicId, { status, version });
 }
 
 export type CreateProjectPayload = {
@@ -413,6 +442,7 @@ export async function createEverpropProject(data: CreateProjectPayload) {
 }
 
 export type ApiLead = {
+  source_channel?: string;
   id: string;
   db_id?: number;
   name: string;
@@ -456,7 +486,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     VISIT_SCHEDULED: "visiting",
     NEGOTIATION: "negotiation",
     WON: "closing",
-    LOST: "closing",
+    LOST: "discarded",
   };
 
   const propertyIds = apiLead.property_ids && apiLead.property_ids.length > 0
@@ -500,7 +530,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     id: apiLead.id,
     companyId: "c1",
     name: cleanText(apiLead.name),
-    origin: "Web / Formulario",
+    origin: ({ WHATSAPP: "WhatsApp", WEB_FORM: "Web / Formulario", PORTAL: "Portal", REFERRAL: "Referido", INSTAGRAM: "Instagram" } as Record<string, string>)[apiLead.source_channel || "WEB_FORM"] || apiLead.source_channel || "Web / Formulario",
     propertyIds,
     stage: stageMap[apiLead.stage?.toUpperCase() || ""] || "new",
     lastActivity: apiLead.updated_at || apiLead.created_at || new Date().toISOString(),
@@ -514,12 +544,27 @@ export function mapLead(apiLead: ApiLead): Lead {
   };
 }
 
-export async function loadEverpropLeads(): Promise<Lead[]> {
-  const response = await apiFetch<{ data: ApiLead[] }>("/api/v1/admin/leads");
-  return (response.data || []).map(mapLead);
+async function loadAllCrmPages<T>(path: string): Promise<T[]> {
+  const rows: T[] = [];
+  let page: number | null = 1;
+  while (page !== null) {
+    const response: { data: T[]; meta?: { next_page: number | null } } = await apiFetch(`${path}?page=${page}`);
+    rows.push(...response.data);
+    const next: number | null = response.meta?.next_page ?? null;
+    if (next !== null && next <= page) throw new Error("Paginación inválida del CRM");
+    page = next;
+  }
+  return rows;
 }
 
+export async function loadEverpropLeads(): Promise<Lead[]> {
+  return (await loadAllCrmPages<ApiLead>("/api/v1/admin/leads")).map(mapLead);
+}
+
+const leadOriginCode = (origin: string) => ({ "WhatsApp": "WHATSAPP", "Web / Formulario": "WEB_FORM", "Web": "WEB_FORM", "Portal Inmobiliario": "PORTAL", "Portal": "PORTAL", "Referido": "REFERRAL", "Instagram": "INSTAGRAM" } as Record<string, string>)[origin] || "WEB_FORM";
+
 export async function createEverpropLead(data: {
+  origin?: string;
   name: string;
   email?: string;
   phone?: string;
@@ -535,6 +580,7 @@ export async function createEverpropLead(data: {
     method: "POST",
     body: JSON.stringify({
       name: data.name,
+      source_channel: data.origin ? leadOriginCode(data.origin) : undefined,
       email: data.email || null,
       phone: data.phone || null,
       stage: data.stage || "NEW",
@@ -553,6 +599,7 @@ export async function createEverpropLead(data: {
 export async function updateEverpropLead(
   leadPublicId: string,
   data: {
+    origin?: string;
     name?: string;
     email?: string;
     phone?: string;
@@ -563,6 +610,7 @@ export async function updateEverpropLead(
   }
 ) {
   const payload: Record<string, any> = {};
+  if (data.origin !== undefined) payload.source_channel = leadOriginCode(data.origin);
   if (data.name !== undefined) payload.name = data.name;
   if (data.email !== undefined) payload.email = data.email || null;
   if (data.phone !== undefined) payload.phone = data.phone || null;
@@ -586,6 +634,7 @@ export async function loadEverpropLeadById(leadPublicId: string): Promise<Lead> 
 
 export type ApiLeadFollowUp = {
   id: string;
+  sequence?: number;
   companyId: string;
   leadId: string;
   agentId: string;
@@ -604,6 +653,7 @@ export async function loadEverpropLeadFollowUps(leadPublicId: string): Promise<L
   const response = await apiFetch<{ data: ApiLeadFollowUp[] }>(`/api/v1/admin/leads/${leadPublicId}/follow-ups`);
   return (response.data || []).map((item) => ({
     id: item.id,
+    sequence: item.sequence,
     companyId: item.companyId || "c1",
     leadId: item.leadId,
     agentId: item.agentId,
@@ -615,6 +665,18 @@ export async function loadEverpropLeadFollowUps(leadPublicId: string): Promise<L
     nextAction: item.nextAction || undefined,
     nextContactAt: item.nextContactAt || undefined,
   }));
+}
+
+function notifyCrmUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("everprop_leads_updated"));
+  try {
+    if (typeof BroadcastChannel !== "undefined") {
+      const channel = new BroadcastChannel("everprop_leads");
+      channel.postMessage({ type: "LEADS_UPDATED" });
+      channel.close();
+    }
+  } catch { /* A cross-tab refresh must never turn a saved contact into an error. */ }
 }
 
 export async function createEverpropLeadFollowUp(
@@ -642,9 +704,11 @@ export async function createEverpropLeadFollowUp(
     }),
   });
 
+  notifyCrmUpdated();
   const item = response.data;
   return {
     id: item.id,
+    sequence: item.sequence,
     companyId: item.companyId || "c1",
     leadId: item.leadId,
     agentId: item.agentId,
@@ -659,9 +723,10 @@ export async function createEverpropLeadFollowUp(
 }
 
 export async function loadEverpropAllFollowUps(): Promise<LeadFollowUp[]> {
-  const response = await apiFetch<{ data: ApiLeadFollowUp[] }>("/api/v1/admin/follow-ups");
-  return (response.data || []).map((item) => ({
+  const rows = await loadAllCrmPages<ApiLeadFollowUp>("/api/v1/admin/follow-ups");
+  return rows.map((item) => ({
     id: item.id,
+    sequence: item.sequence,
     companyId: item.companyId || "c1",
     leadId: item.leadId,
     agentId: item.agentId,
@@ -679,6 +744,7 @@ export async function attachEverpropLeadProperty(
   leadPublicId: string,
   propertyPublicId: string | number,
   options?: {
+    replacesPropertyId?: string;
     interestLevel?: string;
     notes?: string;
     price?: number;
@@ -689,6 +755,7 @@ export async function attachEverpropLeadProperty(
     method: "POST",
     body: JSON.stringify({
       property_id: String(propertyPublicId),
+      replaces_property_id: options?.replacesPropertyId,
       interest_level: options?.interestLevel || "MEDIUM",
       notes: options?.notes || null,
       quoted_price: options?.price ?? null,
@@ -758,18 +825,18 @@ export type UpdatePropertyPayload = {
   title?: string;
   operation?: "sale" | "rent" | "temporal";
   propertyType?: string;
-  status?: "available" | "reserved" | "sold";
+  status?: "available" | "reserved" | "sold" | "rented";
   price?: number;
   currency?: "USD" | "ARS";
   city?: string;
   province?: string;
   neighborhood?: string;
-  sectorName?: string;
-  unitNumber?: string;
-  area_m2?: number;
+  sectorName?: string | null;
+  unitNumber?: string | null;
+  area_m2?: number | null;
   bedrooms?: number;
   bathrooms?: number;
-  description?: string;
+  description?: string | null;
   version?: number;
 };
 
@@ -786,20 +853,22 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
     available: "AVAILABLE",
     reserved: "RESERVED",
     sold: "SOLD",
+    rented: "RENTED",
   };
 
+  if (!data.version) throw new Error("Recargá la ficha antes de editar: falta la versión actual de la propiedad.");
   const payload: Record<string, any> = {
-    version: data.version ?? 1,
+    version: data.version,
   };
 
   if (data.title !== undefined) payload.title = data.title;
-  if (data.operation !== undefined) payload.operation = data.operation.toUpperCase();
+  if (data.operation !== undefined) payload.operation = data.operation === "temporal" ? "TEMPORARY" : data.operation.toUpperCase();
   if (data.propertyType !== undefined) payload.category = categoryMap[data.propertyType] || "LOT";
   if (data.status !== undefined) payload.status = statusMap[data.status] || "AVAILABLE";
   if (data.price !== undefined) {
-    payload.price = data.price ? Number(data.price) : null;
-    payload.currency_code = data.price ? (data.currency || "USD") : null;
+    payload.price = Number(data.price);
   }
+  if (data.currency !== undefined) payload.currency_code = data.currency;
   if (data.city !== undefined) payload.city = data.city;
   if (data.province !== undefined) payload.province = data.province;
   if (data.neighborhood !== undefined) payload.neighborhood = data.neighborhood;
@@ -880,9 +949,8 @@ export async function loadEverpropNotifications(): Promise<{
   data: ApiNotification[];
   meta?: { unread_count?: number };
 }> {
-  return apiFetch<{ data: ApiNotification[]; meta?: { unread_count?: number } }>(
-    "/api/v1/admin/notifications"
-  );
+  const data = await loadAllCrmPages<ApiNotification>("/api/v1/admin/notifications");
+  return { data, meta: { unread_count: data.filter((item) => !item.read).length } };
 }
 
 export async function markEverpropNotificationRead(id: string): Promise<void> {
@@ -909,6 +977,7 @@ export const STAGE_FRONTEND_TO_API: Record<string, string> = {
   visiting: "VISIT_SCHEDULED",
   negotiation: "NEGOTIATION",
   closing: "WON",
+  discarded: "LOST",
 };
 
 export async function updateEverpropLeadStage(leadPublicId: string, stage: string) {
@@ -934,4 +1003,28 @@ export async function updateEverpropLeadPropertyStatus(
 }
 
 
+
+
+export type TodayVisits = {
+  data: { id: string; lead: { id: string | null; name: string }; scheduledAt: string; notes?: string }[];
+  meta: { total: number; date: string; timezone: string };
+};
+
+export function loadEverpropTodayVisits(): Promise<TodayVisits> {
+  return apiFetch<TodayVisits>("/api/v1/admin/visits/today");
+}
+
+export function loadEverpropVisits() {
+  return loadAllCrmPages<Visit & { leadName: string; agentName?: string }>("/api/v1/admin/visits");
+}
+export async function createEverpropVisit(data: { lead_id?: string; property_id?: string; agent_id?: string; guest_name?: string; guest_phone?: string; guest_email?: string; scheduled_at: string; notes?: string }) {
+  const result = await apiFetch("/api/v1/admin/visits", { method: "POST", body: JSON.stringify(data) });
+  notifyCrmUpdated();
+  return result;
+}
+export async function cancelEverpropVisit(id: string) {
+  const result = await apiFetch(`/api/v1/admin/visits/${id}/cancel`, { method: "PATCH" });
+  notifyCrmUpdated();
+  return result;
+}
 

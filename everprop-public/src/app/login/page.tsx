@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Command, FlaskConical, Loader2, ShieldCheck } from "lucide-react";
+import { AlertCircle, Command, FlaskConical, Loader2 } from "lucide-react";
 import { MOCK_USERS } from "@/data/auth-sample";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -103,10 +103,11 @@ export default function LoginPage() {
 
       <div className="relative z-10 mx-auto w-full max-w-lg">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-600/30">
-            <Command className="h-7 w-7 text-white" aria-hidden="true" />
+          <div className="mx-auto mb-5 flex justify-center">
+            <span role="img" aria-label="50 · Bellomo · Desde 1976" className="bellomo-anniversary block h-32 w-48 sm:h-36 sm:w-56" style={{ backgroundColor: "#f4f7fa" }} />
           </div>
-          <h1 className="mb-2 text-3xl font-semibold tracking-tight text-white">EverProp · Bellomo</h1>
+          <h1 className="mb-2 text-2xl font-semibold tracking-tight text-white">Panel de gestión Bellomo</h1>
+          <p className="mb-3 text-xs font-semibold tracking-widest text-slate-300">50 AÑOS · 1976–2026</p>
           <p className="text-sm text-slate-400">
             {isMockDataMode
               ? "Entorno aislado para QA visual con datos no reales."
@@ -168,7 +169,7 @@ export default function LoginPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="truncate text-xs font-semibold text-white group-hover:text-blue-200">{user.name}</h3>
-                        <p className="truncate text-[10px] text-slate-400">{user.title || user.role}</p>
+                        <p className="truncate text-[10px] text-slate-400">{user.id === "usr-manager" ? "Gerencia comercial" : user.title || user.role}</p>
                       </div>
                     </button>
                   ))}

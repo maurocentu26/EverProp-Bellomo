@@ -1,0 +1,148 @@
+/* Root rem scaling also reaches portalled menus and dialogs. The attribute is
+   owned by the authenticated panel and removed on logout/unmount. */
+html[data-panel-text-size="grande"] { font-size: 120%; }
+html[data-panel-text-size="grande"] .admin-workspace { font-size: 16.8px; }
+html[data-panel-text-size="grande"] .admin-workspace h1 { font-size: clamp(1.5rem, 2.64vw, 2rem); }
+html[data-panel-text-size="grande"] .admin-workspace table { font-size: 15.6px; }
+html[data-panel-text-size="grande"] .admin-workspace table th { font-size: 13.2px; }
+html[data-panel-text-size="grande"] .admin-sidebar nav h2 { font-size: 12px; }
+html[data-panel-text-size="grande"] .daily-metrics > :is(button, a) > div:first-child > span:last-child { font-size: 10.8px; }
+html[data-panel-text-size="grande"] .admin-workspace .daily-metrics p:first-child { font-size: 36px; }
+html[data-panel-text-size="grande"] .admin-workspace .daily-metrics p:nth-child(2) { font-size: 14.4px; }
+html[data-panel-text-size="grande"] .admin-workspace .daily-metrics p:last-child { font-size: 13.2px; }
+html[data-panel-text-size="grande"] .daily-metrics > :is(button, a) { grid-template-columns: 1fr; }
+html[data-panel-text-size="grande"] .daily-metrics > :is(button, a) > div:first-child { flex-direction: row; }
+html[data-panel-text-size="grande"] .admin-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, [data-slot="button"]) { min-height: 2.5rem; }
+html[data-panel-text-size="grande"] .admin-workspace [data-slot="input-group"] { min-height: 2.75rem; }
+html[data-panel-text-size="grande"] .admin-workspace [data-slot="input-group"] input { min-height: 0; }
+html[data-panel-text-size="grande"] .admin-workspace table { min-width: 60rem; }
+html[data-panel-text-size="grande"] .admin-topbar > div { flex-wrap: wrap; }
+html[data-panel-text-size="grande"] .admin-topbar > div > div:first-child { min-width: min(100%, 14rem); }
+@media (max-width: 767px) {
+  html[data-panel-text-size="grande"] .admin-workspace :is(input, textarea) { font-size: 19.2px; }
+}
+
+/* Compatibility with fixed-pixel Tailwind text classes in existing screens. */
+html[data-panel-text-size="grande"] [class~="text-[8px]"] { font-size: 9.6px; }
+html[data-panel-text-size="grande"] [class~="text-[9px]"] { font-size: 10.799999999999999px; }
+html[data-panel-text-size="grande"] [class~="text-[10px]"] { font-size: 12px; }
+html[data-panel-text-size="grande"] [class~="text-[11px]"] { font-size: 13.2px; }
+html[data-panel-text-size="grande"] [class~="text-[12px]"] { font-size: 14.399999999999999px; }
+html[data-panel-text-size="grande"] [class~="text-[13px]"] { font-size: 15.6px; }
+html[data-panel-text-size="grande"] [class~="text-[14px]"] { font-size: 16.8px; }
+html[data-panel-text-size="grande"] [class~="text-[15px]"] { font-size: 18px; }
+html[data-panel-text-size="grande"] [class~="text-[16px]"] { font-size: 19.2px; }
+html[data-panel-text-size="grande"] [class~="text-[18px]"] { font-size: 21.599999999999998px; }
+html[data-panel-text-size="grande"] [class~="text-[20px]"] { font-size: 24px; }
+html[data-panel-text-size="grande"] [class~="text-[22px]"] { font-size: 26.4px; }
+html[data-panel-text-size="grande"] [class~="text-[24px]"] { font-size: 28.799999999999997px; }
+html[data-panel-text-size="grande"] [class~="text-[28px]"] { font-size: 33.6px; }
+html[data-panel-text-size="grande"] [class~="text-[30px]"] { font-size: 36px; }
+html[data-panel-text-size="grande"] [class~="text-[32px]"] { font-size: 38.4px; }
+html[data-panel-text-size="grande"] [class~="text-[36px]"] { font-size: 43.199999999999996px; }
+html[data-panel-text-size="grande"] [class~="text-[48px]"] { font-size: 57.599999999999994px; }
+@media (min-width: 640px) {
+  html[data-panel-text-size="grande"] [class~="sm:text-xs"] { font-size: .75rem; }
+  html[data-panel-text-size="grande"] [class~="sm:text-sm"] { font-size: .875rem; }
+  html[data-panel-text-size="grande"] [class~="sm:text-base"] { font-size: 1rem; }
+  html[data-panel-text-size="grande"] [class~="sm:text-lg"] { font-size: 1.125rem; }
+  html[data-panel-text-size="grande"] [class~="sm:text-xl"] { font-size: 1.25rem; }
+  html[data-panel-text-size="grande"] [class~="sm:text-2xl"] { font-size: 1.5rem; }
+  html[data-panel-text-size="grande"] [class~="sm:text-3xl"] { font-size: 1.875rem; }
+  html[data-panel-text-size="grande"] [class~="sm:text-4xl"] { font-size: 2.25rem; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[9px]"] { font-size: 10.799999999999999px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[10px]"] { font-size: 12px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[11px]"] { font-size: 13.2px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[12px]"] { font-size: 14.399999999999999px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[13px]"] { font-size: 15.6px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[14px]"] { font-size: 16.8px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[15px]"] { font-size: 18px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[16px]"] { font-size: 19.2px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[18px]"] { font-size: 21.599999999999998px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[20px]"] { font-size: 24px; }
+  html[data-panel-text-size="grande"] [class~="sm:text-[24px]"] { font-size: 28.799999999999997px; }
+}
+@media (min-width: 768px) {
+  html[data-panel-text-size="grande"] [class~="md:text-xs"] { font-size: .75rem; }
+  html[data-panel-text-size="grande"] [class~="md:text-sm"] { font-size: .875rem; }
+  html[data-panel-text-size="grande"] [class~="md:text-base"] { font-size: 1rem; }
+  html[data-panel-text-size="grande"] [class~="md:text-lg"] { font-size: 1.125rem; }
+  html[data-panel-text-size="grande"] [class~="md:text-xl"] { font-size: 1.25rem; }
+  html[data-panel-text-size="grande"] [class~="md:text-2xl"] { font-size: 1.5rem; }
+  html[data-panel-text-size="grande"] [class~="md:text-3xl"] { font-size: 1.875rem; }
+  html[data-panel-text-size="grande"] [class~="md:text-4xl"] { font-size: 2.25rem; }
+  html[data-panel-text-size="grande"] [class~="md:text-[9px]"] { font-size: 10.799999999999999px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[10px]"] { font-size: 12px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[11px]"] { font-size: 13.2px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[12px]"] { font-size: 14.399999999999999px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[13px]"] { font-size: 15.6px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[14px]"] { font-size: 16.8px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[15px]"] { font-size: 18px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[16px]"] { font-size: 19.2px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[18px]"] { font-size: 21.599999999999998px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[20px]"] { font-size: 24px; }
+  html[data-panel-text-size="grande"] [class~="md:text-[24px]"] { font-size: 28.799999999999997px; }
+}
+@media (min-width: 1024px) {
+  html[data-panel-text-size="grande"] [class~="lg:text-xs"] { font-size: .75rem; }
+  html[data-panel-text-size="grande"] [class~="lg:text-sm"] { font-size: .875rem; }
+  html[data-panel-text-size="grande"] [class~="lg:text-base"] { font-size: 1rem; }
+  html[data-panel-text-size="grande"] [class~="lg:text-lg"] { font-size: 1.125rem; }
+  html[data-panel-text-size="grande"] [class~="lg:text-xl"] { font-size: 1.25rem; }
+  html[data-panel-text-size="grande"] [class~="lg:text-2xl"] { font-size: 1.5rem; }
+  html[data-panel-text-size="grande"] [class~="lg:text-3xl"] { font-size: 1.875rem; }
+  html[data-panel-text-size="grande"] [class~="lg:text-4xl"] { font-size: 2.25rem; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[9px]"] { font-size: 10.799999999999999px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[10px]"] { font-size: 12px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[11px]"] { font-size: 13.2px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[12px]"] { font-size: 14.399999999999999px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[13px]"] { font-size: 15.6px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[14px]"] { font-size: 16.8px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[15px]"] { font-size: 18px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[16px]"] { font-size: 19.2px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[18px]"] { font-size: 21.599999999999998px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[20px]"] { font-size: 24px; }
+  html[data-panel-text-size="grande"] [class~="lg:text-[24px]"] { font-size: 28.799999999999997px; }
+}
+@media (min-width: 1280px) {
+  html[data-panel-text-size="grande"] [class~="xl:text-xs"] { font-size: .75rem; }
+  html[data-panel-text-size="grande"] [class~="xl:text-sm"] { font-size: .875rem; }
+  html[data-panel-text-size="grande"] [class~="xl:text-base"] { font-size: 1rem; }
+  html[data-panel-text-size="grande"] [class~="xl:text-lg"] { font-size: 1.125rem; }
+  html[data-panel-text-size="grande"] [class~="xl:text-xl"] { font-size: 1.25rem; }
+  html[data-panel-text-size="grande"] [class~="xl:text-2xl"] { font-size: 1.5rem; }
+  html[data-panel-text-size="grande"] [class~="xl:text-3xl"] { font-size: 1.875rem; }
+  html[data-panel-text-size="grande"] [class~="xl:text-4xl"] { font-size: 2.25rem; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[9px]"] { font-size: 10.799999999999999px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[10px]"] { font-size: 12px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[11px]"] { font-size: 13.2px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[12px]"] { font-size: 14.399999999999999px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[13px]"] { font-size: 15.6px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[14px]"] { font-size: 16.8px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[15px]"] { font-size: 18px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[16px]"] { font-size: 19.2px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[18px]"] { font-size: 21.599999999999998px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[20px]"] { font-size: 24px; }
+  html[data-panel-text-size="grande"] [class~="xl:text-[24px]"] { font-size: 28.799999999999997px; }
+}
+@media (min-width: 1536px) {
+  html[data-panel-text-size="grande"] [class~="2xl:text-xs"] { font-size: .75rem; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-sm"] { font-size: .875rem; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-base"] { font-size: 1rem; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-lg"] { font-size: 1.125rem; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-xl"] { font-size: 1.25rem; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-2xl"] { font-size: 1.5rem; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-3xl"] { font-size: 1.875rem; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-4xl"] { font-size: 2.25rem; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[9px]"] { font-size: 10.799999999999999px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[10px]"] { font-size: 12px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[11px]"] { font-size: 13.2px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[12px]"] { font-size: 14.399999999999999px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[13px]"] { font-size: 15.6px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[14px]"] { font-size: 16.8px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[15px]"] { font-size: 18px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[16px]"] { font-size: 19.2px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[18px]"] { font-size: 21.599999999999998px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[20px]"] { font-size: 24px; }
+  html[data-panel-text-size="grande"] [class~="2xl:text-[24px]"] { font-size: 28.799999999999997px; }
+}

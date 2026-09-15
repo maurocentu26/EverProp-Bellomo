@@ -23,6 +23,7 @@ const statusFilters = [
   { id: "available", label: "Disponibles" },
   { id: "reserved", label: "No Vendibles / Reserva" },
   { id: "sold", label: "Vendidos" },
+  { id: "rented", label: "Alquilados" },
 ] as const;
 
 export default function AllPropertiesPage() {
@@ -35,7 +36,7 @@ export default function AllPropertiesPage() {
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
-  const [activeStatus, setActiveStatus] = useState<"all" | "available" | "reserved" | "sold">("all");
+  const [activeStatus, setActiveStatus] = useState<"all" | "available" | "reserved" | "sold" | "rented">("all");
   const [selectedManzana, setSelectedManzana] = useState<string>("all");
   
   const [openFilter, setOpenFilter] = useState<'proyecto' | 'estado' | 'manzana' | null>(null);
@@ -180,12 +181,10 @@ export default function AllPropertiesPage() {
         
         {!isAdvisor && (
           <div className="flex items-center gap-3">
-            <Link href="/admin/properties/new">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2" nativeButton={false} role="link" render={<Link href="/admin/properties/new" />}>
                   <Plus className="h-4 w-4" />
                   Nueva Propiedad
               </Button>
-            </Link>
           </div>
         )}
       </div>
@@ -194,14 +193,34 @@ export default function AllPropertiesPage() {
 
       {/* Control Panel / Filtros */}
       <div className="bg-white dark:bg-card p-4 rounded-2xl border border-slate-200 dark:border-border shadow-sm flex flex-wrap gap-2 items-center relative" ref={filterRef}>
+        <div className="grid w-full grid-cols-1 gap-3 sm:hidden">
+          <label className="grid gap-1.5 text-xs font-semibold text-muted-foreground">Desarrollo
+            <select aria-label="Filtrar propiedades por desarrollo" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+              <option value="all">Todos</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground">Estado
+              <select aria-label="Filtrar propiedades por estado" value={activeStatus} onChange={e => setActiveStatus(e.target.value as typeof activeStatus)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+                {statusFilters.map(s => <option key={s.id} value={s.id}>{s.id === "reserved" ? "En reserva" : s.label}</option>)}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground">Manzana
+              <select aria-label="Filtrar propiedades por manzana" value={selectedManzana} onChange={e => setSelectedManzana(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+                <option value="all">Todas</option>{availableManzanas.map(m => <option key={m} value={m}>{m.replace(/manzana\s*/i, "Mz ")}</option>)}
+              </select>
+            </label>
+          </div>
+          {activeStatus === "reserved" && <p className="text-xs leading-relaxed text-muted-foreground">Incluye unidades reservadas y marcadas como no vendibles.</p>}
+        </div>
         {/* Desarrollo Chip */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             onClick={() => setOpenFilter(openFilter === 'proyecto' ? null : 'proyecto')}
             className={cn(
               "flex items-center gap-1",
               selectedProjectId === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
                 : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
             )}
           >
@@ -212,7 +231,7 @@ export default function AllPropertiesPage() {
               <button
                 onClick={() => { setSelectedProjectId('all'); setOpenFilter(null); }}
                 className={cn(
-                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                   selectedProjectId === 'all' && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                 )}
               >
@@ -223,7 +242,7 @@ export default function AllPropertiesPage() {
                   key={p.id}
                   onClick={() => { setSelectedProjectId(p.id); setOpenFilter(null); }}
                   className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                     selectedProjectId === p.id && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                   )}
                 >
@@ -235,13 +254,13 @@ export default function AllPropertiesPage() {
         </div>
 
         {/* Estado Chip */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             onClick={() => setOpenFilter(openFilter === 'estado' ? null : 'estado')}
             className={cn(
               "flex items-center gap-1",
               activeStatus === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
                 : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
             )}
           >
@@ -254,7 +273,7 @@ export default function AllPropertiesPage() {
                   key={tab.id}
                   onClick={() => { setActiveStatus(tab.id); setOpenFilter(null); }}
                   className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                     activeStatus === tab.id && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                   )}
                 >
@@ -266,13 +285,13 @@ export default function AllPropertiesPage() {
         </div>
 
         {/* Manzana Chip */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             onClick={() => setOpenFilter(openFilter === 'manzana' ? null : 'manzana')}
             className={cn(
               "flex items-center gap-1",
               selectedManzana === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
                 : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
             )}
           >
@@ -283,7 +302,7 @@ export default function AllPropertiesPage() {
               <button
                 onClick={() => { setSelectedManzana('all'); setOpenFilter(null); }}
                 className={cn(
-                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                   selectedManzana === 'all' && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                 )}
               >
@@ -294,7 +313,7 @@ export default function AllPropertiesPage() {
                   key={m}
                   onClick={() => { setSelectedManzana(m); setOpenFilter(null); }}
                   className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                     selectedManzana === m && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                   )}
                 >

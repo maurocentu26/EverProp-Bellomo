@@ -92,7 +92,7 @@ export function QuickScheduleButtons({
                 "inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                 isActive
                   ? "border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-950/60 dark:text-blue-300 shadow-2xs font-bold"
-                  : "border-slate-200 bg-slate-50/80 text-slate-700 hover:border-slate-300 hover:bg-white hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800"
+                  : "border-slate-200 bg-slate-50/80 text-slate-700 hover:border-slate-300 hover:bg-muted hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800"
               )}
             >
               <Calendar className={cn("size-3 shrink-0", isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400")} />

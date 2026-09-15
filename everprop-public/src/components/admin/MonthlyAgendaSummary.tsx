@@ -215,11 +215,9 @@ export default function MonthlyAgendaSummary() {
           >
             Próximo mes →
           </Button>
-          <Link href="/admin/agenda">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl">
+          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl" nativeButton={false} role="link" render={<Link href="/admin/agenda" />}>
               Ver completa
             </Button>
-          </Link>
         </div>
       </div>
 

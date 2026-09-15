@@ -158,7 +158,7 @@ export default function AdminPage() {
               <PropertyList properties={liveProperties.slice(0, 5)} />
               <div className="mt-4 text-center">
                 <Link href="/admin/properties">
-                  <button className="px-6 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors shadow-sm">
+                  <button className="px-6 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-muted rounded-lg transition-colors shadow-sm">
                     Gestionar Inventario Completo
                   </button>
                 </Link>

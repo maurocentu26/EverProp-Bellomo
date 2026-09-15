@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Building2, ChevronRight, Database, FlaskConical, Map, RotateCcw } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, Map, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { useAuth } from "@/lib/auth-context";
@@ -10,15 +10,19 @@ import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
+import { useBellomoMaterials } from "@/hooks/use-bellomo-materials";
+import type { PublicMaterialProject } from "@/lib/bellomo-policy";
 
 type DataState =
   | { status: "loading" }
   | { status: "ready"; source: "admin-api" | "mock" }
   | { status: "error"; message: string };
 
-function ProjectCard({ project, properties, readOnly }: { project: Project; properties: Property[]; readOnly: boolean }) {
+function ProjectCard({ project, properties, readOnly, material }: { project: Project; properties: Property[]; readOnly: boolean; material?: PublicMaterialProject }) {
   const projectProperties = properties.filter((property) => property.projectId === project.id);
-  const soldCount = projectProperties.filter((property) => property.status === "sold").length;
+  const availableCount = projectProperties.filter((property) => property.status === "available").length;
+  const cover = material?.assets.find(asset => asset.kind === "photo") || material?.assets.find(asset => asset.kind === "render");
+  const coverUrl = cover?.url || project.masterplanImage;
 
   return (
     <article
@@ -28,12 +32,12 @@ function ProjectCard({ project, properties, readOnly }: { project: Project; prop
       )}
     >
       <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-        {project.masterplanImage ? (
+        {coverUrl ? (
           <div
             role="img"
             aria-label={project.name}
             className="h-full w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-            style={{ backgroundImage: `url("${project.masterplanImage.replaceAll('"', '\\"')}")` }}
+            style={{ backgroundImage: `url("${coverUrl.replaceAll('"', '\\"')}")` }}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-slate-200">
@@ -42,6 +46,7 @@ function ProjectCard({ project, properties, readOnly }: { project: Project; prop
         )}
 
         <div className="absolute left-4 top-4 flex gap-2">
+          {cover?.kind === "render" && <span className="rounded-lg bg-white/95 px-3 py-1 text-xs font-semibold text-slate-800">Render</span>}
           <span
             className={cn(
               "rounded-lg px-3 py-1 text-xs font-black uppercase tracking-wider text-white backdrop-blur-md",
@@ -62,13 +67,13 @@ function ProjectCard({ project, properties, readOnly }: { project: Project; prop
         <div className="mt-auto space-y-5">
           <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
             <div>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Unidades</span>
-              <span className="text-lg font-black text-slate-700">{project.totalUnits}</span>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Unidades cargadas</span>
+              <span className="text-lg font-black text-slate-700">{projectProperties.length}</span>
             </div>
             <div>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Vendidas</span>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Disponibles</span>
               <span className="text-lg font-black text-emerald-600">
-                {soldCount} <span className="text-sm font-medium text-slate-400">/ {project.totalUnits}</span>
+                {availableCount}
               </span>
             </div>
           </div>
@@ -84,6 +89,7 @@ function ProjectCard({ project, properties, readOnly }: { project: Project; prop
 }
 
 export default function DesarrollosPage() {
+  const { data: materials } = useBellomoMaterials();
   const { invalidateSession } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -177,11 +183,9 @@ export default function DesarrollosPage() {
         </div>
 
         {isMockDataMode && (
-          <Link href="/admin/inventory-matrix">
-            <Button className="h-11 rounded-xl bg-emerald-600 px-6 text-white shadow-sm hover:bg-emerald-700">
+          <Button className="h-11 rounded-xl bg-emerald-600 px-6 text-white shadow-sm hover:bg-emerald-700" nativeButton={false} role="link" render={<Link href="/admin/inventory-matrix" />}>
               <Map className="mr-2 h-5 w-5" aria-hidden="true" /> Matriz mock de inventario
             </Button>
-          </Link>
         )}
       </header>
 
@@ -199,7 +203,7 @@ export default function DesarrollosPage() {
         <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
           {projects.map((project) => (
             <Link href={`/admin/desarrollos/${project.id}`} key={project.id}>
-              <ProjectCard project={project} properties={properties} readOnly={false} />
+              <ProjectCard project={project} properties={properties} readOnly={false} material={materials?.projects.find(p=>p.operationalIds.includes(project.id))} />
             </Link>
           ))}
         </div>

@@ -162,8 +162,8 @@ final readonly class PublicLeadService
                                 actionUrl: "/admin/leads/{$leadRecord->public_id}"
                             ));
                         }
-                    } catch (\Throwable) {
-                        // Keep transaction intact
+                    } catch (\Throwable $notificationError) {
+                        throw $notificationError; // Roll back the operation rather than silently lose its notification.
                     }
                 }
 

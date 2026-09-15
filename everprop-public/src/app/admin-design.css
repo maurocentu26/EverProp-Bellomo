@@ -1,0 +1,276 @@
+/* Shared administrative surfaces. Status colors remain limited to badges and icons. */
+.admin-workspace {
+  --background: #f3f5f7;
+  --card: #ffffff;
+  --foreground: #192b3c;
+  --card-foreground: #192b3c;
+  --border: #dde3e9;
+  --input: #c7d1dc;
+  --muted: #edf1f5;
+  --muted-foreground: #5d6d7e;
+  --primary: #00375c;
+  --ring: #446aa7;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #293e51;
+  --sidebar-border: #dde3e9;
+  --sidebar-accent: #e8eff5;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.dark .admin-workspace {
+  --background: #0c1420;
+  --card: #152130;
+  --foreground: #e9eff5;
+  --card-foreground: #e9eff5;
+  --border: #2a3949;
+  --input: #415266;
+  --muted: #1c2b3c;
+  --muted-foreground: #a8b8c8;
+  --primary: #8fc5f0;
+  --primary-foreground: #102333;
+  --ring: #8fc5f0;
+  --sidebar: #111c29;
+  --sidebar-foreground: #d4e0ea;
+  --sidebar-border: #2a3949;
+  --sidebar-accent: #21364a;
+}
+.bellomo-brand-plate { background: #fff !important; color-scheme: light; }
+.bellomo-isotype { mix-blend-mode: multiply; }
+.bellomo-anniversary {
+  background-color: #00375c;
+  mask-image: url('/brand/bellomo/anniversary-50-master.png');
+  mask-mode: luminance;
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+}
+.dark .bellomo-anniversary { background-color: #f4f7fa; }
+.dark .theme-root img.bellomo-isotype,
+.dark .theme-root .admin-workspace img.bellomo-isotype {
+  background-color: transparent !important;
+  filter: grayscale(1) invert(1);
+  mix-blend-mode: screen;
+}
+.admin-workspace .admin-topbar { min-height: 72px; }
+.admin-workspace h1 { font-size: clamp(1.5rem, 2.2vw, 2rem); line-height: 1.2; letter-spacing: -.035em; }
+.admin-workspace h2 { letter-spacing: -.02em; }
+.admin-workspace :is(h1, h2, h3) { text-wrap: balance; }
+.admin-workspace :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.admin-workspace :is(button, a) { -webkit-tap-highlight-color: transparent; }
+.admin-workspace [data-slot="button"] { min-height: 38px; border-radius: 10px; font-weight: 600; }
+.admin-workspace [data-slot="input"],
+.admin-workspace [data-slot="input-group"] { min-height: 42px; border-radius: 10px; }
+.admin-workspace [data-slot="input-group"] [data-slot="input"] { min-height: 0; }
+.admin-workspace [data-slot="textarea"] { min-height: 112px; line-height: 1.6; }
+.admin-workspace input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.admin-workspace textarea { caret-color: var(--primary); }
+.admin-workspace table { font-size: 13px; font-variant-numeric: tabular-nums; }
+.admin-workspace table th {
+  background: var(--muted);
+  color: var(--muted-foreground) !important;
+  font-size: 11px;
+  letter-spacing: .065em;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  white-space: nowrap;
+}
+.admin-workspace table td { border-color: var(--border); padding-top: 16px; padding-bottom: 16px; }
+.admin-workspace table tbody tr:hover { background: color-mix(in srgb, var(--muted) 60%, transparent); }
+.admin-workspace table select { min-height: 36px; max-width: 100%; }
+.admin-workspace .lead-filters > select { min-height: 42px; border-radius: 10px; }
+.admin-sidebar nav { padding-top: 14px; }
+.admin-sidebar nav h2 { font-size: 10px; letter-spacing: .12em; margin-bottom: 10px; }
+.admin-sidebar nav a { min-height: 44px; border-radius: 9px; font-weight: 500; }
+.admin-sidebar nav a[aria-current="page"] {
+  background: var(--sidebar-accent) !important;
+  color: var(--sidebar-foreground) !important;
+  border-color: transparent !important;
+  box-shadow: inset 3px 0 0 var(--primary);
+  font-weight: 700;
+}
+.admin-sidebar nav a[aria-current="page"] svg { color: var(--primary) !important; }
+.advisor-heading > div { flex-wrap: wrap; row-gap: 20px; }
+.daily-metrics > :is(button, a) {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 20px;
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px #001c3010;
+}
+.daily-metrics > :is(button, a):hover { border-color: var(--ring) !important; }
+.daily-metrics > :is(button, a) > div:first-child { flex-direction: column; gap: 8px; }
+.daily-metrics > :is(button, a) > div:first-child > span:last-child { font-size: 9px; letter-spacing: .05em; }
+.daily-metrics > :is(button, a) > div:last-child { margin-top: 0; min-width: 0; }
+.admin-workspace .daily-metrics p { color: var(--foreground) !important; }
+.admin-workspace .daily-metrics p:first-child { font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.admin-workspace .daily-metrics p:nth-child(2) { margin-top: 5px; font-size: 12px; line-height: 1.4; }
+.admin-workspace .daily-metrics p:last-child { color: var(--muted-foreground) !important; font-size: 11px; }
+.advisor-workspace article { border-radius: 12px; box-shadow: 0 1px 2px #001c300a; }
+.advisor-workspace article :is(button, a):not([class*="truncate"]) { min-height: 36px; }
+.advisor-workspace article select { min-height: 34px; }
+.admin-workspace [data-admin-scroll-container] { scrollbar-width: thin; scrollbar-color: var(--input) transparent; }
+/* Compatibility for existing screens with fixed utility colors. */
+.dark .theme-root .admin-workspace :is(.bg-white, [class~="bg-white/60"], .bg-white\/80, .bg-white\/90, .bg-white\/95) { background-color: var(--card) !important; }
+.dark .theme-root .admin-workspace :is(.bg-slate-50, .bg-slate-50\/50, .bg-slate-50\/80, .bg-gray-50) { background-color: var(--background) !important; }
+.dark .theme-root .admin-workspace :is(.bg-slate-100, .bg-slate-200, .bg-gray-100) { background-color: var(--muted) !important; }
+.dark .theme-root .admin-workspace :is(.text-slate-950, .text-slate-900, .text-slate-800) { color: var(--foreground) !important; }
+.dark .theme-root .admin-workspace :is(.text-slate-700, .text-slate-600, .text-slate-500, .text-slate-400) { color: var(--muted-foreground) !important; }
+.dark .theme-root .admin-workspace :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-slate-800) { border-color: var(--border) !important; }
+.dark .theme-root .admin-workspace :is(.text-purple-950, .text-purple-900, .text-purple-800, .text-purple-700, .text-purple-600, .text-violet-600, .text-indigo-600) { color: #d0b3ff !important; }
+.dark .theme-root .admin-workspace :is(.bg-purple-50, [class~="bg-purple-50/40"], [class~="bg-purple-50/50"], .bg-purple-100, .bg-violet-100, .bg-indigo-100) { background-color: #302447 !important; }
+.dark .theme-root .admin-workspace :is(.border-purple-200, .border-purple-200\/80) { border-color: #49395e !important; }
+.dark .theme-root .admin-workspace .daily-metrics p { color: var(--foreground) !important; }
+.dark .theme-root .admin-workspace .daily-metrics p:last-child { color: var(--muted-foreground) !important; }
+.dark .theme-root .admin-workspace .daily-metrics > :is(button, a) { border-color: var(--border) !important; }
+.dark .theme-root .admin-workspace .bellomo-brand-plate,
+.dark .theme-root .admin-workspace img[src*="/brand/bellomo/"],
+.dark .theme-root .admin-workspace img[alt^="Logo"] { background-color: #fff !important; }
+@media (max-width: 767px) {
+  .admin-workspace .admin-topbar { min-height: 64px; }
+  .daily-metrics > :is(button, a) { grid-template-columns: 1fr; gap: 12px; padding: 16px; }
+  .daily-metrics > :is(button, a) > div:first-child { flex-direction: row; }
+  .admin-workspace input, .admin-workspace textarea { font-size: 16px; }
+  .admin-workspace [data-slot="button"] { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-workspace *, .admin-workspace *::before, .admin-workspace *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Local icon loops: transforms never change card size or move commercial data. */
+@media (prefers-reduced-motion: no-preference) {
+  .daily-metrics .metric-motion-check { animation: metric-check 3.6s ease-in-out infinite; transform-origin: center; }
+  .daily-metrics .metric-motion-alert { animation: metric-alert 3.6s ease-in-out infinite; transform-origin: center; }
+  .daily-metrics .metric-motion-clock > :is(path, polyline) { animation: metric-clock 12s linear infinite; transform-origin: 12px 12px; }
+  .daily-metrics .metric-motion-flame { animation: metric-flame 2.8s ease-in-out infinite; transform-origin: 50% 90%; }
+  .daily-metrics .metric-motion-calendar { animation: metric-calendar 4.8s ease-in-out infinite; transform-origin: 50% 20%; }
+}
+@keyframes metric-check {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+@keyframes metric-alert {
+  0%, 50%, 100% { transform: rotate(0); }
+  15% { transform: rotate(-8deg); }
+  30% { transform: rotate(8deg); }
+}
+@keyframes metric-clock { to { transform: rotate(360deg); } }
+@keyframes metric-flame {
+  0%, 100% { transform: rotate(-5deg) scale(1, 1); }
+  50% { transform: rotate(5deg) scale(.94, 1.1); }
+}
+@keyframes metric-calendar {
+  0%, 100% { transform: perspective(80px) rotateX(0) rotate(0); }
+  35% { transform: perspective(80px) rotateX(-16deg) rotate(-4deg); }
+  70% { transform: perspective(80px) rotateX(8deg) rotate(3deg); }
+}
+
+/* Fixed category colors: overdue, today, new leads, and appointments. */
+:is(.daily-metrics, .queue-filters) [data-priority] { --metric-ink: var(--metric-color); --metric-icon-ink: #fff; }
+:is(.daily-metrics, .queue-filters) [data-priority="overdue"] { --metric-color: #dc2626; --metric-tint: #fef2f2; --metric-dark: #351919; --metric-bright: #fca5a5; }
+:is(.daily-metrics, .queue-filters) [data-priority="today"] { --metric-color: #facc15; --metric-tint: #fefce8; --metric-dark: #332d15; --metric-bright: #fde047; --metric-ink: #713f12; --metric-icon-ink: #422006; }
+:is(.daily-metrics, .queue-filters) [data-priority="new"] { --metric-color: #1d4ed8; --metric-tint: #eff6ff; --metric-dark: #152744; --metric-bright: #93c5fd; }
+:is(.daily-metrics, .queue-filters) [data-priority="agenda"] { --metric-color: #047857; --metric-tint: #ecfdf5; --metric-dark: #102e29; --metric-bright: #6ee7b7; }
+.theme-root .admin-workspace .daily-metrics > :is(button, a)[data-priority] {
+  border-color: color-mix(in srgb, var(--metric-color) 48%, transparent) !important;
+  border-top: 4px solid var(--metric-color) !important;
+  background: var(--metric-tint) !important;
+}
+.theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span:first-child {
+  background: var(--metric-color) !important;
+  color: var(--metric-icon-ink) !important;
+}
+.theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span:last-child {
+  color: var(--metric-ink) !important;
+  font-weight: 800;
+}
+.theme-root .admin-workspace .daily-metrics > [data-priority] > div:last-child > p:first-child {
+  color: var(--metric-ink) !important;
+}
+.dark .theme-root .admin-workspace .daily-metrics > :is(button, a)[data-priority] {
+  background: var(--metric-dark) !important;
+  border-color: color-mix(in srgb, var(--metric-bright) 45%, transparent) !important;
+  border-top-color: var(--metric-color) !important;
+}
+.dark .theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span:last-child,
+.dark .theme-root .admin-workspace .daily-metrics > [data-priority] > div:last-child > p:first-child {
+  color: var(--metric-bright) !important;
+}
+.theme-root .admin-workspace .daily-metrics > :is(button, a)[data-priority]:is(:hover, :focus-visible) {
+  outline: 2px solid var(--metric-color);
+  outline-offset: 3px;
+}
+
+/* Keep the explanation readable beside four metrics, including larger text. */
+.admin-workspace .daily-metrics > :is(button, a)[data-priority] {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+.admin-workspace .daily-metrics > [data-priority] > div:first-child {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.admin-workspace .daily-metrics > [data-priority] > div:last-child > p:last-child {
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.admin-workspace .daily-metrics > [data-priority] > div:first-child { flex-direction: column; align-items: flex-start; }
+
+/* Persistent color markers connect queue filters to their matching metric cards. */
+.queue-filters .queue-color-dot { background: var(--metric-color); }
+.theme-root .admin-workspace .queue-filters button[data-priority][aria-pressed="true"] {
+  background: var(--metric-tint) !important;
+  color: var(--metric-ink) !important;
+  box-shadow: inset 0 0 0 1px var(--metric-color);
+}
+.dark .theme-root .admin-workspace .queue-filters button[data-priority][aria-pressed="true"] {
+  background: var(--metric-dark) !important;
+  color: var(--metric-bright) !important;
+}
+
+/* Keep navigation reachable without spending two rows on small screens. */
+@media (max-width: 639px) {
+  .admin-workspace .admin-topbar { padding: 10px 12px; }
+  .admin-workspace .admin-topbar > div { gap: 4px; flex-wrap: nowrap; }
+  .admin-workspace .admin-topbar > div > div:first-child { min-width: 0; flex: 0 0 auto; gap: 4px; }
+  .admin-workspace .admin-topbar > div > div:last-child { gap: 4px; }
+  .admin-workspace .admin-topbar button[aria-label="Abrir búsqueda global"] { width: 44px; height: 44px; padding: 0; justify-content: center; }
+  .admin-workspace .admin-topbar button[aria-label="Abrir búsqueda global"] > span { display: none; }
+  html[data-panel-text-size="grande"] .admin-workspace .admin-topbar > div { flex-wrap: nowrap; }
+  html[data-panel-text-size="grande"] .admin-workspace .admin-topbar > div > div:first-child { min-width: 0; }
+}
+
+.admin-workspace .lead-actions-expanded > :is(button,a) {
+  width: auto; min-height: 44px; gap: 6px; padding: 6px 10px;
+  border: 1px solid var(--border); font-size: 12px; font-weight: 600;
+}
+
+@media (max-width: 639px) {
+  .admin-workspace .lead-actions-expanded {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-workspace .lead-actions-expanded > :is(button,a) {
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    white-space: normal;
+  }
+}
+
+.admin-workspace [data-slot="input-group"]:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.admin-workspace [data-slot="input-group"] input:focus-visible { outline: none; box-shadow: none; }
+html[data-panel-text-size="grande"] .admin-workspace .lead-actions-expanded > :is(button,a) { font-size: 14.4px; }

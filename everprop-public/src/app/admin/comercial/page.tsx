@@ -17,6 +17,7 @@ export default function CommercialAssetsPage() {
   const router = useRouter();
   const { isAdvisor } = useCurrentSession();
   const [properties, setProperties] = useState<Property[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -30,7 +31,8 @@ export default function CommercialAssetsPage() {
           setIsLoaded(true);
           return;
         } catch (e) {
-          console.error("Error loading commercial properties:", e);
+          if (active) { setLoadError("No se pudo cargar el catálogo. Reintentá recargando la página."); setIsLoaded(true); }
+          return;
         }
       }
       if (!active) return;
@@ -43,6 +45,7 @@ export default function CommercialAssetsPage() {
     };
   }, []);
 
+  if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4">{loadError}</p>;
   if (!isLoaded) {
     return (
       <div className="animate-pulse space-y-8">
@@ -67,16 +70,12 @@ export default function CommercialAssetsPage() {
         </div>
         {!isAdvisor && (
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/admin/properties/new?category=comercial&type=Local">
-              <Button size="sm" className="h-9 px-3.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm">
+            <Button size="sm" className="h-9 px-3.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm" nativeButton={false} role="link" render={<Link href="/admin/properties/new?category=comercial&type=Local" />}>
                 <Plus className="h-3.5 w-3.5" /> + Nuevo Local Comercial
               </Button>
-            </Link>
-            <Link href="/admin/properties/new?category=comercial&type=Cochera">
-              <Button size="sm" variant="outline" className="h-9 px-3.5 text-xs font-semibold border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5">
+            <Button size="sm" variant="outline" className="h-9 px-3.5 text-xs font-semibold border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-muted dark:hover:bg-slate-800 gap-1.5" nativeButton={false} role="link" render={<Link href="/admin/properties/new?category=comercial&type=Cochera" />}>
                 <Car className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> + Nueva Cochera
               </Button>
-            </Link>
           </div>
         )}
       </header>
@@ -90,11 +89,9 @@ export default function CommercialAssetsPage() {
             <span className="ml-2 bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full text-xs font-bold">{locals.length}</span>
           </div>
           {!isAdvisor && (
-            <Link href="/admin/properties/new?category=comercial&type=Local">
-              <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-semibold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 gap-1">
+            <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-semibold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 gap-1" nativeButton={false} role="link" render={<Link href="/admin/properties/new?category=comercial&type=Local" />}>
                 <Plus className="h-3 w-3" /> + Nuevo Local
               </Button>
-            </Link>
           )}
         </div>
         
@@ -116,7 +113,7 @@ export default function CommercialAssetsPage() {
                   <tr
                     key={local.id}
                     onClick={() => router.push(`/admin/properties/${local.id}`)}
-                    className="cursor-pointer hover:bg-slate-50/90 dark:hover:bg-slate-800/80 transition-colors"
+                    className="cursor-pointer hover:bg-muted dark:hover:bg-slate-800/80 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <p className="font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{local.unitNumber || local.title}</p>
@@ -164,11 +161,9 @@ export default function CommercialAssetsPage() {
             <span className="ml-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full text-xs font-bold">{garages.length}</span>
           </div>
           {!isAdvisor && (
-            <Link href="/admin/properties/new?category=comercial&type=Cochera">
-              <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-semibold border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 gap-1">
+            <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-semibold border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 gap-1" nativeButton={false} role="link" render={<Link href="/admin/properties/new?category=comercial&type=Cochera" />}>
                 <Plus className="h-3 w-3" /> + Nueva Cochera
               </Button>
-            </Link>
           )}
         </div>
         
@@ -190,7 +185,7 @@ export default function CommercialAssetsPage() {
                   <tr
                     key={garage.id}
                     onClick={() => router.push(`/admin/properties/${garage.id}`)}
-                    className="cursor-pointer hover:bg-slate-50/90 dark:hover:bg-slate-800/80 transition-colors"
+                    className="cursor-pointer hover:bg-muted dark:hover:bg-slate-800/80 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <p className="font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{garage.unitNumber || garage.title}</p>

@@ -33,7 +33,7 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
   const identity = (
     <>
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-900/60">
-        <Trees className="h-5 w-5" />
+        {property.propertyType.toLowerCase() === "lote" ? <Trees className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
       </div>
 
       <div className="min-w-0">
@@ -67,7 +67,7 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
       aria-label={readOnly ? undefined : `Ver detalle de ${property.unitNumber || property.title}`}
       className={cn(
         "group border-t border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 transition-colors outline-none",
-        !readOnly && "cursor-pointer hover:bg-slate-50/90 dark:hover:bg-slate-800/80 focus-visible:bg-slate-50 dark:focus-visible:bg-slate-800/80"
+        !readOnly && "cursor-pointer hover:bg-muted dark:hover:bg-slate-800/80 focus-visible:bg-slate-50 dark:focus-visible:bg-slate-800/80"
       )}
     >
       <td className="px-4 py-4 align-middle first:rounded-l-2xl last:rounded-r-2xl sm:px-5">
@@ -76,13 +76,13 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
 
       <td className="px-4 py-4 align-middle sm:px-5 font-medium text-slate-900 dark:text-slate-200">
         <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 group-hover:border-blue-200 dark:group-hover:border-blue-800 transition-colors">
-          {property.sectorName || "Manzana Única"}
+          {property.sectorName || "—"}
         </span>
       </td>
 
       <td className="px-4 py-4 align-middle font-medium text-slate-700 dark:text-slate-300 sm:px-5">
         <div className="flex flex-col">
-          <span className="font-semibold text-slate-900 dark:text-slate-100">{property.area_m2 ? `${property.area_m2} m²` : "-"}</span>
+          <span className="font-semibold text-slate-900 dark:text-slate-100">{property.area_m2 ? `${property.area_m2.toLocaleString("es-AR", { maximumFractionDigits: 2 })} m²` : "-"}</span>
           {ochavaText && (
             <span className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">{ochavaText}</span>
           )}
@@ -104,7 +104,7 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
               : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
           )}
         >
-          {property.status === "available"
+          {property.status === "rented" ? "Alquilado" : property.status === "available"
             ? "Disponible"
             : property.status === "reserved"
             ? "No Vendible / Reserva"

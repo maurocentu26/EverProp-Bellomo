@@ -13,7 +13,7 @@ export function SearchPropertyItem({ property, query, onSelect }: Props) {
     <button
       type="button"
       onClick={() => onSelect(property.id)}
-      className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/70 group transition-all"
+      className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted dark:hover:bg-slate-800/70 group transition-all"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
         <Building2 className="h-5 w-5" />

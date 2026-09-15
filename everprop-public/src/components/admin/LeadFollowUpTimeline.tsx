@@ -144,7 +144,7 @@ export function LeadFollowUpTimeline({
                 <button
                   type="button"
                   onClick={() => setSelectedFollowUp(item)}
-                  className="w-full text-left rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs hover:border-blue-400 hover:bg-slate-50/60 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 group dark:bg-card dark:border-border dark:hover:bg-slate-800/60 dark:hover:border-blue-500"
+                  className="w-full text-left rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs hover:border-blue-400 hover:bg-muted transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 group dark:bg-card dark:border-border dark:hover:bg-slate-800/60 dark:hover:border-blue-500"
                 >
                   {/* Fila superior: Fecha destacada + Canal + Asesor */}
                   <div className="flex flex-wrap items-center justify-between gap-2">

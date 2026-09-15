@@ -280,7 +280,7 @@ export default function CommercialHeatmapWidget({ commercials, projects }: Props
           <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-center">
             <Link
               href="/admin/properties"
-              className="px-6 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition-colors shadow-sm"
+              className="px-6 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-muted rounded-lg transition-colors shadow-sm"
             >
               Ver todas las unidades comerciales ({commercials.length})
             </Link>

@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Search, Building2, ArrowRight } from "lucide-react";
+import { Search, Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { leads as sampleLeads, properties as sampleProperties, projects as sampleProjects, type Lead, type Property, type Project } from "@/data/admin-sample";
 import { loadLeadList, loadPropertyList, loadProjectList } from "@/lib/admin-storage";
 import { SearchPropertyItem } from "../SearchPropertyItem";
 import { SearchLeadItem } from "../SearchLeadItem";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { isMockDataMode } from "@/lib/data-mode";
+import { loadEverpropLeads, loadEverpropCatalog } from "@/lib/everprop-api";
+import { useCurrentSession } from "@/hooks/use-current-session";
 import {
   Dialog,
   DialogContent,
@@ -29,23 +31,30 @@ export function GlobalSearch() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
+  const { user, isAdvisor, isEngineer } = useCurrentSession();
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   useEffect(() => {
-    const cancelDeferredUpdate = deferEffectUpdate(() => {
+    if (!isSearchFocused) return;
+    let active = true;
+    setAllLeads([]); setAllProperties([]); setAllProjects([]);
+    setLoading(true); setLoadError("");
+    if (isMockDataMode) {
       setAllProperties(loadPropertyList(sampleProperties, "c1"));
-      setAllLeads(loadLeadList(sampleLeads, "c1"));
+      const rows = loadLeadList(sampleLeads, "c1");
+      setAllLeads(isEngineer ? [] : isAdvisor ? rows.filter(l => l.agentId === user?.id) : rows);
       setAllProjects(loadProjectList(sampleProjects, "c1"));
-    });
-
-    // Cerrar buscador con ESC
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSearchQuery("");
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => {
-      cancelDeferredUpdate();
-      window.removeEventListener("keydown", handleEsc);
-    };
-  }, []);
+      setLoading(false);
+    } else {
+      Promise.all([isEngineer ? Promise.resolve([]) : loadEverpropLeads(), loadEverpropCatalog()])
+        .then(([leads, catalog]) => {
+          if (!active) return;
+          setAllLeads(leads); setAllProperties(catalog.properties); setAllProjects(catalog.projects);
+        }).catch(() => { if (active) setLoadError("No pudimos cargar la búsqueda. Cerrá y volvé a intentar."); })
+        .finally(() => { if (active) setLoading(false); });
+    }
+    return () => { active = false; };
+  }, [isSearchFocused, user?.id, isAdvisor, isEngineer]);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -102,11 +111,11 @@ export function GlobalSearch() {
       <button
         type="button"
         onClick={() => setIsSearchFocused(true)}
-        className="flex h-9 sm:h-10 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-left text-xs sm:text-sm text-slate-500 shadow-2xs transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
+        className="flex h-9 sm:h-10 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-left text-xs sm:text-sm text-slate-500 shadow-2xs transition-colors hover:border-slate-300 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
         aria-label="Abrir búsqueda global"
       >
         <Search className="h-4 w-4 sm:h-4.5 sm:w-4.5 shrink-0 text-slate-400" aria-hidden="true" />
-        <span className="truncate">Buscar por nombre, dirección, teléfono...</span>
+        <span className="truncate"><span className="sm:hidden">Buscar…</span><span className="hidden sm:inline">Buscar leads, propiedades o proyectos…</span></span>
       </button>
 
       <Dialog
@@ -116,11 +125,11 @@ export function GlobalSearch() {
           if (!nextOpen) setSearchQuery("");
         }}
       >
-        <DialogContent fullScreen className="flex bg-slate-50 dark:bg-slate-950" showCloseButton>
+        <DialogContent fullScreen className="admin-workspace flex bg-slate-50 dark:bg-slate-950" showCloseButton>
           <div className="flex h-dvh min-h-0 w-full flex-col">
             <header className="shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-card px-4 pb-5 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 lg:px-12">
-              <div className="mx-auto w-full max-w-[min(94vw,2800px)] pr-16">
-                <DialogTitle className="text-2xl font-bold text-slate-950 dark:text-slate-100 sm:text-3xl">Buscar en EverProp</DialogTitle>
+              <div className="mx-auto w-full max-w-[min(94vw,2800px)]">
+                <DialogTitle className="pr-14 text-2xl font-bold text-slate-950 dark:text-slate-100 sm:text-3xl">Buscar en Bellomo</DialogTitle>
                 <DialogDescription className="mt-2 text-base text-slate-600 dark:text-slate-400">
                   Encontrá leads, propiedades, unidades o proyectos desde un único lugar.
                 </DialogDescription>
@@ -132,7 +141,8 @@ export function GlobalSearch() {
                     autoFocus
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Escribí un nombre, dirección, teléfono o proyecto..."
+                    aria-label="Buscar leads, propiedades o proyectos"
+                    placeholder="Nombre, teléfono o inmueble…"
                     className="border-none text-base focus-visible:ring-0 sm:text-lg dark:text-slate-100"
                   />
                 </InputGroup>
@@ -141,7 +151,7 @@ export function GlobalSearch() {
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-8 sm:py-8 lg:px-12">
               <div className="mx-auto min-h-full w-full max-w-[min(94vw,2800px)]">
-                {!normalizedQuery ? (
+                {loading ? <p role="status">Cargando datos…</p> : loadError ? <p role="alert" className="text-red-600">{loadError}</p> : !normalizedQuery ? (
                   <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-card p-8 text-center">
                     <div className="flex size-16 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
                       <Search className="size-8" aria-hidden="true" />
@@ -153,35 +163,35 @@ export function GlobalSearch() {
                   </div>
                 ) : hasSearchResults ? (
                   <div className="grid items-start gap-5 lg:grid-cols-3">
-                    <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card p-4 shadow-sm sm:p-6">
+                    {filteredProjects.length > 0 && <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card p-4 shadow-sm sm:p-6">
                       <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">Proyectos y desarrollos</h2>
                       <div className="space-y-2">
-                        {filteredProjects.slice(0, 6).map((project) => (
+                        {filteredProjects.map((project) => (
                           <button
                             key={project.id}
                             type="button"
                             onClick={() => handleSearchSelect("project", project.id)}
-                            className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-transparent p-3 text-left transition-colors hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30"
+                            className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-transparent p-3 text-left transition-colors hover:border-slate-200 dark:hover:border-slate-700 hover:bg-muted dark:hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30"
                           >
                             <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
                               <Building2 className="size-5" aria-hidden="true" />
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-base font-bold text-slate-900 dark:text-slate-100">{project.name}</span>
+                              <span className="block break-words text-base font-bold text-slate-900 dark:text-slate-100">{project.name}</span>
                               <span className="block truncate text-sm text-slate-500 dark:text-slate-400">
-                                {project.type === "land_development" ? "Loteo" : project.type === "building" ? "Edificio" : "Comercial"} · {project.totalUnits} unidades
+                                {project.type === "land_development" ? "Loteo" : project.type === "building" ? "Edificio" : "Comercial"} · {project.location.city}
                               </span>
                             </span>
                           </button>
                         ))}
                         {filteredProjects.length === 0 && <p className="py-8 text-center text-base text-slate-500 dark:text-slate-400">Sin proyectos coincidentes.</p>}
                       </div>
-                    </section>
+                    </section>}
 
-                    <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card p-4 shadow-sm sm:p-6">
+                    {filteredProperties.length > 0 && <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card p-4 shadow-sm sm:p-6">
                       <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">Propiedades e inventario</h2>
                       <div className="space-y-2">
-                        {filteredProperties.slice(0, 8).map((property) => (
+                        {filteredProperties.map((property) => (
                           <SearchPropertyItem
                             key={property.id}
                             property={property}
@@ -190,26 +200,14 @@ export function GlobalSearch() {
                           />
                         ))}
                         {filteredProperties.length === 0 && <p className="py-8 text-center text-base text-slate-500 dark:text-slate-400">Sin propiedades coincidentes.</p>}
-                        {filteredProperties.length > 8 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsSearchFocused(false);
-                              setSearchQuery("");
-                              router.push("/admin#properties");
-                            }}
-                            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors px-4 text-base font-bold text-blue-700 dark:text-blue-300"
-                          >
-                            Ver todos ({filteredProperties.length}) <ArrowRight className="size-5" aria-hidden="true" />
-                          </button>
-                        )}
-                      </div>
-                    </section>
 
-                    <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card p-4 shadow-sm sm:p-6">
+                      </div>
+                    </section>}
+
+                    {filteredLeads.length > 0 && <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card p-4 shadow-sm sm:p-6">
                       <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">Interesados</h2>
                       <div className="space-y-2">
-                        {filteredLeads.slice(0, 8).map((lead) => (
+                        {filteredLeads.map((lead) => (
                           <SearchLeadItem
                             key={lead.id}
                             lead={lead}
@@ -218,21 +216,9 @@ export function GlobalSearch() {
                           />
                         ))}
                         {filteredLeads.length === 0 && <p className="py-8 text-center text-base text-slate-500 dark:text-slate-400">Sin interesados coincidentes.</p>}
-                        {filteredLeads.length > 8 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsSearchFocused(false);
-                              setSearchQuery("");
-                              router.push("/admin#leads");
-                            }}
-                            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors px-4 text-base font-bold text-emerald-700 dark:text-emerald-300"
-                          >
-                            Ver todos ({filteredLeads.length}) <ArrowRight className="size-5" aria-hidden="true" />
-                          </button>
-                        )}
+
                       </div>
-                    </section>
+                    </section>}
                   </div>
                 ) : (
                   <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-card p-8 text-center">

@@ -48,6 +48,9 @@ import {
   createEverpropLeadFollowUp,
   attachEverpropLeadProperty,
   detachEverpropLeadProperty,
+  loadEverpropVisits,
+  createEverpropVisit,
+  cancelEverpropVisit,
 } from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { cn } from "@/lib/utils";
@@ -80,6 +83,7 @@ const STAGE_LABELS: Record<string, string> = {
   visiting: "Visita Agendada",
   negotiation: "Negociación",
   closing: "Cierre / Ganado",
+  discarded: "Descartado",
 };
 
 const STAGE_STYLES: Record<string, string> = {
@@ -98,6 +102,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [advisorEditorOpen, setAdvisorEditorOpen] = useState(false);
   const [followUpEditorOpen, setFollowUpEditorOpen] = useState(false);
@@ -111,23 +116,25 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const [singleLead, apiLeads, catalog, apiFollowUps] = await Promise.all([
+          const [singleLead, apiLeads, catalog, apiFollowUps, apiVisits] = await Promise.all([
             loadEverpropLeadById(leadId).catch(() => null),
             loadEverpropLeads().catch(() => []),
-            loadEverpropCatalog().catch(() => ({ properties: sampleProperties, projects: sampleProjects })),
-            loadEverpropLeadFollowUps(leadId).catch(() => []),
+            loadEverpropCatalog(),
+            loadEverpropLeadFollowUps(leadId),
+            loadEverpropVisits(),
           ]);
           if (!active) return;
           const foundLead = singleLead ?? (apiLeads.find((candidate) => candidate.id === leadId) ?? null);
           setAllLeads(apiLeads.length > 0 ? apiLeads : (singleLead ? [singleLead] : []));
           setAllProperties(catalog.properties);
           setAllProjects(catalog.projects);
-          const localFollowUps = loadLeadFollowUpList([], foundLead?.companyId ?? "c1").filter((f) => f.leadId === leadId);
-          setFollowUps(apiFollowUps.length > 0 ? apiFollowUps : localFollowUps);
-          setLead(foundLead);
+          setFollowUps(apiFollowUps);
+          setLead(foundLead ? { ...foundLead, visits: apiVisits.filter((visit) => visit.leadId === leadId) } : null);
           return;
         } catch (e) {
           console.error("Error loading lead detail from API:", e);
+          if (active) setLoadError("No se pudo cargar la ficha. Volvé a cargar la página para reintentar.");
+          return;
         }
       }
       if (!active) return;
@@ -156,7 +163,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       return;
     }
     const nextLeads = allLeads.map((candidate) => candidate.id === nextLead.id ? nextLead : candidate);
-    saveLeadList(nextLeads, nextLead.companyId);
+    if (isMockDataMode) saveLeadList(nextLeads, nextLead.companyId);
     setAllLeads(nextLeads);
     setLead(nextLead);
   }
@@ -170,12 +177,13 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           visiting: "VISIT_SCHEDULED",
           negotiation: "NEGOTIATION",
           closing: "WON",
+            discarded: "LOST",
         };
         await updateEverpropLead(nextLead.id, {
           name: nextLead.name,
           email: nextLead.email,
           phone: nextLead.phone,
-          stage: stageApiMap[nextLead.stage] || "NEW",
+          ...(nextLead.stage !== lead?.stage ? { stage: stageApiMap[nextLead.stage] || "NEW" } : {}),
           notes: nextLead.notes,
         });
         setLead(nextLead);
@@ -202,20 +210,34 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       ? interests.map((interest) => interest.id === nextInterest.id ? nextInterest : interest)
       : [...interests, nextInterest];
     const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
-    updateLeadData(syncedLead);
-    setInterestEditor(null);
 
     const targetPropertyId = nextInterest.unitId || nextInterest.propertyId;
+    if (!isMockDataMode && !targetPropertyId) {
+      toast.error("Seleccioná una propiedad o unidad para guardar el interés.");
+      return;
+    }
     if (!isMockDataMode && targetPropertyId) {
       try {
         await attachEverpropLeadProperty(lead.id, targetPropertyId, {
-          notes: nextInterest.notes,
+          notes: [nextInterest.preferences, nextInterest.notes].filter(Boolean).join("\n\n") || undefined,
+          replacesPropertyId: interestEditor?.mode === "edit" ? (interestEditor.interest.unitId || interestEditor.interest.propertyId) : undefined,
         });
       } catch (err: any) {
-        console.error("Error linking property in backend:", err);
+        toast.error(err instanceof Error ? err.message : "No se pudo guardar el interés.");
+        return;
       }
     }
 
+    if (isMockDataMode) updateLeadData(syncedLead);
+    else {
+      try {
+        const savedLead = await loadEverpropLeadById(lead.id);
+        if (savedLead) updateLeadData({ ...savedLead, visits: lead.visits });
+      } catch {
+        toast.warning("El interés quedó guardado. No se pudo actualizar la ficha; recargá para verlo.");
+      }
+    }
+    setInterestEditor(null);
     toast.success(interestEditor?.mode === "edit" ? "Interés actualizado" : "Interés agregado");
   }
 
@@ -223,23 +245,34 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     if (!lead || !interestToDelete) return;
     const nextInterests = interests.filter((interest) => interest.id !== interestToDelete.id);
     const syncedLead = syncLeadWithInterests(lead, nextInterests, allProperties);
-    updateLeadData(syncedLead);
-
     const targetPropertyId = interestToDelete.unitId || interestToDelete.propertyId;
     if (!isMockDataMode && targetPropertyId) {
       try {
         await detachEverpropLeadProperty(lead.id, targetPropertyId);
       } catch (err: any) {
-        console.error("Error unlinking property in backend:", err);
+        toast.error(err instanceof Error ? err.message : "No se pudo quitar el interés.");
+        return;
       }
     }
 
+    updateLeadData(syncedLead);
     setInterestToDelete(null);
     toast.success("Interés eliminado", { description: `${lead.name} continúa registrado y conserva sus demás intereses.` });
   }
 
-  function handleScheduleVisit(visit: Visit) {
+  async function handleScheduleVisit(visit: Visit) {
     if (!lead) return;
+    if (!isMockDataMode) {
+      await createEverpropVisit({ lead_id: lead.id, property_id: visit.propertyId,
+        scheduled_at: visit.scheduledAt, notes: visit.notes });
+      try {
+        const visits = await loadEverpropVisits();
+        updateLeadData({ ...lead, visits: visits.filter((item) => item.leadId === lead.id) });
+      } catch {
+        toast.warning("La cita quedó guardada. No se pudo actualizar la agenda; recargá para verla.");
+      }
+      return;
+    }
     const finalVisit: Visit = {
       ...visit,
       leadId: lead.id,
@@ -282,9 +315,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       agentName: newAdvisor?.name,
     };
     const nextLeads = allLeads.map((candidate) => candidate.id === lead.id ? updatedLead : candidate);
-    setAllLeads(nextLeads);
-    setLead(updatedLead);
-    saveLeadList(nextLeads, lead.companyId);
+
 
     if (!isMockDataMode) {
       try {
@@ -292,11 +323,13 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           agentId: agentId || null,
         });
       } catch (err: any) {
-        console.error("Error updating lead agent in backend:", err);
+        toast.error(err instanceof Error ? err.message : "No se pudo reasignar el lead.");
+        return;
       }
     }
 
-    if (agentId) {
+    updateLeadData(updatedLead);
+    if (isMockDataMode && agentId) {
       try {
         const channel = new BroadcastChannel("everprop_events");
         channel.postMessage({ type: "LEAD_REASSIGNED", targetAgentId: agentId, leadName: lead.name });
@@ -321,33 +354,18 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       return;
     }
 
-    const nextFollowUps = appendLeadFollowUpToStorage(
-      followUp,
-      followUps,
-      lead.companyId,
-    );
-    setFollowUps(nextFollowUps);
-
-    if (!isMockDataMode) {
-      try {
-        const created = await createEverpropLeadFollowUp(lead.id, {
-          type: followUp.type,
-          occurredAt: followUp.occurredAt,
-          summary: followUp.summary,
-          result: followUp.result,
-          nextAction: followUp.nextAction,
-          nextContactAt: followUp.nextContactAt,
-          agentId: followUp.agentId,
-        });
-        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
-      } catch (err: any) {
-        console.error("Error saving follow up to API:", err);
-      }
-    }
+    const recorded = isMockDataMode ? followUp : await createEverpropLeadFollowUp(lead.id, {
+      type: followUp.type, occurredAt: followUp.occurredAt, summary: followUp.summary,
+      result: followUp.result, nextAction: followUp.nextAction,
+      nextContactAt: followUp.nextContactAt, agentId: followUp.agentId,
+    });
+    setFollowUps(isMockDataMode
+      ? appendLeadFollowUpToStorage(recorded, followUps, lead.companyId)
+      : [recorded, ...followUps]);
 
     // Sync nextContactAt → lead.visits so it appears in Calendar/Agenda
     let nextLead = lead;
-    if (followUp.nextContactAt) {
+    if (isMockDataMode && isCommercialContact(followUp) && followUp.nextContactAt) {
       const syntheticVisit: Visit = {
         id: `followup-${followUp.id}`,
         leadId: lead.id,
@@ -372,6 +390,14 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       }
     }
 
+    if (!isMockDataMode) {
+      try {
+        const visits = await loadEverpropVisits();
+        nextLead = { ...nextLead, visits: visits.filter((visit) => visit.leadId === lead.id) };
+      } catch {
+        toast.warning("El seguimiento quedó guardado. No se pudo actualizar la agenda; recargá la página para verla.");
+      }
+    }
     if (nextLead !== lead) {
       updateLeadData(nextLead);
     }
@@ -380,7 +406,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success(
       followUp.type === "note" ? "Nota agregada al historial" : "Seguimiento comercial registrado",
     );
-    setStageUpdateModalOpen(true);
+    if (isCommercialContact(recorded)) setStageUpdateModalOpen(true);
   }
 
   async function handleConfirmStageUpdate(newStage: Exclude<Lead["stage"], "new">) {
@@ -390,12 +416,14 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       visiting: "VISIT_SCHEDULED",
       negotiation: "NEGOTIATION",
       closing: "WON",
+            discarded: "LOST",
     };
     const stageLabels: Record<string, string> = {
       contacted: "Contactado",
       visiting: "Visita Agendada",
       negotiation: "Negociación",
       closing: "Cierre / Ganado",
+  discarded: "Descartado",
     };
 
     const updatedLead: Lead = {
@@ -403,21 +431,20 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       stage: newStage,
       lastActivity: new Date().toISOString(),
     };
+    if (!isMockDataMode) {
+      try {
+        await updateEverpropLead(lead.id, { stage: stageApiMap[newStage] || "CONTACTED" });
+      } catch (err) {
+        toast.error("No se pudo actualizar la etapa. Podés reintentar.");
+        throw err;
+      }
+    }
     updateLeadData(updatedLead);
     setStageUpdateModalOpen(false);
     toast.success(`Etapa comercial actualizada a "${stageLabels[newStage] || newStage}"`);
-
-    if (!isMockDataMode) {
-      try {
-        await updateEverpropLead(lead.id, {
-          stage: stageApiMap[newStage] || "CONTACTED",
-        });
-      } catch (err) {
-        console.error("Error al actualizar etapa en backend:", err);
-      }
-    }
   }
 
+  if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4 text-sm">{loadError}</p>;
   if (!lead) return null;
 
   const generalPendingData = [
@@ -441,10 +468,101 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
 
   return (
     <div className="mx-auto w-full max-w-[120rem] space-y-5 pb-12">
-      <Link href="/admin/leads" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-blue-700">
+      <Link href="/admin/leads" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-500 hover:bg-muted hover:text-blue-700">
         <ArrowLeft className="size-4" aria-hidden="true" /> Volver al pipeline
       </Link>
 
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* ── Sidebar Column (4 cols): Quick access tools ── */}
+        <div className="min-w-0 space-y-6 lg:order-2 lg:col-span-4">
+          {/* Lead Overview Card */}
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-name">
+            <div className="flex items-start gap-3.5">
+              <Avatar className="size-12 shrink-0 rounded-xl bg-blue-600 text-base font-bold text-white">
+                <AvatarFallback className="bg-blue-600 text-white">{lead.name[0]}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <h1 id="lead-name" className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100 sm:text-xl break-words">{lead.name}</h1>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <Badge variant="default" className="px-2 py-0.5 text-xs">{lead.origin}</Badge>
+                  <Badge className={cn("border px-2 py-0.5 text-xs font-bold", STAGE_STYLES[lead.stage] || STAGE_STYLES.new)}>
+                    {STAGE_LABELS[lead.stage] || lead.stage}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Teléfono:</span>
+                <span className="text-right">{lead.phone || "Sin informar"}</span>
+              </div>
+              {cleanPhone && (
+                <a
+                  href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                    `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
+                      interests[0]?.propertyTitle ? ` sobre ${interests[0].propertyTitle}` : ""
+                    }. ¿Cómo estás?`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline"
+                >
+                  Abrir conversación en WhatsApp →
+                </a>
+              )}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Email:</span>
+                <span className="min-w-0 break-all text-right">{lead.email || "Sin informar"}</span>
+              </div>
+            </div>
+
+            <Link href={`/admin/leads/${lead.id}/edit`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
+              <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
+            </Link>
+          </section>
+
+          {/* Assigned Advisor Card */}
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm" aria-labelledby="lead-advisor-title">
+            <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500 dark:text-slate-400">Asesor responsable</p>
+            <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">{assignedAgent?.name ?? "Sin asignar"}</p>
+            <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
+            {currentUser?.role === "ADMIN" && (
+              <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
+                Cambiar asesor
+              </Button>
+            )}
+          </section>
+
+          {/* Follow-up Status Card */}
+          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm" aria-labelledby="lead-follow-up-title">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400">
+                  <ClipboardCheck className="size-4" aria-hidden="true" />
+                </span>
+                <h2 id="lead-follow-up-title" className="text-sm font-bold text-slate-900 dark:text-slate-100">Seguimiento Comercial</h2>
+              </div>
+            </div>
+            <div className="mt-3">
+              <LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
+            </div>
+            {!lead.agentId && (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 font-medium">Asigná un asesor antes de registrar un seguimiento.</p>
+            )}
+            <Button
+              onClick={() => setFollowUpEditorOpen(true)}
+              disabled={!lead.agentId}
+              className="mt-3 h-9 w-full gap-1.5 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              <Plus className="size-3.5" />
+              Registrar seguimiento
+            </Button>
+          </section>
+        </div>
+
+        {/* ── Main Column (8 cols): Deep content ── */}
+        <div className="min-w-0 space-y-6 lg:order-1 lg:col-span-8">
       {/* Financing Calculator Card */}
       <div className="min-w-0">
         <FinancingCalculator
@@ -465,9 +583,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* ── Main Column (8 cols): Deep content ── */}
-        <div className="space-y-6 lg:col-span-8">
+
           {/* Pending Info Alert */}
           {generalPendingData.length > 0 ? (
             <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-4" role="status">
@@ -515,7 +631,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </Button>
             </div>
             <div className="mt-5">
-              <LeadFollowUpTimeline leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
+              <LeadFollowUpTimeline leadId={lead.id} companyId={lead.companyId} followUps={followUps} />
             </div>
           </section>
 
@@ -545,7 +661,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               <div className="mt-5 flex min-h-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-6 text-center">
                 <Layers3 className="size-8 text-slate-400" aria-hidden="true" />
                 <h3 className="mt-3 text-base font-bold text-slate-950 dark:text-slate-100">Todavía no hay intereses cargados</h3>
-                <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">Podés registrar una ficha vacía y completarla durante la calificación.</p>
+                <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">Seleccioná una propiedad o unidad para registrar el interés del cliente.</p>
               </div>
             ) : (
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -611,6 +727,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               subtitle="Agendá citas para cualquiera de sus activos de interés."
               visits={lead.visits ?? []}
               onSchedule={handleScheduleVisit}
+              onDelete={async (visitId) => {
+                if (!isMockDataMode) await cancelEverpropVisit(visitId);
+                updateLeadData({ ...lead, visits: (lead.visits ?? []).map((visit) =>
+                  visit.id === visitId ? { ...visit, status: "cancelled" as const } : visit) });
+              }}
               defaultGuestName={lead.name}
               defaultPhone={lead.phone}
               defaultEmail={lead.email}
@@ -620,95 +741,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
         </div>
 
-        {/* ── Sidebar Column (4 cols): Quick access tools ── */}
-        <div className="space-y-6 lg:col-span-4">
-          {/* Lead Overview Card */}
-          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-name">
-            <div className="flex items-start gap-3.5">
-              <Avatar className="size-12 shrink-0 rounded-xl bg-blue-600 text-base font-bold text-white">
-                <AvatarFallback className="bg-blue-600 text-white">{lead.name[0]}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <h1 id="lead-name" className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100 sm:text-xl truncate">{lead.name}</h1>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <Badge variant="default" className="px-2 py-0.5 text-xs">{lead.origin}</Badge>
-                  <Badge className={cn("border px-2 py-0.5 text-xs font-bold", STAGE_STYLES[lead.stage] || STAGE_STYLES.new)}>
-                    {STAGE_LABELS[lead.stage] || lead.stage}
-                  </Badge>
-                </div>
-              </div>
-            </div>
 
-            <div className="mt-4 space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-xs text-slate-600 dark:text-slate-300">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900 dark:text-slate-100">Teléfono:</span>
-                <span className="text-right">{lead.phone || "Sin informar"}</span>
-              </div>
-              {cleanPhone && (
-                <a
-                  href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                    `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
-                      interests[0]?.propertyTitle ? ` sobre ${interests[0].propertyTitle}` : ""
-                    }. ¿Cómo estás?`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline"
-                >
-                  Abrir conversación en WhatsApp →
-                </a>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900 dark:text-slate-100">Email:</span>
-                <span className="text-right truncate max-w-44">{lead.email || "Sin informar"}</span>
-              </div>
-            </div>
-
-            <Link href={`/admin/leads/${lead.id}/edit`} className="w-full">
-              <Button className="mt-4 h-9 w-full gap-1.5 bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
-                <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
-              </Button>
-            </Link>
-          </section>
-
-          {/* Assigned Advisor Card */}
-          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm" aria-labelledby="lead-advisor-title">
-            <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500 dark:text-slate-400">Asesor responsable</p>
-            <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">{assignedAgent?.name ?? "Sin asignar"}</p>
-            <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
-            {currentUser?.role === "ADMIN" && (
-              <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
-                Cambiar asesor
-              </Button>
-            )}
-          </section>
-
-          {/* Follow-up Status Card */}
-          <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm" aria-labelledby="lead-follow-up-title">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400">
-                  <ClipboardCheck className="size-4" aria-hidden="true" />
-                </span>
-                <h2 id="lead-follow-up-title" className="text-sm font-bold text-slate-900 dark:text-slate-100">Seguimiento Comercial</h2>
-              </div>
-            </div>
-            <div className="mt-3">
-              <LeadFollowUpStatus leadId={lead.id} companyId={lead.companyId} followUps={followUps} legacyUpdatedAt={lead.followUpUpdatedAt} />
-            </div>
-            {!lead.agentId && (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 font-medium">Asigná un asesor antes de registrar un seguimiento.</p>
-            )}
-            <Button
-              onClick={() => setFollowUpEditorOpen(true)}
-              disabled={!lead.agentId}
-              className="mt-3 h-9 w-full gap-1.5 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            >
-              <Plus className="size-3.5" />
-              Registrar seguimiento
-            </Button>
-          </section>
-        </div>
       </div>
 
       {profileEditorOpen && <LeadProfileEditor key={lead.lastActivity} lead={lead} onClose={() => setProfileEditorOpen(false)} onSave={handleSaveProfile} />}

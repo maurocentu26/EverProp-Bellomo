@@ -10,6 +10,7 @@ import { FlaskConical, Loader2, ShieldAlert } from "lucide-react";
 import { SidebarProvider } from "../ui/sidebar";
 import { AppSidebar } from "@/components/sidebar/Sidebar";
 import { AdminNavbar } from "@/components/admin/AdminNavbar";
+import { PanelTextSizeProvider } from "@/components/theme/PanelTextSize";
 
 type Props = {
     children: React.ReactNode;
@@ -53,6 +54,13 @@ export default function MainLayout({ children }: Props) {
             console.error(e);
         }
     }, [currentUserId]);
+
+    useEffect(() => {
+        const frame = window.requestAnimationFrame(() => {
+            document.querySelector<HTMLElement>('[data-admin-scroll-container="true"]')?.scrollTo({ top: 0, behavior: "instant" });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [pathname]);
 
     useEffect(() => {
         if (!isMockDataMode || pathname !== "/admin") {
@@ -100,14 +108,15 @@ export default function MainLayout({ children }: Props) {
     }
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+        <PanelTextSizeProvider key={currentUser.id} userId={currentUser.id}>
+        <div className="admin-workspace min-h-screen overflow-x-hidden bg-background text-foreground">
             <SidebarProvider defaultOpen>
-                <div className="flex h-screen w-full overflow-hidden">
+                <div className="flex h-dvh w-full overflow-hidden">
                     <AppSidebar />
                     <div className="flex min-w-0 flex-1 flex-col">
                         <AdminNavbar />
-                        <main data-admin-scroll-container="true" className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth bg-background p-3 sm:p-4 md:p-6">
-                            <div className="mx-auto w-full max-w-[120rem] space-y-4">
+                        <main id="admin-content" tabIndex={-1} data-admin-scroll-container="true" className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
+                            <div className="mx-auto w-full max-w-[100rem] space-y-6">
                                 {isMockDataMode && (
                                     <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="note">
                                         <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
@@ -125,5 +134,6 @@ export default function MainLayout({ children }: Props) {
                 </div>
             </SidebarProvider>
         </div>
+        </PanelTextSizeProvider>
     );
 }

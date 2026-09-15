@@ -8,12 +8,15 @@ import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropCatalog } from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
+import { useCurrentSession } from "@/hooks/use-current-session";
 import { Button } from "@/components/ui/button";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
 
 export default function GlobalInventoryMatrixPage() {
+  const { isAdvisor, isReady } = useCurrentSession();
   const [properties, setProperties] = useState<Property[]>([]);
   const [projects, setProjects] = useState<typeof sampleProjects>([]);
+  const [loadError, setLoadError] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
   const [isGenerateLotsOpen, setIsGenerateLotsOpen] = useState(false);
 
@@ -32,7 +35,8 @@ export default function GlobalInventoryMatrixPage() {
           setIsLoaded(true);
           return;
         } catch (e) {
-          console.error("Error loading inventory matrix from API:", e);
+          if (active) { setLoadError("No se pudo cargar el inventario. Reintentá recargando la página."); setIsLoaded(true); }
+          return;
         }
       }
       if (!active) return;
@@ -63,6 +67,7 @@ export default function GlobalInventoryMatrixPage() {
     return groups;
   }, [filteredProperties]);
 
+  if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4">{loadError}</p>;
   if (!isLoaded) return (
     <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />
   );
@@ -84,25 +89,25 @@ export default function GlobalInventoryMatrixPage() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100 w-full md:w-auto">
             <Map className="h-5 w-5 text-slate-400 ml-2" />
-            <select 
-              className="text-sm font-bold border-none bg-transparent focus:ring-0 cursor-pointer w-full md:w-64 text-slate-700 h-9"
+            <select aria-label="Filtrar matriz por desarrollo"
+              className="text-sm font-bold border-none bg-transparent focus:ring-0 cursor-pointer min-w-0 w-full md:w-64 text-slate-700 h-9"
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
             >
-              <option value="all">Ver Todos los Desarrollos</option>
+              <option value="all">Todos los desarrollos</option>
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
           </div>
 
-          <Button
+          {isReady && !isAdvisor && <Button
             size="sm"
             onClick={() => setIsGenerateLotsOpen(true)}
             className="h-10 px-4 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm rounded-xl"
           >
             <Layers className="h-4 w-4" /> + Cargar Manzana / Lotes
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -131,14 +136,14 @@ export default function GlobalInventoryMatrixPage() {
         )}
       </div>
 
-      <GenerateLotsModal
+      {isReady && !isAdvisor && <GenerateLotsModal
         open={isGenerateLotsOpen}
         onOpenChange={setIsGenerateLotsOpen}
         defaultProjectId={selectedProjectId !== "all" ? selectedProjectId : undefined}
         onSuccess={(created) => {
           setProperties((prev) => [...prev, ...created]);
         }}
-      />
+      />}
     </div>
   );
 }

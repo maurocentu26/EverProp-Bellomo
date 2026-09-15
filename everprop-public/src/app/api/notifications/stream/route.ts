@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
+  if (process.env.NEXT_PUBLIC_DATA_MODE !== "mock") return new Response(null, { status: 404 });
   const encoder = new TextEncoder();
   let cleanup: (() => void) | null = null;
 

@@ -35,6 +35,7 @@ export type LeadFollowUpType = 'call' | 'whatsapp' | 'email' | 'meeting' | 'visi
 // panel hasta que el backend confirme su contrato definitivo.
 export type LeadFollowUp = {
   id: string;
+  sequence?: number;
   companyId: string;
   leadId: string;
   agentId: string;
@@ -96,6 +97,7 @@ export type Visit = {
 
 export type Property = {
   id: string;
+  version?: number;
   companyId: string;
   title: string;
   operation: 'sale' | 'rent' | 'temporal';
@@ -115,11 +117,11 @@ export type Property = {
   projectId?: string;
   sectorName?: string;
   unitNumber?: string;
-  status?: 'available' | 'reserved' | 'sold';
+  status?: 'available' | 'reserved' | 'sold' | 'rented';
   services?: { electricity?: boolean; water?: boolean; gas?: boolean; sewage?: boolean; internet?: boolean };
   landFeatures?: { water?: boolean; electricity?: boolean; curb?: boolean; gravel?: boolean; sewage?: boolean; spaceType?: 'Abierto' | 'Semiabierto' | 'Cerrado' };
   isCovered?: boolean;
-  commercialFeatures?: { showcaseLength?: number; hasBathroom?: boolean; mezzanine?: boolean; dualAccess?: boolean };
+  commercialFeatures?: { showcaseLength?: number; hasBathroom?: boolean; mezzanine?: boolean; dualAccess?: boolean; land?: { frente_m?: number; fondo_m?: number; ochava_m2?: number; padron?: string; curb?: boolean; gravel?: boolean; lighting?: boolean; spaceType?: string } };
 };
 
 export type Lead = {
@@ -130,7 +132,7 @@ export type Lead = {
   propertyIds: string[]; 
   projectId?: string;
   unitIds?: string[];
-  stage: 'new' | 'contacted' | 'visiting' | 'negotiation' | 'closing';
+  stage: 'new' | 'contacted' | 'visiting' | 'negotiation' | 'closing' | 'discarded';
   lastActivity: string;
   // Compatibilidad con registros creados antes del historial independiente.
   followUpUpdatedAt?: string;

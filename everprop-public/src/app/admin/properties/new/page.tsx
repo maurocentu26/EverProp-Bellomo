@@ -44,12 +44,10 @@ export default function NewPropertyPage() {
           Tu rol de asesor comercial no tiene permisos para dar de alta propiedades o unidades en el inventario. Redirigiendo al Catálogo de Propiedades...
         </p>
         <div className="mt-6">
-          <Link href="/admin/properties">
-            <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" nativeButton={false} role="link" render={<Link href="/admin/properties" />}>
               <ArrowLeft className="size-4" />
               Volver al Catálogo
             </Button>
-          </Link>
         </div>
       </div>
     );
