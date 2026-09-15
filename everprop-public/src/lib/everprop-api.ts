@@ -292,29 +292,36 @@ export async function logoutEverprop() {
   }
 }
 
-async function loadCatalogPages<T>(path: string): Promise<T[]> {
+async function loadCatalogPages<T>(path: string, maxPages?: number): Promise<T[]> {
   const rows: T[] = [];
   let page = 1;
   let lastPage = 1;
   do {
-    const response = await apiFetch<ApiPage<T>>(`${path}?per_page=100&page=${page}`);
+    const separator = path.includes("?") ? "&" : "?";
+    const response = await apiFetch<ApiPage<T>>(`${path}${separator}per_page=100&page=${page}`);
     rows.push(...response.data);
     lastPage = response.meta?.last_page ?? 1;
     page += 1;
+    if (maxPages && page > maxPages) break;
   } while (page <= lastPage);
   return rows;
 }
 
 async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   const [projects, properties] = await Promise.all([
-    loadCatalogPages<ApiProject>(`${prefix}/projects`),
-    loadCatalogPages<ApiProperty>(`${prefix}/properties`),
+    loadCatalogPages<ApiProject>(`${prefix}/projects`), // Fetch all projects (few items)
+    loadCatalogPages<ApiProperty>(`${prefix}/properties`, 1), // Only page 1 of properties!
   ]);
   return {
     projects: projects.map(mapProject),
     properties: properties.map(mapProperty),
     source: prefix.includes("admin") ? ("admin-api" as const) : ("public-api" as const),
   };
+}
+
+export async function loadEverpropPropertiesPage(page: number): Promise<Property[]> {
+  const response = await apiFetch<ApiPage<ApiProperty>>(`/api/v1/admin/properties?per_page=100&page=${page}`);
+  return response.data.map(mapProperty);
 }
 
 export async function loadEverpropProjects() {
@@ -556,12 +563,17 @@ export function mapLead(apiLead: ApiLead): Lead {
   };
 }
 
-async function loadAllCrmPages<T>(path: string): Promise<T[]> {
+async function loadAllCrmPages<T>(path: string, maxPages?: number): Promise<T[]> {
   const rows: T[] = [];
   let page: number | null = 1;
+  let pagesFetched = 0;
   while (page !== null) {
-    const response: { data: T[]; meta?: { next_page: number | null } } = await apiFetch(`${path}?page=${page}`);
+    const separator = path.includes("?") ? "&" : "?";
+    const response: { data: T[]; meta?: { next_page: number | null } } = await apiFetch(`${path}${separator}page=${page}`);
     rows.push(...response.data);
+    pagesFetched++;
+    if (maxPages && pagesFetched >= maxPages) break;
+    
     const next: number | null = response.meta?.next_page ?? null;
     if (next !== null && next <= page) throw new Error("Paginación inválida del CRM");
     page = next;
@@ -570,7 +582,13 @@ async function loadAllCrmPages<T>(path: string): Promise<T[]> {
 }
 
 export async function loadEverpropLeads(): Promise<Lead[]> {
-  return (await loadAllCrmPages<ApiLead>("/api/v1/admin/leads")).map(mapLead);
+  // Only fetch page 1 by default
+  return (await loadAllCrmPages<ApiLead>("/api/v1/admin/leads", 1)).map(mapLead);
+}
+
+export async function loadEverpropLeadsPage(page: number): Promise<Lead[]> {
+  const response: { data: ApiLead[] } = await apiFetch(`/api/v1/admin/leads?page=${page}`);
+  return response.data.map(mapLead);
 }
 
 const leadOriginCode = (origin: string) => ({ "WhatsApp": "WHATSAPP", "Web / Formulario": "WEB_FORM", "Web": "WEB_FORM", "Portal Inmobiliario": "PORTAL", "Portal": "PORTAL", "Referido": "REFERRAL", "Instagram": "INSTAGRAM" } as Record<string, string>)[origin] || "WEB_FORM";

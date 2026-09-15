@@ -24,7 +24,7 @@ import { getLeadFollowUpState } from "@/lib/lead-follow-up";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog, loadEverpropLeads, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
+import { loadEverpropCatalog, loadEverpropLeads, loadEverpropLeadsPage, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useDashboardMode } from "@/lib/dashboard-context";
@@ -67,6 +67,8 @@ export default function AllLeadsPage() {
   const [followUpFilter, setFollowUpFilter] = useState<FollowUpFilter>("all");
   const [loadError, setLoadError] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
 
@@ -299,6 +301,22 @@ export default function AllLeadsPage() {
     );
   }
 
+  const handleLoadMore = async () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const newLeads = await loadEverpropLeadsPage(nextPage);
+      if (newLeads.length === 0) return;
+      setAllLeads(prev => [...prev, ...newLeads]);
+      setPage(nextPage);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   if (!isLoaded) return <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />;
 
   return (
@@ -437,14 +455,26 @@ export default function AllLeadsPage() {
       {/* Tabla Pro de Leads */}
       <div className="min-h-[500px]">
         {loadError ? <p role="alert" className="rounded-xl border border-amber-500/40 p-4 text-sm">{loadError}</p> : filteredLeads.length > 0 ? (
-          <LeadTable
-            properties={catalogProperties}
-            leads={filteredLeads}
-            followUps={followUps}
-            onStageChange={handleStageChange}
-            onFollowUp={(lead) => setFollowUpLead(lead)}
-          />
-        ) : (
+            <>
+              <LeadTable
+                properties={catalogProperties}
+                leads={filteredLeads}
+                followUps={followUps}
+                onStageChange={handleStageChange}
+                onFollowUp={(lead) => setFollowUpLead(lead)}
+              />
+              <div className="pt-8 pb-4 flex justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={handleLoadMore} 
+                  disabled={isLoadingMore}
+                  className="w-full max-w-sm rounded-xl font-semibold border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  {isLoadingMore ? "Cargando..." : "Cargar más leads"}
+                </Button>
+              </div>
+            </>
+          ) : (
           <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50">
             <Filter className="h-8 w-8 text-slate-300 mb-3" />
             <p className="text-slate-500 font-medium">No se encontraron leads con esos filtros.</p>

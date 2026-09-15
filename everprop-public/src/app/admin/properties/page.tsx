@@ -8,7 +8,7 @@ import Link from "next/link";
 import { type Project, type Property, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
 import { cn } from "@/lib/utils";
-import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
+import { isInvalidEverpropSession, loadEverpropCatalog, loadEverpropPropertiesPage } from "@/lib/everprop-api";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -33,6 +33,8 @@ export default function AllPropertiesPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
@@ -142,6 +144,22 @@ export default function AllPropertiesPage() {
     });
     return groups;
   }, [filteredProperties]);
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const newProps = await loadEverpropPropertiesPage(nextPage);
+      if (newProps.length === 0) return;
+      setAllProperties(prev => [...prev, ...newProps]);
+      setPage(nextPage);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   if (dataState.status === "loading") return <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" role="status" aria-label="Cargando propiedades" />;
 
@@ -386,6 +404,17 @@ export default function AllPropertiesPage() {
               <PropertyList properties={groupedProperties.individual} readOnly={false} />
             </div>
           )}
+
+          <div className="pt-8 pb-4 flex justify-center">
+            <Button 
+              variant="outline" 
+              onClick={handleLoadMore} 
+              disabled={isLoadingMore}
+              className="w-full max-w-sm rounded-xl font-semibold border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {isLoadingMore ? "Cargando..." : "Cargar más propiedades"}
+            </Button>
+          </div>
         </div>
       )}
     </div>
