@@ -50,4 +50,43 @@ final class WebPushTest extends TestCase {
   (new \App\Jobs\SendWebPush($tenant->id,$other->id,$notificationId))->handle();
  }
 
+ public function test_temporary_push_failure_keeps_subscription_for_retry(): void {
+  config(['webpush.private_key'=>'configured', 'webpush.subject'=>'mailto:qa@example.invalid']);
+  \Illuminate\Support\Facades\Queue::fake();
+  $tenant=Tenant::factory()->create();
+  $user=User::factory()->for($tenant)->create(['role_code'=>RoleCode::SALES_ADVISOR->value]);
+  $user->notify(new \App\Domain\CRM\Notifications\LeadAssignedNotification('qa-id','QA','LEAD_CREATED','QA','QA'));
+  $notificationId=$user->notifications()->firstOrFail()->id;
+  $keys=\Minishlink\WebPush\VAPID::createVapidKeys();
+  $endpoint='https://fcm.googleapis.com/fcm/send/qa-temporary';
+  $id=DB::table('web_push_subscriptions')->insertGetId(['tenant_id'=>$tenant->id,'user_id'=>$user->id,
+   'endpoint_hash'=>hash('sha256',$endpoint),
+   'subscription'=>\Illuminate\Support\Facades\Crypt::encryptString(json_encode(['endpoint'=>$endpoint,'keys'=>['p256dh'=>$keys['publicKey'],'auth'=>base64_encode(str_repeat('b',16))]]))]);
+  $sender=\Mockery::mock(\Minishlink\WebPush\WebPush::class);
+  $sender->shouldReceive('sendOneNotification')->once()->andReturn(new \Minishlink\WebPush\MessageSentReport(new \GuzzleHttp\Psr7\Request('POST',$endpoint),new \GuzzleHttp\Psr7\Response(503),false));
+  $this->app->instance(\Minishlink\WebPush\WebPush::class,$sender);
+  try {
+   (new \App\Jobs\SendWebPush($tenant->id,$user->id,$notificationId))->handle();
+   $this->fail('A temporary provider failure must trigger the queue retry.');
+  } catch (\RuntimeException $exception) {
+   $this->assertSame('El proveedor push no confirmó la entrega.',$exception->getMessage());
+  }
+  $this->assertDatabaseHas('web_push_subscriptions',['id'=>$id]);
+  $this->assertDatabaseHas('notifications',['id'=>$notificationId,'read_at'=>null]);
+ }
+
+ public function test_already_read_notification_is_not_delivered_again(): void {
+  config(['webpush.private_key'=>'configured', 'webpush.subject'=>'mailto:qa@example.invalid']);
+  \Illuminate\Support\Facades\Queue::fake();
+  $tenant=Tenant::factory()->create();
+  $user=User::factory()->for($tenant)->create(['role_code'=>RoleCode::SALES_ADVISOR->value]);
+  $user->notify(new \App\Domain\CRM\Notifications\LeadAssignedNotification('qa-read','QA','LEAD_CREATED','QA','QA'));
+  $notification=$user->notifications()->firstOrFail();
+  $notification->markAsRead();
+  $sender=\Mockery::mock(\Minishlink\WebPush\WebPush::class);
+  $sender->shouldNotReceive('sendOneNotification');
+  $this->app->instance(\Minishlink\WebPush\WebPush::class,$sender);
+  (new \App\Jobs\SendWebPush($tenant->id,$user->id,$notification->id))->handle();
+  $this->assertDatabaseHas('notifications',['id'=>$notification->id]);
+ }
 }

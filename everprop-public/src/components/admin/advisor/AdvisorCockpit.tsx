@@ -557,7 +557,7 @@ export default function AdvisorCockpit() {
           </div>
           <div className="mt-2.5 sm:mt-4">
             <p className="text-2xl sm:text-3xl font-black text-purple-950">{visitsTotal ?? "—"}</p>
-            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-purple-800">Citas de hoy</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-purple-800">Citas agendadas hoy</p>
             <p className="text-[10px] sm:text-xs text-purple-600 hidden sm:block">{visitsError ? "No se pudieron cargar las citas" : "Revisá los horarios en tu agenda"}</p>
           </div>
         </Link>
@@ -647,7 +647,7 @@ export default function AdvisorCockpit() {
               ))}
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Todos incluye también clientes fuera de estos tres filtros. Las citas se consultan en la tarjeta verde.
+              Todos incluye también clientes fuera de estos tres filtros. Verde identifica las citas de la agenda; no indica que todos los clientes estén al día.
             </p>
           </div>
 

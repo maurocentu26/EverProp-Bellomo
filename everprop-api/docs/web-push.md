@@ -14,4 +14,6 @@ El sonido depende de permisos, configuración del sistema y modo silencio/no mol
 
 ## Pruebas locales
 
+Antes de entregar, ejecutar `php artisan everprop:production-check --connections --webpush` en el entorno de destino. Detecta configuración faltante/inválida y verifica la tabla de la cola database cuando corresponde; no reemplaza comprobar el worker y el teléfono. Ver `integracion-panel.md` para el orden de preparación y recuperación.
+
 `php artisan test --filter=WebPushTest` comprueba permisos, cifrado, destinos permitidos, selección del destinatario, cola y expiración mediante un emisor simulado, sin enviar mensajes reales. Estas pruebas no acreditan recepción en un teléfono.
