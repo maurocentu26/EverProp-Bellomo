@@ -79,6 +79,7 @@ export type Project = {
   description?: string;
   masterplanImage?: string;
   coverImage?: string;
+  propertiesCount?: number;
 };
 
 export type Visit = {

@@ -68,13 +68,11 @@ function ProjectCard({ project, properties, readOnly, material }: { project: Pro
           <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
             <div>
               <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Unidades cargadas</span>
-              <span className="text-lg font-black text-slate-700">{projectProperties.length}</span>
+              <span className="text-lg font-black text-slate-700">{project.propertiesCount || 0}</span>
             </div>
             <div>
               <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Disponibles</span>
-              <span className="text-lg font-black text-emerald-600">
-                {availableCount}
-              </span>
+              <span className="text-lg font-black text-emerald-600">{availableCount > 0 ? availableCount : "-"}</span>
             </div>
           </div>
 

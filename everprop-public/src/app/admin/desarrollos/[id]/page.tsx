@@ -6,12 +6,13 @@ import { ArrowLeft, BarChart3, Map, Layers } from "lucide-react";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog } from "@/lib/everprop-api";
+import { loadEverpropCatalog, isInvalidEverpropSession } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
 import { useCurrentSession } from "@/hooks/use-current-session";
+import { useAuth } from "@/lib/auth-context";
 import { ProjectMaterials, MaterialErrorNotice } from "@/components/admin/BellomoResources";
 
 export default function ProjectDetailView() {
@@ -19,6 +20,7 @@ export default function ProjectDetailView() {
   const router = useRouter();
   const projectId = params.id as string;
   const { isAdvisor } = useCurrentSession();
+  const { invalidateSession } = useAuth();
   
   const [project, setProject] = useState<Project | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -34,27 +36,34 @@ export default function ProjectDetailView() {
         try {
           const catalog = await loadEverpropCatalog();
           if (!active) return;
-          const p = catalog.projects.find((item) => item.id === projectId);
+          const p = catalog.projects.find((p) => p.id === projectId);
           if (p) {
             setProject(p);
-            setProperties(catalog.properties.filter((prop) => prop.projectId === projectId));
+            // Fetch ALL properties for this project specifically
+            const { loadEverpropPropertiesByProject } = await import('@/lib/everprop-api');
+            const props = await loadEverpropPropertiesByProject(projectId);
+            if (!active) return;
+            setProperties(props);
             return;
           }
-          setLoadError({ projectId, message: "El proyecto no está disponible para tu cuenta." });
-          return;
-        } catch (e) {
-          if (active) setLoadError({ projectId, message: e instanceof Error ? e.message : "No se pudo cargar el proyecto." });
-          return;
+          setLoadError({ projectId, message: "Proyecto no encontrado en la API." });
+        } catch (reason) {
+          if (isInvalidEverpropSession(reason)) {
+            invalidateSession();
+            return;
+          }
+          if (!active) return;
+          setLoadError({ projectId, message: "Error al cargar el proyecto." });
         }
+      } else {
+        const projs = loadProjectList(sampleProjects, "c1");
+        const p = projs.find((p) => p.id === projectId);
+        if (p) {
+          setProject(p);
+          const allProps = loadPropertyList(sampleProperties, "c1");
+          setProperties(allProps.filter((prop) => prop.projectId === projectId));
+        } else setLoadError({ projectId, message: "Proyecto no encontrado." });
       }
-      if (!active) return;
-      const allProj = loadProjectList(sampleProjects, "c1");
-      const p = allProj.find((item) => item.id === projectId);
-      if (p) {
-        setProject(p);
-        const allProps = loadPropertyList(sampleProperties, "c1");
-        setProperties(allProps.filter((prop) => prop.projectId === projectId));
-      } else setLoadError({ projectId, message: "Proyecto no encontrado." });
     }
     void fetchProject();
     return () => {
