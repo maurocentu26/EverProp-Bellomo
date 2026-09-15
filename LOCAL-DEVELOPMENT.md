@@ -19,7 +19,7 @@ Todas usan la contraseña de simulación original `password123`:
 | Lucas, asesor | lucas.albarracin@bellomo.com |
 | Valentina, asesora | valentina.morales@bellomo.com |
 
-La carga inicial contiene 3 proyectos, 73 propiedades del archivo de información real, 10 clientes potenciales y 3 visitas originales. Se excluyen las propiedades adicionales de simulación. Los permisos y las restricciones de pantalla de cada perfil siguen vigentes. Cobranzas comienza vacía: crear un acuerdo fijo desde un cliente y registrar pagos para probar persistencia y saldos.
+El entorno local fue actualizado el 15/09/2026 desde `Downloads/tablas_prop_bellomo_real.xlsx`: contiene 27 proyectos y 3.577 registros de inventario, junto con los catálogos originales de tipos, estados y localidades. Se eliminaron los clientes potenciales, contactos, visitas y seguimientos de demostración y QA. Las cuatro cuentas, sus permisos y restricciones siguen vigentes. Los importes originales están conservados en los datos de origen; los precios de la aplicación quedan sin moneda hasta confirmarla. Ver [informe de importación y validación](everprop-api/docs/REAL-WORKBOOK-IMPORT-2026-09-15.md).
 
 ## Configuración de esta computadora
 
@@ -34,7 +34,7 @@ NEXT_PUBLIC_DATA_MODE=api
 
 El arranque usa `everprop-api/.docker/collections-compose.yaml` y los secretos locales existentes. Estos archivos privados no se versionan. El script está preparado para este entorno ya provisionado; para otra computadora seguir primero el bootstrap/import del README de la API. Nunca ejecutar el importador del baseline sobre una base con datos.
 
-Para cargar los fixtures originales en una base local vacía ya provisionada:
+Sólo para una base de demostración vacía: el comando siguiente carga los fixtures antiguos. No usarlo para actualizar el inventario real importado:
 
 ```powershell
 docker exec everprop-collections-php php artisan everprop:local-demo

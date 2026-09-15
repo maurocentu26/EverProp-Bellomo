@@ -8,4 +8,7 @@ enum PropertyStatus: string
     case RESERVED = 'RESERVED';
     case SOLD = 'SOLD';
     case RENTED = 'RENTED';
+    case NOT_SELLABLE = 'NOT_SELLABLE';
+    case NOT_MARKETED = 'NOT_MARKETED';
+    case UNKNOWN = 'UNKNOWN';
 }

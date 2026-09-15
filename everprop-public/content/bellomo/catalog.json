@@ -1,0 +1,775 @@
+{
+  "projects": [
+    {
+      "id": "san-pablo",
+      "name": "San Pablo",
+      "aliases": [
+        "San Pablo",
+        "Loteo San Pablo 1",
+        "San Pablo 1"
+      ],
+      "location": "Coronel Arias, San Salvador de Jujuy",
+      "tagline": "Tu balcón a la ciudad",
+      "mapUrl": "https://goo.gl/maps/1UwnW1CDetpP1zAZ8"
+    },
+    {
+      "id": "valle-verde",
+      "name": "Valle Verde",
+      "aliases": [
+        "Valle Verde",
+        "Valle Verde Loteo"
+      ],
+      "location": "Sargento Cabral, San Salvador de Jujuy",
+      "tagline": "El valle pensado para tu futuro",
+      "mapUrl": "https://goo.gl/maps/BHCdb2VzC1QdWKVGA"
+    },
+    {
+      "id": "el-rocio",
+      "name": "El Rocío",
+      "aliases": [
+        "El Rocío",
+        "Remanente El Rocío",
+        "Loteo El Rocío"
+      ],
+      "location": "El Carmen, Jujuy",
+      "tagline": "Empapate de frescura y tranquilidad",
+      "mapUrl": "https://goo.gl/maps/62ajzARyuAPveZix6"
+    },
+    {
+      "id": "la-arbolada",
+      "name": "La Arbolada 1",
+      "aliases": [
+        "La Arbolada",
+        "La Arbolada 1"
+      ],
+      "location": "Sargento Cabral, San Salvador de Jujuy",
+      "tagline": "Terrenos verdes muy cerca de todo",
+      "mapUrl": "https://goo.gl/maps/CdoPKYA4stvWAyWx5"
+    },
+    {
+      "id": "la-arbolada-2",
+      "name": "La Arbolada 2",
+      "aliases": [
+        "La Arbolada 2"
+      ],
+      "location": "Sargento Cabral, San Salvador de Jujuy",
+      "tagline": "Respirá tranquilidad",
+      "mapUrl": "https://goo.gl/maps/CdoPKYA4stvWAyWx5"
+    },
+    {
+      "id": "santa-emilia",
+      "name": "Santa Emilia",
+      "aliases": [
+        "Santa Emilia"
+      ],
+      "location": "Monterrico, Jujuy",
+      "tagline": "Urbanización a tu alcance",
+      "mapUrl": "https://goo.gl/maps/e4D7Cn3PN2UpFnK39"
+    },
+    {
+      "id": "los-cardinales",
+      "name": "Los Cardinales",
+      "aliases": [
+        "Los Cardinales",
+        "Cardinales"
+      ],
+      "location": "Sargento Cabral, San Salvador de Jujuy",
+      "tagline": "Proyectá tu futuro en el lugar correcto",
+      "mapUrl": "https://goo.gl/maps/E6jYRGbHVY3j175i9"
+    },
+    {
+      "id": "las-colinas",
+      "name": "Las Colinas",
+      "aliases": [
+        "Las Colinas",
+        "Las Colinas 1"
+      ],
+      "location": "Ruta Nacional 9, Jujuy",
+      "tagline": "Tierra de sueños",
+      "mapUrl": "https://goo.gl/maps/VUhJxtTkFSLzDxpV8"
+    },
+    {
+      "id": "los-perales",
+      "name": "Los Perales",
+      "aliases": [
+        "Los Perales"
+      ],
+      "location": "Los Perales, San Salvador de Jujuy",
+      "tagline": "Sentite lejos, estando cerca",
+      "mapUrl": "https://goo.gl/maps/JUbmLHpR98dkwHPT8"
+    },
+    {
+      "id": "quintas-san-antonio",
+      "name": "Quintas de San Antonio",
+      "aliases": [
+        "Quintas de San Antonio"
+      ],
+      "location": "La Toma, San Antonio",
+      "tagline": "Un entorno de descanso y naturaleza",
+      "mapUrl": null
+    },
+    {
+      "id": "los-arenales",
+      "name": "Los Arenales",
+      "aliases": [
+        "Los Arenales"
+      ],
+      "location": "Jujuy",
+      "tagline": null,
+      "mapUrl": null
+    },
+    {
+      "id": "huasi-7",
+      "name": "Huasi VII",
+      "aliases": [
+        "Huasi 7",
+        "Huasi VII"
+      ],
+      "location": "República del Uruguay y Río Iguazú, Alto Padilla",
+      "tagline": "Memoria descriptiva y documentación del edificio",
+      "mapUrl": null
+    },
+    {
+      "id": "el-arrabal",
+      "name": "El Arrabal",
+      "aliases": [
+        "El Arrabal"
+      ],
+      "location": "San Vicente, Jujuy",
+      "tagline": null,
+      "mapUrl": null
+    },
+    {
+      "id": "las-colinas-2",
+      "name": "Las Colinas 2",
+      "aliases": [
+        "Las Colinas 2"
+      ],
+      "location": "Jujuy",
+      "tagline": null,
+      "mapUrl": null
+    }
+  ],
+  "assets": [
+    {
+      "id": "san-pablo-logo",
+      "project": "san-pablo",
+      "file": "san-pablo-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1yCBy6jgWev89LAChatYmTL_tUtPgCLvj/view",
+      "sourcePath": "San Pablo color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "san-pablo-photo-1",
+      "project": "san-pablo",
+      "file": "san-pablo-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/San Pablo/San Pablo 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "san-pablo-photo-2",
+      "project": "san-pablo",
+      "file": "san-pablo-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/San Pablo/San Pablo 2.jpeg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "valle-verde-logo",
+      "project": "valle-verde",
+      "file": "valle-verde-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1Kt061x8MIBM0kmwc7zZj5h-byUgL_jTo/view",
+      "sourcePath": "Valle Verde color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "valle-verde-photo-1",
+      "project": "valle-verde",
+      "file": "valle-verde-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Valle Verde/Valle Verde 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "valle-verde-photo-2",
+      "project": "valle-verde",
+      "file": "valle-verde-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Valle Verde/Valle Verde 2.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "valle-verde-render",
+      "project": "valle-verde",
+      "file": "valle-verde-render.webp",
+      "kind": "render",
+      "title": "Vista proyectada",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Valle Verde/Renders/RENDER 8 - V V.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "el-rocio-logo",
+      "project": "el-rocio",
+      "file": "el-rocio-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1gy4Ig-zPqVYRPeAqUD7Z6NzI-eaFZLLj/view",
+      "sourcePath": "El Rocio color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "el-rocio-photo-1",
+      "project": "el-rocio",
+      "file": "el-rocio-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/El Rocío/El Rocio 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "el-rocio-photo-2",
+      "project": "el-rocio",
+      "file": "el-rocio-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/El Rocío/El Rocio 2.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "el-rocio-render",
+      "project": "el-rocio",
+      "file": "el-rocio-render.webp",
+      "kind": "render",
+      "title": "Vista proyectada",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/El Rocío/El Rocio/RENDER 2 EL ROCIO TERMINADO.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "la-arbolada-logo",
+      "project": "la-arbolada",
+      "file": "la-arbolada-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1WpgwbfQondwMAXsq8W1iNd3yxQe9IpD0/view",
+      "sourcePath": "La Arbolada color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "la-arbolada-photo-1",
+      "project": "la-arbolada",
+      "file": "la-arbolada-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/La Arbolada/Arbolada 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "la-arbolada-photo-2",
+      "project": "la-arbolada",
+      "file": "la-arbolada-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/La Arbolada/Arbolada 2.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "la-arbolada-2-photo-1",
+      "project": "la-arbolada-2",
+      "file": "la-arbolada-2-photo-1.webp",
+      "kind": "render",
+      "title": "Vista proyectada 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/La Arbolada 2/Arbolada 2 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "la-arbolada-2-photo-2",
+      "project": "la-arbolada-2",
+      "file": "la-arbolada-2-photo-2.webp",
+      "kind": "render",
+      "title": "Vista proyectada 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/La Arbolada 2/Arbolada 2 2.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "santa-emilia-logo",
+      "project": "santa-emilia",
+      "file": "santa-emilia-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1kv3M8o3gbHROZALFMSE7qYQCE-1_H5bs/view",
+      "sourcePath": "Santa Emilia color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "santa-emilia-photo-1",
+      "project": "santa-emilia",
+      "file": "santa-emilia-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Santa Emilia/Santa Emilia 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "santa-emilia-photo-2",
+      "project": "santa-emilia",
+      "file": "santa-emilia-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Santa Emilia/Santa Emilia 2.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-cardinales-logo",
+      "project": "los-cardinales",
+      "file": "los-cardinales-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1SfJVEHLPIl3n-bZVRMnmke7y4mQXB5c7/view",
+      "sourcePath": "Los Cardinales.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-cardinales-photo-1",
+      "project": "los-cardinales",
+      "file": "los-cardinales-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Los Cardinales/Cardinales 2.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-cardinales-photo-2",
+      "project": "los-cardinales",
+      "file": "los-cardinales-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Los Cardinales/Cardinales 3.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-cardinales-render",
+      "project": "los-cardinales",
+      "file": "los-cardinales-render.webp",
+      "kind": "render",
+      "title": "Vista proyectada",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Los Cardinales/Renders/RENDER  2- C.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "las-colinas-logo",
+      "project": "las-colinas",
+      "file": "las-colinas-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1WiMmkrJwXQAoZ07yuPH7mzKo2QczZuNv/view",
+      "sourcePath": "Las Colinas color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "las-colinas-photo-1",
+      "project": "las-colinas",
+      "file": "las-colinas-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Las Colinas/Colinas 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "las-colinas-photo-2",
+      "project": "las-colinas",
+      "file": "las-colinas-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Las Colinas/Colinas 2.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-perales-logo",
+      "project": "los-perales",
+      "file": "los-perales-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1b5usJqcQC1SAOcG31K1g0vsXEuYXvOAX/view",
+      "sourcePath": "Los Perales color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-perales-photo-1",
+      "project": "los-perales",
+      "file": "los-perales-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Los Perales/Los Perales 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-perales-photo-2",
+      "project": "los-perales",
+      "file": "los-perales-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Los Perales/Copia de DJI_0431.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "quintas-san-antonio-logo",
+      "project": "quintas-san-antonio",
+      "file": "quintas-san-antonio-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1J_nNTVeijH8nG70fNMiYR13ZtHYLRqQW/view",
+      "sourcePath": "Quintas color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "quintas-san-antonio-photo-1",
+      "project": "quintas-san-antonio",
+      "file": "quintas-san-antonio-photo-1.webp",
+      "kind": "render",
+      "title": "Vista proyectada 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Quintas de San Antonio/Quintas SA 1.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "quintas-san-antonio-photo-2",
+      "project": "quintas-san-antonio",
+      "file": "quintas-san-antonio-photo-2.webp",
+      "kind": "render",
+      "title": "Vista proyectada 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Quintas de San Antonio/Quintas SA 2.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-arenales-logo",
+      "project": "los-arenales",
+      "file": "los-arenales-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/18KUtLYBYYi4H9vHTJPzEVa5xS8C3ZK4D/view",
+      "sourcePath": "Los Arenales color.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-arenales-photo-1",
+      "project": "los-arenales",
+      "file": "los-arenales-photo-1.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 1",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Los Arenales/Copia de 20200717_115550.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "los-arenales-photo-2",
+      "project": "los-arenales",
+      "file": "los-arenales-photo-2.webp",
+      "kind": "photo",
+      "title": "Vista del desarrollo 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos de los loteos y productos especiales/Los Arenales/Copia de 20200717_115602.jpg",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "huasi-7-photo-1",
+      "project": "huasi-7",
+      "file": "huasi-7-photo-1.webp",
+      "kind": "technical",
+      "title": "Planta de referencia",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos Propiedades/Huasi 7/Huasi 7 5.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "huasi-7-photo-2",
+      "project": "huasi-7",
+      "file": "huasi-7-photo-2.webp",
+      "kind": "render",
+      "title": "Vista proyectada 2",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1609Jb4woEwekMd3uy1QW5uMa_wihZOnU/view",
+      "sourcePath": "BELLOMO/Fotos Propiedades/Huasi 7/Huasi 7 3.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "el-arrabal-logo",
+      "project": "el-arrabal",
+      "file": "el-arrabal-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/17FY-wg0sBnxOeC29eNsZCL0-7rSn14EG/view",
+      "sourcePath": "El Arrabal.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "las-colinas-2-logo",
+      "project": "las-colinas-2",
+      "file": "las-colinas-2-logo.png",
+      "kind": "logo",
+      "title": "Identidad del desarrollo",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1svChX8MIJlEjNYVh-VaruXVcIHis20gZ/view",
+      "sourcePath": "colinas2.png",
+      "version": "Material recibido · septiembre 2026"
+    },
+    {
+      "id": "document-18KMiy9JmNVbWNt1RF92yIH0vKLTRKIGM",
+      "project": "los-cardinales",
+      "file": "doc-18KMiy9JmNVbWNt1RF92yIH0vKLTRKIGM.pdf",
+      "kind": "commercial",
+      "title": "Ficha de presupuesto y plano",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/18KMiy9JmNVbWNt1RF92yIH0vKLTRKIGM/view",
+      "sourcePath": "Los Cardinales.pdf",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1eLCdsBdTwNaR13OZlYJLBBm5hydNzWHa",
+      "project": "la-arbolada",
+      "file": "doc-1eLCdsBdTwNaR13OZlYJLBBm5hydNzWHa.png",
+      "kind": "technical",
+      "title": "Plano y datos técnicos",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1eLCdsBdTwNaR13OZlYJLBBm5hydNzWHa/view",
+      "sourcePath": "fichadeventa_laarbolada_interior.png",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-18gqjQOqC-M6HqqVvz5FuaoCxqpej_RgH",
+      "project": "santa-emilia",
+      "file": "doc-18gqjQOqC-M6HqqVvz5FuaoCxqpej_RgH.jpg",
+      "kind": "commercial",
+      "title": "Ficha de presentación",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/18gqjQOqC-M6HqqVvz5FuaoCxqpej_RgH/view",
+      "sourcePath": "fichadeventa_santaemilia_exterior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1nPbcvkcDCfoCZJxS2Oxb7jC6DIBLb6VX",
+      "project": "la-arbolada",
+      "file": "doc-1nPbcvkcDCfoCZJxS2Oxb7jC6DIBLb6VX.jpg",
+      "kind": "commercial",
+      "title": "Ficha de presentación",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1nPbcvkcDCfoCZJxS2Oxb7jC6DIBLb6VX/view",
+      "sourcePath": "fichadeventa_laarbolada_exterior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1zDac_3x4pwjUW76_ml8UlkHv014laf1q",
+      "project": "san-pablo",
+      "file": "doc-1zDac_3x4pwjUW76_ml8UlkHv014laf1q.jpg",
+      "kind": "commercial",
+      "title": "Ficha de presentación",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1zDac_3x4pwjUW76_ml8UlkHv014laf1q/view",
+      "sourcePath": "fichadeventa_sanpablo_exterior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1tE32Bv4luFX7kDOnm1PZr2O6ssnyKXTv",
+      "project": "valle-verde",
+      "file": "doc-1tE32Bv4luFX7kDOnm1PZr2O6ssnyKXTv.jpg",
+      "kind": "technical",
+      "title": "Plano y datos técnicos",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1tE32Bv4luFX7kDOnm1PZr2O6ssnyKXTv/view",
+      "sourcePath": "fichadeventa_valleverde_interior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1hscAlaO9VM8w8ofQGadbHQEfGA6wOGOK",
+      "project": "valle-verde",
+      "file": "doc-1hscAlaO9VM8w8ofQGadbHQEfGA6wOGOK.jpg",
+      "kind": "commercial",
+      "title": "Ficha de presentación",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1hscAlaO9VM8w8ofQGadbHQEfGA6wOGOK/view",
+      "sourcePath": "fichadeventa_valleverde_exterior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1J9dopWQxLTwjLMi68VcCkfOqDCjNvthF",
+      "project": "el-rocio",
+      "file": "doc-1J9dopWQxLTwjLMi68VcCkfOqDCjNvthF.jpg",
+      "kind": "commercial",
+      "title": "Ficha de presentación",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1J9dopWQxLTwjLMi68VcCkfOqDCjNvthF/view",
+      "sourcePath": "fichadeventa_elrocio_exterior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1Ol__Kuu1pTi4Rs9sq_NweoNIK2tc1ihP",
+      "project": "el-rocio",
+      "file": "doc-1Ol__Kuu1pTi4Rs9sq_NweoNIK2tc1ihP.jpg",
+      "kind": "technical",
+      "title": "Plano y datos técnicos",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1Ol__Kuu1pTi4Rs9sq_NweoNIK2tc1ihP/view",
+      "sourcePath": "fichadeventa_elrocio_interior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1fntAbJSsh5vfsnoRisrCMoyxNH0PmfXX",
+      "project": "quintas-san-antonio",
+      "file": "doc-1fntAbJSsh5vfsnoRisrCMoyxNH0PmfXX.jpg",
+      "kind": "commercial",
+      "title": "Ficha de presentación",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1fntAbJSsh5vfsnoRisrCMoyxNH0PmfXX/view",
+      "sourcePath": "fichadeventa_quintas_exterior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1C1KMhOVNko9_-74JjjsewTpnVsKbPMxI",
+      "project": "las-colinas",
+      "file": "doc-1C1KMhOVNko9_-74JjjsewTpnVsKbPMxI.jpg",
+      "kind": "commercial",
+      "title": "Ficha de presentación",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1C1KMhOVNko9_-74JjjsewTpnVsKbPMxI/view",
+      "sourcePath": "fichadeventa_lascolinas_exterior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1a8mVOON8FktaKmHb_Vyp18mb3FsPdAr0",
+      "project": "las-colinas",
+      "file": "doc-1a8mVOON8FktaKmHb_Vyp18mb3FsPdAr0.jpg",
+      "kind": "technical",
+      "title": "Plano y datos técnicos",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1a8mVOON8FktaKmHb_Vyp18mb3FsPdAr0/view",
+      "sourcePath": "fichadeventa_lascolinas_interior.jpg",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1p1Cf8wGKBWcbvBqOacppbHwUWPi6jYu2",
+      "project": "los-perales",
+      "file": "doc-1p1Cf8wGKBWcbvBqOacppbHwUWPi6jYu2.pdf",
+      "kind": "commercial",
+      "title": "Planilla de venta",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1p1Cf8wGKBWcbvBqOacppbHwUWPi6jYu2/view",
+      "sourcePath": "Planilla de venta LOS PERALES.pdf",
+      "version": "Material de referencia · recibido septiembre 2026"
+    },
+    {
+      "id": "document-1Om8AUyA4qU0ytebLI4G7FpDSOwi8EXtz",
+      "project": "huasi-7",
+      "file": "huasi-7-memoria.pdf",
+      "kind": "technical",
+      "title": "Memoria descriptiva · 2025",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/1Om8AUyA4qU0ytebLI4G7FpDSOwi8EXtz/view",
+      "sourcePath": "Memoria descriptiva Huasi VII · 2025",
+      "version": "Marzo 2025"
+    },
+    {
+      "id": "brand-originals",
+      "project": null,
+      "file": "bellomo-logos.pdf",
+      "kind": "brand",
+      "title": "Logotipos institucionales · originales",
+      "status": "reference",
+      "sourceUrl": "https://drive.google.com/file/d/14jUSrGueIKgmWN6pFQusR-vkNULn03I9/view",
+      "version": "Identidad institucional · 2022"
+    }
+  ],
+  "pending": [
+    {
+      "title": "Santa Emilia · interior",
+      "reason": "El original está marcado «CORREGIR TABAC».",
+      "project": "santa-emilia"
+    },
+    {
+      "title": "San Pablo · plano interior",
+      "reason": "El original está marcado «CORREGIR AP5 Y AP4».",
+      "project": "san-pablo"
+    },
+    {
+      "title": "Quintas · plano interior",
+      "reason": "El original indica revisar división de manzanas.",
+      "project": "quintas-san-antonio"
+    },
+    {
+      "title": "Logo de los 50 años",
+      "reason": "Pendiente de recibir la pieza oficial. El archivo aniversario contiene fotos del evento.",
+      "project": null
+    },
+    {
+      "title": "Placas de redes y promociones anteriores",
+      "reason": "La carpeta de origen advierte que algunas piezas tienen información incorrecta.",
+      "project": null
+    }
+  ]
+}

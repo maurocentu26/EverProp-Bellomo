@@ -30,7 +30,11 @@ export default function AdvisorsPage() {
       const result = await apiFetch<{data: {activationToken: string}}>("/api/v1/admin/users", {method: "POST", body: JSON.stringify(data)});
       setActivation(`${window.location.origin}/activar#${result.data.activationToken}`);
       form.reset();
-      const list = await apiFetch<{data: Member[]}>("/api/v1/admin/users"); setMembers(list.data);
+      try {
+        const list = await apiFetch<{data: Member[]}>("/api/v1/admin/users"); setMembers(list.data);
+      } catch {
+        setError("El usuario fue creado y su enlace está disponible. No se pudo actualizar la lista; recargá para verlo.");
+      }
     } catch (e) { setError(e instanceof Error ? e.message : "No se pudo dar de alta al usuario."); }
     finally { setSaving(false); }
   }

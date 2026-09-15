@@ -2,6 +2,7 @@
 
 import { Building2, MapPin, BedDouble, Bath, Ruler, MoreVertical, Edit3, Eye, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { propertyOperationLabel } from "@/lib/inventory-labels";
 import { Button } from "@/components/ui/button";
 import Badge from "@/components/ui/badge";
 import {
@@ -34,7 +35,7 @@ export default function PropertyCardAdmin({ property }: Props) {
             "px-3 py-1 rounded-full border-none font-bold text-[10px] tracking-wider text-white shadow-lg",
             property.operation === 'sale' ? "bg-emerald-500" : "bg-blue-600"
           )}>
-            {property.operation === 'sale' ? 'VENTA' : 'ALQUILER'}
+            {propertyOperationLabel(property.operation)}
           </Badge>
         </div>
 
@@ -42,7 +43,7 @@ export default function PropertyCardAdmin({ property }: Props) {
         <div className="absolute top-3 right-3">
           <Dialog>
             <DialogTrigger
-              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/70 bg-white/95 shadow-md backdrop-blur transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/40"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/70 bg-white/95 shadow-md backdrop-blur transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/40"
               aria-label={`Abrir acciones para ${property.title}`}
             >
               <MoreVertical className="h-5 w-5 text-slate-700" aria-hidden="true" />
@@ -64,7 +65,7 @@ export default function PropertyCardAdmin({ property }: Props) {
                   <div className="mx-auto grid min-h-full w-full max-w-[min(94vw,2800px)] content-center gap-4 md:grid-cols-3 xl:gap-7">
                     <button
                       type="button"
-                      className="flex min-h-44 items-center gap-5 rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/40 sm:min-h-56 sm:flex-col sm:items-start sm:justify-between sm:p-8"
+                      className="flex min-h-44 items-center gap-5 rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/40 sm:min-h-56 sm:flex-col sm:items-start sm:justify-between sm:p-8"
                     >
                       <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 sm:size-16">
                         <Edit3 className="size-7" aria-hidden="true" />
@@ -123,7 +124,7 @@ export default function PropertyCardAdmin({ property }: Props) {
         <div className="mt-auto">
           <div className="flex items-baseline gap-1 mb-4">
             <span className="text-xl font-black text-slate-900">
-                {property.currency} {property.price.toLocaleString('es-AR')}
+                {property.priceKnown === false ? 'Sin moneda confirmada' : `${property.currency} ${property.price.toLocaleString('es-AR')}`}
             </span>
           </div>
 

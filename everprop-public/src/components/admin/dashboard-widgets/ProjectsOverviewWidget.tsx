@@ -31,7 +31,7 @@ export default function ProjectsOverviewWidget({ activeProjects }: Props) {
               <div className="space-y-1.5 mb-4">
                 <div className="flex justify-between text-xs font-semibold text-slate-600">
                   <span>Avance General</span>
-                  <span>{project.progress}%</span>
+                  <span>{project.progressKnown === false ? 'Sin avance informado' : `${project.progress}%`}</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                   <div 

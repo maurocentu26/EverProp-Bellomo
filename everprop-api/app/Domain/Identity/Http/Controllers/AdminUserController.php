@@ -5,6 +5,7 @@ namespace App\Domain\Identity\Http\Controllers;
 use App\Domain\Identity\Policies\UserPolicy;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ use Illuminate\Validation\Rules\Password;
 
 final class AdminUserController
 {
-    public function index(Request $request, TenantContext $tenant, UserPolicy $policy)
+    public function index(Request $request, TenantContext $tenant, UserPolicy $policy): JsonResponse
     {
         abort_unless($policy->viewAny($request->user()), 403);
 
@@ -22,7 +23,7 @@ final class AdminUserController
             ->orderBy('display_name')->get(['public_id', 'display_name', 'email', 'phone_e164', 'role_code', 'status'])]);
     }
 
-    public function store(Request $request, TenantContext $tenant, UserPolicy $policy)
+    public function store(Request $request, TenantContext $tenant, UserPolicy $policy): JsonResponse
     {
         abort_unless($policy->create($request->user()), 403);
         $data = $request->validate([
@@ -54,7 +55,7 @@ final class AdminUserController
         return response()->json(['data' => ['id' => $user->public_id, 'activationToken' => $token, 'expiresInHours' => 24]], 201)->header('Cache-Control', 'no-store');
     }
 
-    public function activate(Request $request, TenantContext $tenant)
+    public function activate(Request $request, TenantContext $tenant): JsonResponse
     {
         $data = $request->validate(['token' => 'required|string|size:64', 'password' => ['required', 'confirmed', Password::min(12)->letters()->numbers()], 'tenant_id' => 'prohibited']);
         $key = 'user-activation:'.hash('sha256', $data['token']);
@@ -65,7 +66,7 @@ final class AdminUserController
             $pending = Cache::get($key);
             abort_unless($pending && $pending['tenant'] === $tenant->id(), 422, 'El enlace venció o ya fue utilizado.');
             $user = User::query()->where('tenant_id', $tenant->id())->where('id', $pending['user'])->where('status', 'PAUSED')->whereNull('password_hash')->first();
-            abort_unless($user, 422, 'La cuenta ya fue activada.');
+            abort_unless($user !== null, 422, 'La cuenta ya fue activada.');
             $user->password_hash = $data['password'];
             $user->status = 'ACTIVE';
             $user->save();
@@ -75,7 +76,7 @@ final class AdminUserController
         });
     }
 
-    public function renew(Request $request, TenantContext $tenant, UserPolicy $policy, string $user)
+    public function renew(Request $request, TenantContext $tenant, UserPolicy $policy, string $user): JsonResponse
     {
         $target = User::query()->where('tenant_id', $tenant->id())->where('public_id', $user)->firstOrFail();
         abort_unless($policy->update($request->user(), $target), 403);

@@ -15,7 +15,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar 
       collapsible="icon" 
-      className="" 
+      className="admin-sidebar"
       {...props}
     >
       <SidebarBrand />

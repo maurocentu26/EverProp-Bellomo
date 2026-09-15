@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { 
-    CalendarDays, 
-    Trash2, 
-    Plus, 
-    Phone, 
-    Mail, 
+import {
+    CalendarDays,
+    Trash2,
+    Plus,
+    Phone,
+    Mail,
     StickyNote,
     Search,
     User,
@@ -16,16 +16,17 @@ import {
 } from "lucide-react";
 import type { Visit, Lead, Property } from "@/data/admin-sample";
 import { Button } from "@/components/ui/button";
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogFooter, 
-    DialogDescription 
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogDescription
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { DateTimeFields } from "@/components/ui/date-time-fields";
 import { Textarea } from "@/components/ui/textarea";
 import Badge from "@/components/ui/badge";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
@@ -36,8 +37,8 @@ type Props = {
   title: string;
   subtitle: string;
   visits: Visit[];
-  onSchedule: (visit: Visit) => void;
-  onDelete?: (visitId: string) => void;
+  onSchedule: (visit: Visit) => void | Promise<void>;
+  onDelete?: (visitId: string) => void | Promise<void>;
   defaultGuestName?: string;
   leadOptions?: Lead[];
   defaultPhone?: string;
@@ -76,6 +77,7 @@ export default function VisitManager({
   const [scheduledAt, setScheduledAt] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | undefined>(undefined);
   const [phone, setPhone] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -115,7 +117,7 @@ export default function VisitManager({
     if (!leadOptions || leadOptions.length === 0) return [];
     const q = searchQuery.toLowerCase().trim();
     if (!q) return leadOptions;
-    return leadOptions.filter((l) => 
+    return leadOptions.filter((l) =>
       l.name.toLowerCase().includes(q) ||
       (l.phone && l.phone.toLowerCase().includes(q)) ||
       (l.email && l.email.toLowerCase().includes(q))
@@ -144,19 +146,24 @@ export default function VisitManager({
     setSearchQuery("");
   }
 
-  function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     const finalName = guestName.trim() || searchQuery.trim();
     if (!finalName) { setError("Ingresá el nombre del visitante o seleccioná un lead."); return; }
     if (!scheduledAt) { setError("Seleccioná fecha y hora."); return; }
 
+    const scheduledDate = new Date(`${scheduledAt}:00-03:00`);
+    if (!Number.isFinite(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
+      setError("Elegí una fecha y hora futura (hora de Argentina)."); return;
+    }
     const visit: Visit = {
       id: `visit-${Date.now()}`,
       leadId: selectedLeadId,
       leadName: finalName,
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
-      scheduledAt: new Date(scheduledAt).toISOString(),
+      scheduledAt: scheduledDate.toISOString(),
       notes: notes.trim() || undefined,
       status: "scheduled",
       agentId: defaultAgentId ?? leadOptions?.find((lead) => lead.id === selectedLeadId)?.agentId,
@@ -164,7 +171,9 @@ export default function VisitManager({
       propertyTitle: propertyOptions?.find(p => p.id === selectedPropertyId)?.title
     };
 
-    onSchedule(visit);
+    setSaving(true);
+    try {
+    await onSchedule(visit);
     setScheduledAt("");
     setNotes("");
     setError("");
@@ -172,10 +181,13 @@ export default function VisitManager({
       handleClearLeadSelection();
     }
     toast.success("Visita agendada correctamente");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo guardar la cita. Reintentá.");
+    } finally { setSaving(false); }
   }
 
   return (
-    <div className="w-full space-y-8">
+    <div className="@container w-full min-w-0 space-y-6">
       {/* Header Section */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
@@ -187,15 +199,15 @@ export default function VisitManager({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid min-w-0 grid-cols-1 gap-6 items-start @min-[56rem]:grid-cols-12">
         {/* Formulario de Agendamiento */}
-        <div className="lg:col-span-5">
-          <form onSubmit={handleSubmit} className="space-y-4 p-6 sm:p-7 rounded-2xl border border-slate-200 bg-white shadow-xs dark:bg-card dark:border-border">
+        <div className="min-w-0 @min-[56rem]:col-span-5">
+          <form onSubmit={handleSubmit} className="min-w-0 space-y-4 p-4 @min-[32rem]:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs dark:bg-card dark:border-border">
             {propertyOptions && propertyOptions.length > 0 && (
               <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">¿Qué propiedad van a visitar?</label>
-                  <select 
-                      value={selectedPropertyId} 
+                  <label htmlFor="visit-manager-property" className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">¿Qué propiedad van a visitar?</label>
+                  <select id="visit-manager-property"
+                      value={selectedPropertyId}
                       onChange={(e) => setSelectedPropertyId(e.target.value)}
                       className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
                   >
@@ -206,7 +218,7 @@ export default function VisitManager({
                   </select>
               </div>
             )}
-            
+
             {/* Selector de Lead con Búsqueda entre Todos los Leads */}
             <div className="space-y-1.5" ref={dropdownRef}>
               <div className="flex items-center justify-between">
@@ -228,7 +240,7 @@ export default function VisitManager({
                       <UserCheck className="size-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100 break-words">
                         {selectedLead.name}
                       </p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
@@ -253,7 +265,7 @@ export default function VisitManager({
                 <div className="relative">
                   <div className="relative">
                     <Search className="absolute left-3.5 top-3.5 size-4 text-slate-400" />
-                    <Input
+                    <Input aria-label="Visitante / Interesado"
                       value={searchQuery || guestName}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -291,7 +303,7 @@ export default function VisitManager({
                               key={l.id}
                               type="button"
                               onClick={() => handleSelectLead(l)}
-                              className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm hover:bg-slate-50 transition-colors dark:hover:bg-slate-800/80 group"
+                              className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm hover:bg-muted transition-colors dark:hover:bg-slate-800/80 group"
                             >
                               <div className="min-w-0 flex items-center gap-2.5">
                                 <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
@@ -338,18 +350,18 @@ export default function VisitManager({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Teléfono / WhatsApp</label>
-              <Input 
-                value={phone} 
-                onChange={(e) => setPhone(e.target.value)} 
-                placeholder="Ej: +54 9 11..." 
-                className="h-11 bg-white border-slate-200 rounded-xl px-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" 
+              <label htmlFor="visit-manager-phone" className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Teléfono / WhatsApp</label>
+              <Input id="visit-manager-phone" type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Ej: +54 9 11..."
+                className="h-11 bg-white border-slate-200 rounded-xl px-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
               />
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Fecha y Hora de la Visita</label>
+                <label htmlFor="visit-manager-date" className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Fecha y Hora de la Visita</label>
                 {scheduledAt && (
                   <button
                     type="button"
@@ -360,11 +372,11 @@ export default function VisitManager({
                   </button>
                 )}
               </div>
-              <Input 
-                type="datetime-local" 
-                value={scheduledAt} 
-                onChange={(e) => setScheduledAt(e.target.value)} 
-                className="h-11 bg-white border-slate-200 rounded-xl px-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" 
+              <DateTimeFields id="visit-manager-date"
+                label="Cita"
+                value={scheduledAt}
+                onValueChange={setScheduledAt}
+                className="h-11 bg-white border-slate-200 rounded-xl px-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
               />
               <QuickScheduleButtons
                 value={scheduledAt}
@@ -375,18 +387,18 @@ export default function VisitManager({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Notas u Observaciones</label>
-              <Textarea 
-                value={notes} 
-                onChange={(e) => setNotes(e.target.value)} 
-                placeholder="Ej: Trae seña de reserva, viene con arquitecto, interesado en financiación..." 
+              <label htmlFor="visit-manager-notes" className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">Notas u Observaciones</label>
+              <Textarea id="visit-manager-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ej: Trae seña de reserva, viene con arquitecto, interesado en financiación..."
                 className="min-h-[90px] bg-white border-slate-200 rounded-xl p-3 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 text-sm"
               />
             </div>
 
-            {error && <p className="text-xs text-rose-600 font-medium px-1">{error}</p>}
+            {error && <p role="alert" className="text-xs text-rose-600 font-medium px-1">{error}</p>}
 
-            <Button type="submit" className="min-h-11 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition-colors">
+            <Button type="submit" disabled={saving} className="min-h-11 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition-colors">
               <Plus className="mr-2 h-4 w-4" />
               Confirmar Visita
             </Button>
@@ -394,9 +406,9 @@ export default function VisitManager({
         </div>
 
         {/* Lista de Visitas (Timeline) */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="min-w-0 space-y-4 @min-[56rem]:col-span-7">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Cronograma de Visitas</h3>
-          
+
           {sortedVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-100 rounded-3xl bg-slate-50/30 dark:border-slate-800 dark:bg-slate-900/30">
                 <CalendarDays className="h-10 w-10 text-slate-200 dark:text-slate-700 mb-2" />
@@ -407,43 +419,44 @@ export default function VisitManager({
               {sortedVisits.map((visit) => {
                 const dateInfo = formatVisitDate(visit.scheduledAt);
                 return (
-                  <div key={visit.id} className="group relative flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-md transition-all dark:bg-card dark:border-border dark:hover:border-blue-500">
+                  <div key={visit.id} className="group relative flex min-w-0 flex-wrap items-start gap-3 p-4 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-md transition-all dark:bg-card dark:border-border dark:hover:border-blue-500">
                     {/* Indicador de Fecha */}
                     <div className="flex flex-col items-center justify-center min-w-[60px] py-2 px-1 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:group-hover:bg-blue-950 dark:group-hover:border-blue-900">
                         <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-blue-400">{dateInfo.day}</span>
                         <span className="text-lg font-black text-slate-700 group-hover:text-blue-700 dark:text-slate-200 dark:group-hover:text-blue-400">{dateInfo.time}</span>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{visit.leadName}</p>
-                            <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border-none text-[10px] px-2 py-0 dark:bg-emerald-950/50 dark:text-emerald-300">
-                                Programada
+                    <div className="min-w-0 flex-1 basis-48">
+                        <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                            <p className="font-bold text-slate-900 dark:text-slate-100 break-words">{visit.leadName}</p>
+                            <Badge className={cn("shrink-0 border-none text-[10px] px-2 py-0", visit.status === "cancelled" ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300")}>
+                                {visit.status === "cancelled" ? "Cancelada" : visit.status === "completed" ? "Realizada" : "Programada"}
                             </Badge>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-400">
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                             <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {visit.phone || 'N/A'}</span>
-                            <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {visit.email || 'N/A'}</span>
+                            <span className="flex min-w-0 items-center gap-1 break-all"><Mail className="h-3 w-3 shrink-0" /> {visit.email || 'N/A'}</span>
                         </div>
                         {visit.notes && (
                             <div className="mt-2 flex items-start gap-1.5 p-2 bg-amber-50/50 rounded-lg border border-amber-100/50 dark:bg-amber-950/20 dark:border-amber-900/40">
                                 <StickyNote className="h-3 w-3 text-amber-500 mt-0.5" />
-                                <p className="text-[11px] text-amber-700 dark:text-amber-400 line-clamp-2">{visit.notes}</p>
+                                <p className="text-[11px] text-amber-700 dark:text-amber-400 break-words">{visit.notes}</p>
                             </div>
                         )}
                     </div>
 
                     {/* Acciones */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
+                    {onDelete && visit.status === "scheduled" && <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Cancelar cita"
                             onClick={() => setDeletingVisitId(visit.id)}
                             className="text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full dark:hover:bg-red-950/50"
                         >
                             <Trash2 className="h-4 w-4" />
                         </Button>
-                    </div>
+                    </div>}
                   </div>
                 );
               })}
@@ -456,24 +469,29 @@ export default function VisitManager({
       <Dialog open={!!deletingVisitId} onOpenChange={(open) => !open && setDeletingVisitId(null)}>
         <DialogContent className="rounded-3xl dark:bg-card dark:border-border">
           <DialogHeader>
-            <DialogTitle className="dark:text-slate-100">¿Eliminar esta visita?</DialogTitle>
+            <DialogTitle className="dark:text-slate-100">¿Cancelar esta cita?</DialogTitle>
             <DialogDescription className="dark:text-slate-400">
-              Se cancelará la cita agendada. Esta acción no se puede deshacer.
+              La cita dejará de contar como pendiente y quedará conservada en el historial.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setDeletingVisitId(null)} className="rounded-xl dark:border-slate-800">Cancelar</Button>
             <Button
               className="bg-red-600 text-white hover:bg-red-700 rounded-xl"
-              onClick={() => {
-                if (deletingVisitId) {
-                  onDelete?.(deletingVisitId);
+              disabled={saving}
+              onClick={async () => {
+                if (!deletingVisitId || !onDelete || saving) return;
+                setSaving(true);
+                try {
+                  await onDelete(deletingVisitId);
                   toast.success("Visita cancelada");
-                }
-                setDeletingVisitId(null);
+                  setDeletingVisitId(null);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "No se pudo cancelar la cita.");
+                } finally { setSaving(false); }
               }}
             >
-              Sí, eliminar cita
+              Sí, cancelar cita
             </Button>
           </DialogFooter>
         </DialogContent>

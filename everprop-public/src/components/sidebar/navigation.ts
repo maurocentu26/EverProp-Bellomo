@@ -8,7 +8,6 @@ import {
   Plus,
   HardHat,
   Map,
-  Store,
   ReceiptText,
   type LucideIcon 
 } from "lucide-react";

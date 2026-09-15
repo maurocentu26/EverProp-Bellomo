@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { ClipboardCheck, Loader2, X } from "lucide-react";
 
 import type { Lead, LeadFollowUp, LeadFollowUpType } from "@/data/admin-sample";
-import { MOCK_USERS, REAL_ADVISORS } from "@/data/auth-sample";
+import { MOCK_USERS } from "@/data/auth-sample";
 import { isMockDataMode } from "@/lib/data-mode";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DateTimeFields } from "@/components/ui/date-time-fields";
 import { Textarea } from "@/components/ui/textarea";
 import { QuickScheduleButtons } from "@/components/admin/QuickScheduleButtons";
 
@@ -34,7 +35,7 @@ const FOLLOW_UP_TYPES: { value: LeadFollowUpType; label: string }[] = [
 type LeadFollowUpEditorProps = {
   lead: Lead;
   onClose: () => void;
-  onConfirm: (followUp: LeadFollowUp) => void;
+  onConfirm: (followUp: LeadFollowUp) => void | Promise<void>;
 };
 
 export function LeadFollowUpEditor({
@@ -45,9 +46,9 @@ export function LeadFollowUpEditor({
   const { currentUser } = useAuth();
   const advisors = isMockDataMode
     ? MOCK_USERS.filter((user) => user.role === "ADVISOR")
-    : REAL_ADVISORS;
+    : currentUser ? [currentUser] : [];
   const [agentId, setAgentId] = useState(
-    currentUser?.role === "ADVISOR" ? currentUser.id : lead.agentId ?? "",
+    !isMockDataMode || currentUser?.role === "ADVISOR" ? currentUser?.id ?? "" : lead.agentId ?? "",
   );
   const [type, setType] = useState<LeadFollowUpType>("call");
   const [occurredAt, setOccurredAt] = useState(() => toArgentinaDateTimeInputValue());
@@ -114,32 +115,32 @@ export function LeadFollowUpEditor({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent 
-        showCloseButton={false} 
-        className="w-full sm:max-w-2xl max-h-[90vh] overflow-hidden p-0 rounded-2xl border border-slate-200 bg-white shadow-2xl flex flex-col"
+      <DialogContent
+        showCloseButton={false}
+        className="admin-workspace w-full sm:max-w-2xl max-h-[calc(100dvh-2rem)] overflow-hidden p-0 rounded-2xl border border-slate-200 bg-white shadow-2xl flex flex-col"
       >
         <form onSubmit={handleSubmit} className="flex min-h-0 w-full flex-col">
           {/* Header Compacto y Corporativo */}
-          <header className="shrink-0 border-b border-slate-100 bg-white px-6 py-4 flex items-center justify-between gap-4">
+          <header className="shrink-0 border-b border-slate-100 bg-white px-3 sm:px-6 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+              <span className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
                 <ClipboardCheck className="size-5" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <DialogTitle className="text-lg font-bold text-slate-950 truncate">
+                <DialogTitle className="text-lg font-bold text-slate-950 leading-tight">
                   Registrar seguimiento
                 </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 truncate">
+                <DialogDescription className="text-xs text-slate-500 break-words">
                   Contacto comercial con {lead.name}
                 </DialogDescription>
               </div>
             </div>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="icon" 
-              onClick={onClose} 
-              className="h-9 w-9 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-9 w-9 text-slate-400 hover:text-slate-700 hover:bg-muted rounded-lg"
               aria-label="Cerrar modal"
             >
               <X className="size-5" aria-hidden="true" />
@@ -147,7 +148,7 @@ export function LeadFollowUpEditor({
           </header>
 
           {/* Formulario con tamaño proporcionado */}
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5 space-y-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 sm:px-6 py-5 space-y-4">
             <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-xs text-slate-600 leading-relaxed">
               Llamadas, WhatsApp, emails, reuniones y visitas reinician el plazo de 10 días. Las notas internas quedan en el historial pero no cuentan como contacto directo.
             </div>
@@ -155,9 +156,9 @@ export function LeadFollowUpEditor({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block text-xs font-bold text-slate-700">
                 Tipo de contacto
-                <select 
-                  value={type} 
-                  onChange={(event) => setType(event.target.value as LeadFollowUpType)} 
+                <select
+                  value={type}
+                  onChange={(event) => setType(event.target.value as LeadFollowUpType)}
                   className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   {FOLLOW_UP_TYPES.map((item) => (
@@ -166,29 +167,29 @@ export function LeadFollowUpEditor({
                 </select>
               </label>
 
-              <label className="block text-xs font-bold text-slate-700">
+              <div className="block text-xs font-bold text-slate-700">
                 Fecha y hora
-                <Input 
-                  type="datetime-local" 
-                  required 
-                  value={occurredAt} 
-                  onChange={(event) => setOccurredAt(event.target.value)} 
-                  className="mt-1.5 h-10 border-slate-300 px-3 text-sm rounded-xl" 
+                <DateTimeFields
+                  label="Contacto"
+                  required
+                  value={occurredAt}
+                  onValueChange={setOccurredAt}
+                  className="mt-1.5 h-10 border-slate-300 px-3 text-sm rounded-xl"
                 />
-              </label>
+              </div>
 
               <label className="block text-xs font-bold text-slate-700 sm:col-span-2">
-                Asesor responsable
-                {currentUser?.role === "ADVISOR" ? (
-                  <Input 
-                    value={currentUser.name} 
-                    readOnly 
-                    className="mt-1.5 h-10 border-slate-200 bg-slate-50 px-3 text-sm rounded-xl text-slate-600" 
+                Registrado por
+                {!isMockDataMode || currentUser?.role === "ADVISOR" ? (
+                  <Input
+                    value={currentUser?.name ?? "Usuario actual"}
+                    readOnly
+                    className="mt-1.5 h-10 border-slate-200 bg-slate-50 px-3 text-sm rounded-xl text-slate-600"
                   />
                 ) : (
-                  <select 
-                    value={agentId} 
-                    onChange={(event) => setAgentId(event.target.value)} 
+                  <select
+                    value={agentId}
+                    onChange={(event) => setAgentId(event.target.value)}
                     className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">Seleccionar asesor</option>
@@ -201,41 +202,41 @@ export function LeadFollowUpEditor({
 
               <label className="block text-xs font-bold text-slate-700 sm:col-span-2">
                 Resumen
-                <Textarea 
-                  required 
-                  value={summary} 
-                  onChange={(event) => setSummary(event.target.value)} 
-                  rows={2} 
-                  className="mt-1.5 min-h-20 border-slate-300 px-3 py-2 text-sm rounded-xl" 
-                  placeholder="Qué se conversó o realizó..." 
+                <Textarea
+                  required
+                  value={summary}
+                  onChange={(event) => setSummary(event.target.value)}
+                  rows={2}
+                  className="mt-1.5 min-h-20 border-slate-300 px-3 py-2 text-sm rounded-xl"
+                  placeholder="Qué se conversó o realizó..."
                 />
               </label>
 
               <label className="block text-xs font-bold text-slate-700 sm:col-span-2">
                 Resultado
-                <Textarea 
-                  required 
-                  value={result} 
-                  onChange={(event) => setResult(event.target.value)} 
-                  rows={2} 
-                  className="mt-1.5 min-h-20 border-slate-300 px-3 py-2 text-sm rounded-xl" 
-                  placeholder="Cómo quedó la conversación..." 
+                <Textarea
+                  required
+                  value={result}
+                  onChange={(event) => setResult(event.target.value)}
+                  rows={2}
+                  className="mt-1.5 min-h-20 border-slate-300 px-3 py-2 text-sm rounded-xl"
+                  placeholder="Cómo quedó la conversación..."
                 />
               </label>
 
               <label className="block text-xs font-bold text-slate-700 sm:col-span-2 dark:text-slate-300">
                 Próxima acción <span className="font-normal text-slate-400">(opcional)</span>
-                <Input 
-                  value={nextAction} 
-                  onChange={(event) => setNextAction(event.target.value)} 
-                  className="mt-1.5 h-10 border-slate-300 px-3 text-sm rounded-xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" 
-                  placeholder="Ej: Enviar propuesta de cuotas, llamar para coordinar seña..." 
+                <Input
+                  value={nextAction}
+                  onChange={(event) => setNextAction(event.target.value)}
+                  className="mt-1.5 h-10 border-slate-300 px-3 text-sm rounded-xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                  placeholder="Ej: Enviar propuesta de cuotas, llamar para coordinar seña..."
                 />
               </label>
 
               <div className="space-y-1.5 sm:col-span-2">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <label htmlFor="followup-next-contact" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                     Próximo contacto / Fecha de la siguiente acción <span className="font-normal text-slate-400">(opcional)</span>
                   </label>
                   {nextContactAt && (
@@ -248,11 +249,11 @@ export function LeadFollowUpEditor({
                     </button>
                   )}
                 </div>
-                <Input 
-                  type="datetime-local" 
-                  value={nextContactAt} 
-                  onChange={(event) => setNextContactAt(event.target.value)} 
-                  className="h-10 border-slate-300 px-3 text-sm rounded-xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" 
+                <DateTimeFields id="followup-next-contact"
+                  label="Próximo contacto"
+                  value={nextContactAt}
+                  onValueChange={setNextContactAt}
+                  className="h-10 border-slate-300 px-3 text-sm rounded-xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                 />
                 <QuickScheduleButtons
                   value={nextContactAt}
@@ -271,18 +272,18 @@ export function LeadFollowUpEditor({
           </div>
 
           {/* Footer Proporcionado */}
-          <footer className="shrink-0 border-t border-slate-100 bg-slate-50/60 px-6 py-3.5 flex justify-end gap-2.5">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onClose} 
+          <footer className="shrink-0 border-t border-border bg-card px-4 py-3.5 flex flex-col-reverse sm:flex-row justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
               disabled={isSubmitting}
-              className="h-10 px-4 text-xs font-semibold rounded-xl border-slate-300 hover:bg-slate-100 disabled:opacity-50"
+              className="h-10 px-4 text-xs font-semibold rounded-xl border-slate-300 hover:bg-muted disabled:opacity-50"
             >
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isSubmitting}
               className="h-10 gap-1.5 bg-blue-600 px-5 text-xs font-bold text-white hover:bg-blue-700 rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >

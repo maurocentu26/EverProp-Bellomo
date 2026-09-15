@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useId } from "react";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +52,7 @@ export function GenerateLotsModal({
   defaultProjectId,
   onSuccess,
 }: GenerateLotsModalProps) {
+  const fieldPrefix = useId();
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState<string>(defaultProjectId || "");
   const [sectorName, setSectorName] = useState("Manzana ");
@@ -245,143 +246,143 @@ export function GenerateLotsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-6 bg-white rounded-2xl shadow-2xl">
+      <DialogContent className="admin-workspace w-[calc(100%-2rem)] sm:max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6 bg-card rounded-2xl shadow-2xl">
         <DialogHeader className="pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+          <div className="flex items-start gap-3 pr-7">
+            <span className="hidden sm:flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               <Layers className="size-5" />
             </span>
             <div>
-              <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                Generador de Lotes por Manzana
-                <span className="text-[11px] font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+              <DialogTitle className="text-xl font-bold text-slate-900 flex flex-wrap items-center gap-2">
+                Generar lotes por manzana
+                <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                   Carga Masiva
                 </span>
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 mt-0.5">
-                Creá de forma instantánea todos los lotes de una manzana con su numeración correlativa y medidas.
+                Cargá una manzana con sus lotes, medidas y precios.
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+        <form onSubmit={handleSubmit} className="min-w-0 space-y-5 pt-2">
           {/* SECCIÓN 1: PROYECTO Y MANZANA */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50/70">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700">
+          <div className="grid grid-cols-2 gap-4 p-3 sm:p-4 rounded-xl border border-slate-200 bg-muted">
+            <div className="col-span-2 min-w-0 sm:col-span-1">
+              <label htmlFor={`${fieldPrefix}-projectId`} className="block text-xs font-semibold text-slate-700">
                 Desarrollo / Loteo <span className="text-rose-500">*</span>
               </label>
               <select
-                value={projectId}
+                id={`${fieldPrefix}-projectId`} value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 required
-                className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-blue-500"
+                className="mt-1 h-11 w-full min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-blue-500"
               >
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} {p.location?.city ? `(${p.location.city})` : ""}
+                    {p.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700">
-                Identificador de Manzana <span className="text-rose-500">*</span>
+            <div className="col-span-2 sm:col-span-1">
+              <label htmlFor={`${fieldPrefix}-sectorName`} className="block text-xs font-semibold text-slate-700">
+                Manzana <span className="text-rose-500">*</span>
               </label>
               <Input
-                value={sectorName}
+                id={`${fieldPrefix}-sectorName`} value={sectorName}
                 onChange={(e) => setSectorName(e.target.value)}
                 placeholder="ej: Manzana AP7 o B"
                 required
-                className="mt-1 h-9 border-slate-200 text-xs bg-white"
+                className="mt-1 h-11 border-slate-200 text-xs bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700">
-                Desde Lote N° <span className="text-rose-500">*</span>
+              <label htmlFor={`${fieldPrefix}-lotFrom`} className="block text-xs font-semibold text-slate-700">
+                Lote inicial <span className="text-rose-500">*</span>
               </label>
               <Input
                 type="number"
                 min={1}
-                value={lotFrom}
+                id={`${fieldPrefix}-lotFrom`} value={lotFrom}
                 onChange={(e) => setLotFrom(parseInt(e.target.value, 10) || 1)}
                 required
-                className="mt-1 h-9 border-slate-200 text-xs bg-white"
+                className="mt-1 h-11 border-slate-200 text-xs bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700">
-                Hasta Lote N° <span className="text-rose-500">*</span>
+              <label htmlFor={`${fieldPrefix}-lotTo`} className="block text-xs font-semibold text-slate-700">
+                Lote final <span className="text-rose-500">*</span>
               </label>
               <Input
                 type="number"
                 min={lotFrom}
-                value={lotTo}
+                id={`${fieldPrefix}-lotTo`} value={lotTo}
                 onChange={(e) => setLotTo(parseInt(e.target.value, 10) || 1)}
                 required
-                className="mt-1 h-9 border-slate-200 text-xs bg-white"
+                className="mt-1 h-11 border-slate-200 text-xs bg-white"
               />
             </div>
 
-            <div className="flex items-center justify-center pt-5 text-xs font-bold text-blue-700">
+            <div className="col-span-2 border-t border-border pt-3 text-sm font-bold text-blue-700">
               Total: {totalCount} Lotes a crear
             </div>
           </div>
 
           {/* SECCIÓN 2: MEDIDAS Y PRECIO ESTÁNDAR */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Ruler className="size-3.5 text-blue-600" /> Dimensiones y Precio Base (Lotes Estándar)
+            <h4 className="text-sm font-bold text-slate-700 flex items-start gap-2">
+              <Ruler className="size-4 shrink-0 text-blue-600" /> Medidas y precio por lote
             </h4>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600">Frente (metros)</label>
+                <label htmlFor={`${fieldPrefix}-frente`} className="block text-xs font-semibold text-slate-600">Frente (metros)</label>
                 <Input
                   type="number"
                   step="0.1"
-                  value={frente}
+                  id={`${fieldPrefix}-frente`} value={frente}
                   onChange={(e) => handleFrenteChange(e.target.value)}
-                  className="mt-1 h-9 border-slate-200 text-xs"
+                  className="mt-1 h-11 border-slate-200 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600">Fondo (metros)</label>
+                <label htmlFor={`${fieldPrefix}-fondo`} className="block text-xs font-semibold text-slate-600">Fondo (metros)</label>
                 <Input
                   type="number"
                   step="0.1"
-                  value={fondo}
+                  id={`${fieldPrefix}-fondo`} value={fondo}
                   onChange={(e) => handleFondoChange(e.target.value)}
-                  className="mt-1 h-9 border-slate-200 text-xs"
+                  className="mt-1 h-11 border-slate-200 text-xs"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600">
+              <div className="col-span-2 sm:col-span-1">
+                <label htmlFor={`${fieldPrefix}-areaM2`} className="block text-xs font-semibold text-slate-600">
                   Superficie (m²) <span className="text-rose-500">*</span>
                 </label>
                 <Input
                   type="number"
                   step="0.01"
-                  value={areaM2}
+                  id={`${fieldPrefix}-areaM2`} value={areaM2}
                   onChange={(e) => setAreaM2(e.target.value)}
                   required
-                  className="mt-1 h-9 border-slate-200 text-xs font-bold text-slate-800"
+                  className="mt-1 h-11 border-slate-200 text-xs font-bold text-slate-800"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600">Moneda y Precio</label>
-                <div className="mt-1 flex gap-1">
+              <div className="col-span-2 sm:col-span-1">
+                <label htmlFor={`${fieldPrefix}-price`} className="block text-xs font-semibold text-slate-600">Moneda y Precio</label>
+                <div className="mt-1 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2">
                   <select
-                    value={currency}
+                    aria-label="Moneda del precio base" value={currency}
                     onChange={(e) => setCurrency(e.target.value as "USD" | "ARS")}
-                    className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-800 outline-none"
+                    className="h-11 rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-800 outline-none"
                   >
                     <option value="USD">USD</option>
                     <option value="ARS">ARS</option>
@@ -390,9 +391,9 @@ export function GenerateLotsModal({
                     type="number"
                     step="1"
                     placeholder="15000"
-                    value={price}
+                    id={`${fieldPrefix}-price`} value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    className="h-9 border-slate-200 text-xs font-bold"
+                    className="h-11 min-w-0 flex-1 basis-24 border-slate-200 text-xs font-bold"
                   />
                 </div>
               </div>
@@ -400,66 +401,66 @@ export function GenerateLotsModal({
           </div>
 
           {/* SECCIÓN 3: ESQUINAS Y OCHAVAS */}
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-amber-50/40 space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="p-3.5 rounded-xl border border-slate-200 bg-amber-50 dark:bg-amber-950/40 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800">
                 <input
                   type="checkbox"
                   checked={hasCorners}
                   onChange={(e) => setHasCorners(e.target.checked)}
-                  className="rounded text-amber-600 focus:ring-amber-500 size-4"
+                  className="shrink-0 rounded text-amber-600 focus:ring-amber-500 size-5"
                 />
                 Diferenciar Lotes de Esquina con Ochava
               </label>
               {hasCorners && (
-                <span className="text-[11px] text-amber-700 font-semibold">
+                <span className="text-xs text-amber-700 font-semibold">
                   {cornerLotsList.length} esquinas configuradas
                 </span>
               )}
             </div>
 
             {hasCorners && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-4 pt-1">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600">N° de Lotes Esquina</label>
+                  <label htmlFor={`${fieldPrefix}-cornerLotsStr`} className="block text-xs font-semibold text-slate-600">N° de Lotes Esquina</label>
                   <Input
-                    value={cornerLotsStr}
+                    id={`${fieldPrefix}-cornerLotsStr`} value={cornerLotsStr}
                     onChange={(e) => setCornerLotsStr(e.target.value)}
                     placeholder="ej: 1, 20"
-                    className="mt-1 h-9 border-slate-200 text-xs bg-white"
+                    className="mt-1 h-11 border-slate-200 text-xs bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600">Ochava (m²)</label>
+                  <label htmlFor={`${fieldPrefix}-ochavaM2`} className="block text-xs font-semibold text-slate-600">Ochava (m²)</label>
                   <Input
                     type="number"
                     step="0.01"
-                    value={ochavaM2}
+                    id={`${fieldPrefix}-ochavaM2`} value={ochavaM2}
                     onChange={(e) => setOchavaM2(e.target.value)}
                     placeholder="4.79"
-                    className="mt-1 h-9 border-slate-200 text-xs bg-white"
+                    className="mt-1 h-11 border-slate-200 text-xs bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600">Superficie Total (m²)</label>
+                  <label htmlFor={`${fieldPrefix}-cornerAreaM2`} className="block text-xs font-semibold text-slate-600">Superficie Total (m²)</label>
                   <Input
                     type="number"
                     step="0.01"
-                    value={cornerAreaM2}
+                    id={`${fieldPrefix}-cornerAreaM2`} value={cornerAreaM2}
                     onChange={(e) => setCornerAreaM2(e.target.value)}
                     placeholder="280"
-                    className="mt-1 h-9 border-slate-200 text-xs bg-white font-semibold"
+                    className="mt-1 h-11 border-slate-200 text-xs bg-white font-semibold"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600">Precio Esquina ({currency})</label>
+                  <label htmlFor={`${fieldPrefix}-cornerPrice`} className="block text-xs font-semibold text-slate-600">Precio Esquina ({currency})</label>
                   <Input
                     type="number"
                     step="1"
-                    value={cornerPrice}
+                    id={`${fieldPrefix}-cornerPrice`} value={cornerPrice}
                     onChange={(e) => setCornerPrice(e.target.value)}
                     placeholder="17000"
-                    className="mt-1 h-9 border-slate-200 text-xs bg-white font-bold"
+                    className="mt-1 h-11 border-slate-200 text-xs bg-white font-bold"
                   />
                 </div>
               </div>
@@ -469,7 +470,7 @@ export function GenerateLotsModal({
           {/* SECCIÓN 4: SERVICIOS */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-2">Servicios incluidos en la Manzana</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-2">
               {AVAILABLE_SERVICES.map((s) => {
                 const Icon = s.icon;
                 const active = selectedServices.includes(s.id);
@@ -477,16 +478,17 @@ export function GenerateLotsModal({
                   <button
                     key={s.id}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => toggleService(s.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                    className={`flex min-h-11 items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold transition-all ${
                       active
                         ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-muted"
                     }`}
                   >
-                    <Icon className="size-3.5" />
+                    <Icon className="size-4 shrink-0" aria-hidden="true" />
                     {s.label}
-                    {active && <CheckCircle2 className="size-3 ml-1 text-blue-600" />}
+                    {active && <CheckCircle2 className="size-4 shrink-0 ml-auto text-blue-600" />}
                   </button>
                 );
               })}
@@ -494,7 +496,7 @@ export function GenerateLotsModal({
           </div>
 
           {/* PREVISUALIZACIÓN */}
-          <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/60 text-xs space-y-1">
+          <div className="p-3 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/40 text-xs space-y-1">
             <p className="font-bold text-blue-900 flex items-center gap-1.5">
               <Sparkles className="size-3.5 text-blue-600" /> Resumen de Generación
             </p>
@@ -517,13 +519,13 @@ export function GenerateLotsModal({
             </ul>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <div className="pt-4 border-t border-border grid grid-cols-1 gap-2 sm:flex sm:justify-end">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-9 px-4 text-xs font-semibold"
+              className="h-11 px-4 text-xs font-semibold"
             >
               Cancelar
             </Button>
@@ -531,10 +533,10 @@ export function GenerateLotsModal({
               type="submit"
               size="sm"
               disabled={isSubmitting || totalCount <= 0}
-              className="h-9 px-5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
+              className="h-11 px-5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
             >
               {isSubmitting ? (
-                "Generando lotes en base de datos..."
+                "Generando lotes…"
               ) : (
                 <>
                   <Layers className="size-3.5" /> Generar {totalCount} Lotes

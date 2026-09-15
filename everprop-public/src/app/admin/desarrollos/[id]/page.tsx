@@ -6,24 +6,28 @@ import { ArrowLeft, BarChart3, Map, Layers } from "lucide-react";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog } from "@/lib/everprop-api";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { loadEverpropCatalog, isInvalidEverpropSession } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
 import { useCurrentSession } from "@/hooks/use-current-session";
+import { useAuth } from "@/lib/auth-context";
+import { ProjectMaterials, MaterialErrorNotice } from "@/components/admin/BellomoResources";
 
 export default function ProjectDetailView() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
   const { isAdvisor } = useCurrentSession();
+  const { invalidateSession } = useAuth();
   
   const [project, setProject] = useState<Project | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "matrix" | "log">("overview");
   const [isGenerateLotsOpen, setIsGenerateLotsOpen] = useState(false);
+  const [loadError, setLoadError] = useState<{ projectId: string; message: string } | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -32,32 +36,43 @@ export default function ProjectDetailView() {
         try {
           const catalog = await loadEverpropCatalog();
           if (!active) return;
-          const p = catalog.projects.find((item) => item.id === projectId);
+          const p = catalog.projects.find((p) => p.id === projectId);
           if (p) {
             setProject(p);
-            setProperties(catalog.properties.filter((prop) => prop.projectId === projectId));
+            // Fetch ALL properties for this project specifically
+            const { loadEverpropPropertiesByProject } = await import('@/lib/everprop-api');
+            const props = await loadEverpropPropertiesByProject(projectId);
+            if (!active) return;
+            setProperties(props);
             return;
           }
-        } catch (e) {
-          console.error("Error loading project from API:", e);
+          setLoadError({ projectId, message: "Proyecto no encontrado en la API." });
+        } catch (reason) {
+          if (isInvalidEverpropSession(reason)) {
+            invalidateSession();
+            return;
+          }
+          if (!active) return;
+          setLoadError({ projectId, message: "Error al cargar el proyecto." });
         }
-      }
-      if (!active) return;
-      const allProj = loadProjectList(sampleProjects, "c1");
-      const p = allProj.find((item) => item.id === projectId);
-      if (p) {
-        setProject(p);
-        const allProps = loadPropertyList(sampleProperties, "c1");
-        setProperties(allProps.filter((prop) => prop.projectId === projectId));
+      } else {
+        const projs = loadProjectList(sampleProjects, "c1");
+        const p = projs.find((p) => p.id === projectId);
+        if (p) {
+          setProject(p);
+          const allProps = loadPropertyList(sampleProperties, "c1");
+          setProperties(allProps.filter((prop) => prop.projectId === projectId));
+        } else setLoadError({ projectId, message: "Proyecto no encontrado." });
       }
     }
     void fetchProject();
     return () => {
       active = false;
     };
-  }, [projectId]);
+  }, [projectId, attempt]);
 
-  if (!project) return (
+  if (loadError?.projectId === projectId) return <MaterialErrorNotice message={loadError.message} retry={()=>{setLoadError(null);setAttempt(n=>n+1);}} />;
+  if (!project || project.id !== projectId) return (
     <div className="flex flex-col items-center justify-center py-20 text-slate-500">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
       Cargando proyecto...
@@ -66,20 +81,21 @@ export default function ProjectDetailView() {
 
   const soldUnits = properties.filter(p => p.status === "sold").length;
   const reservedUnits = properties.filter(p => p.status === "reserved").length;
-  const availableUnits = properties.length - soldUnits - reservedUnits;
+  const availableUnits = properties.filter(p => p.status === "available").length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4 border-b border-slate-200 pb-6">
+      <div className="flex flex-wrap items-start gap-3 border-b border-slate-200 pb-6">
         <button 
-          onClick={() => router.back()} 
-          className="h-10 w-10 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-600 transition-colors"
+          aria-label="Volver a proyectos"
+          onClick={() => router.push("/admin/desarrollos")}
+          className="h-10 w-10 shrink-0 bg-slate-100 hover:bg-muted rounded-full flex items-center justify-center text-slate-600 transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
             <span className={cn(
               "px-2 py-1 text-[10px] font-black uppercase tracking-wider rounded-md",
@@ -87,7 +103,7 @@ export default function ProjectDetailView() {
               project.status === 'under_construction' ? "bg-blue-100 text-blue-700" :
               "bg-amber-100 text-amber-700"
             )}>
-              {project.status.replace('_', ' ')}
+              {({ planning: "En planificación", completed: "Finalizado", under_construction: "En construcción", pre_sale: "Preventa", available: "Disponible", unknown: "Sin estado informado" })[project.status]}
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">{project.location.city}, {project.location.province}</p>
@@ -107,8 +123,9 @@ export default function ProjectDetailView() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-200">
+      <div className="flex flex-wrap gap-2 border-b border-slate-200">
         <button
+          aria-pressed={activeTab === "overview"}
           onClick={() => setActiveTab("overview")}
           className={cn(
             "px-4 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors",
@@ -118,6 +135,7 @@ export default function ProjectDetailView() {
           <BarChart3 className="h-4 w-4" /> Resumen
         </button>
         <button
+          aria-pressed={activeTab === "matrix"}
           onClick={() => setActiveTab("matrix")}
           className={cn(
             "px-4 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors",
@@ -134,25 +152,25 @@ export default function ProjectDetailView() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               {/* Inventario Stats */}
-              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+              <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-sm border border-border">
                 <h3 className="text-lg font-bold text-slate-800 mb-6">Estado del Inventario</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
-                    <span className="block text-xs uppercase font-bold text-emerald-600 tracking-wider mb-1">Disponible</span>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+                  <div className="bg-emerald-50 flex min-w-0 items-center justify-between gap-3 rounded-xl p-3 sm:block sm:p-4 border border-emerald-100">
+                    <span className="block text-xs font-bold text-emerald-700 tracking-normal sm:mb-1">Disponible</span>
                     <span className="text-3xl font-black text-emerald-700">{availableUnits}</span>
                   </div>
-                  <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
-                    <span className="block text-xs uppercase font-bold text-amber-600 tracking-wider mb-1">Reservado</span>
+                  <div className="bg-amber-50 flex min-w-0 items-center justify-between gap-3 rounded-xl p-3 sm:block sm:p-4 border border-amber-100">
+                    <span className="block text-xs font-bold text-amber-800 tracking-normal sm:mb-1">Reservado</span>
                     <span className="text-3xl font-black text-amber-700">{reservedUnits}</span>
                   </div>
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-                    <span className="block text-xs uppercase font-bold text-slate-500 tracking-wider mb-1">Vendido</span>
+                  <div className="bg-slate-50 flex min-w-0 items-center justify-between gap-3 rounded-xl p-3 sm:block sm:p-4 border border-slate-200">
+                    <span className="block text-xs font-bold text-slate-500 tracking-normal sm:mb-1">Vendido</span>
                     <span className="text-3xl font-black text-slate-700">{soldUnits}</span>
                   </div>
                 </div>
                 
                 <div className="mt-6 flex gap-4">
-                  <Button onClick={() => setActiveTab("matrix")} className="bg-blue-600 hover:bg-blue-700 w-full rounded-xl h-12">
+                  <Button onClick={() => setActiveTab("matrix")} className="bg-blue-600 hover:bg-blue-700 text-white w-full min-w-0 rounded-xl min-h-12 h-auto whitespace-normal px-3 py-3 text-sm">
                     <Map className="mr-2 h-4 w-4" /> Ver Matriz Completa
                   </Button>
                 </div>
@@ -191,6 +209,8 @@ export default function ProjectDetailView() {
           </div>
         )}
       </div>
+
+      {activeTab === "overview" && <ProjectMaterials key={project.id} projectId={project.id} />}
 
       <GenerateLotsModal
         open={isGenerateLotsOpen}

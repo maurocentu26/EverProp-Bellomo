@@ -197,7 +197,7 @@ export function LeadFollowUpStatus({
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Próximo contacto</p>
               <p className="truncate text-xs font-bold text-slate-900 dark:text-slate-100">
-                {latestFollowUp.nextContactAt}
+                {new Date(latestFollowUp.nextContactAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires", dateStyle: "medium", timeStyle: "short" })}
               </p>
             </div>
           </div>

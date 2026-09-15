@@ -19,6 +19,9 @@ import { leads as sampleLeads, properties as sampleProperties } from "@/data/adm
 import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { isMockDataMode } from "@/lib/data-mode";
+import { loadEverpropVisits, cancelEverpropVisit } from "@/lib/everprop-api";
+import { toArgentinaDateTimeInputValue, ARGENTINA_TIME_ZONE } from "@/lib/lead-follow-up";
 import { NewVisitModal } from "@/components/admin/NewVisitModal";
 
 type AgendaItem = Visit & {
@@ -53,15 +56,15 @@ function getMonthGrid(date: Date) {
 }
 
 function toKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "completed")
-    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700"><CheckCircle2 className="h-2.5 w-2.5" />Realizada</span>;
+    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-200"><CheckCircle2 className="h-2.5 w-2.5" />Realizada</span>;
   if (status === "cancelled")
     return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-600"><AlertCircle className="h-2.5 w-2.5" />Cancelada</span>;
-  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-700"><Clock className="h-2.5 w-2.5" />Programada</span>;
+  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border border-blue-300 bg-blue-100 text-blue-900 dark:border-blue-400 dark:bg-blue-950 dark:text-blue-200"><Clock className="h-2.5 w-2.5" />Programada</span>;
 }
 
 function PropertyTypeIcon({ type }: { type?: string }) {
@@ -85,7 +88,19 @@ export default function CalendarAgenda() {
   const [showNewVisitModal, setShowNewVisitModal] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
 
-  const loadItems = useCallback(() => {
+  const [loadError, setLoadError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const loadItems = useCallback(async () => {
+    if (!isMockDataMode) {
+      try {
+        const visits = await loadEverpropVisits();
+        setItems(isAdmin && globalSelectedAgentId !== "all" ? visits.filter(v => v.agentId === globalSelectedAgentId) : visits);
+        setLoadError("");
+      } catch {
+        setLoadError("No pudimos actualizar la agenda. Reintentaremos automáticamente.");
+      } finally { setIsLoading(false); }
+      return;
+    }
     let leads = loadLeadList(sampleLeads, "c1");
     const properties = loadPropertyList(sampleProperties, "c1");
 
@@ -162,13 +177,22 @@ export default function CalendarAgenda() {
     }
 
     setItems(merged);
+    setIsLoading(false);
   }, [isAdvisor, isAdmin, user, globalSelectedAgentId]);
 
   useEffect(() => {
     deferEffectUpdate(loadItems);
     const handleUpdated = () => deferEffectUpdate(loadItems);
     window.addEventListener("everprop_leads_updated", handleUpdated);
+    const refresh = () => { if (document.visibilityState === "visible") void loadItems(); };
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener("focus", refresh);
+    const channel = new BroadcastChannel("everprop_leads");
+    channel.onmessage = refresh;
     return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      channel.close();
       window.removeEventListener("everprop_leads_updated", handleUpdated);
     };
   }, [loadItems]);
@@ -179,7 +203,7 @@ export default function CalendarAgenda() {
   const eventsByDay = useMemo(() => {
     const map = new Map<string, AgendaItem[]>();
     items.forEach((it) => {
-      const k = new Date(it.scheduledAt).toISOString().slice(0, 10);
+      const k = toArgentinaDateTimeInputValue(new Date(it.scheduledAt)).slice(0, 10);
       map.set(k, [...(map.get(k) ?? []), it]);
     });
     return map;
@@ -204,8 +228,8 @@ export default function CalendarAgenda() {
     const month = viewDate.getMonth();
     const year = viewDate.getFullYear();
     const monthItems = items.filter((it) => {
-      const d = new Date(it.scheduledAt);
-      return d.getMonth() === month && d.getFullYear() === year;
+      const key = toArgentinaDateTimeInputValue(new Date(it.scheduledAt));
+      return key.startsWith(`${year}-${String(month + 1).padStart(2, "0")}`);
     });
     return {
       total: monthItems.length,
@@ -220,12 +244,25 @@ export default function CalendarAgenda() {
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
   }, [items]);
 
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
+    if (!isMockDataMode) {
+      try {
+        await cancelEverpropVisit(id);
+        await loadItems();
+        setDeletingId(null);
+        window.dispatchEvent(new Event("everprop_leads_updated"));
+        const channel = new BroadcastChannel("everprop_leads");
+        channel.postMessage({ type: "LEADS_UPDATED" });
+        channel.close();
+        toast.success("Cita cancelada");
+      } catch { toast.error("No se pudo cancelar la cita. Los datos se conservaron."); }
+      return;
+    }
     removeVisitById(id, sampleLeads, sampleProperties);
     setItems((prev) => prev.filter((it) => it.id !== id));
     setDeletingId(null);
     toast.success("Visita eliminada");
-  }, []);
+  }, [loadItems]);
 
   return (
     <div className="space-y-6">
@@ -272,8 +309,9 @@ export default function CalendarAgenda() {
           {/* Calendar header */}
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <button
+              aria-label="Mes anterior"
               onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-              className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -281,8 +319,9 @@ export default function CalendarAgenda() {
               {MONTHS_ES[viewDate.getMonth()]} {viewDate.getFullYear()}
             </h2>
             <button
+              aria-label="Mes siguiente"
               onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-              className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 transition-colors"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -311,6 +350,8 @@ export default function CalendarAgenda() {
                 return (
                   <button
                     key={`${key}-${i}`}
+                    aria-label={`${cell.date.getDate()} de ${MONTHS_ES[cell.date.getMonth()]} de ${cell.date.getFullYear()}`}
+                    aria-pressed={isSelected}
                     onClick={() => {
                       setSelectedDate(cell.date);
                       setViewDate(cell.date);
@@ -322,17 +363,17 @@ export default function CalendarAgenda() {
                         ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200 dark:shadow-none"
                         : isToday
                         ? "border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
-                        : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/60",
+                        : "border-transparent hover:bg-muted dark:hover:bg-slate-800/60",
                     )}
                   >
                     <span>{cell.date.getDate()}</span>
                     {dayEvents.length > 0 && (
                       <div className="flex gap-0.5 mt-1">
                         {hasScheduled && (
-                          <span className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-white/80" : "bg-blue-500")} />
+                          <span className={cn("h-2 w-2 rounded-full", isSelected ? "bg-[#ffffff] ring-1 ring-blue-900" : "bg-blue-500 ring-1 ring-blue-300")} />
                         )}
                         {hasCompleted && (
-                          <span className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-white/60" : "bg-emerald-500")} />
+                          <span className={cn("h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-emerald-200")} />
                         )}
                       </div>
                     )}
@@ -343,7 +384,7 @@ export default function CalendarAgenda() {
           </div>
 
           {/* Legend */}
-          <div className="px-6 pb-5 flex items-center gap-4 text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+          <div className="px-6 pb-5 flex flex-wrap items-center gap-4 text-xs text-slate-600 dark:text-slate-300 font-semibold">
             <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" />Programada</span>
             <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Realizada</span>
           </div>
@@ -371,16 +412,17 @@ export default function CalendarAgenda() {
             </div>
 
             {/* Filter tabs */}
-            <div className="flex gap-1.5 mt-4">
+            <div className="flex flex-wrap gap-1.5 mt-4">
               {(["all", "scheduled", "completed"] as const).map((f) => (
                 <button
                   key={f}
+                  aria-pressed={activeFilter === f}
                   onClick={() => setActiveFilter(f)}
                   className={cn(
                     "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
                     activeFilter === f
                       ? f === "completed" ? "bg-emerald-600 text-white" : f === "scheduled" ? "bg-blue-600 text-white" : "bg-slate-800 dark:bg-slate-700 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-muted dark:hover:bg-slate-700"
                   )}
                 >
                   {f === "all" ? "Todas" : f === "scheduled" ? "Pendientes" : "Realizadas"}
@@ -412,7 +454,7 @@ export default function CalendarAgenda() {
                   className="space-y-3"
                 >
                   {selectedDayItems.map((ev) => {
-                    const time = new Date(ev.scheduledAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+                    const time = new Date(ev.scheduledAt).toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
                     const wa = ev.phone
                       ? `https://wa.me/${ev.phone.replace(/[^0-9]/g, "")}?text=Hola%20${encodeURIComponent(ev.leadName)}%2C%20recordamos%20tu%20visita%20de%20hoy.`
                       : null;
@@ -423,19 +465,19 @@ export default function CalendarAgenda() {
                         className={cn(
                           "rounded-2xl border p-4 space-y-3 transition-all hover:shadow-sm",
                           ev.status === "completed"
-                            ? "border-l-4 border-l-emerald-500 border-slate-100 dark:border-slate-800 dark:bg-slate-800/40"
+                            ? "border-l-4 border-emerald-200 border-l-emerald-600 bg-emerald-50 dark:border-emerald-800 dark:border-l-emerald-400 dark:bg-emerald-950/30"
                             : ev.status === "cancelled"
                             ? "border-l-4 border-l-rose-400 border-slate-100 dark:border-slate-800 dark:bg-slate-800/20 opacity-60"
-                            : "border-l-4 border-l-blue-500 border-slate-100 dark:border-slate-800 dark:bg-slate-800/40"
+                            : "border-l-4 border-blue-200 border-l-blue-600 bg-blue-50 dark:border-blue-800 dark:border-l-blue-400 dark:bg-blue-950/30"
                         )}
                       >
                         {/* Time + status */}
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className={cn(
-                            "px-2.5 py-1 rounded-lg text-xs font-black",
-                            ev.status === "completed" ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300" : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                            "px-3 py-1.5 rounded-lg text-sm font-black",
+                            ev.status === "completed" ? "bg-emerald-700 text-white dark:bg-emerald-700 dark:text-white" : "bg-blue-700 text-white dark:bg-blue-700 dark:text-white"
                           )}>
-                            {time}hs
+                            {time}
                           </span>
                           <StatusBadge status={ev.status} />
                         </div>
@@ -475,6 +517,8 @@ export default function CalendarAgenda() {
                             </a>
                           )}
                           <button
+                            aria-label={`Cancelar cita de ${ev.leadName}`}
+                            disabled={ev.status !== "scheduled"}
                             onClick={() => setDeletingId(ev.id)}
                             className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/30 dark:hover:border-rose-800 transition-colors shrink-0"
                           >
@@ -493,7 +537,7 @@ export default function CalendarAgenda() {
         {/* ── Col 3: Upcoming Visits ── */}
         <div className="rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-indigo-600 text-white">
+            <span className="p-2 rounded-xl bg-blue-600 text-white">
               <Users className="h-4 w-4" />
             </span>
             <div>
@@ -511,8 +555,8 @@ export default function CalendarAgenda() {
             ) : (
               upcomingItems.map((ev) => {
                 const d = new Date(ev.scheduledAt);
-                const time = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-                const dateStr = d.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
+                const time = d.toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
+                const dateStr = d.toLocaleDateString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, weekday: "short", day: "numeric", month: "short" });
 
                 return (
                   <button
@@ -527,10 +571,10 @@ export default function CalendarAgenda() {
                       <div className="bg-blue-50 dark:bg-blue-950/60 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/60 rounded-xl px-2 py-1.5 text-center shrink-0 transition-colors">
                         <p className="text-[9px] font-bold uppercase text-blue-500 dark:text-blue-400 leading-none">{dateStr.split(" ")[0]}</p>
                         <p className="text-sm font-black text-blue-700 dark:text-blue-300 leading-none mt-0.5">{d.getDate()}</p>
-                        <p className="text-[9px] font-bold text-blue-500 dark:text-blue-400 leading-none">{time}h</p>
+                        <p className="text-[9px] font-bold text-blue-500 dark:text-blue-400 leading-none">{time}</p>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{ev.leadName}</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 break-words">{ev.leadName}</p>
                         {ev.propertyTitle && (
                           <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5 flex items-center gap-1">
                             <PropertyTypeIcon type={ev.propertyType} />{ev.propertyTitle}
@@ -559,16 +603,16 @@ export default function CalendarAgenda() {
       <Dialog open={!!deletingId} onOpenChange={(open) => { if (!open) setDeletingId(null); }}>
         <DialogContent className="sm:max-w-sm dark:bg-slate-900 dark:border-slate-800">
           <DialogHeader>
-            <DialogTitle className="dark:text-slate-100">Eliminar visita</DialogTitle>
-            <DialogDescription className="dark:text-slate-400">¿Querés eliminar esta visita? Esta acción no se puede deshacer.</DialogDescription>
+            <DialogTitle className="dark:text-slate-100">Cancelar cita</DialogTitle>
+            <DialogDescription className="dark:text-slate-400">La cita dejará de figurar como pendiente y se conservará en el historial.</DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 gap-2">
-            <Button variant="outline" onClick={() => setDeletingId(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button>
+            <Button variant="outline" onClick={() => setDeletingId(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Volver</Button>
             <Button
               className="bg-rose-600 text-white hover:bg-rose-700"
               onClick={() => deletingId && handleDelete(deletingId)}
             >
-              Eliminar
+              {isMockDataMode ? "Eliminar" : "Cancelar cita"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -610,12 +654,12 @@ export default function CalendarAgenda() {
             ) : (
               pendingVisits.map((ev) => {
                 const dateObj = new Date(ev.scheduledAt);
-                const dateFormatted = dateObj.toLocaleDateString("es-AR", {
+                const dateFormatted = dateObj.toLocaleDateString("es-AR", { timeZone: ARGENTINA_TIME_ZONE,
                   weekday: "short",
                   day: "numeric",
                   month: "short",
                 });
-                const timeFormatted = dateObj.toLocaleTimeString("es-AR", {
+                const timeFormatted = dateObj.toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE,
                   hour: "2-digit",
                   minute: "2-digit",
                 });
@@ -630,7 +674,7 @@ export default function CalendarAgenda() {
                       {/* Fecha y Hora Pill */}
                       <div className="flex flex-col items-center justify-center min-w-[65px] px-2 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-center shrink-0 dark:bg-blue-950/40 dark:border-blue-900">
                         <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">{dateFormatted}</span>
-                        <span className="text-sm font-black text-blue-900 dark:text-blue-200">{timeFormatted} hs</span>
+                        <span className="text-sm font-black text-blue-900 dark:text-blue-200">{timeFormatted}</span>
                       </div>
 
                       <div className="min-w-0 flex-1 space-y-1">
@@ -706,9 +750,11 @@ export default function CalendarAgenda() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setDeletingId(ev.id)}
+                        aria-label={`Cancelar cita de ${ev.leadName}`}
+                            disabled={ev.status !== "scheduled"}
+                            onClick={() => setDeletingId(ev.id)}
                         className="h-8 text-xs text-rose-600 hover:bg-rose-50 px-2 rounded-lg dark:hover:bg-rose-950/40"
-                        title="Eliminar visita"
+                        title="Cancelar cita"
                       >
                         <Trash2 className="size-3.5" />
                       </Button>

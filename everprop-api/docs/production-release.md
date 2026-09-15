@@ -1,4 +1,6 @@
-# Release: collections and team provisioning
+# Release: collections, team provisioning and source inventory
+
+The workbook import and source schema require the explicit [production inventory workflow](inventory-production-import.md). Merging main automatically deploys code through Railway/Vercel; it does not import data or apply SQL.
 
 ## Deployment order
 

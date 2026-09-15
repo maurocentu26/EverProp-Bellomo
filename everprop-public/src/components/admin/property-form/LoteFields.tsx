@@ -56,27 +56,27 @@ export default function LoteFields({ register }: FieldProps) {
           <Zap className="size-3.5 text-blue-600" /> Infraestructura y Servicios de Red
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors text-xs font-semibold text-slate-700">
+          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-muted cursor-pointer transition-colors text-xs font-semibold text-slate-700">
             <input type="checkbox" {...register("water")} className="w-4 h-4 text-blue-600 rounded" />
             <Droplets className="w-3.5 h-3.5 text-blue-500" /> Agua de Red
           </label>
-          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors text-xs font-semibold text-slate-700">
+          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-muted cursor-pointer transition-colors text-xs font-semibold text-slate-700">
             <input type="checkbox" {...register("electricity")} className="w-4 h-4 text-amber-600 rounded" />
             <Zap className="w-3.5 h-3.5 text-amber-500" /> Electricidad
           </label>
-          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors text-xs font-semibold text-slate-700">
+          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-muted cursor-pointer transition-colors text-xs font-semibold text-slate-700">
             <input type="checkbox" {...register("lighting")} className="w-4 h-4 text-amber-600 rounded" />
             <Lightbulb className="w-3.5 h-3.5 text-amber-500" /> Alumbrado Público
           </label>
-          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors text-xs font-semibold text-slate-700">
+          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-muted cursor-pointer transition-colors text-xs font-semibold text-slate-700">
             <input type="checkbox" {...register("curb")} className="w-4 h-4 text-slate-600 rounded" />
             <LayoutTemplate className="w-3.5 h-3.5 text-slate-500" /> Cordón Cuneta
           </label>
-          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors text-xs font-semibold text-slate-700">
+          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-muted cursor-pointer transition-colors text-xs font-semibold text-slate-700">
             <input type="checkbox" {...register("gas")} className="w-4 h-4 text-orange-600 rounded" />
             <Flame className="w-3.5 h-3.5 text-orange-500" /> Gas Natural
           </label>
-          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors text-xs font-semibold text-slate-700">
+          <label className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-muted cursor-pointer transition-colors text-xs font-semibold text-slate-700">
             <input type="checkbox" {...register("sewage")} className="w-4 h-4 text-cyan-600 rounded" />
             <Waves className="w-3.5 h-3.5 text-cyan-500" /> Cloacas
           </label>

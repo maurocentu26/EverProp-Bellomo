@@ -10,6 +10,7 @@ if (!globalForNotifications.__recentNotifications) {
 }
 
 export async function GET() {
+  if (process.env.NEXT_PUBLIC_DATA_MODE !== "mock") return new Response(null, { status: 404 });
   const list = globalForNotifications.__recentNotifications ?? [];
   return NextResponse.json({
     notifications: list,
@@ -18,6 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (process.env.NEXT_PUBLIC_DATA_MODE !== "mock") return new Response(null, { status: 404 });
   try {
     const body = await request.json();
     const notification = {
@@ -49,6 +51,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH() {
+  if (process.env.NEXT_PUBLIC_DATA_MODE !== "mock") return new Response(null, { status: 404 });
   const list = globalForNotifications.__recentNotifications ?? [];
   globalForNotifications.__recentNotifications = list.map((n) => ({ ...n, read: true }));
   notificationEmitter.emit('notifications:updated', { allRead: true });
@@ -56,6 +59,7 @@ export async function PATCH() {
 }
 
 export async function DELETE() {
+  if (process.env.NEXT_PUBLIC_DATA_MODE !== "mock") return new Response(null, { status: 404 });
   globalForNotifications.__recentNotifications = [];
   notificationEmitter.emit('notifications:updated', { cleared: true });
   return NextResponse.json({ ok: true });

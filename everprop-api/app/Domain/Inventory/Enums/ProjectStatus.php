@@ -8,6 +8,8 @@ enum ProjectStatus: string
     case PRE_SALE = 'PRE_SALE';
     case UNDER_CONSTRUCTION = 'UNDER_CONSTRUCTION';
     case COMPLETED = 'COMPLETED';
+    case AVAILABLE = 'AVAILABLE';
+    case UNKNOWN = 'UNKNOWN';
 
     /** @return list<string> */
     public static function publicValues(): array

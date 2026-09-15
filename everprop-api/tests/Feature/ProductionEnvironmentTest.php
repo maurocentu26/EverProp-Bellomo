@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Minishlink\WebPush\VAPID;
 use Tests\TestCase;
 
 final class ProductionEnvironmentTest extends TestCase
@@ -26,6 +27,16 @@ final class ProductionEnvironmentTest extends TestCase
             'tenancy.allow_local_resolver' => false, 'cors.allowed_origins' => ['https://app.example.com'],
         ]);
         $this->artisan('everprop:production-check')->assertSuccessful();
+        config(['webpush.public_key' => null, 'webpush.private_key' => null, 'webpush.subject' => null]);
+        $this->artisan('everprop:production-check --webpush')->assertFailed();
+        $keys = VAPID::createVapidKeys();
+        config(['webpush.public_key' => $keys['publicKey'], 'webpush.private_key' => $keys['privateKey'],
+            'webpush.subject' => 'mailto:qa@example.invalid', 'webpush.connection' => 'database']);
+        $this->artisan('everprop:production-check --webpush')->assertSuccessful();
+        config(['webpush.connection' => 'sync']);
+        $this->artisan('everprop:production-check --webpush')->assertFailed();
+        config(['webpush.connection' => 'database', 'webpush.subject' => 'invalid-subject']);
+        $this->artisan('everprop:production-check --webpush')->assertFailed();
         config(['session.driver' => 'database', 'cache.default' => 'database', 'queue.default' => 'sync']);
         $this->artisan('everprop:production-check')->assertSuccessful();
         config(['session.driver' => 'file']);

@@ -137,6 +137,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
         visiting: "VISIT_SCHEDULED",
         negotiation: "NEGOTIATION",
         closing: "WON",
+            discarded: "LOST",
       };
       const stageCode = STAGE_API_MAP[targetStage] || targetStage.toUpperCase();
       updateEverpropLead(leadId, { stage: stageCode }).catch((err) => {

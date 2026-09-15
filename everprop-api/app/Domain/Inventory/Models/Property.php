@@ -16,6 +16,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
+ * @property int|null $legacy_ed_id
+ * @property string|null $legacy_pis
+ * @property string|null $legacy_dep
+ * @property int|null $legacy_type_id
+ * @property int|null $legacy_status_id
+ * @property array<string, mixed>|null $legacy_data_json
  * @property int $id
  * @property int $tenant_id
  * @property int|null $project_id

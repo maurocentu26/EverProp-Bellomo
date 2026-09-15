@@ -24,19 +24,19 @@ export function AdminFullscreenMenu({ open, onOpenChange }: AdminFullscreenMenuP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent fullScreen showCloseButton={false} className="flex bg-sidebar text-sidebar-foreground">
+      <DialogContent fullScreen showCloseButton={false} className="admin-workspace flex bg-sidebar text-sidebar-foreground">
         <DialogTitle className="sr-only">Menú principal</DialogTitle>
         <DialogDescription className="sr-only">
-          Navegación principal y acciones disponibles en EverProp.
+          Navegación principal y acciones disponibles en Bellomo.
         </DialogDescription>
 
         <div className="flex h-dvh min-h-0 w-full flex-col">
-          <header className="shrink-0 border-b border-white/10 bg-slate-950/95 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] text-white backdrop-blur sm:px-6">
+          <header className="shrink-0 border-b border-sidebar-border bg-sidebar px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] text-sidebar-foreground sm:px-6">
             <div className="mx-auto flex w-full max-w-[min(94vw,2800px)] items-center justify-between gap-3">
               <AdminMenuBrand surface="fullscreen" onNavigate={closeMenu} />
 
               <div className="flex shrink-0 items-center gap-2">
-                <ThemeToggle compact className="border-slate-600 bg-slate-900 text-white hover:bg-slate-800 hover:text-white" />
+                <ThemeToggle compact className="border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
                 <Button
                   type="button"
                   variant="outline"
@@ -44,7 +44,7 @@ export function AdminFullscreenMenu({ open, onOpenChange }: AdminFullscreenMenuP
                   onClick={closeMenu}
                   aria-label="Cerrar menú"
                   title="Cerrar menú"
-                  className="size-12 shrink-0 border-slate-600 bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                  className="size-12 shrink-0 border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   <X className="size-5" aria-hidden="true" />
                 </Button>

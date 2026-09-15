@@ -10,4 +10,5 @@ enum PropertyCategory: string
     case TRADITIONAL = 'TRADITIONAL';
     case APARTMENT = 'APARTMENT';
     case HOUSE = 'HOUSE';
+    case UNKNOWN = 'UNKNOWN';
 }

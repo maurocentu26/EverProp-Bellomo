@@ -47,7 +47,8 @@ import {
 } from "@/lib/admin-storage";
 import { evaluateInstallmentStatus, getTodayDateString } from "@/lib/installment-notifications";
 import { isNotificationForUser } from "@/lib/notifications";
-import { getLeadFollowUpState } from "@/lib/lead-follow-up";
+import { commercialDay, commercialQueueGroups, hasRecordedContact } from "@/lib/commercial-queue";
+import { getLeadFollowUpState, isCommercialContact } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
 import { 
   loadEverpropLeads, 
@@ -56,6 +57,8 @@ import {
   updateEverpropLeadProperty,
   createEverpropLeadFollowUp,
   loadEverpropAllFollowUps,
+  loadEverpropTodayVisits,
+  type TodayVisits,
 } from "@/lib/everprop-api";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
@@ -72,14 +75,19 @@ const STAGE_OPTIONS: { id: Lead["stage"]; label: string; apiCode: string; color:
   { id: "visiting", label: "Visita Agendada", apiCode: "VISIT_SCHEDULED", color: "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-950/80 dark:text-purple-200 dark:border-purple-800" },
   { id: "negotiation", label: "Negociación", apiCode: "NEGOTIATION", color: "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/80 dark:text-amber-200 dark:border-amber-800" },
   { id: "closing", label: "Cerrado / Ganado", apiCode: "WON", color: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-200 dark:border-emerald-800" },
+  { id: "discarded", label: "Descartado", apiCode: "LOST", color: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200" },
 ];
 
 export default function AdvisorCockpit() {
   const { user } = useCurrentSession();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
-  const [properties, setProperties] = useState<Property[]>(sampleProperties);
-  const [projects, setProjects] = useState<Project[]>(sampleProjects);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [apiVisits, setApiVisits] = useState<TodayVisits | null>(null);
+  const [visitsError, setVisitsError] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [clock, setClock] = useState(() => new Date());
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQueueFilter, setActiveQueueFilter] = useState<"all" | "overdue" | "today" | "new">("all");
@@ -94,42 +102,40 @@ export default function AdvisorCockpit() {
   // Carga de datos inicial y sincronización en tiempo real
   useEffect(() => {
     let active = true;
+    let loading = false;
+    let refreshPending = false;
 
     async function loadData() {
+      if (loading) { refreshPending = true; return; }
+      loading = true;
       let loadedLeads: Lead[] = [];
       let loadedFollowUps: LeadFollowUp[] = [];
-      let loadedProperties: Property[] = sampleProperties;
-      let loadedProjects: Project[] = sampleProjects;
+      let loadedProperties: Property[] = isMockDataMode ? sampleProperties : [];
+      let loadedProjects: Project[] = isMockDataMode ? sampleProjects : [];
 
 
       if (!isMockDataMode) {
         try {
-          const [apiLeads, catalog, apiFollowUps] = await Promise.all([
+          const [apiLeads, catalog, apiFollowUps, visits] = await Promise.all([
             loadEverpropLeads(),
-            loadEverpropCatalog().catch(() => ({ properties: sampleProperties, projects: sampleProjects })),
-            loadEverpropAllFollowUps().catch(() => []),
+            loadEverpropCatalog(),
+            loadEverpropAllFollowUps(),
+            loadEverpropTodayVisits().catch(() => null),
           ]);
           if (active) {
-            const localLeads = loadLeadList([], "c1");
-            const apiIds = new Set(apiLeads.map((l) => l.id));
-            const extraLocalLeads = localLeads.filter((l) => !apiIds.has(l.id));
-            loadedLeads = [...apiLeads, ...extraLocalLeads];
-
-            if (catalog.properties && catalog.properties.length > 0) {
-              loadedProperties = catalog.properties;
-            }
-            if (catalog.projects && catalog.projects.length > 0) {
-              loadedProjects = catalog.projects;
-            }
-            const localFollowUps = loadLeadFollowUpList([], "c1");
-            const apiFuIds = new Set(apiFollowUps.map((f: LeadFollowUp) => f.id));
-            const extraLocalFus = localFollowUps.filter((f) => !apiFuIds.has(f.id));
-            loadedFollowUps = [...apiFollowUps, ...extraLocalFus];
+            setApiVisits(visits);
+            setVisitsError(visits === null);
+            loadedLeads = apiLeads;
+            loadedProperties = catalog.properties;
+            loadedProjects = catalog.projects;
+            loadedFollowUps = apiFollowUps;
           }
         } catch (err) {
           console.error("Error loading leads from API:", err);
-          loadedLeads = loadLeadList(sampleLeads, "c1");
-          loadedFollowUps = loadLeadFollowUpList([], "c1");
+          if (active) { setLoadError("No pudimos actualizar los datos. Reintentaremos automáticamente."); setIsLoaded(true); }
+          loading = false;
+          if (active && refreshPending) { refreshPending = false; void loadData(); }
+          return;
         }
       } else {
         loadedLeads = loadLeadList(sampleLeads, "c1");
@@ -137,6 +143,8 @@ export default function AdvisorCockpit() {
       }
 
       if (active) {
+        setLoadError("");
+        setClock(new Date());
         setLeads(loadedLeads);
         setFollowUps(loadedFollowUps);
         setProperties(loadedProperties);
@@ -144,6 +152,8 @@ export default function AdvisorCockpit() {
 
         setIsLoaded(true);
       }
+      loading = false;
+      if (active && refreshPending) { refreshPending = false; void loadData(); }
     }
 
     void loadData();
@@ -152,6 +162,10 @@ export default function AdvisorCockpit() {
       void loadData();
     };
 
+    const refreshVisible = () => { if (document.visibilityState === "visible") void loadData(); };
+    const refreshTimer = window.setInterval(refreshVisible, 30000);
+    window.addEventListener("focus", refreshVisible);
+    document.addEventListener("visibilitychange", refreshVisible);
     window.addEventListener("everprop_leads_updated", handleLeadsUpdated);
     let channel: BroadcastChannel | null = null;
     try {
@@ -163,24 +177,18 @@ export default function AdvisorCockpit() {
 
     return () => {
       active = false;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", refreshVisible);
+      document.removeEventListener("visibilitychange", refreshVisible);
       window.removeEventListener("everprop_leads_updated", handleLeadsUpdated);
       channel?.close();
     };
-  }, []);
+  }, [user?.id]);
 
-  const todayStr = useMemo(() => {
-    const now = new Date();
-    return now.toISOString().split("T")[0];
-  }, []);
-
-  const todayFormatted = useMemo(() => {
-    const now = new Date();
-    return now.toLocaleDateString("es-AR", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    });
-  }, []);
+  const todayStr = commercialDay(clock);
+  const todayFormatted = clock.toLocaleDateString("es-AR", {
+    weekday: "long", day: "numeric", month: "long", timeZone: "America/Argentina/Buenos_Aires",
+  });
 
   const overdueInstallmentsCount = useMemo(() => {
     const today = getTodayDateString();
@@ -193,93 +201,35 @@ export default function AdvisorCockpit() {
 
   // Filtrar leads del asesor comercial (si es admin, ve todos los leads de la empresa)
   const myLeads = useMemo(() => {
-    if (!user || user.role === "ADMIN") return leads;
-    const filtered = leads.filter((lead) => {
-      if (!lead.agentId) return true; // Mostrar también sin asignar si está en cola
-      return String(lead.agentId) === String(user.id);
-    });
-    // Si no tiene asignados ninguno todavía, mostrar todos los leads para no dejarlo vacío
-    return filtered.length > 0 ? filtered : leads;
+    if (!user) return [];
+    if (!isMockDataMode || user.role === "ADMIN") return leads;
+    return leads.filter((lead) => String(lead.agentId) === String(user.id));
   }, [leads, user]);
 
-  // Derivar métricas y categorizaciones para Mi Día
-  const { overdueLeads, todayLeads, newLeads, scheduledVisitsToday } = useMemo(() => {
-    const now = new Date();
-    const overdue: { lead: Lead; state: ReturnType<typeof getLeadFollowUpState> }[] = [];
-    const todayScheduled: { lead: Lead; state: ReturnType<typeof getLeadFollowUpState> }[] = [];
-    const freshlyNew: Lead[] = [];
-    const visitsToday: { lead: Lead; scheduledAt: string; notes?: string }[] = [];
+  // Cards, tabs and visible rows share exactly the same classified snapshot.
+  const queueGroups = useMemo(() => commercialQueueGroups(myLeads, followUps, clock), [myLeads, followUps, clock]);
+  const queueFilterLabels = {
+    all: "Todos", overdue: "Contactos atrasados", today: "Contactar hoy", new: "Nuevos sin contactar",
+  } as const;
+  const overdueLeads = queueGroups.overdue;
+  const todayLeads = queueGroups.today;
+  const newLeads = queueGroups.new;
+  const localVisitsToday = useMemo(() => myLeads.flatMap(lead => (lead.visits ?? [])
+    .filter(visit => commercialDay(visit.scheduledAt) === todayStr && visit.status === "scheduled")
+    .map(visit => ({ lead, scheduledAt: visit.scheduledAt, notes: visit.notes }))), [myLeads, todayStr]);
+  const [visibleLeadCount, setVisibleLeadCount] = useState(5);
+  const selectQueueFilter = (filter: typeof activeQueueFilter) => {
+    setActiveQueueFilter(filter);
+    setSearchQuery("");
+    setVisibleLeadCount(5);
+  };
 
-    for (const lead of myLeads) {
-      const state = getLeadFollowUpState(followUps, lead.id, lead.followUpUpdatedAt, now, lead.companyId);
-
-      // Chequear si es vencido (>10 días)
-      if (state.kind === "overdue") {
-        overdue.push({ lead, state });
-      }
-
-      // Chequear si tiene contacto hoy
-      const hasTodayContact = followUps.some((f) => f.leadId === lead.id && f.nextContactAt?.startsWith(todayStr));
-      if (hasTodayContact || state.kind === "dueSoon") {
-        todayScheduled.push({ lead, state });
-      }
-
-      // Chequear si es nuevo
-      if (lead.stage === "new") {
-        freshlyNew.push(lead);
-      }
-
-      // Visitas agendadas hoy
-      if (lead.visits && lead.visits.length > 0) {
-        for (const v of lead.visits) {
-          if (v.scheduledAt?.startsWith(todayStr) && v.status === "scheduled") {
-            visitsToday.push({ lead, scheduledAt: v.scheduledAt, notes: v.notes });
-          }
-        }
-      }
-    }
-
-    return {
-      overdueLeads: overdue,
-      todayLeads: todayScheduled,
-      newLeads: freshlyNew,
-      scheduledVisitsToday: visitsToday,
-    };
-  }, [myLeads, followUps, todayStr]);
+  const scheduledVisitsToday = isMockDataMode ? localVisitsToday : apiVisits?.data ?? [];
+  const visitsTotal = isMockDataMode ? localVisitsToday.length : apiVisits?.meta.total;
 
   // Cola prioritaria de acción
   const priorityQueue = useMemo(() => {
-    const now = new Date();
-    let queue = myLeads.map((lead) => {
-      const state = getLeadFollowUpState(followUps, lead.id, lead.followUpUpdatedAt, now, lead.companyId);
-      const isOverdue = state.kind === "overdue";
-      const isDueToday = followUps.some((f) => f.leadId === lead.id && f.nextContactAt?.startsWith(todayStr)) || state.kind === "dueSoon";
-      const isNew = lead.stage === "new";
-
-      // Score de prioridad
-      let priorityWeight = 0;
-      if (isOverdue) priorityWeight += 100 + (state.elapsedDays ?? 0);
-      if (isDueToday) priorityWeight += 80;
-      if (isNew) priorityWeight += 50;
-
-      return {
-        lead,
-        state,
-        isOverdue,
-        isDueToday,
-        isNew,
-        priorityWeight,
-      };
-    });
-
-    // Filtro por tab de cola
-    if (activeQueueFilter === "overdue") {
-      queue = queue.filter((item) => item.isOverdue);
-    } else if (activeQueueFilter === "today") {
-      queue = queue.filter((item) => item.isDueToday);
-    } else if (activeQueueFilter === "new") {
-      queue = queue.filter((item) => item.isNew);
-    }
+    let queue = queueGroups[activeQueueFilter];
 
     // Filtro de búsqueda por texto
     if (searchQuery.trim()) {
@@ -294,18 +244,16 @@ export default function AdvisorCockpit() {
 
     // Ordenar por urgencia descendente
     return queue.sort((a, b) => b.priorityWeight - a.priorityWeight);
-  }, [myLeads, followUps, activeQueueFilter, searchQuery, todayStr]);
+  }, [queueGroups, activeQueueFilter, searchQuery]);
 
   // Manejo de cambio de etapa en 1 clic (por propiedad o general)
   async function handleStageChange(leadId: string, newStage: Lead["stage"], propertyId?: string) {
-    const previousLeads = [...leads];
     const targetLead = leads.find((l) => l.id === leadId);
     if (!targetLead) return;
 
     // Validación comercial: No se puede cambiar de etapa sin haber realizado al menos un seguimiento previo
-    const leadFollowUps = followUps.filter((f) => f.leadId === leadId);
-    const hasFollowUp = leadFollowUps.length > 0 || Boolean(targetLead.followUpUpdatedAt);
-    if (!hasFollowUp && newStage !== "new") {
+    const hasFollowUp = hasRecordedContact(followUps, targetLead);
+    if (!hasFollowUp && ["contacted", "visiting", "negotiation"].includes(newStage)) {
       toast.error("Es obligatorio registrar un seguimiento comercial antes de cambiar la etapa del lead.");
       setFollowUpLead(targetLead);
       return;
@@ -360,7 +308,7 @@ export default function AdvisorCockpit() {
       });
 
       setLeads(updated);
-      saveLeadList(updated, "c1");
+      if (isMockDataMode) saveLeadList(updated, "c1");
 
       try {
         window.dispatchEvent(new Event("everprop_leads_updated"));
@@ -384,37 +332,26 @@ export default function AdvisorCockpit() {
   async function handleConfirmFollowUp(followUp: LeadFollowUp) {
     if (!followUpLead) return;
 
-    const nextFollowUps = appendLeadFollowUpToStorage(followUp, followUps, followUpLead.companyId);
-    setFollowUps(nextFollowUps);
-    setLeads((prev) =>
-      prev.map((l) =>
-        l.id === followUpLead.id
-          ? { ...l, followUpUpdatedAt: followUp.occurredAt, lastActivity: followUp.occurredAt }
-          : l
-      )
-    );
-
-    if (!isMockDataMode) {
-      try {
-        const created = await createEverpropLeadFollowUp(followUpLead.id, {
-          type: followUp.type,
-          occurredAt: followUp.occurredAt,
-          summary: followUp.summary,
-          result: followUp.result,
-          nextAction: followUp.nextAction,
-          nextContactAt: followUp.nextContactAt,
-          agentId: followUp.agentId,
-        });
-        setFollowUps((prev) => [created, ...prev.filter((f) => f.id !== followUp.id)]);
-      } catch (e) {
-        console.error("Error al registrar seguimiento en API:", e);
-      }
-    }
+    // Confirm persistence before mutating the UI. Errors stay in the editor for retry.
+    const recorded = isMockDataMode ? followUp : await createEverpropLeadFollowUp(followUpLead.id, {
+      type: followUp.type, occurredAt: followUp.occurredAt, summary: followUp.summary,
+      result: followUp.result, nextAction: followUp.nextAction,
+      nextContactAt: followUp.nextContactAt, agentId: followUp.agentId,
+    });
+    setFollowUps(isMockDataMode
+      ? appendLeadFollowUpToStorage(recorded, followUps, followUpLead.companyId)
+      : [recorded, ...followUps]);
+    setLeads((prev) => prev.map((item) => item.id === followUpLead.id ? {
+      ...item,
+      followUpUpdatedAt: isCommercialContact(recorded) && (!item.followUpUpdatedAt || recorded.occurredAt > item.followUpUpdatedAt)
+        ? recorded.occurredAt : item.followUpUpdatedAt,
+      lastActivity: recorded.occurredAt,
+    } : item));
 
     toast.success("Seguimiento registrado con éxito.");
     const recordedLead = followUpLead;
     setFollowUpLead(null);
-    setStageUpdateLead(recordedLead);
+    if (isCommercialContact(recorded)) setStageUpdateLead(recordedLead);
   }
 
   // Confirmación de nueva etapa post-seguimiento
@@ -440,26 +377,25 @@ export default function AdvisorCockpit() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="advisor-workspace space-y-6 pb-8">
+      {loadError && <p role="alert" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{loadError}</p>}
       {/* ── CABECERA CORPORATIVA SOBRIA: BIENVENIDA AL ASESOR ── */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-6 dark:bg-card dark:border-border">
+      <div className="advisor-heading border-b border-border pb-6">
         {/* Mobile layout */}
         <div className="sm:hidden space-y-3">
           <div className="flex flex-col items-stretch gap-3">
             <div className="min-w-0">
               <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 break-words">
-                Hola, {user?.name || "Asesor"}
+                Bienvenido, {user?.name || "Asesor"}
               </h1>
               <p className="text-xs capitalize text-slate-500 dark:text-slate-400">
                 {todayFormatted}
               </p>
             </div>
-            <Link href="/admin/leads/new">
-              <Button className="min-h-11 gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white hover:bg-blue-700 shadow-xs w-full">
+            <Button className="min-h-11 gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white hover:bg-blue-700 shadow-xs w-full" nativeButton={false} role="link" render={<Link href="/admin/leads/new" />}>
                 <Plus className="size-3.5" />
                 Nuevo Lead
               </Button>
-            </Link>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {FINAL_DELIVERY_ENABLED && <Button
@@ -470,26 +406,26 @@ export default function AdvisorCockpit() {
                 "min-h-11 gap-1.5 rounded-lg px-3 text-xs font-semibold flex-1",
                 showMonthBalance
                   ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-muted dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
               )}
             >
               <BarChart3 className="size-3.5" />
               Balance
             </Button>}
             <Link href="/admin/leads" className="flex-1">
-              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-muted w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <Users className="size-3.5" />
                 Mis Leads
               </Button>
             </Link>
             <Link href="/admin/agenda" className="flex-1">
-              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-muted w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <CalendarDays className="size-3.5" />
                 Agenda
               </Button>
             </Link>
             {FINAL_DELIVERY_ENABLED && <Link href="/admin/cobranzas" className="flex-1">
-              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <Button variant="outline" className="min-h-11 gap-1.5 rounded-lg border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-muted w-full dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <ReceiptText className="size-3.5 text-blue-600 dark:text-blue-400" />
                 Cuotas
               </Button>
@@ -503,7 +439,7 @@ export default function AdvisorCockpit() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
               Bienvenido, {user?.name || "Asesor"}
             </h1>
-            <p className="mt-1 text-sm capitalize text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 first-letter:uppercase dark:text-slate-400">
               {todayFormatted}
             </p>
           </div>
@@ -517,36 +453,28 @@ export default function AdvisorCockpit() {
                 "min-h-11 gap-2 rounded-xl px-4 text-sm font-semibold shadow-xs transition-colors",
                 showMonthBalance
                   ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-muted dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
               )}
             >
               <BarChart3 className="size-4" />
               {showMonthBalance ? "Ocultar Balance" : "Balance del Mes & Números"}
             </Button>}
-            <Link href="/admin/leads/new">
-              <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs">
+            <Button className="min-h-11 gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 shadow-xs" nativeButton={false} role="link" render={<Link href="/admin/leads/new" />}>
                 <Plus className="size-4" />
                 Nuevo Lead
               </Button>
-            </Link>
-            <Link href="/admin/leads">
-              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+            <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-muted shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200" nativeButton={false} role="link" render={<Link href="/admin/leads" />}>
                 <Users className="size-4" />
                 Mis Leads
               </Button>
-            </Link>
-            <Link href="/admin/agenda">
-              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+            <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-muted shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200" nativeButton={false} role="link" render={<Link href="/admin/agenda" />}>
                 <CalendarDays className="size-4" />
                 Mi Agenda
               </Button>
-            </Link>
-            {FINAL_DELIVERY_ENABLED && <Link href="/admin/cobranzas">
-              <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+            {FINAL_DELIVERY_ENABLED && <Button variant="outline" className="min-h-11 gap-2 rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-muted shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200" nativeButton={false} role="link" render={<Link href="/admin/cobranzas" />}>
                 <ReceiptText className="size-4 text-blue-600 dark:text-blue-400" />
                 Cobranzas & Cuotas
-              </Button>
-            </Link>}
+              </Button>}
           </div>
         </div>
       </div>
@@ -562,59 +490,84 @@ export default function AdvisorCockpit() {
       )}
 
       {/* ── 4 TARJETAS DE ENFOQUE DIARIO (KPIS ACCIONABLES) ── */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+      <div className="daily-metrics grid grid-cols-2 gap-3 lg:grid-cols-4">
         {/* Vencidos */}
         <button
           type="button"
-          onClick={() => setActiveQueueFilter(activeQueueFilter === "overdue" ? "all" : "overdue")}
+          data-priority="overdue"
+          aria-pressed={activeQueueFilter === "overdue"}
+          onClick={() => selectQueueFilter("overdue")}
           className={cn(
             "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "overdue"
-              ? "border-rose-500 bg-rose-50 ring-2 ring-rose-500"
+              ? "border-rose-500 bg-rose-50 ring-2 ring-red-600"
               : "border-rose-200/80 bg-white hover:border-rose-300 hover:bg-rose-50/50"
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-              <AlertTriangle className="size-4 sm:size-5" />
+            <span className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+              <AlertTriangle aria-hidden="true" className="metric-motion-alert size-7 sm:size-8" />
             </span>
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-600">Urgente</span>
           </div>
           <div className="mt-2.5 sm:mt-4">
-            <p className="text-2xl sm:text-3xl font-black text-rose-950">{overdueLeads.length}</p>
-            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-rose-800">Seg. Vencidos</p>
-            <p className="text-[10px] sm:text-xs text-rose-600 hidden sm:block">&gt; 10 días sin contacto</p>
+            <p className="text-2xl sm:text-3xl font-black text-rose-950">{loadError ? "—" : overdueLeads.length}</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-rose-800">{queueFilterLabels.overdue}</p>
+            <p className="text-[10px] sm:text-xs text-rose-600 hidden sm:block">Plazo vencido o más de 10 días sin contacto</p>
           </div>
         </button>
 
         {/* Contactos para hoy */}
         <button
           type="button"
-          onClick={() => setActiveQueueFilter(activeQueueFilter === "today" ? "all" : "today")}
+          data-priority="today"
+          aria-pressed={activeQueueFilter === "today"}
+          onClick={() => selectQueueFilter("today")}
           className={cn(
             "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "today"
-              ? "border-amber-500 bg-amber-50 ring-2 ring-amber-500"
+              ? "border-amber-500 bg-amber-50 ring-2 ring-yellow-400"
               : "border-amber-200/80 bg-white hover:border-amber-300 hover:bg-amber-50/50"
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-              <Clock3 className="size-4 sm:size-5" />
+            <span className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+              <Clock3 aria-hidden="true" className="metric-motion-clock size-7 sm:size-8" />
             </span>
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600">Para Hoy</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600">Seguimiento</span>
           </div>
           <div className="mt-2.5 sm:mt-4">
-            <p className="text-2xl sm:text-3xl font-black text-amber-950">{todayLeads.length}</p>
-            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-amber-800">Programados</p>
-            <p className="text-[10px] sm:text-xs text-amber-600 hidden sm:block">Compromisos de hoy</p>
+            <p className="text-2xl sm:text-3xl font-black text-amber-950">{loadError ? "—" : todayLeads.length}</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-amber-800">{queueFilterLabels.today}</p>
+            <p className="text-[10px] sm:text-xs text-amber-600 hidden sm:block">Clientes con próximo contacto pactado para hoy</p>
           </div>
         </button>
+
+        {/* Citas de Hoy */}
+        <Link
+          data-priority="agenda"
+          href="/admin/agenda"
+          className="flex flex-col justify-between rounded-2xl border border-purple-200/80 bg-white p-3 sm:p-5 text-left shadow-sm transition-all hover:border-purple-300 hover:bg-purple-50/50"
+        >
+          <div className="flex items-center justify-between">
+            <span className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+              <Calendar aria-hidden="true" className="metric-motion-calendar size-7 sm:size-8" />
+            </span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-600">Agenda</span>
+          </div>
+          <div className="mt-2.5 sm:mt-4">
+            <p className="text-2xl sm:text-3xl font-black text-purple-950">{visitsTotal ?? "—"}</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-purple-800">Citas agendadas hoy</p>
+            <p className="text-[10px] sm:text-xs text-purple-600 hidden sm:block">{visitsError ? "No se pudieron cargar las citas" : "Revisá los horarios en tu agenda"}</p>
+          </div>
+        </Link>
 
         {/* Nuevos sin contactar */}
         <button
           type="button"
-          onClick={() => setActiveQueueFilter(activeQueueFilter === "new" ? "all" : "new")}
+          data-priority="new"
+          aria-pressed={activeQueueFilter === "new"}
+          onClick={() => selectQueueFilter("new")}
           className={cn(
             "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "new"
@@ -623,35 +576,17 @@ export default function AdvisorCockpit() {
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
-              <Flame className="size-4 sm:size-5" />
+            <span className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+              <Flame aria-hidden="true" className="metric-motion-flame size-7 sm:size-8" />
             </span>
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-600">Entrantes</span>
           </div>
           <div className="mt-2.5 sm:mt-4">
-            <p className="text-2xl sm:text-3xl font-black text-blue-950">{newLeads.length}</p>
-            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-blue-800">Sin Contactar</p>
-            <p className="text-[10px] sm:text-xs text-blue-600 hidden sm:block">Primer contacto pendiente</p>
+            <p className="text-2xl sm:text-3xl font-black text-blue-950">{loadError ? "—" : newLeads.length}</p>
+            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-blue-800">{queueFilterLabels.new}</p>
+            <p className="text-[10px] sm:text-xs text-blue-600 hidden sm:block">Clientes que esperan tu primera respuesta</p>
           </div>
         </button>
-
-        {/* Citas de Hoy */}
-        <Link
-          href="/admin/agenda"
-          className="flex flex-col justify-between rounded-2xl border border-purple-200/80 bg-white p-3 sm:p-5 text-left shadow-sm transition-all hover:border-purple-300 hover:bg-purple-50/50"
-        >
-          <div className="flex items-center justify-between">
-            <span className="flex size-8 sm:size-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
-              <Calendar className="size-4 sm:size-5" />
-            </span>
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-600">Agenda</span>
-          </div>
-          <div className="mt-2.5 sm:mt-4">
-            <p className="text-2xl sm:text-3xl font-black text-purple-950">{scheduledVisitsToday.length}</p>
-            <p className="mt-0.5 text-xs sm:text-sm font-semibold text-purple-800">Citas Hoy</p>
-            <p className="text-[10px] sm:text-xs text-purple-600 hidden sm:block">Visitas a loteos / unidades</p>
-          </div>
-        </Link>
       </div>
 
       {/* ── ALERTA DE MORA EN CUOTAS DE CLIENTES ── */}
@@ -682,58 +617,38 @@ export default function AdvisorCockpit() {
       )}
 
       {/* ── CUERPO PRINCIPAL: COLA DE ACCIÓN + AGENDA LATERAL ── */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* Columna Izquierda: Cola de Tareas Prioritarias (2 columnas en lg) */}
-        <div className="space-y-4 lg:col-span-2">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="min-w-0 space-y-4 xl:col-span-2">
+          <div className="flex flex-col gap-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Cola de Acción Prioritaria</h2>
-              <p className="text-sm text-slate-500">Contactá, avanzá etapas y registrá seguimientos sin rodeos.</p>
+              <h2 className="text-xl font-bold text-slate-900">Leads para gestionar</h2>
+              <p className="mt-1 text-sm text-slate-500">Revisá tus contactos y registrá el próximo paso.</p>
             </div>
 
             {/* Selector de filtro de cola */}
-            <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
-              <button
-                type="button"
-                onClick={() => setActiveQueueFilter("all")}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-bold transition-all",
-                  activeQueueFilter === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                )}
-              >
-                Todos ({myLeads.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveQueueFilter("overdue")}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-bold transition-all",
-                  activeQueueFilter === "overdue" ? "bg-rose-600 text-white shadow-sm" : "text-slate-500 hover:text-rose-600"
-                )}
-              >
-                Vencidos ({overdueLeads.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveQueueFilter("today")}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-bold transition-all",
-                  activeQueueFilter === "today" ? "bg-amber-500 text-slate-950 shadow-sm" : "text-slate-500 hover:text-amber-700"
-                )}
-              >
-                Para Hoy ({todayLeads.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveQueueFilter("new")}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-bold transition-all",
-                  activeQueueFilter === "new" ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-blue-600"
-                )}
-              >
-                Nuevos ({newLeads.length})
-              </button>
+            <div role="group" aria-label="Filtrar leads por seguimiento" className="queue-filters grid grid-cols-2 gap-2 sm:flex sm:flex-wrap rounded-xl bg-slate-100 p-1">
+              {(["all", "overdue", "today", "new"] as const).map(filter => (
+                <button
+                  key={filter}
+                  type="button"
+                  data-priority={filter === "all" ? undefined : filter}
+                  onClick={() => selectQueueFilter(filter)}
+                  aria-pressed={activeQueueFilter === filter}
+                  aria-controls="commercial-lead-results"
+                  className={cn(
+                    "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs sm:whitespace-nowrap font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                    activeQueueFilter === filter ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:bg-muted"
+                  )}
+                >
+                  {filter !== "all" && <span aria-hidden="true" className="queue-color-dot size-2.5 shrink-0 rounded-full" />}
+                  <span>{queueFilterLabels[filter]} ({loadError ? "—" : queueGroups[filter].length})</span>
+                </button>
+              ))}
             </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Todos incluye también clientes fuera de estos tres filtros. Verde identifica las citas de la agenda; no indica que todos los clientes estén al día.
+            </p>
           </div>
 
           {/* Buscador rápido */}
@@ -741,23 +656,25 @@ export default function AdvisorCockpit() {
             <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar por nombre, teléfono o lote..."
+              placeholder="Buscar por nombre, teléfono o email..."
+              aria-label="Buscar en mis leads"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setVisibleLeadCount(5); }}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-medium text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
           {/* Tarjetas de Lead con Acciones de 1 Clic */}
-          <div className="space-y-3">
+          <div id="commercial-lead-results" className="space-y-3">
             {priorityQueue.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
                 <CheckCircle2 className="size-12 text-emerald-500" />
-                <p className="mt-3 text-base font-bold text-slate-800">¡Al día! No hay leads pendientes en esta lista.</p>
-                <p className="mt-1 text-sm text-slate-500">Excelente trabajo. Podés revisar el catálogo o cargar nuevos interesados.</p>
+                <p className="mt-3 text-base font-bold text-slate-800">{searchQuery.trim() ? "No encontramos coincidencias" : "No hay leads en este filtro"}</p>
+                <p className="mt-1 text-sm text-slate-500">{searchQuery.trim() ? "Probá con otro nombre, teléfono o email." : "Podés volver a todos tus contactos para continuar."}</p>
+                <button type="button" onClick={() => { setSearchQuery(""); setActiveQueueFilter("all"); }} className="mt-4 min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-primary focus-visible:outline-2 focus-visible:outline-ring">Ver todos los leads</button>
               </div>
             ) : (
-              priorityQueue.slice(0, 5).map(({ lead, state, isOverdue, isDueToday }) => {
+              priorityQueue.slice(0, visibleLeadCount).map(({ lead, state, isOverdue, isDueToday }) => {
                 const cleanPhone = lead.phone?.replace(/\D/g, "");
                 const candidatePropertyIds = (lead.propertyIds && lead.propertyIds.length > 0)
                   ? lead.propertyIds
@@ -820,7 +737,7 @@ export default function AdvisorCockpit() {
                           {isOverdue && (
                             <span className="inline-flex items-center gap-0.5 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-300 shrink-0 ml-auto">
                               <AlertTriangle className="size-2.5" />
-                              {state.elapsedDays}d
+                              Vencido
                             </span>
                           )}
                           {isDueToday && !isOverdue && (
@@ -830,8 +747,13 @@ export default function AdvisorCockpit() {
                             </span>
                           )}
                           {lead.stage === "new" && !isOverdue && !isDueToday && (
-                            <span className="rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300 shrink-0 ml-auto">
-                              Nuevo
+                            <span className="rounded-full border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 shrink-0 ml-auto">
+                              Sin contacto
+                            </span>
+                          )}
+                          {lead.stage !== "new" && !isOverdue && !isDueToday && state.kind === "current" && (
+                            <span className="rounded-full border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200 shrink-0 ml-auto">
+                              Al día
                             </span>
                           )}
                         </div>
@@ -881,12 +803,13 @@ export default function AdvisorCockpit() {
                             <button
                               key={propId}
                               type="button"
+                              aria-pressed={isSelected}
                               onClick={() => setSelectedPropertyByLead((prev) => ({ ...prev, [lead.id]: propId }))}
                               className={cn(
                                 "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold shrink-0 transition-all border shadow-2xs",
                                 isSelected
                                   ? "border-blue-500 bg-blue-50 text-blue-900 font-bold dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-700"
-                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+                                  : "border-slate-200 bg-white text-slate-600 hover:bg-muted dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
                               )}
                             >
                               <span className="truncate max-w-[120px]">{pillTitle}</span>
@@ -951,7 +874,7 @@ export default function AdvisorCockpit() {
                     </div>
 
                     {/* Row 3: Contact data + last follow-up (compact) */}
-                    <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-xs text-slate-600 dark:text-slate-400">
                       <div className="flex items-center gap-2.5">
                         {lead.phone && (
                           <span className="inline-flex items-center gap-1">
@@ -975,7 +898,7 @@ export default function AdvisorCockpit() {
                     {/* Row 4: Action buttons */}
                     <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                       {/* Mobile (< sm): tactile button row */}
-                      <div className="flex items-center gap-1.5 sm:hidden">
+                      <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-center gap-2 sm:hidden">
                         {cleanPhone && (
                           <a
                             href={`https://wa.me/${cleanPhone}?text=${whatsappText}`}
@@ -989,7 +912,8 @@ export default function AdvisorCockpit() {
                         )}
                         {lead.phone && (
                           <a
-                            href={`tel:${lead.phone}`}
+                            href={`tel:${lead.phone.replace(/[^+0-9]/g, "")}`}
+                            aria-label={`Llamar a ${lead.name}`}
                             className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-xs active:bg-slate-100"
                           >
                             <Phone className="size-3.5 text-blue-600" />
@@ -1031,8 +955,9 @@ export default function AdvisorCockpit() {
 
                           {lead.phone && (
                             <a
-                              href={`tel:${lead.phone}`}
-                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-sm"
+                              href={`tel:${lead.phone.replace(/[^+0-9]/g, "")}`}
+                            aria-label={`Llamar a ${lead.name}`}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition-colors hover:bg-muted shadow-sm"
                             >
                               <Phone className="size-4 text-blue-600" />
                               Llamar
@@ -1064,13 +989,16 @@ export default function AdvisorCockpit() {
               })
             )}
 
-            {priorityQueue.length > 5 && (
-              <div className="pt-2 text-center">
-                <Link href="/admin/leads">
-                  <Button variant="outline" className="gap-2 rounded-xl text-xs font-bold">
-                    Ver todos los leads ({priorityQueue.length}) <ArrowRight className="size-3.5" />
+            {priorityQueue.length > 0 && (
+              <div className="pt-2 text-center space-y-2">
+                <p role="status" className="text-xs text-muted-foreground">
+                  Mostrando {Math.min(visibleLeadCount, priorityQueue.length)} de {priorityQueue.length} clientes{searchQuery.trim() ? " que coinciden con la búsqueda" : ""}
+                </p>
+                {priorityQueue.length > visibleLeadCount && (
+                  <Button type="button" variant="outline" onClick={() => setVisibleLeadCount(count => count + 10)} className="gap-2 rounded-xl text-xs font-bold">
+                    Mostrar más clientes <ArrowRight className="size-3.5" />
                   </Button>
-                </Link>
+                )}
               </div>
             )}
           </div>
@@ -1096,9 +1024,9 @@ export default function AdvisorCockpit() {
               {scheduledVisitsToday.length === 0 ? (
                 <div className="rounded-2xl bg-slate-50 p-4 text-center">
                   <CalendarDays className="mx-auto size-8 text-slate-300" />
-                  <p className="mt-2 text-xs font-bold text-slate-700">No tenés citas agendadas para hoy</p>
+                  <p className="mt-2 text-xs font-bold text-slate-700">{visitsError ? "Citas no disponibles" : "No tenés citas agendadas para hoy"}</p>
                   <p className="mt-1 text-[11px] text-slate-500">
-                    Aprovechá la mañana para llamar a los leads con seguimiento vencido.
+                    {visitsError ? "Reintentaremos automáticamente. También podés abrir la agenda." : overdueLeads.length > 0 ? "Podés aprovechar para retomar los seguimientos vencidos." : "Consultá tu agenda para organizar las próximas visitas."}
                   </p>
                 </div>
               ) : (
@@ -1107,13 +1035,13 @@ export default function AdvisorCockpit() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-purple-900">{v.lead.name}</span>
                       <span className="text-[10px] font-bold text-purple-600">
-                        {v.scheduledAt ? new Date(v.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Hoy"}
+                        {v.scheduledAt ? new Date(v.scheduledAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" }) : "Hoy"}
                       </span>
                     </div>
                     {v.notes && <p className="mt-1 text-xs text-slate-600">{v.notes}</p>}
                     <div className="mt-2 flex items-center justify-between pt-1">
                       <Link
-                        href={`/admin/leads/${v.lead.id}`}
+                        href={v.lead.id ? `/admin/leads/${v.lead.id}` : "/admin/agenda"}
                         className="text-[11px] font-semibold text-purple-700 hover:underline"
                       >
                         Ver cliente
@@ -1134,7 +1062,7 @@ export default function AdvisorCockpit() {
               <h4 className="text-sm font-bold text-slate-900">Recomendación Comercial</h4>
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-600">
-              Un lead contactado en los primeros <span className="font-bold text-slate-900">15 minutos</span> de su consulta tiene un <span className="font-bold text-slate-900">70% más de probabilidad</span> de agendar una visita presencial al loteo o edificio.
+              Antes de contactar a un interesado, revisá su última consulta y la disponibilidad del desarrollo. Después, registrá el seguimiento y acordá el próximo paso.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-200">
               <Link href="/admin/inventory-matrix" className="text-xs font-bold text-blue-700 hover:text-blue-800 flex items-center gap-1">

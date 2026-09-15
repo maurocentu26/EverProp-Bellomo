@@ -2,6 +2,7 @@
 
 namespace App\Domain\CRM\Http\Controllers;
 
+use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
@@ -22,11 +23,13 @@ final class AdminLeadFollowUpController extends Controller
 
         $tenantId = $this->tenantContext->id();
         $user = $request->user();
+        abort_unless($user && (new LeadAccessPolicy)->viewAny($user, $tenantId), 403);
 
         $query = DB::table('lead_follow_ups')
             ->join('leads', 'leads.id', '=', 'lead_follow_ups.lead_id')
             ->leftJoin('users', 'users.id', '=', 'lead_follow_ups.user_id')
             ->where('lead_follow_ups.tenant_id', $tenantId)
+            ->where('leads.tenant_id', $tenantId)
             ->whereNull('leads.deleted_at')
             ->select([
                 'lead_follow_ups.id',
@@ -43,21 +46,21 @@ final class AdminLeadFollowUpController extends Controller
                 'users.public_id as user_public_id',
                 'users.display_name as user_name',
             ])
-            ->orderByDesc('lead_follow_ups.occurred_at');
+            ->orderBy('lead_follow_ups.id');
 
-        if ($user && isset($user->role_code) && $user->role_code === RoleCode::SALES_ADVISOR) {
-            $query->where(function ($q) use ($user) {
-                $q->where('leads.assigned_user_id', $user->id)
-                  ->orWhere('lead_follow_ups.user_id', $user->id);
-            });
+        if ($user->role() === RoleCode::SALES_ADVISOR) {
+            $query->where('leads.assigned_user_id', $user->id);
         }
 
-        $followUps = $query->limit(500)->get();
+        $page = $query->simplePaginate(500);
+        $followUps = collect($page->items());
 
         return response()->json([
+            'meta' => ['next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null],
             'data' => $followUps->map(function ($item) {
                 return [
                     'id' => $item->public_id,
+                    'sequence' => $item->id,
                     'companyId' => 'c1',
                     'leadId' => $item->lead_public_id,
                     'agentId' => $item->user_public_id ?: (string) $item->user_id,
@@ -84,11 +87,14 @@ final class AdminLeadFollowUpController extends Controller
         $lead = DB::table('leads')
             ->where('tenant_id', $tenantId)
             ->where('public_id', $leadPublicId)
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $lead) {
             return response()->json(['error' => 'Lead not found'], 404);
         }
+
+        abort_unless($request->user() && (new LeadAccessPolicy)->view($request->user(), $tenantId, $lead), 403);
 
         $followUps = DB::table('lead_follow_ups')
             ->leftJoin('users', 'users.id', '=', 'lead_follow_ups.user_id')
@@ -115,6 +121,7 @@ final class AdminLeadFollowUpController extends Controller
             'data' => $followUps->map(function ($item) use ($leadPublicId) {
                 return [
                     'id' => $item->public_id,
+                    'sequence' => $item->id,
                     'companyId' => 'c1',
                     'leadId' => $leadPublicId,
                     'agentId' => $item->user_public_id ?: (string) $item->user_id,
@@ -141,29 +148,31 @@ final class AdminLeadFollowUpController extends Controller
         $lead = DB::table('leads')
             ->where('tenant_id', $tenantId)
             ->where('public_id', $leadPublicId)
+            ->whereNull('deleted_at')
             ->first();
 
         if (! $lead) {
             return response()->json(['error' => 'Lead not found'], 404);
         }
 
+        abort_unless($request->user() && (new LeadAccessPolicy)->update($request->user(), $tenantId, $lead), 403);
+
         $validated = $request->validate([
             'type' => 'required|string|in:call,whatsapp,email,meeting,visit,note',
-            'occurred_at' => 'required|string',
+            'occurred_at' => 'required|date|before_or_equal:now',
             'summary' => 'required|string|max:500',
             'result' => 'required|string|max:5000',
             'next_action' => 'nullable|string|max:500',
-            'next_contact_at' => 'nullable|string',
+            'next_contact_at' => 'nullable|date|after_or_equal:occurred_at',
             'agent_id' => 'nullable',
         ]);
 
-        $userId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId)
-            ?? $request->user()?->id
-            ?? $lead->assigned_user_id;
+        // The authenticated actor is the audit author; a client cannot impersonate an advisor.
+        $userId = $request->user()->id;
 
         if (! $userId) {
             return response()->json([
-                'error' => 'El lead debe tener un asesor asignado antes de registrar un seguimiento.'
+                'error' => 'El lead debe tener un asesor asignado antes de registrar un seguimiento.',
             ], 422);
         }
 
@@ -184,11 +193,11 @@ final class AdminLeadFollowUpController extends Controller
             $occurredAt,
             $nextContactAt,
             $now,
-            $followUpUuid,
-            $request
+            $followUpUuid
         ) {
+            DB::table('leads')->where('tenant_id', $tenantId)->where('id', $lead->id)->lockForUpdate()->first();
             // 1. Insert follow-up record
-            DB::table('lead_follow_ups')->insert([
+            $followUpId = DB::table('lead_follow_ups')->insertGetId([
                 'tenant_id' => $tenantId,
                 'public_id' => $followUpUuid,
                 'lead_id' => $lead->id,
@@ -203,29 +212,40 @@ final class AdminLeadFollowUpController extends Controller
                 'updated_at' => $now,
             ]);
 
-            // 2. Update lead's last_touch_at
-            DB::table('leads')
-                ->where('id', $lead->id)
-                ->update([
-                    'last_touch_at' => $occurredAt,
-                    'updated_at' => $now,
-                ]);
+            // Notes and backdated records must not move the last actual contact.
+            if ($validated['type'] !== 'note') {
+                $latestContact = DB::table('lead_follow_ups')->where('tenant_id', $tenantId)
+                    ->where('lead_id', $lead->id)->where('type', '<>', 'note')->max('occurred_at');
+                DB::table('leads')->where('tenant_id', $tenantId)->where('id', $lead->id)
+                    ->update(['last_touch_at' => $latestContact, 'updated_at' => $now]);
+            }
 
-            // 3. Sychronize next contact date with `visits` for Calendar / Agenda
-            if ($nextContactAt && Schema::hasTable('visits')) {
+            // Supersede only appointments generated from an earlier contact, never manual visits.
+            $latestId = DB::table('lead_follow_ups')->where('tenant_id', $tenantId)
+                ->where('lead_id', $lead->id)->where('type', '<>', 'note')
+                ->orderByDesc('occurred_at')->orderByDesc('id')->value('id');
+            $isLatestContact = $validated['type'] !== 'note' && (int) $latestId === $followUpId;
+            if ($isLatestContact) {
+                DB::table('visits')->where('tenant_id', $tenantId)->where('lead_id', $lead->id)
+                    ->whereNotNull('follow_up_id')->where('status', 'SCHEDULED')
+                    ->update(['status' => 'CANCELLED', 'cancelled_at' => $now, 'updated_at' => $now,
+                        'outcome' => 'Reemplazada por un nuevo seguimiento comercial.']);
+            }
+            if ($isLatestContact && $nextContactAt) {
                 $visitUuid = (string) Str::uuid();
                 DB::table('visits')->insert([
                     'tenant_id' => $tenantId,
                     'public_id' => $visitUuid,
+                    'follow_up_id' => $followUpId,
                     'lead_id' => $lead->id,
                     'property_id' => null,
-                    'assigned_user_id' => $userId,
-                    'created_by_user_id' => $request->user()?->id ?? $userId,
+                    'assigned_user_id' => $lead->assigned_user_id ?: $userId,
+                    'created_by_user_id' => $userId,
                     'visit_type' => in_array($validated['type'], ['visit', 'meeting']) ? 'PHYSICAL' : 'VIRTUAL',
                     'scheduled_at' => $nextContactAt,
                     'scheduled_end_at' => (clone $nextContactAt)->addHour(),
                     'status' => 'SCHEDULED',
-                    'notes' => $validated['next_action'] ?: ("Próximo contacto · " . ucfirst($validated['type'])),
+                    'notes' => ($validated['next_action'] ?? null) ?: ('Próximo contacto · '.(['call' => 'Llamada', 'whatsapp' => 'WhatsApp', 'email' => 'Correo', 'meeting' => 'Reunión', 'visit' => 'Visita', 'note' => 'Nota interna'][$validated['type']])),
                     'outcome' => null,
                     'created_at' => $now,
                     'updated_at' => $now,
@@ -238,6 +258,7 @@ final class AdminLeadFollowUpController extends Controller
             return response()->json([
                 'data' => [
                     'id' => $followUpUuid,
+                    'sequence' => $followUpId,
                     'companyId' => 'c1',
                     'leadId' => $leadPublicId,
                     'agentId' => $user?->public_id ?: (string) $userId,
@@ -255,35 +276,10 @@ final class AdminLeadFollowUpController extends Controller
         });
     }
 
-    private function resolveUserId(mixed $agentId, int $tenantId): ?int
-    {
-        if (empty($agentId)) {
-            return null;
-        }
-
-        if (is_numeric($agentId)) {
-            $user = DB::table('users')
-                ->where('tenant_id', $tenantId)
-                ->where('id', (int) $agentId)
-                ->first(['id']);
-            return $user ? (int) $user->id : null;
-        }
-
-        if (is_string($agentId)) {
-            $user = DB::table('users')
-                ->where('tenant_id', $tenantId)
-                ->where('public_id', $agentId)
-                ->first(['id']);
-            return $user ? (int) $user->id : null;
-        }
-
-        return null;
-    }
-
     private function ensureTableExists(): void
     {
         if (! Schema::hasTable('lead_follow_ups')) {
-            DB::unprepared("
+            DB::unprepared('
                 CREATE TABLE IF NOT EXISTS `lead_follow_ups` (
                     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                     `tenant_id` BIGINT UNSIGNED NOT NULL,
@@ -306,7 +302,7 @@ final class AdminLeadFollowUpController extends Controller
                     CONSTRAINT `fk_lead_follow_ups_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
                     CONSTRAINT `fk_lead_follow_ups_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            ");
+            ');
         }
     }
 }

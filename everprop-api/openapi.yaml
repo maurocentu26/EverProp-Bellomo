@@ -387,7 +387,9 @@
                             "enum": [
                                 "SALE",
                                 "RENT",
-                                "TEMPORARY"
+                                "TEMPORARY",
+                                "LEASING",
+                                "UNKNOWN"
                             ]
                         }
                     },
@@ -1080,7 +1082,9 @@
                             "enum": [
                                 "SALE",
                                 "RENT",
-                                "TEMPORARY"
+                                "TEMPORARY",
+                                "LEASING",
+                                "UNKNOWN"
                             ]
                         }
                     },
@@ -2779,7 +2783,9 @@
                     "PLANNING",
                     "PRE_SALE",
                     "UNDER_CONSTRUCTION",
-                    "COMPLETED"
+                    "COMPLETED",
+                    "AVAILABLE",
+                    "UNKNOWN"
                 ]
             },
             "PropertyStatus": {
@@ -2788,7 +2794,10 @@
                     "AVAILABLE",
                     "RESERVED",
                     "SOLD",
-                    "RENTED"
+                    "RENTED",
+                    "NOT_SELLABLE",
+                    "NOT_MARKETED",
+                    "UNKNOWN"
                 ]
             },
             "PropertyCategory": {
@@ -2799,7 +2808,8 @@
                     "LOCAL",
                     "TRADITIONAL",
                     "APARTMENT",
-                    "HOUSE"
+                    "HOUSE",
+                    "UNKNOWN"
                 ]
             },
             "ProjectWrite": {
@@ -2896,7 +2906,10 @@
                         "$ref": "#/components/schemas/ProjectStatus"
                     },
                     "progress": {
-                        "type": "integer"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "total_units": {
                         "type": "integer"
@@ -2997,7 +3010,9 @@
                         "enum": [
                             "SALE",
                             "RENT",
-                            "TEMPORARY"
+                            "TEMPORARY",
+                            "LEASING",
+                            "UNKNOWN"
                         ]
                     },
                     "category": {

@@ -7,6 +7,10 @@ const backendUrl = (
 ).replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
+  outputFileTracingIncludes: {
+    "/api/bellomo/assets/*": ["./content/bellomo/**/*"],
+  },
   async rewrites() {
     return [
       {

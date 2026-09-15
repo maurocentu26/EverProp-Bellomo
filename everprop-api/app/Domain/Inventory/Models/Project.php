@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
+ * @property int|null $legacy_id
+ * @property array<string, mixed>|null $legacy_data_json
  * @property int $id
  * @property int $tenant_id
  * @property string $public_id
@@ -20,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property ProjectType $project_type
  * @property ProjectStatus $status
- * @property int $progress
+ * @property int|null $progress
  * @property int $total_units
  * @property string $city
  * @property string $province

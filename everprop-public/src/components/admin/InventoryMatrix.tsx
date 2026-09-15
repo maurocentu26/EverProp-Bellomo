@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { type Property } from "@/data/admin-sample";
 import { cn } from "@/lib/utils";
+import { propertyStatusLabel } from "@/lib/inventory-labels";
 import {
   Sheet,
   SheetContent,
@@ -62,23 +63,25 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                 <h3 className="text-sm font-bold text-slate-700">{sector}</h3>
                 {isSoldOut && (
                   <span className="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-slate-100 text-slate-500 rounded-md border border-slate-200">
-                    Sold Out
+                    Vendido por completo
                   </span>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                {units.map((unit) => {
+                {[...units].sort((a, b) => (a.unitNumber || a.title).localeCompare(b.unitNumber || b.title, "es", { numeric: true })).map((unit) => {
                   const isAvailable = !unit.status || unit.status === "available";
                   const isReserved = unit.status === "reserved";
 
                 return (
                   <button
                     key={unit.id}
+                    aria-label={`${unit.title} · ${propertyStatusLabel(unit.status)}`}
                     onClick={() => setSelectedUnit(unit)}
                     className={cn(
                       "h-10 w-10 rounded-md border flex items-center justify-center text-xs font-bold transition-all hover:scale-110 hover:shadow-md",
                       isAvailable ? "bg-emerald-100 border-emerald-200 text-emerald-700 hover:bg-emerald-200 hover:border-emerald-300" :
                       isReserved ? "bg-amber-100 border-amber-200 text-amber-700 hover:bg-amber-200 hover:border-amber-300" :
+                      unit.status !== "sold" ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-muted" :
                       "bg-rose-100 border-rose-200 text-rose-700 hover:bg-rose-200 hover:border-rose-300"
                     )}
                     title={unit.title}
@@ -100,7 +103,7 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
       </div>
 
       {/* Leyenda */}
-      <div className="flex gap-4 pt-6 mt-6 border-t border-slate-100 text-xs font-semibold text-slate-600">
+      <div className="flex flex-wrap gap-4 pt-6 mt-6 border-t border-slate-100 text-xs font-semibold text-slate-600">
         <div className="flex items-center gap-2">
           <div className="h-4 w-4 rounded-md bg-emerald-100 border border-emerald-200" /> 
           Disponible
@@ -115,28 +118,31 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
         </div>
       </div>
 
+      {properties.some(unit => ['rented', 'not_sellable', 'not_marketed', 'unknown'].includes(unit.status ?? 'unknown')) && <p className="mt-2 text-xs text-slate-600">Gris: alquilado, no vendible, no comercializado o sin estado. Abrí la unidad para ver su estado exacto.</p>}
+
       {/* Ficha de unidad en pantalla completa */}
       <Sheet open={!!selectedUnit} onOpenChange={(open) => !open && setSelectedUnit(null)}>
         <SheetContent
           side="right"
           showCloseButton={false}
-          className="inset-0 h-dvh !w-screen !max-w-none gap-0 overflow-hidden border-0 bg-slate-50 p-0 shadow-none data-[side=right]:!left-0 data-[side=right]:!right-0 data-[side=right]:!w-screen data-[side=right]:sm:!max-w-none motion-reduce:transition-none"
+          className="admin-workspace inset-0 h-dvh !w-screen !max-w-none gap-0 overflow-hidden border-0 bg-slate-50 p-0 shadow-none data-[side=right]:!left-0 data-[side=right]:!right-0 data-[side=right]:!w-screen data-[side=right]:sm:!max-w-none motion-reduce:transition-none"
         >
           {selectedUnit && (
             <div className="flex h-dvh min-h-0 w-full flex-col">
-              <SheetHeader className="shrink-0 border-b border-slate-200 bg-white px-4 pb-5 pt-[max(1rem,env(safe-area-inset-top))] text-left sm:px-8 lg:px-12">
+              <SheetHeader className="shrink-0 border-b border-slate-200 bg-white px-4 pb-3 sm:pb-5 pt-[max(1rem,env(safe-area-inset-top))] text-left sm:px-8 lg:px-12">
                 <div className="mx-auto flex w-full max-w-[min(94vw,2800px)] items-start justify-between gap-5">
                   <div className="min-w-0">
-                    <SheetTitle className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl lg:text-4xl">{selectedUnit.title}</SheetTitle>
-                    <SheetDescription className="mt-2 flex items-center gap-2 text-base text-slate-600 sm:text-lg">
+                    <SheetTitle className="text-lg leading-snug font-bold tracking-tight text-slate-950 sm:text-2xl lg:text-3xl">{selectedUnit.title}</SheetTitle>
+                    <SheetDescription className="mt-2 flex items-start gap-2 text-sm text-slate-600 sm:text-base">
                       <MapPin className="h-5 w-5 shrink-0" aria-hidden="true" /> {selectedUnit.neighborhood}, {selectedUnit.city}
                     </SheetDescription>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
+                    aria-label="Cerrar ficha de unidad"
                     onClick={() => setSelectedUnit(null)}
-                    className="h-12 shrink-0 gap-2 px-4 text-base font-semibold sm:h-14 sm:px-5"
+                    className="size-11 shrink-0 gap-2 px-2 text-sm font-semibold sm:h-12 sm:w-auto sm:px-4"
                   >
                     <X className="h-5 w-5" aria-hidden="true" />
                     <span className="hidden sm:inline">Cerrar</span>
@@ -151,7 +157,7 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                       <div>
                         <p id="unit-summary-title" className="text-base font-semibold text-slate-500">Precio publicado</p>
                         <p className="mt-2 flex items-center gap-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-                          {selectedUnit.currency === "ARS"
+                          {selectedUnit.priceKnown === false ? 'Sin moneda confirmada' : selectedUnit.currency === "ARS"
                             ? `$ ${selectedUnit.price.toLocaleString("es-AR")} ARS`
                             : `USD ${selectedUnit.price.toLocaleString("es-AR")}`}
                         </p>
@@ -160,9 +166,10 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                         "w-fit px-4 py-2 text-sm font-bold uppercase tracking-wider",
                         (!selectedUnit.status || selectedUnit.status === "available") ? "border-emerald-200 bg-emerald-100 text-emerald-700" :
                         selectedUnit.status === "reserved" ? "border-amber-200 bg-amber-100 text-amber-800" :
+                        selectedUnit.status !== "sold" ? "border-slate-300 bg-slate-100 text-slate-700" :
                         "border-rose-200 bg-rose-100 text-rose-700"
                       )}>
-                        {(!selectedUnit.status || selectedUnit.status === "available") ? "Disponible" : selectedUnit.status === "reserved" ? "No Vendible / Reserva" : "Vendido"}
+                        {propertyStatusLabel(selectedUnit.status)}
                       </Badge>
                     </div>
 
@@ -178,12 +185,12 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                       {selectedUnit.area_m2 && (
                         <div className="rounded-2xl bg-slate-50 p-5">
                           <dt className="flex items-center gap-2 text-base font-medium text-slate-500"><Maximize className="h-5 w-5" aria-hidden="true" /> Superficie total</dt>
-                          <dd className="mt-2 text-xl font-bold text-slate-900">{selectedUnit.area_m2} m²</dd>
+                          <dd className="mt-2 text-xl font-bold text-slate-900">{selectedUnit.area_m2.toLocaleString("es-AR", { maximumFractionDigits: 2 })} m²</dd>
                         </div>
                       )}
                     </dl>
 
-                    {selectedUnit.services && (
+                    {selectedUnit.services && [selectedUnit.services.water, selectedUnit.services.electricity, selectedUnit.services.gas, selectedUnit.services.sewage].some(Boolean) && (
                       <div className="rounded-2xl border border-slate-200 p-5 sm:p-6">
                         <h3 className="flex items-center gap-2 text-xl font-bold text-slate-900">
                           <Info className="h-6 w-6 text-blue-600" aria-hidden="true" /> Servicios disponibles
@@ -208,10 +215,8 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <Link href={`/admin/properties/${selectedUnit.id}`} className="w-full">
-                        <Button className="h-10 w-full rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700">
-                          Ver ficha completa
-                        </Button>
+                      <Link href={`/admin/properties/${selectedUnit.id}`} className="flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
+                        Ver ficha completa
                       </Link>
                     </div>
                   </aside>

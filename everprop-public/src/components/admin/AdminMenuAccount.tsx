@@ -60,11 +60,11 @@ export function AdminMenuAccount({ surface, collapsed = false }: AdminMenuAccoun
               title="Cerrar sesión"
               className={cn(
                 "shrink-0 gap-2 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200",
-                fullscreen ? "h-10 px-3 text-sm font-semibold" : "size-10 px-0",
+                fullscreen ? "size-11 px-0 sm:w-auto sm:px-3 text-sm font-semibold" : "size-10 px-0",
               )}
             >
               <LogOut className="size-4" aria-hidden="true" />
-              {fullscreen && <span>Cerrar sesión</span>}
+              {fullscreen && <span className="sr-only sm:not-sr-only">Cerrar sesión</span>}
               {!fullscreen && <span className="sr-only">Cerrar sesión</span>}
             </Button>
           </>

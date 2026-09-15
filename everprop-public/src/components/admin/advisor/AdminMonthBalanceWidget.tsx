@@ -162,7 +162,7 @@ export function AdminMonthBalanceWidget({
     <div className="rounded-2xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-card overflow-hidden">
       {/* Header colapsable */}
       <div
-        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800 transition-colors"
+        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted dark:hover:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center gap-3">
@@ -320,7 +320,7 @@ export function AdminMonthBalanceWidget({
                     const cleanPhone = lead.phone?.replace(/[^0-9]/g, "");
 
                     return (
-                      <tr key={lead.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
+                      <tr key={lead.id} className="hover:bg-muted dark:hover:bg-slate-900/40 transition-colors">
                         <td className="px-4 py-3">
                           <p className="font-bold text-slate-900 dark:text-slate-100">{lead.name}</p>
                           {lead.origin && (

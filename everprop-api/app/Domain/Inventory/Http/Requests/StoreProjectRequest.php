@@ -21,7 +21,7 @@ final class StoreProjectRequest extends InventoryRequest
             ],
             'name' => ['required', 'string', 'max:200'],
             'project_type' => ['required', Rule::enum(ProjectType::class)],
-            'status' => ['sometimes', Rule::enum(ProjectStatus::class)],
+            'status' => ['sometimes', $this->sourceEnum('status', ProjectStatus::class)],
             'progress' => ['sometimes', 'integer', 'min:0', 'max:100'],
             'total_units' => ['sometimes', 'integer', 'min:0'],
             'city' => ['required', 'string', 'max:160'],

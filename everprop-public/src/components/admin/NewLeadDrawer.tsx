@@ -1,4 +1,5 @@
 "use client";
+import { useLeadAdvisors } from "@/hooks/use-lead-advisors";
 
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,7 +50,7 @@ import { useAuth } from "@/lib/auth-context";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { createLeadInterest, isProjectUnit } from "@/lib/lead-interests";
 import { isMockDataMode } from "@/lib/data-mode";
-import { createEverpropLead, updateEverpropLead } from "@/lib/everprop-api";
+import { createEverpropLead, updateEverpropLead, loadEverpropCatalog, loadEverpropLeadById, attachEverpropLeadProperty } from "@/lib/everprop-api";
 import { createNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
@@ -109,7 +110,7 @@ const leadSchema = z.object({
     .trim()
     .optional()
     .refine((value) => !value || /^\+?[0-9\s().-]{7,20}$/.test(value), "Ingresá un teléfono válido."),
-  stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing"]),
+  stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing", "discarded"]),
   notes: z.string().trim().max(250, "Las notas no pueden superar 250 caracteres.").optional().or(z.literal("")),
   agentId: z.string().optional(),
 });
@@ -136,6 +137,7 @@ export function NewLeadDrawer({
   onLeadUpdated,
 }: NewLeadDrawerProps) {
   const { currentUser } = useAuth();
+  const { advisors, error: advisorsError } = useLeadAdvisors(open && currentUser?.role !== "ADVISOR");
   const [selectedCategory, setSelectedCategory] = useState<AssetCategory | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedAsset, setSelectedAsset] = useState<Property | null>(null);
@@ -143,12 +145,20 @@ export function NewLeadDrawer({
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
 
+  const [catalogError, setCatalogError] = useState("");
   useEffect(() => {
-    return deferEffectUpdate(() => {
-      if (!open) return;
+    if (!open) return;
+    let active = true;
+    setCatalogError("");
+    if (isMockDataMode) {
       setAllProperties(loadPropertyList(sampleProperties, companyId));
       setAllProjects(loadProjectList(sampleProjects, companyId));
-    });
+    } else {
+      loadEverpropCatalog().then(catalog => {
+        if (active) { setAllProperties(catalog.properties); setAllProjects(catalog.projects); }
+      }).catch(() => { if (active) setCatalogError("No se pudo cargar el catálogo. Cerrá y volvé a abrir el formulario para reintentar."); });
+    }
+    return () => { active = false; };
   }, [open, companyId]);
 
   const form = useForm<FormValues>({
@@ -194,7 +204,7 @@ export function NewLeadDrawer({
     const query = assetSearchQuery.toLowerCase().trim();
 
     return allProperties
-      .filter((property) => property.status !== "reserved" && property.status !== "sold")
+      .filter((property) => (!property.status || property.status === "available"))
       .filter((property) => !selectedCategory || inferLeadInterestCategory(property) === selectedCategory)
       .filter((property) => !selectedProjectId || property.projectId === selectedProjectId)
       .filter((property) => {
@@ -208,7 +218,7 @@ export function NewLeadDrawer({
 
   const availableProjects = useMemo(() => {
     const eligibleProps = allProperties.filter(
-      (p) => p.status !== "reserved" && p.status !== "sold"
+      (p) => (!p.status || p.status === "available")
     );
     if (!selectedCategory) {
       return allProjects.filter((project) =>
@@ -230,7 +240,7 @@ export function NewLeadDrawer({
 
     if (selectedProjectId && nextCategory) {
       const projectHasMatchingProps = allProperties.some(
-        (p) => p.status !== "reserved" && p.status !== "sold" && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
+        (p) => (!p.status || p.status === "available") && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
       );
       if (!projectHasMatchingProps) {
         setSelectedProjectId("");
@@ -291,6 +301,9 @@ export function NewLeadDrawer({
   };
 
   const onSubmit = async (data: FormValues) => {
+    if (advisorsError) { toast.error(advisorsError); return; }
+    if (catalogError) { toast.error(catalogError); return; }
+    if (!data.phone?.trim() && !data.email?.trim()) { form.setError("phone", { message: "Ingresá un teléfono o email de contacto." }); return; }
     const trimmedName = data.name.trim();
     const projectId = selectedAsset?.projectId ?? (selectedProjectId || initialLead?.projectId || undefined);
     const selectedAssetIsUnit = isProjectUnit(selectedAsset ?? undefined);
@@ -304,15 +317,15 @@ export function NewLeadDrawer({
       : undefined;
 
     if (isCompleting && initialLead) {
-      const updatedLead: Lead = {
+      let updatedLead: Lead = {
         ...initialLead,
         name: trimmedName || initialLead.name,
-        phone: data.phone?.trim() || initialLead.phone,
-        email: data.email?.trim() || initialLead.email,
+        phone: data.phone?.trim() || "",
+        email: data.email?.trim() || "",
         origin: data.origin || initialLead.origin,
         stage: data.stage || initialLead.stage,
-        notes: data.notes?.trim() || initialLead.notes,
-        agentId: data.agentId || initialLead.agentId,
+        notes: data.notes?.trim() || "",
+        agentId: currentUser?.role === "ADVISOR" ? initialLead.agentId : data.agentId || undefined,
         projectId,
         propertyIds: selectedAsset ? [selectedAsset.id] : initialLead.propertyIds,
         unitIds: selectedAsset && selectedAssetIsUnit ? [selectedAsset.id] : initialLead.unitIds,
@@ -329,14 +342,19 @@ export function NewLeadDrawer({
             visiting: "VISIT_SCHEDULED",
             negotiation: "NEGOTIATION",
             closing: "WON",
+            discarded: "LOST",
           };
           await updateEverpropLead(initialLead.id, {
             name: updatedLead.name,
             email: updatedLead.email,
             phone: updatedLead.phone,
-            stage: stageApiMap[updatedLead.stage] || "NEW",
+            origin: updatedLead.origin,
+            stage: updatedLead.stage !== initialLead.stage ? stageApiMap[updatedLead.stage] : undefined,
+            agentId: currentUser?.role !== "ADVISOR" && updatedLead.agentId !== initialLead.agentId ? updatedLead.agentId || null : undefined,
             notes: updatedLead.notes,
           });
+          if (selectedAsset && !initialLead.propertyIds?.includes(selectedAsset.id)) await attachEverpropLeadProperty(initialLead.id, selectedAsset.id);
+          updatedLead = await loadEverpropLeadById(initialLead.id) ?? updatedLead;
           toast.success("Ficha completada y actualizada en la base de datos.");
         } catch (e: any) {
           toast.error("Error al actualizar lead: " + (e.message || "Error desconocido"));
@@ -382,9 +400,11 @@ export function NewLeadDrawer({
           visiting: "VISIT_SCHEDULED",
           negotiation: "NEGOTIATION",
           closing: "WON",
+            discarded: "LOST",
         };
         const created = await createEverpropLead({
           name: trimmedName,
+          origin: data.origin,
           email: nextLead.email,
           phone: nextLead.phone,
           stage: stageApiMap[nextLead.stage] || "NEW",
@@ -400,9 +420,9 @@ export function NewLeadDrawer({
     }
 
     try {
-      appendLeadToStorage(nextLead, sampleLeads, companyId);
+      if (isMockDataMode) appendLeadToStorage(nextLead, sampleLeads, companyId);
 
-      if (nextLead.agentId) {
+      if (isMockDataMode && nextLead.agentId) {
         try {
           const channel = new BroadcastChannel("everprop_events");
           channel.postMessage({ type: "LEAD_REASSIGNED", targetAgentId: nextLead.agentId, leadName: nextLead.name });
@@ -626,6 +646,7 @@ export function NewLeadDrawer({
                           <option value="visiting">Visitando</option>
                           <option value="negotiation">Negociación</option>
                           <option value="closing">Cierre</option>
+                          <option value="discarded">Descartado</option>
                         </select>
                       </Field>
                     )}
@@ -669,7 +690,7 @@ export function NewLeadDrawer({
                           className="h-10 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-blue-500"
                         >
                           <option value="">Sin asignar (Global)</option>
-                          {MOCK_USERS.filter((user) => user.role === "ADVISOR").map((user) => (
+                          {advisors.map((user) => (
                             <option key={user.id} value={user.id}>{user.name}</option>
                           ))}
                         </select>
@@ -814,7 +835,7 @@ export function NewLeadDrawer({
         </div>
 
         <SheetFooter className="shrink-0 border-t border-slate-800 bg-slate-900 px-6 py-4">
-          <div className="mx-auto flex w-full max-w-7xl items-center justify-end gap-3">
+          <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col-reverse items-stretch justify-end gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               type="button"
               variant="outline"
@@ -826,6 +847,7 @@ export function NewLeadDrawer({
             </Button>
 
             <Button
+              disabled={form.formState.isSubmitting}
               type="submit"
               size="sm"
               form="drawer-lead-form"

@@ -6,7 +6,7 @@ export type Company = {
 };
 
 export type ProjectType = 'land_development' | 'building' | 'commercial';
-export type ProjectStatus = 'planning' | 'pre_sale' | 'under_construction' | 'completed';
+export type ProjectStatus = 'planning' | 'pre_sale' | 'under_construction' | 'completed' | 'available' | 'unknown';
 export type LeadInterestCategory = 'loteo' | 'local' | 'cochera' | 'tradicional';
 
 // Modelo local del panel. El contrato definitivo del backend queda pendiente
@@ -35,6 +35,7 @@ export type LeadFollowUpType = 'call' | 'whatsapp' | 'email' | 'meeting' | 'visi
 // panel hasta que el backend confirme su contrato definitivo.
 export type LeadFollowUp = {
   id: string;
+  sequence?: number;
   companyId: string;
   leadId: string;
   agentId: string;
@@ -69,6 +70,7 @@ export type Project = {
   type: ProjectType;
   status: ProjectStatus;
   progress: number;
+  progressKnown?: boolean;
   location: {
     city: string;
     province: string;
@@ -78,6 +80,7 @@ export type Project = {
   description?: string;
   masterplanImage?: string;
   coverImage?: string;
+  propertiesCount?: number;
 };
 
 export type Visit = {
@@ -96,11 +99,13 @@ export type Visit = {
 
 export type Property = {
   id: string;
+  version?: number;
   companyId: string;
   title: string;
-  operation: 'sale' | 'rent' | 'temporal';
+  operation: 'sale' | 'rent' | 'temporal' | 'leasing' | 'unknown';
   propertyType: string;
   price: number;
+  priceKnown?: boolean;
   currency: 'USD' | 'ARS';
   city: string;
   neighborhood: string;
@@ -115,11 +120,12 @@ export type Property = {
   projectId?: string;
   sectorName?: string;
   unitNumber?: string;
-  status?: 'available' | 'reserved' | 'sold';
+  status?: 'available' | 'reserved' | 'sold' | 'rented' | 'not_sellable' | 'not_marketed' | 'unknown';
   services?: { electricity?: boolean; water?: boolean; gas?: boolean; sewage?: boolean; internet?: boolean };
   landFeatures?: { water?: boolean; electricity?: boolean; curb?: boolean; gravel?: boolean; sewage?: boolean; spaceType?: 'Abierto' | 'Semiabierto' | 'Cerrado' };
   isCovered?: boolean;
-  commercialFeatures?: { showcaseLength?: number; hasBathroom?: boolean; mezzanine?: boolean; dualAccess?: boolean };
+  commercialFeatures?: { showcaseLength?: number; hasBathroom?: boolean; mezzanine?: boolean; dualAccess?: boolean; land?: { frente_m?: number; fondo_m?: number; ochava_m2?: number; padron?: string; curb?: boolean; gravel?: boolean; lighting?: boolean; spaceType?: string } };
+  legacyData?: Record<string, any>;
 };
 
 export type Lead = {
@@ -130,7 +136,7 @@ export type Lead = {
   propertyIds: string[]; 
   projectId?: string;
   unitIds?: string[];
-  stage: 'new' | 'contacted' | 'visiting' | 'negotiation' | 'closing';
+  stage: 'new' | 'contacted' | 'visiting' | 'negotiation' | 'closing' | 'discarded';
   lastActivity: string;
   // Compatibilidad con registros creados antes del historial independiente.
   followUpUpdatedAt?: string;

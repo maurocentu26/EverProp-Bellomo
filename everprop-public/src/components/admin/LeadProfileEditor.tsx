@@ -47,10 +47,10 @@ export function LeadProfileEditor({ lead, onClose, onSave }: LeadProfileEditorPr
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto p-6 bg-white rounded-2xl shadow-xl">
+      <DialogContent className="admin-workspace w-[calc(100%-2rem)] sm:max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 bg-white rounded-2xl shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+          <div className="flex items-center gap-3 pb-3 pr-6 border-b border-slate-100">
+            <span className="hidden sm:flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               <UserRoundPen className="size-5" aria-hidden="true" />
             </span>
             <div>

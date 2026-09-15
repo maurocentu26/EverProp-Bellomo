@@ -111,14 +111,8 @@ export function saveNotifications(notifications: AppNotification[]) {
 
 export async function fetchNotifications(currentUser?: UserIdentifier): Promise<AppNotification[]> {
   if (!isMockDataMode) {
-    try {
-      const res = await loadEverpropNotifications();
-      if (res && Array.isArray(res.data) && res.data.length > 0) {
-        return res.data.filter((n) => isNotificationForUser(n.targetUserId, currentUser));
-      }
-    } catch {
-      // Fallback
-    }
+    const res = await loadEverpropNotifications();
+    return res.data.filter((n) => isNotificationForUser(n.targetUserId, currentUser));
   }
 
   const local = loadNotifications();
@@ -128,11 +122,8 @@ export async function fetchNotifications(currentUser?: UserIdentifier): Promise<
 
 export async function markAllNotificationsAsRead(currentUser?: UserIdentifier): Promise<void> {
   if (!isMockDataMode) {
-    try {
-      await markAllEverpropNotificationsRead();
-    } catch (err) {
-      console.error("Error marking notifications as read via API:", err);
-    }
+    await markAllEverpropNotificationsRead();
+    return;
   }
 
   markAllAsRead(currentUser);
@@ -140,11 +131,8 @@ export async function markAllNotificationsAsRead(currentUser?: UserIdentifier): 
 
 export async function markNotificationAsRead(id: string): Promise<void> {
   if (!isMockDataMode) {
-    try {
-      await markEverpropNotificationRead(id);
-    } catch (err) {
-      console.error("Error marking notification read via API:", err);
-    }
+    await markEverpropNotificationRead(id);
+    return;
   }
 
   const notifs = loadNotifications();
@@ -194,11 +182,8 @@ export function markAllAsRead(currentUser?: UserIdentifier) {
 
 export async function clearAllNotifications(currentUser?: UserIdentifier): Promise<void> {
   if (!isMockDataMode) {
-    try {
-      await clearAllEverpropNotifications();
-    } catch (err) {
-      console.error("Error clearing notifications via API:", err);
-    }
+    await clearAllEverpropNotifications();
+    return;
   }
 
   if (typeof window !== "undefined") {
@@ -227,6 +212,13 @@ export async function requestDesktopNotificationPermission(): Promise<Notificati
 export function showDesktopNotification(title: string, options?: NotificationOptions): void {
   if (typeof window === 'undefined' || !('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
+  if ('serviceWorker' in navigator) {
+    void navigator.serviceWorker.register('/notifications-sw.js').then((registration) => {
+      if (registration.active) return registration.showNotification(title, { icon: '/favicon.ico', ...options });
+      return navigator.serviceWorker.ready.then((ready) => ready.showNotification(title, { icon: '/favicon.ico', ...options }));
+    }).catch(() => {});
+    return;
+  }
   try {
     new Notification(title, {
       icon: '/favicon.ico',

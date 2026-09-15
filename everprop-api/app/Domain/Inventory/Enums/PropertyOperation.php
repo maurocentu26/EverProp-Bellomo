@@ -7,4 +7,6 @@ enum PropertyOperation: string
     case SALE = 'SALE';
     case RENT = 'RENT';
     case TEMPORARY = 'TEMPORARY';
+    case LEASING = 'LEASING';
+    case UNKNOWN = 'UNKNOWN';
 }

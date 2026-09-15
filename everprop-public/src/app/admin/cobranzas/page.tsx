@@ -529,7 +529,7 @@ export default function CobranzasPage() {
               className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
                 statusFilter === "all"
                   ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  : "bg-slate-100 text-slate-600 hover:bg-muted dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
               Todas ({visibleInstallments.length})
@@ -669,7 +669,7 @@ export default function CobranzasPage() {
                     return (
                       <tr
                         key={inst.id}
-                        className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                        className="transition-colors hover:bg-muted dark:hover:bg-slate-800/40"
                       >
                         {/* Cliente */}
                         <td className="px-4 py-3.5">
@@ -792,7 +792,7 @@ export default function CobranzasPage() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenPaymentModal(inst)}
-                                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-blue-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm"
+                                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 transition-colors hover:bg-muted hover:text-blue-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm"
                               >
                                 <CreditCard className="size-3.5 text-blue-600 dark:text-blue-400" />
                                 <span>Cobrar</span>
@@ -805,7 +805,7 @@ export default function CobranzasPage() {
                             <Link
                               href={`/admin/leads/${inst.leadId}`}
                               title="Ver ficha del lead"
-                              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                              className="rounded-lg p-1 text-slate-400 hover:bg-muted hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                             >
                               <ExternalLink className="size-4" />
                             </Link>
@@ -935,7 +935,7 @@ export default function CobranzasPage() {
               <button
                 type="button"
                 onClick={() => setPayingInstallment(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="rounded-lg p-1 text-slate-400 hover:bg-muted hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 <X className="size-4" />
               </button>
@@ -1022,7 +1022,7 @@ export default function CobranzasPage() {
                 <button
                   type="button"
                   onClick={() => setPayingInstallment(null)}
-                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-muted dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Cancelar
                 </button>
@@ -1054,7 +1054,7 @@ export default function CobranzasPage() {
               <button
                 type="button"
                 onClick={() => setIsNewAgreementModalOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="rounded-lg p-1 text-slate-400 hover:bg-muted hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 <X className="size-4" />
               </button>
@@ -1256,7 +1256,7 @@ export default function CobranzasPage() {
                 <button
                   type="button"
                   onClick={() => setIsNewAgreementModalOpen(false)}
-                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-muted dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Cancelar
                 </button>

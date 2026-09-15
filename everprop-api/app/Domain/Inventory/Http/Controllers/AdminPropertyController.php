@@ -2,14 +2,14 @@
 
 namespace App\Domain\Inventory\Http\Controllers;
 
+use App\Domain\Inventory\Enums\PropertyCategory;
+use App\Domain\Inventory\Enums\PropertyOperation;
+use App\Domain\Inventory\Enums\PropertyStatus;
 use App\Domain\Inventory\Http\Requests\PropertyIndexRequest;
 use App\Domain\Inventory\Http\Requests\PublishPropertyRequest;
 use App\Domain\Inventory\Http\Requests\StorePropertyRequest;
 use App\Domain\Inventory\Http\Requests\UpdatePropertyRequest;
 use App\Domain\Inventory\Http\Resources\PropertyResource;
-use App\Domain\Inventory\Enums\PropertyCategory;
-use App\Domain\Inventory\Enums\PropertyOperation;
-use App\Domain\Inventory\Enums\PropertyStatus;
 use App\Domain\Inventory\Models\Project;
 use App\Domain\Inventory\Models\Property;
 use App\Domain\Inventory\Policies\PropertyPolicy;
@@ -71,7 +71,7 @@ final class AdminPropertyController extends InventoryController
     {
         $user = $this->user($request);
         $this->authorizeAction($this->policy->create($user));
-        
+
         $data = $request->validate([
             'project_id' => 'required|integer|exists:projects,id',
             'sector_name' => 'required|string|max:160',
@@ -92,19 +92,19 @@ final class AdminPropertyController extends InventoryController
 
         $project = Project::query()
             ->where('tenant_id', $this->tenantContext->id())
-            ->findOrFail($data['project_id']);
+            ->findOrFail((int) $data['project_id']);
 
-        $cornerLots = collect($data['corner_lots'] ?? [])->map(fn($v) => (int)$v)->all();
+        $cornerLots = array_map(static fn ($v): int => (int) $v, (array) ($data['corner_lots'] ?? []));
 
         $createdProperties = DB::transaction(function () use ($data, $project, $cornerLots): array {
             $items = [];
             $services = $data['services'] ?? [];
 
-            for ($num = (int)$data['lot_from']; $num <= (int)$data['lot_to']; $num++) {
+            for ($num = (int) $data['lot_from']; $num <= (int) $data['lot_to']; $num++) {
                 $isCorner = in_array($num, $cornerLots, true);
-                $lotNumStr = (string)$num;
-                $area = $isCorner && !empty($data['corner_area_m2']) ? (float)$data['corner_area_m2'] : (float)$data['area_m2'];
-                $price = $isCorner && !empty($data['corner_price']) ? (float)$data['corner_price'] : ($data['price'] ?? null);
+                $lotNumStr = (string) $num;
+                $area = $isCorner && ! empty($data['corner_area_m2']) ? (float) $data['corner_area_m2'] : (float) $data['area_m2'];
+                $price = $isCorner && ! empty($data['corner_price']) ? (float) $data['corner_price'] : ($data['price'] ?? null);
                 $currency = $price !== null ? ($data['currency_code'] ?? 'USD') : null;
 
                 $cleanSector = preg_replace('/[^A-Za-z0-9]/', '', $data['sector_name']);
@@ -115,7 +115,7 @@ final class AdminPropertyController extends InventoryController
                     ->where('code', $code)
                     ->exists();
                 if ($existing) {
-                    $code .= '-' . substr(bin2hex(random_bytes(2)), 0, 4);
+                    $code .= '-'.substr(bin2hex(random_bytes(2)), 0, 4);
                 }
 
                 $property = Property::query()->create([
@@ -157,7 +157,7 @@ final class AdminPropertyController extends InventoryController
 
         return response()->json([
             'data' => $createdProperties,
-            'message' => count($createdProperties) . ' lotes generados exitosamente.',
+            'message' => count($createdProperties).' lotes generados exitosamente.',
         ], 201);
     }
 

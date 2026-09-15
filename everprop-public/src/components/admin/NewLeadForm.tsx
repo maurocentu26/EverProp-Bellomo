@@ -1,4 +1,5 @@
 "use client";
+import { useLeadAdvisors } from "@/hooks/use-lead-advisors";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -100,24 +101,6 @@ const CATEGORIES: AssetCategoryOption[] = [
 
 const ORIGINS = ["Web", "WhatsApp", "Portal", "Referido", "Instagram", "Web / Formulario"];
 
-const REAL_ADVISORS = [
-  {
-    id: "b1100000-0000-4000-8000-000000000101",
-    name: "Lucas Albarracín",
-    role: "Asesor Comercial · Loteos",
-  },
-  {
-    id: "b1100000-0000-4000-8000-000000000102",
-    name: "Valentina Morales",
-    role: "Asesora Comercial · Locales & Inversiones",
-  },
-  {
-    id: "b1100000-0000-4000-8000-000000000104",
-    name: "Ing. Sofía Bellomo",
-    role: "Gerente Comercial",
-  },
-];
-
 const formSchema = z
   .object({
     name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(60, "El nombre no puede superar 60 caracteres."),
@@ -132,7 +115,7 @@ const formSchema = z
       .trim()
       .optional()
       .refine((value) => !value || /^[+0-9\s().-]{6,30}$/.test(value), "Ingresá un teléfono válido."),
-    stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing"]),
+    stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing", "discarded"]),
     notes: z.string().trim().max(5000, "Las notas no pueden superar 5000 caracteres.").optional().or(z.literal("")),
     agentId: z.string().optional(),
   })
@@ -156,6 +139,7 @@ type Props = {
 export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing = false }: Props) {
   const router = useRouter();
   const { user, isAdvisor } = useCurrentSession();
+  const [loadError, setLoadError] = useState("");
   const [activeLead, setActiveLead] = useState<Lead | null>(initialLead ?? null);
   const [isLoadingLead, setIsLoadingLead] = useState(Boolean(leadId && !initialLead));
   const [selectedCategory, setSelectedCategory] = useState<AssetCategory | null>(null);
@@ -166,11 +150,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const advisorList = useMemo(() => {
-    return isMockDataMode
-      ? MOCK_USERS.filter((u) => u.role === "ADVISOR").map((u) => ({ id: u.id, name: u.name }))
-      : REAL_ADVISORS;
-  }, []);
+  const { advisors: advisorList, error: advisorsError } = useLeadAdvisors(!isAdvisor);
 
   useEffect(() => {
     let active = true;
@@ -185,7 +165,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               return;
             }
           } catch {
-            // fallback to storage
+            if (active) { setLoadError("No se pudo cargar el cliente. Reintentá recargando la página."); setIsLoadingLead(false); }
+            return;
           }
         }
         if (active) {
@@ -213,7 +194,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           setAllProjects(catalog.projects);
           return;
         } catch {
-          // fallback to storage
+          if (active) setLoadError("No se pudo cargar el catálogo. Reintentá recargando la página.");
+          return;
         }
       }
       if (!active) return;
@@ -298,7 +280,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
   const availableProjects = useMemo(() => {
     const eligibleProps = allProperties.filter(
-      (p) => p.status !== "reserved" && p.status !== "sold"
+      (p) => (!p.status || p.status === "available")
     );
     if (!selectedCategory) {
       return allProjects.filter((project) =>
@@ -316,7 +298,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     const query = assetSearchQuery.toLowerCase().trim();
 
     return allProperties
-      .filter((property) => property.status !== "reserved" && property.status !== "sold")
+      .filter((property) => (!property.status || property.status === "available"))
       .filter((property) => !selectedCategory || inferLeadInterestCategory(property) === selectedCategory)
       .filter((property) => !selectedProjectId || property.projectId === selectedProjectId)
       .filter((property) => {
@@ -336,7 +318,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
     if (selectedProjectId && nextCategory) {
       const projectHasMatchingProps = allProperties.some(
-        (p) => p.status !== "reserved" && p.status !== "sold" && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
+        (p) => (!p.status || p.status === "available") && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
       );
       if (!projectHasMatchingProps) {
         setSelectedProjectId("");
@@ -387,6 +369,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   };
 
   const onSubmit = async (data: FormValues) => {
+    if (advisorsError) { toast.error(advisorsError); return; }
     setIsSubmitting(true);
     const trimmedName = data.name.trim();
     const assignedAgentId = isAdvisor ? user?.id : (data.agentId || undefined);
@@ -417,12 +400,12 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       const updatedLead: Lead = {
         ...activeLead,
         name: trimmedName || activeLead.name,
-        phone: data.phone?.trim() || activeLead.phone,
-        email: data.email?.trim() || activeLead.email,
+        phone: data.phone?.trim() || "",
+        email: data.email?.trim() || "",
         origin: data.origin || activeLead.origin,
         stage: data.stage || activeLead.stage,
-        notes: data.notes?.trim() || activeLead.notes,
-        agentId: assignedAgentId || activeLead.agentId,
+        notes: data.notes?.trim() || "",
+        agentId: isAdvisor ? activeLead.agentId : assignedAgentId,
         projectId,
         propertyIds: selectedAsset ? [selectedAsset.id] : (activeLead.propertyIds || []),
         unitIds: selectedAsset && selectedAssetIsUnit ? [selectedAsset.id] : activeLead.unitIds,
@@ -439,24 +422,22 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
             visiting: "VISIT_SCHEDULED",
             negotiation: "NEGOTIATION",
             closing: "WON",
+            discarded: "LOST",
           };
           await updateEverpropLead(activeLead.id, {
             name: updatedLead.name,
+            origin: updatedLead.origin,
             email: updatedLead.email,
             phone: updatedLead.phone,
-            stage: stageApiMap[updatedLead.stage] || "NEW",
+            ...(updatedLead.stage !== activeLead.stage ? { stage: stageApiMap[updatedLead.stage] || "NEW" } : {}),
             notes: updatedLead.notes,
-            agentId: updatedLead.agentId,
+            ...(!isAdvisor && updatedLead.agentId !== activeLead.agentId ? { agentId: updatedLead.agentId || null } : {}),
           });
           if (selectedAsset?.id) {
-            try {
-              await attachEverpropLeadProperty(activeLead.id, selectedAsset.id, {
-                price: selectedAsset.price,
-                currency: selectedAsset.currency,
-              });
-            } catch (e: any) {
-              console.warn("Could not attach property to lead via API:", e);
-            }
+            await attachEverpropLeadProperty(activeLead.id, selectedAsset.id, {
+              price: selectedAsset.price,
+              currency: selectedAsset.currency,
+            });
           }
         } catch (e: any) {
           toast.error("Error al actualizar lead en base de datos: " + (e.message || "Error desconocido"));
@@ -469,7 +450,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       const nextLeads = stored.some((l) => l.id === updatedLead.id)
         ? stored.map((l) => (l.id === updatedLead.id ? updatedLead : l))
         : [updatedLead, ...stored];
-      saveLeadList(nextLeads, companyId);
+      if (isMockDataMode) saveLeadList(nextLeads, companyId);
 
       toast.success("Ficha del lead completada con éxito.");
       router.push(`/admin/leads/${activeLead.id}`);
@@ -503,9 +484,11 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           visiting: "VISIT_SCHEDULED",
           negotiation: "NEGOTIATION",
           closing: "WON",
+            discarded: "LOST",
         };
         const created = await createEverpropLead({
           name: trimmedName,
+          origin: nextLead.origin,
           email: nextLead.email,
           phone: nextLead.phone,
           stage: stageApiMap[nextLead.stage] || "NEW",
@@ -522,9 +505,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     }
 
     try {
-      appendLeadToStorage(nextLead, sampleLeads, companyId);
+      if (isMockDataMode) appendLeadToStorage(nextLead, sampleLeads, companyId);
 
-      if (nextLead.agentId) {
+      if (isMockDataMode && nextLead.agentId) {
         try {
           const channel = new BroadcastChannel("everprop_events");
           channel.postMessage({ type: "LEAD_REASSIGNED", targetAgentId: nextLead.agentId, leadName: nextLead.name });
@@ -553,6 +536,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     }
   };
 
+  if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4">{loadError}</p>;
   if (isEditing && isLoadingLead) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">
@@ -571,30 +555,30 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
         <ArrowLeft className="h-4 w-4" /> {isEditing ? "Volver a la ficha del lead" : "Volver a la lista de leads"}
       </Link>
 
-      <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-lg rounded-2xl p-0 dark:border-slate-800 dark:bg-card">
-        <div className="bg-slate-950 px-6 py-5 text-white border-b border-slate-800">
+      <Card className="w-full overflow-hidden border border-border bg-card shadow-sm rounded-2xl p-0">
+        <div className="bg-card px-5 py-5 text-card-foreground border-b border-border sm:px-6">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
               <Sparkles size={20} aria-hidden="true" />
             </span>
             <div>
-              <CardTitle className="text-xl font-bold text-white">
+              <h1 className="text-xl font-bold text-card-foreground">
                 {isEditing ? `Completar Ficha: ${activeLead?.name || ""}` : "Alta de nuevo lead"}
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-400 mt-0.5">
+              </h1>
+              <CardDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {isEditing
                   ? "Actualizá los datos de contacto, requerimientos comerciales y propiedades de interés del prospecto."
-                  : "Registrá el contacto y su interés inmobiliario opcional para incorporarlo al pipeline comercial."}
+                  : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
               </CardDescription>
             </div>
           </div>
         </div>
 
         <form id="new-lead-page-form" onSubmit={form.handleSubmit(onSubmit, onFormError)}>
-          <CardContent className="p-6 sm:p-8 space-y-6">
+          <CardContent className="p-3 sm:p-6 space-y-6">
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
               {/* ── Seccion 1: Datos basicos del lead ── */}
-              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-basic-data">
+              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-basic-data">
                 <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-slate-800 pb-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300">
                     <User size={16} aria-hidden="true" />
@@ -746,11 +730,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                           className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                         >
                           <option value="new">Nuevo</option>
-                          <option value="contacted">Contactado</option>
-                          <option value="visiting">Visitando</option>
-                          <option value="negotiation">Negociación</option>
+                          <option value="contacted" disabled={!isEditing}>Contactado</option>
+                          <option value="visiting" disabled={!isEditing}>Visitando</option>
+                          <option value="negotiation" disabled={!isEditing}>Negociación</option>
                           <option value="closing">Cierre</option>
+                          <option value="discarded">Descartado</option>
                         </select>
+                        {!isEditing && <p className="text-xs text-muted-foreground">Creá el lead como Nuevo. Después registrá un contacto para avanzar a Contactado, Visita o Negociación.</p>}
                       </Field>
                     )}
                   />
@@ -803,7 +789,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               </section>
 
               {/* ── Seccion 2: Interes inmobiliario (Opcional) ── */}
-              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-interest-data">
+              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-interest-data">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/80 dark:text-violet-300">
@@ -829,7 +815,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                           aria-pressed={isSelected}
                           onClick={() => handleCategorySelect(category.id)}
                           className={cn(
-                            "flex items-center gap-2.5 rounded-lg border p-2.5 text-left transition-all shadow-sm",
+                            "flex min-h-20 flex-col items-start gap-2 rounded-lg border p-3 text-left transition-all shadow-sm sm:min-h-0 sm:flex-row sm:items-center sm:gap-2.5",
                             isSelected
                               ? "border-blue-500 bg-blue-50 text-blue-900 ring-2 ring-blue-500/20 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-500"
                               : "border-slate-200 bg-white hover:border-slate-300 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-900",
@@ -838,8 +824,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                           <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md border", category.color)}>
                             <Icon size={14} aria-hidden="true" />
                           </span>
-                          <div className="min-w-0 flex-1">
-                            <span className="block text-xs font-bold leading-tight truncate">{category.title}</span>
+                          <div className="min-w-0 w-full sm:w-auto sm:flex-1">
+                            <span className="block text-xs font-bold leading-snug">{category.title}</span>
                           </div>
                           {isSelected && <Check size={14} className="shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />}
                         </button>
@@ -859,7 +845,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     className="mt-1 h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                   >
                     <option value="">
-                      {selectedCategory ? "Todos los proyectos de esta categoría" : "Sin proyecto identificado"}
+                      {selectedCategory ? "Todos los proyectos de esta categoría" : "Sin proyecto"}
                     </option>
                     {availableProjects.map((project) => (
                       <option key={project.id} value={project.id}>{project.name}</option>
@@ -879,7 +865,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-slate-900 truncate dark:text-slate-100">{selectedAsset.title}</p>
-                        <p className="text-[10px] text-slate-500 truncate dark:text-slate-400">
+                        <p className="text-[10px] text-slate-500 break-words dark:text-slate-400">
                           {selectedProject?.name ?? `${selectedAsset.neighborhood}, ${selectedAsset.city}`}
                         </p>
                       </div>
@@ -888,7 +874,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                         variant="ghost"
                         size="icon"
                         onClick={() => setSelectedAsset(null)}
-                        className="h-7 w-7 shrink-0 text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        className="h-7 w-7 shrink-0 text-slate-500 hover:bg-muted hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                         aria-label="Quitar propiedad seleccionada"
                       >
                         <X size={14} aria-hidden="true" />
@@ -902,7 +888,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                       id="lead-property-search"
                       value={assetSearchQuery}
                       onChange={(event) => setAssetSearchQuery(event.target.value)}
-                      placeholder="Buscar lote, manzana o barrio..."
+                      placeholder="Buscar inmueble…"
                       className="h-10 border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 rounded-lg shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                     />
                   </div>
@@ -921,15 +907,15 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                               "flex w-full items-center gap-2.5 rounded-lg border p-2 text-left transition-all",
                               isSelected
                                 ? "border-blue-400 bg-blue-50/80 dark:border-blue-700 dark:bg-blue-950/50"
-                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:bg-slate-900",
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-muted dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 dark:hover:bg-slate-900",
                             )}
                           >
                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-blue-700 border border-slate-200 dark:bg-slate-900 dark:text-blue-400 dark:border-slate-800">
-                              {asset.unitNumber || asset.title.slice(0, 3)}
+                              <Building2 size={16} aria-hidden="true" />
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block text-xs font-semibold text-slate-900 truncate dark:text-slate-100">{asset.title}</span>
-                              <span className="block text-[10px] text-slate-500 truncate dark:text-slate-400">
+                              <span className="block text-xs font-semibold text-slate-900 break-words dark:text-slate-100">{asset.title}</span>
+                              <span className="block text-[10px] text-slate-500 break-words dark:text-slate-400">
                                 {project?.name ? `${project.name} · ` : ""}{asset.neighborhood}
                               </span>
                             </span>
@@ -953,12 +939,12 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               type="button"
               variant="outline"
               onClick={() => router.push(isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads")}
-              className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-muted dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Cancelar
             </Button>
 
-            <div className="flex gap-2.5">
+            <div className="flex w-full min-w-0 flex-col-reverse gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap">
               {!isEditing && (
                 <Button
                   type="button"

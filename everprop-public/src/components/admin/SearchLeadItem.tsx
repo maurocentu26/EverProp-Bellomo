@@ -14,7 +14,7 @@ export function SearchLeadItem({ lead, query, onSelect }: Props) {
     <button
       type="button"
       onClick={() => onSelect(lead.id)}
-      className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/70 group transition-all"
+      className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted dark:hover:bg-slate-800/70 group transition-all"
     >
       <Avatar className="h-10 w-10 shrink-0 border border-slate-100 dark:border-slate-800 shadow-sm">
         <AvatarFallback className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-black uppercase">

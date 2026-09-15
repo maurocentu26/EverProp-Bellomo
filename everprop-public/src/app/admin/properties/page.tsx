@@ -8,7 +8,7 @@ import Link from "next/link";
 import { type Project, type Property, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
 import { cn } from "@/lib/utils";
-import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
+import { isInvalidEverpropSession, loadEverpropCatalog, loadEverpropPropertiesPage } from "@/lib/everprop-api";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -23,6 +23,7 @@ const statusFilters = [
   { id: "available", label: "Disponibles" },
   { id: "reserved", label: "No Vendibles / Reserva" },
   { id: "sold", label: "Vendidos" },
+  { id: "rented", label: "Alquilados" },
 ] as const;
 
 export default function AllPropertiesPage() {
@@ -32,10 +33,12 @@ export default function AllPropertiesPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
-  const [activeStatus, setActiveStatus] = useState<"all" | "available" | "reserved" | "sold">("all");
+  const [activeStatus, setActiveStatus] = useState<"all" | "available" | "reserved" | "sold" | "rented">("all");
   const [selectedManzana, setSelectedManzana] = useState<string>("all");
   
   const [openFilter, setOpenFilter] = useState<'proyecto' | 'estado' | 'manzana' | null>(null);
@@ -55,6 +58,7 @@ export default function AllPropertiesPage() {
 
   useEffect(() => {
     let active = true;
+    setDataState({ status: "loading" });
 
     async function loadData() {
       if (isMockDataMode) {
@@ -67,10 +71,15 @@ export default function AllPropertiesPage() {
       }
 
       try {
-        const catalog = await loadEverpropCatalog();
+        const [props, fetchedProjects] = await Promise.all([
+          loadEverpropPropertiesPage(1, { projectId: selectedProjectId, status: activeStatus }),
+          projects.length === 0 ? import('@/lib/everprop-api').then(m => m.loadEverpropProjects()) : Promise.resolve(projects)
+        ]);
+        
         if (!active) return;
-        setAllProperties(catalog.properties);
-        setProjects(catalog.projects);
+        setAllProperties(props);
+        if (projects.length === 0) setProjects(fetchedProjects);
+        setPage(1);
         setDataState({ status: "ready", source: "admin-api" });
       } catch (reason) {
         if (isInvalidEverpropSession(reason)) {
@@ -78,52 +87,36 @@ export default function AllPropertiesPage() {
           return;
         }
         if (!active) return;
-        setAllProperties([]);
-        setProjects([]);
-        setDataState({
-          status: "error",
-          message: reason instanceof Error ? reason.message : "No se pudo cargar el inventario.",
-        });
+        setDataState({ status: "error", message: String(reason) });
       }
     }
 
-    void loadData();
+    loadData();
     return () => {
       active = false;
     };
-  }, [attempt, invalidateSession]);
+  }, [attempt, selectedProjectId, activeStatus]);
 
   const availableManzanas = useMemo(() => {
-    const pool = selectedProjectId === "all"
-      ? allProperties
-      : allProperties.filter(p => p.projectId === selectedProjectId);
     const set = new Set<string>();
-    pool.forEach(p => {
+    // Locally extract manzanas from currently loaded properties
+    allProperties.forEach(p => {
       if (p.sectorName) set.add(p.sectorName);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [allProperties, selectedProjectId]);
+  }, [allProperties]);
 
   const filteredProperties = useMemo(() => {
     let filtered = allProperties;
 
-    // 1. Project Filter
-    if (selectedProjectId !== "all") {
-      filtered = filtered.filter(p => p.projectId === selectedProjectId);
-    }
-
-    // 2. Status Filter
-    if (activeStatus !== "all") {
-      filtered = filtered.filter(p => p.status === activeStatus || (!p.status && activeStatus === "available"));
-    }
-
+    // We no longer filter by project or status locally because the API does it.
     // 3. Manzana Filter
     if (selectedManzana !== "all") {
       filtered = filtered.filter(p => p.sectorName === selectedManzana);
     }
 
     return filtered;
-  }, [allProperties, selectedProjectId, activeStatus, selectedManzana]);
+  }, [allProperties, selectedManzana]);
 
   const groupedProperties = useMemo(() => {
     const groups: { projects: Record<string, Property[]>, individual: Property[] } = {
@@ -141,6 +134,22 @@ export default function AllPropertiesPage() {
     });
     return groups;
   }, [filteredProperties]);
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const newProps = await loadEverpropPropertiesPage(nextPage, { projectId: selectedProjectId, status: activeStatus });
+      if (newProps.length === 0) return;
+      setAllProperties(prev => [...prev, ...newProps]);
+      setPage(nextPage);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   if (dataState.status === "loading") return <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" role="status" aria-label="Cargando propiedades" />;
 
@@ -180,12 +189,10 @@ export default function AllPropertiesPage() {
         
         {!isAdvisor && (
           <div className="flex items-center gap-3">
-            <Link href="/admin/properties/new">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2" nativeButton={false} role="link" render={<Link href="/admin/properties/new" />}>
                   <Plus className="h-4 w-4" />
                   Nueva Propiedad
               </Button>
-            </Link>
           </div>
         )}
       </div>
@@ -194,14 +201,34 @@ export default function AllPropertiesPage() {
 
       {/* Control Panel / Filtros */}
       <div className="bg-white dark:bg-card p-4 rounded-2xl border border-slate-200 dark:border-border shadow-sm flex flex-wrap gap-2 items-center relative" ref={filterRef}>
+        <div className="grid w-full grid-cols-1 gap-3 sm:hidden">
+          <label className="grid gap-1.5 text-xs font-semibold text-muted-foreground">Desarrollo
+            <select aria-label="Filtrar propiedades por desarrollo" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+              <option value="all">Todos</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground">Estado
+              <select aria-label="Filtrar propiedades por estado" value={activeStatus} onChange={e => setActiveStatus(e.target.value as typeof activeStatus)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+                {statusFilters.map(s => <option key={s.id} value={s.id}>{s.id === "reserved" ? "En reserva" : s.label}</option>)}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground">Manzana
+              <select aria-label="Filtrar propiedades por manzana" value={selectedManzana} onChange={e => setSelectedManzana(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+                <option value="all">Todas</option>{availableManzanas.map(m => <option key={m} value={m}>{m.replace(/manzana\s*/i, "Mz ")}</option>)}
+              </select>
+            </label>
+          </div>
+          {activeStatus === "reserved" && <p className="text-xs leading-relaxed text-muted-foreground">Incluye unidades reservadas y marcadas como no vendibles.</p>}
+        </div>
         {/* Desarrollo Chip */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             onClick={() => setOpenFilter(openFilter === 'proyecto' ? null : 'proyecto')}
             className={cn(
               "flex items-center gap-1",
               selectedProjectId === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
                 : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
             )}
           >
@@ -212,7 +239,7 @@ export default function AllPropertiesPage() {
               <button
                 onClick={() => { setSelectedProjectId('all'); setOpenFilter(null); }}
                 className={cn(
-                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                   selectedProjectId === 'all' && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                 )}
               >
@@ -223,7 +250,7 @@ export default function AllPropertiesPage() {
                   key={p.id}
                   onClick={() => { setSelectedProjectId(p.id); setOpenFilter(null); }}
                   className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                     selectedProjectId === p.id && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                   )}
                 >
@@ -235,13 +262,13 @@ export default function AllPropertiesPage() {
         </div>
 
         {/* Estado Chip */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             onClick={() => setOpenFilter(openFilter === 'estado' ? null : 'estado')}
             className={cn(
               "flex items-center gap-1",
               activeStatus === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
                 : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
             )}
           >
@@ -254,7 +281,7 @@ export default function AllPropertiesPage() {
                   key={tab.id}
                   onClick={() => { setActiveStatus(tab.id); setOpenFilter(null); }}
                   className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                     activeStatus === tab.id && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                   )}
                 >
@@ -266,13 +293,13 @@ export default function AllPropertiesPage() {
         </div>
 
         {/* Manzana Chip */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             onClick={() => setOpenFilter(openFilter === 'manzana' ? null : 'manzana')}
             className={cn(
               "flex items-center gap-1",
               selectedManzana === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
+                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
                 : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
             )}
           >
@@ -283,7 +310,7 @@ export default function AllPropertiesPage() {
               <button
                 onClick={() => { setSelectedManzana('all'); setOpenFilter(null); }}
                 className={cn(
-                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                   selectedManzana === 'all' && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                 )}
               >
@@ -294,7 +321,7 @@ export default function AllPropertiesPage() {
                   key={m}
                   onClick={() => { setSelectedManzana(m); setOpenFilter(null); }}
                   className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer w-full text-left",
+                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
                     selectedManzana === m && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
                   )}
                 >
@@ -367,6 +394,17 @@ export default function AllPropertiesPage() {
               <PropertyList properties={groupedProperties.individual} readOnly={false} />
             </div>
           )}
+
+          <div className="pt-8 pb-4 flex justify-center">
+            <Button 
+              variant="outline" 
+              onClick={handleLoadMore} 
+              disabled={isLoadingMore}
+              className="w-full max-w-sm rounded-xl font-semibold border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {isLoadingMore ? "Cargando..." : "Cargar más propiedades"}
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -44,19 +44,17 @@ export default function NewLeadPage() {
           Esta sección corresponde a la gestión comercial de leads. Redirigiendo a Desarrollos...
         </p>
         <div className="mt-6">
-          <Link href="/admin/desarrollos">
-            <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" nativeButton={false} role="link" render={<Link href="/admin/desarrollos" />}>
               <ArrowLeft className="size-4" />
               Volver a Desarrollos
             </Button>
-          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-[120rem] px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl">
       <Suspense fallback={<div className="h-96 animate-pulse rounded-3xl bg-slate-100 dark:bg-slate-900" />}>
         <NewLeadForm />
       </Suspense>

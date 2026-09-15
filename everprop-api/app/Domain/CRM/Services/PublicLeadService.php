@@ -152,7 +152,7 @@ final readonly class PublicLeadService
                     try {
                         $assignedUser = User::find($leadRecord->assigned_user_id);
                         if ($assignedUser) {
-                            $contactName = $contact['display_name'] ?? 'Nuevo Contacto Web';
+                            $contactName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $contact['id'])->value('display_name') ?? 'Nuevo Contacto Web';
                             $assignedUser->notify(new LeadAssignedNotification(
                                 leadPublicId: (string) $leadRecord->public_id,
                                 leadName: $contactName,
@@ -162,8 +162,8 @@ final readonly class PublicLeadService
                                 actionUrl: "/admin/leads/{$leadRecord->public_id}"
                             ));
                         }
-                    } catch (\Throwable) {
-                        // Keep transaction intact
+                    } catch (\Throwable $notificationError) {
+                        throw $notificationError; // Roll back the operation rather than silently lose its notification.
                     }
                 }
 

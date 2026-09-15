@@ -3,10 +3,14 @@ import { z } from "zod";
 
 export type Category = "tradicional" | "loteo" | "comercial" | null;
 
+const positiveOptional = z.string().optional().refine(v => !v || (Number.isFinite(Number(v)) && Number(v) > 0), "Ingresá un valor mayor a cero.");
+const nonnegativeOptional = z.string().optional().refine(v => !v || (Number.isFinite(Number(v)) && Number(v) >= 0), "Ingresá un valor mayor o igual a cero.");
+
 export const formSchema = z.object({
   propertyType: z.enum(["Casa", "Departamento", "Lote", "Cochera", "Local"]),
   title: z.string().min(1, "El título es requerido"),
-  price: z.string().min(1, "El precio es requerido"),
+  price: z.string().min(1, "El precio es requerido").refine(v => Number.isFinite(Number(v)) && Number(v) >= 0, "Ingresá un precio válido mayor o igual a cero."),
+  currency: z.enum(["USD", "ARS"]),
   city: z.string().min(1, "La ciudad es requerida"),
   neighborhood: z.string().min(1, "La ubicación/barrio es requerida"),
   description: z.string().optional(),
@@ -17,16 +21,16 @@ export const formSchema = z.object({
   bathrooms: z.string().optional(),
 
   // Enterprise/Commercial specifics
-  area_m2: z.string().optional(),
+  area_m2: positiveOptional,
   sectorName: z.string().optional(), // Manzana
   unitNumber: z.string().optional(), // Lote/Cochera/Local num
   floor: z.string().optional(), // Piso
   spaceType: z.enum(["Abierto", "Semiabierto", "Cerrado"]).optional(),
   
   // Agrimensura / Lotes
-  frente_m: z.string().optional(),
-  fondo_m: z.string().optional(),
-  ochava_m2: z.string().optional(),
+  frente_m: positiveOptional,
+  fondo_m: positiveOptional,
+  ochava_m2: nonnegativeOptional,
   padron: z.string().optional(),
 
   // Checkboxes

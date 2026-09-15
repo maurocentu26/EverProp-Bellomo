@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Phone, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { propertyOperationLabel } from "@/lib/inventory-labels";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import type { LeadFollowUp } from "@/data/admin-sample";
@@ -14,7 +15,7 @@ type PropertyLite = {
   bedrooms?: number;
   price?: number;
   currency?: string;
-  operation?: "sale" | "rent" | "temporal";
+  operation?: "sale" | "rent" | "temporal" | "leasing" | "unknown";
 };
 
 type Props = {
@@ -84,7 +85,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
             "absolute top-3 right-3 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-sm",
             op === "sale" ? "bg-emerald-500 text-white" : "bg-blue-600 text-white"
           )}>
-            {op === "sale" ? "Venta" : op === "rent" ? "Alquiler" : "Temp"}
+            {propertyOperationLabel(op)}
           </span>
         )}
 
@@ -150,7 +151,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
                   }}
                   className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors",
-                      showPhone ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400"
+                      showPhone ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900" : "text-slate-400 hover:bg-muted dark:hover:bg-slate-800 dark:text-slate-400"
                   )}
                 >
                   <Phone className="h-3.5 w-3.5" />
@@ -169,7 +170,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
                   }}
                   className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors",
-                      showEmail ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400"
+                      showEmail ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900" : "text-slate-400 hover:bg-muted dark:hover:bg-slate-800 dark:text-slate-400"
                   )}
                 >
                   <Mail className="h-3.5 w-3.5" />
