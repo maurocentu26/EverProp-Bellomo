@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Map, LayoutGrid, Layers } from "lucide-react";
+import { Map, LayoutGrid, Layers, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { type Property, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -56,13 +57,40 @@ export default function GlobalInventoryMatrixPage() {
     return properties.filter(p => p.projectId === selectedProjectId);
   }, [properties, selectedProjectId]);
 
+  const handleExportLegacy = () => {
+    if (!filteredProperties || filteredProperties.length === 0) return;
+
+    const exportData = filteredProperties.map(p => {
+      const row = { ...(p.legacyData || {}) };
+      
+      if (p.price !== undefined) {
+        row["ProPre"] = p.price;
+      }
+      
+      if (p.status) {
+        if (p.status === "sold") {
+          row["ProEId"] = 4;
+        } else if (p.status === "available") {
+          row["ProEId"] = 7;
+        }
+      }
+      
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario_Legacy");
+    
+    XLSX.writeFile(workbook, "everprop_inventario_legacy.xlsx");
+  };
+
   const groupedByProject = useMemo(() => {
     const groups: Record<string, Property[]> = {};
     filteredProperties.forEach(p => {
-      // We only care about properties assigned to a project for the matrix
-      if (!p.projectId) return;
-      if (!groups[p.projectId]) groups[p.projectId] = [];
-      groups[p.projectId].push(p);
+      const pid = p.projectId || "unassigned";
+      if (!groups[pid]) groups[pid] = [];
+      groups[pid].push(p);
     });
     return groups;
   }, [filteredProperties]);
@@ -101,6 +129,15 @@ export default function GlobalInventoryMatrixPage() {
             </select>
           </div>
 
+          <Button
+            size="sm"
+            onClick={handleExportLegacy}
+            variant="outline"
+            className="h-10 px-4 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-sm rounded-xl gap-1.5"
+          >
+            <Download className="h-4 w-4 text-slate-500" /> Exportar (Legacy)
+          </Button>
+
           {isReady && !isAdvisor && <Button
             size="sm"
             onClick={() => setIsGenerateLotsOpen(true)}
@@ -115,7 +152,7 @@ export default function GlobalInventoryMatrixPage() {
         {Object.keys(groupedByProject).length > 0 ? (
           <div className="space-y-12">
             {Object.entries(groupedByProject).map(([pid, props]) => {
-              const proj = projects.find(p => p.id === pid);
+              const proj = pid === "unassigned" ? { name: "Propiedades Sin Desarrollo" } : projects.find(p => p.id === pid);
               if (!proj) return null;
               
               return (

@@ -122,6 +122,7 @@ export type Property = {
   landFeatures?: { water?: boolean; electricity?: boolean; curb?: boolean; gravel?: boolean; sewage?: boolean; spaceType?: 'Abierto' | 'Semiabierto' | 'Cerrado' };
   isCovered?: boolean;
   commercialFeatures?: { showcaseLength?: number; hasBathroom?: boolean; mezzanine?: boolean; dualAccess?: boolean; land?: { frente_m?: number; fondo_m?: number; ochava_m2?: number; padron?: string; curb?: boolean; gravel?: boolean; lighting?: boolean; spaceType?: string } };
+  legacyData?: Record<string, any>;
 };
 
 export type Lead = {
