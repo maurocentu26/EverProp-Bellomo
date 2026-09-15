@@ -66,6 +66,7 @@ type ApiProperty = {
   sector_name?: string | null;
   unit_number?: string | null;
   project?: { public_id?: string } | null;
+    legacy?: { data?: Record<string, any> };
   services?: Property["services"] | null;
   commercial_features?: Property["commercialFeatures"] | null;
 };
@@ -243,6 +244,7 @@ function mapProperty(property: ApiProperty): Property {
     sectorName: property.sector_name || undefined,
     unitNumber: property.unit_number || undefined,
     status: status === "RENTED" ? "rented" : status === "SOLD" ? "sold" : status === "RESERVED" ? "reserved" : "available",
+    legacyData: property.legacy?.data || undefined,
     services: property.services || undefined,
     commercialFeatures: property.commercial_features || undefined,
   };
