@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/everprop-api";
+import { registerNotificationWorker } from "@/lib/push-registration";
 
 export function PushPreferences() {
   const [config, setConfig] = useState<{ enabled: boolean; publicKey: string; subscriptionHashes: string[] } | null>(null);
@@ -34,8 +35,7 @@ export function PushPreferences() {
     if (busy || !config || !supported) return;
     setBusy(true); setMessage("");
     try {
-      const registration = await navigator.serviceWorker.register("/notifications-sw.js");
-      await navigator.serviceWorker.ready;
+      const registration = await registerNotificationWorker(navigator.serviceWorker);
       let subscription = await registration.pushManager.getSubscription();
       if (active && subscription) {
         await apiFetch("/api/v1/admin/push/subscriptions", {method:"DELETE",body:JSON.stringify({endpoint:subscription.endpoint})});

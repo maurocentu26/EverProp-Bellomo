@@ -1,11 +1,22 @@
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+function adminTarget(value) {
+  try {
+    const url = new URL(typeof value === "string" ? value : "/admin", self.location.origin);
+    if (url.origin === self.location.origin && (url.pathname === "/admin" || url.pathname.startsWith("/admin/"))) return url.href;
+  } catch {}
+  return new URL("/admin", self.location.origin).href;
+}
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const candidate = new URL(event.notification.data?.url || "/admin", self.location.origin);
-  const target = candidate.origin === self.location.origin && candidate.pathname.startsWith("/admin") ? candidate.href : new URL("/admin", self.location.origin).href;
+  const target = adminTarget(event.notification.data?.url);
   event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
-    const client = clients.find((item) => item.url.startsWith(self.location.origin + "/admin"));
+    const client = clients.find((item) => {
+      try {
+        const url = new URL(item.url);
+        return url.origin === self.location.origin && (url.pathname === "/admin" || url.pathname.startsWith("/admin/"));
+      } catch { return false; }
+    });
     if (client) { await client.navigate(target); return client.focus(); }
     return self.clients.openWindow(target);
   }));

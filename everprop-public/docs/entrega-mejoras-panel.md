@@ -27,4 +27,11 @@ Push con aplicación cerrada todavía requiere configuración VAPID, HTTPS/worke
 - Nuevas pruebas Push: fallo temporal conserva la suscripción para reintento y notificación leída no se reenvía.
 - Texto de citas aclarado en navegador; no se cambió ninguna clasificación ni regla comercial.
 - Validación de esta tanda: suite API 77 pruebas/395 assertions antes de agregar dos casos Push; después, los cuatro casos Push pasan (23 assertions). Frontend: 32 pruebas y TypeScript aprobados. No se repitió build por el único cambio de texto.
-- Datos QA: siguen en el entorno local; no se importan mediante Git. Su limpieza requiere comprobar identidades y relaciones según la guía; no se borraron datos por nombres ni prefijos.
+- Datos QA: los cinco leads documentados y la propiedad ficticia se retiraron reversiblemente del entorno local con respaldos privados. No se importan ni se retiran datos mediante Git; detalles y restauración en la guía de integración.
+
+## Cierre local de limpieza y robustez de avisos
+- Build y TypeScript aprobados; 41 pruebas frontend aprobadas tras agregar nueve casos para el worker de notificaciones y su activación.
+- Un destino mal formado ya no interrumpe la apertura del aviso; destinos ajenos al panel vuelven a `/admin`. Se reutiliza la ventana del panel cuando existe.
+- Registro/activación del worker con límite de espera: si el navegador queda pendiente, el formulario sale de Guardando y permite reintentar.
+- Navegador: cockpit con 10 clientes y métricas sin ejemplos de QA; agenda sin citas de los leads retirados; propiedad ficticia ausente del inventario.
+- Confirmado sin leer ni imprimir claves: Web Push no tiene claves pública/privada ni subject configurados en localhost. Se solicitó dominio HTTPS de pruebas y un dispositivo al usuario; recepción física sigue pendiente, no se afirma entrega con app cerrada.

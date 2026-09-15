@@ -50,6 +50,18 @@ Repetir las pantallas principales con administrador, gerente y asesores, claro/o
 
 ## 5. Datos de QA y dispositivos
 
-Antes de una demo, revisar el registro `everprop-public/docs/qa-panel-2026-09-14.md`: contiene los identificadores de registros ficticios creados. No borrar por prefijo QA/PRUEBA ni por nombre únicamente; confirmar identificador, empresa, relaciones y respaldo. Los contactos pueden tener otros leads y las propiedades pueden estar vinculadas a clientes reales. La limpieza de estos registros sigue pendiente; esta entrega no elimina datos de clientes.
+Antes de una demo, revisar el registro `everprop-public/docs/qa-panel-2026-09-14.md`: contiene los identificadores de registros ficticios creados. No borrar por prefijo QA/PRUEBA ni por nombre únicamente; confirmar identificador, empresa, relaciones y respaldo. Los contactos pueden tener otros leads y las propiedades pueden estar vinculadas a clientes reales.
+
+En el entorno local se retiraron los cinco leads documentados y la propiedad ficticia mediante el `deleted_at` ya existente; se conservan contactos e historial. No se eliminó físicamente ningún registro. El panel se verificó en navegador: 10 leads activos, cero indicadores alimentados por estos ejemplos; agenda e inventario ya no muestran los registros retirados. Esto no modifica las bases de los compañeros al actualizar Git.
+
+Los scripts `scripts/cleanup-local-qa.php` y `scripts/cleanup-local-qa-property.php` son mantenimiento puntual, restringido a APP_ENV=local y a identificadores exactos de esta sesión. Por defecto sólo muestran el estado. No forman parte del despliegue ni deben ejecutarse sobre otros datos. Antes de aplicar, validan identidades y guardan respaldos privados bajo `storage/app` del contenedor PHP. Los respaldos no se versionan y deben conservarse si se quiere restaurar.
+
+```sh
+php scripts/cleanup-local-qa.php --check-restore
+php scripts/cleanup-local-qa.php --restore
+php scripts/cleanup-local-qa-property.php --restore
+```
+
+La restauración aborta si los registros cambiaron después de la limpieza. Los respaldos se conservan; una nueva aplicación no los sobrescribe automáticamente. La comprobación de restaurabilidad de los cinco leads pasó; no se reactivaron los ejemplos para una prueba visual.
 
 Para Push, seguir `web-push.md`: claves estables en secretos, HTTPS y worker supervisado. Probar Android/iPhone con app abierta, en segundo plano, cerrada y pantalla bloqueada, apertura del aviso y cierre de sesión. El sistema operativo controla sonido y modo silencio. No hay certificación de recepción física hasta completar estas pruebas.
