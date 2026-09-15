@@ -21,9 +21,6 @@ final class AdminNotificationController extends Controller
 
         $data = $notifications->map(function ($n) use ($user) {
             $payload = $n->data;
-            if (is_string($payload)) {
-                $payload = json_decode($payload, true) ?: [];
-            }
 
             return [
                 'id' => $n->id,
@@ -58,6 +55,7 @@ final class AdminNotificationController extends Controller
         $latest = $user->notifications()->latest()->first(['id', 'created_at']);
 
         $revisionRows = $user->notifications()->orderBy('id')->get(['id', 'read_at', 'updated_at']);
+
         return response()->json([
             'revision' => hash('sha256', $revisionRows->toJson()),
             'unread_count' => $unreadCount,
@@ -74,7 +72,7 @@ final class AdminNotificationController extends Controller
         }
 
         $notification = $user->notifications()->where('id', $id)->first();
-        abort_unless($notification, 404);
+        abort_unless($notification !== null, 404);
         $notification->markAsRead();
 
         return response()->json([
@@ -111,4 +109,3 @@ final class AdminNotificationController extends Controller
         ]);
     }
 }
-

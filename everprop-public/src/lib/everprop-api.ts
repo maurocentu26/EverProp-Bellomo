@@ -191,7 +191,7 @@ function mapProject(project: ApiProject): Project {
     name: cleanText(project.name),
     type: type.includes("LAND") ? "land_development" : type.includes("BUILD") ? "building" : "commercial",
     status:
-      status === "COMPLETED"
+      status === "UNKNOWN" ? "unknown" : status === "AVAILABLE" ? "available" : status === "COMPLETED"
         ? "completed"
         : status.includes("CONSTRUCTION")
           ? "under_construction"
@@ -199,9 +199,10 @@ function mapProject(project: ApiProject): Project {
             ? "pre_sale"
             : "planning",
     progress: Number(project.progress || 0),
+    progressKnown: project.progress != null,
     location: {
       city: project.city || "Sin ciudad informada",
-      province: project.province || "Jujuy",
+      province: project.province || "Sin provincia informada",
       address: project.address || undefined,
     },
     totalUnits: Number(project.total_units || 0),
@@ -220,6 +221,7 @@ function mapProperty(property: ApiProperty): Property {
     GARAGE: "Cochera",
     HOUSE: "Casa",
     TRADITIONAL: "Propiedad",
+    UNKNOWN: "Sin tipo",
   };
   const operation = property.operation.toUpperCase();
   const status = property.status.toUpperCase();
@@ -229,9 +231,10 @@ function mapProperty(property: ApiProperty): Property {
     version: property.version,
     companyId: "c1",
     title: cleanText(property.title),
-    operation: operation === "RENT" ? "rent" : operation === "TEMPORARY" ? "temporal" : "sale",
+    operation: operation === "RENT" ? "rent" : operation === "TEMPORARY" ? "temporal" : operation === "SALE" ? "sale" : operation === "LEASING" ? "leasing" : "unknown",
     propertyType: categoryLabels[property.category.toUpperCase()] || property.category,
     price: Number(property.price || 0),
+    priceKnown: property.price != null && property.currency_code != null,
     currency: property.currency_code === "ARS" ? "ARS" : "USD",
     city: property.city || "Sin ciudad informada",
     neighborhood: property.neighborhood || "",
@@ -243,7 +246,7 @@ function mapProperty(property: ApiProperty): Property {
     projectId: property.project?.public_id || undefined,
     sectorName: property.sector_name || undefined,
     unitNumber: property.unit_number || undefined,
-    status: status === "RENTED" ? "rented" : status === "SOLD" ? "sold" : status === "RESERVED" ? "reserved" : "available",
+    status: status === "RENTED" ? "rented" : status === "SOLD" ? "sold" : status === "RESERVED" ? "reserved" : status === "AVAILABLE" ? "available" : status === "NOT_SELLABLE" ? "not_sellable" : status === "NOT_MARKETED" ? "not_marketed" : "unknown",
     legacyData: property.legacy?.data || undefined,
     services: property.services || undefined,
     commercialFeatures: property.commercial_features || undefined,
@@ -358,7 +361,7 @@ export async function everpropHealth() {
 
 export type CreatePropertyPayload = {
   title: string;
-  operation?: "sale" | "rent" | "temporal";
+  operation?: Property['operation'];
   propertyType?: string;
   price?: number;
   currency?: "USD" | "ARS";
@@ -864,9 +867,9 @@ export async function detachEverpropLeadProperty(leadPublicId: string, propertyP
 
 export type UpdatePropertyPayload = {
   title?: string;
-  operation?: "sale" | "rent" | "temporal";
+  operation?: Property['operation'];
   propertyType?: string;
-  status?: "available" | "reserved" | "sold" | "rented";
+  status?: Property['status'];
   price?: number;
   currency?: "USD" | "ARS";
   city?: string;
@@ -895,6 +898,9 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
     reserved: "RESERVED",
     sold: "SOLD",
     rented: "RENTED",
+    not_sellable: "NOT_SELLABLE",
+    not_marketed: "NOT_MARKETED",
+    unknown: "UNKNOWN",
   };
 
   if (!data.version) throw new Error("Recargá la ficha antes de editar: falta la versión actual de la propiedad.");
@@ -904,8 +910,8 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
 
   if (data.title !== undefined) payload.title = data.title;
   if (data.operation !== undefined) payload.operation = data.operation === "temporal" ? "TEMPORARY" : data.operation.toUpperCase();
-  if (data.propertyType !== undefined) payload.category = categoryMap[data.propertyType] || "LOT";
-  if (data.status !== undefined) payload.status = statusMap[data.status] || "AVAILABLE";
+  if (data.propertyType !== undefined) payload.category = categoryMap[data.propertyType] || "UNKNOWN";
+  if (data.status !== undefined) payload.status = statusMap[data.status] || "UNKNOWN";
   if (data.price !== undefined) {
     payload.price = Number(data.price);
   }

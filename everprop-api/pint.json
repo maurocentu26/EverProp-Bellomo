@@ -1,0 +1,5 @@
+{
+    "preset": "laravel",
+    "exclude": ["docs/audit"],
+    "notName": ["import-workbook-json.php"]
+}

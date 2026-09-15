@@ -15,13 +15,18 @@ use App\Domain\Tenancy\Contracts\TenantResolver;
 use App\Domain\Tenancy\Exceptions\TenantContextMissing;
 use App\Domain\Tenancy\Resolvers\TrustedTenantResolver;
 use App\Domain\Tenancy\TenantContext;
+use App\Jobs\SendWebPush;
 use App\Models\User;
+use GuzzleHttp\Client;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use LogicException;
+use Minishlink\WebPush\WebPush;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(\Minishlink\WebPush\WebPush::class, fn () => new \Minishlink\WebPush\WebPush(['VAPID' => ['subject' => config('webpush.subject'), 'publicKey' => config('webpush.public_key'), 'privateKey' => config('webpush.private_key')]], ['TTL' => 3600], new \GuzzleHttp\Client(['timeout' => 10, 'connect_timeout' => 5, 'allow_redirects' => false])));
+        $this->app->bind(WebPush::class, fn () => new WebPush(['VAPID' => ['subject' => config('webpush.subject'), 'publicKey' => config('webpush.public_key'), 'privateKey' => config('webpush.private_key')]], ['TTL' => 3600], new Client(['timeout' => 10, 'connect_timeout' => 5, 'allow_redirects' => false])));
         $this->app->bind(TenantResolver::class, TrustedTenantResolver::class);
         $this->app->scoped(
             TenantContext::class,
@@ -43,10 +48,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \Illuminate\Support\Facades\Event::listen(\Illuminate\Notifications\Events\NotificationSent::class, function ($event) {
+        Event::listen(NotificationSent::class, function ($event) {
             if ($event->channel === 'database' && $event->notifiable instanceof User && config('webpush.private_key')) {
                 try {
-                    \App\Jobs\SendWebPush::dispatch((int) $event->notifiable->tenant_id, (int) $event->notifiable->id, $event->notification->id)->onConnection(config('webpush.connection'));
+                    SendWebPush::dispatch((int) $event->notifiable->tenant_id, (int) $event->notifiable->id, $event->notification->id)->onConnection(config('webpush.connection'));
                 } catch (\Throwable $error) {
                     // The persisted CRM action must not fail when the delivery queue is unavailable.
                     report($error);

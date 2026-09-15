@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Minishlink\WebPush\VAPID;
 use Throwable;
 
 final class ProductionCheck extends Command
@@ -35,7 +36,7 @@ final class ProductionCheck extends Command
         }
         if ($this->option('webpush')) {
             try {
-                \Minishlink\WebPush\VAPID::validate([
+                VAPID::validate([
                     'subject' => config('webpush.subject'),
                     'publicKey' => config('webpush.public_key'),
                     'privateKey' => config('webpush.private_key'),

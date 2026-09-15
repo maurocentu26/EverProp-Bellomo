@@ -197,7 +197,6 @@ final class TenantIsolationAndRbacTest extends TestCase
         ]);
     }
 
-    /** @return array<string, string> */
     public function test_technical_lot_details_persist_within_the_tenant(): void
     {
         [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
@@ -212,13 +211,19 @@ final class TenantIsolationAndRbacTest extends TestCase
             ])->assertCreated();
         $id = $response->json('data.public_id');
         $this->getJson('/api/v1/admin/properties/'.$id)->assertOk()
-            ->assertJsonPath('data.commercial_features.land', function ($actual) use ($land) { ksort($actual); ksort($land); return $actual === $land; })
+            ->assertJsonPath('data.commercial_features.land', function ($actual) use ($land) {
+                ksort($actual);
+                ksort($land);
+
+                return $actual === $land;
+            })
             ->assertJsonPath('data.services.water', true);
         [$otherTenant, $otherAdmin] = $this->identity(RoleCode::TENANT_ADMIN);
         $this->actingAs($otherAdmin)->withHeaders($this->tenantHeaders($otherTenant))
             ->getJson('/api/v1/admin/properties/'.$id)->assertNotFound();
     }
 
+    /** @return array<string, string> */
     private function tenantHeaders(Tenant $tenant): array
     {
         return [

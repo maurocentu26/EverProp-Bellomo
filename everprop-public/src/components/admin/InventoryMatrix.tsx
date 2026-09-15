@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { type Property } from "@/data/admin-sample";
 import { cn } from "@/lib/utils";
+import { propertyStatusLabel } from "@/lib/inventory-labels";
 import {
   Sheet,
   SheetContent,
@@ -74,13 +75,13 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                 return (
                   <button
                     key={unit.id}
-                    aria-label={`${unit.title} · ${unit.status === "rented" ? "Alquilado" : unit.status === "sold" ? "Vendido" : unit.status === "reserved" ? "Reservado" : "Disponible"}`}
+                    aria-label={`${unit.title} · ${propertyStatusLabel(unit.status)}`}
                     onClick={() => setSelectedUnit(unit)}
                     className={cn(
                       "h-10 w-10 rounded-md border flex items-center justify-center text-xs font-bold transition-all hover:scale-110 hover:shadow-md",
                       isAvailable ? "bg-emerald-100 border-emerald-200 text-emerald-700 hover:bg-emerald-200 hover:border-emerald-300" :
                       isReserved ? "bg-amber-100 border-amber-200 text-amber-700 hover:bg-amber-200 hover:border-amber-300" :
-                      unit.status === "rented" ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-muted" :
+                      unit.status !== "sold" ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-muted" :
                       "bg-rose-100 border-rose-200 text-rose-700 hover:bg-rose-200 hover:border-rose-300"
                     )}
                     title={unit.title}
@@ -117,7 +118,7 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
         </div>
       </div>
 
-      {properties.some(unit => unit.status === "rented") && <p className="mt-2 text-xs text-slate-600">Gris: alquilado</p>}
+      {properties.some(unit => ['rented', 'not_sellable', 'not_marketed', 'unknown'].includes(unit.status ?? 'unknown')) && <p className="mt-2 text-xs text-slate-600">Gris: alquilado, no vendible, no comercializado o sin estado. Abrí la unidad para ver su estado exacto.</p>}
 
       {/* Ficha de unidad en pantalla completa */}
       <Sheet open={!!selectedUnit} onOpenChange={(open) => !open && setSelectedUnit(null)}>
@@ -156,7 +157,7 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                       <div>
                         <p id="unit-summary-title" className="text-base font-semibold text-slate-500">Precio publicado</p>
                         <p className="mt-2 flex items-center gap-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-                          {selectedUnit.currency === "ARS"
+                          {selectedUnit.priceKnown === false ? 'Sin moneda confirmada' : selectedUnit.currency === "ARS"
                             ? `$ ${selectedUnit.price.toLocaleString("es-AR")} ARS`
                             : `USD ${selectedUnit.price.toLocaleString("es-AR")}`}
                         </p>
@@ -165,10 +166,10 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                         "w-fit px-4 py-2 text-sm font-bold uppercase tracking-wider",
                         (!selectedUnit.status || selectedUnit.status === "available") ? "border-emerald-200 bg-emerald-100 text-emerald-700" :
                         selectedUnit.status === "reserved" ? "border-amber-200 bg-amber-100 text-amber-800" :
-                        selectedUnit.status === "rented" ? "border-slate-300 bg-slate-100 text-slate-700" :
+                        selectedUnit.status !== "sold" ? "border-slate-300 bg-slate-100 text-slate-700" :
                         "border-rose-200 bg-rose-100 text-rose-700"
                       )}>
-                        {(!selectedUnit.status || selectedUnit.status === "available") ? "Disponible" : selectedUnit.status === "reserved" ? "Reservado" : selectedUnit.status === "rented" ? "Alquilado" : "Vendido"}
+                        {propertyStatusLabel(selectedUnit.status)}
                       </Badge>
                     </div>
 

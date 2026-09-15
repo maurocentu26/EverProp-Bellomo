@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Phone, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { propertyOperationLabel } from "@/lib/inventory-labels";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
 import type { LeadFollowUp } from "@/data/admin-sample";
@@ -14,7 +15,7 @@ type PropertyLite = {
   bedrooms?: number;
   price?: number;
   currency?: string;
-  operation?: "sale" | "rent" | "temporal";
+  operation?: "sale" | "rent" | "temporal" | "leasing" | "unknown";
 };
 
 type Props = {
@@ -84,7 +85,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
             "absolute top-3 right-3 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-sm",
             op === "sale" ? "bg-emerald-500 text-white" : "bg-blue-600 text-white"
           )}>
-            {op === "sale" ? "Venta" : op === "rent" ? "Alquiler" : "Temp"}
+            {propertyOperationLabel(op)}
           </span>
         )}
 

@@ -103,7 +103,7 @@ export default function ProjectDetailView() {
               project.status === 'under_construction' ? "bg-blue-100 text-blue-700" :
               "bg-amber-100 text-amber-700"
             )}>
-              {({ planning: "En planificación", completed: "Finalizado", under_construction: "En construcción", pre_sale: "Preventa" })[project.status] || "En desarrollo"}
+              {({ planning: "En planificación", completed: "Finalizado", under_construction: "En construcción", pre_sale: "Preventa", available: "Disponible", unknown: "Sin estado informado" })[project.status]}
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">{project.location.city}, {project.location.province}</p>

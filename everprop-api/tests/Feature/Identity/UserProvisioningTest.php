@@ -13,6 +13,7 @@ final class UserProvisioningTest extends TestCase
 {
     use DatabaseTransactions;
 
+    /** @return array<string, mixed> */
     private function payload(): array
     {
         return ['firstName' => 'Test', 'lastName' => 'Inventory', 'email' => 'provisioning@example.invalid', 'phone' => '+5493881234567', 'role' => 'INVENTORY_MANAGER'];

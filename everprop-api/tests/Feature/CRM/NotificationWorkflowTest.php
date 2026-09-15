@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\CRM;
 
 use App\Domain\Identity\Enums\RoleCode;
@@ -27,7 +28,9 @@ final class NotificationWorkflowTest extends TestCase
         $this->getJson('/api/v1/admin/notifications')->assertOk()->assertJsonPath('data.0.read', true);
         $afterRevision = $this->getJson('/api/v1/admin/notifications/count')->assertOk()->json('revision');
         $this->assertNotSame($beforeRevision, $afterRevision);
-        for ($i = 0; $i < 100; $i++) $user->notifications()->create(['id' => (string) Str::uuid(), 'type' => 'QA', 'data' => ['message' => 'Pagination test']]);
+        for ($i = 0; $i < 100; $i++) {
+            $user->notifications()->create(['id' => (string) Str::uuid(), 'type' => 'QA', 'data' => ['message' => 'Pagination test']]);
+        }
         $this->getJson('/api/v1/admin/notifications')->assertOk()->assertJsonCount(100, 'data')->assertJsonPath('meta.next_page', 2);
         $this->getJson('/api/v1/admin/notifications?page=2')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.next_page', null);
     }

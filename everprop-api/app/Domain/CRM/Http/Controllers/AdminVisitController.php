@@ -2,14 +2,17 @@
 
 namespace App\Domain\CRM\Http\Controllers;
 
+use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\VisitPolicy;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class AdminVisitController extends Controller
 {
@@ -26,6 +29,7 @@ final class AdminVisitController extends Controller
         $total = (clone $query)->count();
         $rows = $query->orderBy('v.scheduled_at')->orderBy('v.id')->limit(10)
             ->get(['v.public_id', 'v.scheduled_at', 'v.notes', 'l.public_id as lead_id', 'c.display_name', 'v.guest_name']);
+
         return response()->json([
             'data' => $rows->map(fn ($row) => [
                 'id' => $row->public_id,
@@ -37,7 +41,7 @@ final class AdminVisitController extends Controller
         ]);
     }
 
-    private function query(Request $request, TenantContext $context, VisitPolicy $policy)
+    private function query(Request $request, TenantContext $context, VisitPolicy $policy): Builder
     {
         $user = $request->user();
         abort_unless($user && $policy->viewAny($user, $context->id()), 403);
@@ -54,6 +58,7 @@ final class AdminVisitController extends Controller
                 $q->whereNull('v.lead_id')->orWhere('l.assigned_user_id', $user->id);
             });
         }
+
         return $query;
     }
 
@@ -71,9 +76,10 @@ final class AdminVisitController extends Controller
             'p.public_id as property_public_id', 'p.title as property_title',
             'u.public_id as agent_public_id', 'u.display_name as agent_name',
         ]);
+
         return response()->json([
             'meta' => ['next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null],
-            'data' => $page->getCollection()->map(fn ($row) => [
+            'data' => collect($page->items())->map(fn ($row) => [
                 'id' => $row->public_id, 'leadId' => $row->lead_public_id,
                 'leadName' => $row->display_name ?: $row->guest_name ?: 'Visitante',
                 'phone' => $row->phone_e164 ?: $row->guest_phone, 'email' => $row->email ?: $row->guest_email,
@@ -96,27 +102,29 @@ final class AdminVisitController extends Controller
             'scheduled_at' => 'required|date|after:now', 'notes' => 'nullable|string|max:5000',
         ]);
         $lead = null;
-        if (!empty($data['lead_id'])) {
+        if (! empty($data['lead_id'])) {
             $lead = DB::table('leads')->where('tenant_id', $context->id())
                 ->where('public_id', $data['lead_id'])->whereNull('deleted_at')->first();
-            abort_unless($lead && (new \App\Domain\CRM\LeadAccessPolicy)->update($user, $context->id(), $lead), 403);
+            abort_unless($lead && (new LeadAccessPolicy)->update($user, $context->id(), $lead), 403);
         }
         $agentId = $lead?->assigned_user_id ?: $user->id;
-        if ($user->role() !== RoleCode::SALES_ADVISOR && !empty($data['agent_id'])) {
+        if ($user->role() !== RoleCode::SALES_ADVISOR && ! empty($data['agent_id'])) {
             $agentId = DB::table('users')->where('tenant_id', $context->id())->where('status', 'ACTIVE')
                 ->whereIn('role_code', ['TENANT_ADMIN', 'SALES_MANAGER', 'SALES_ADVISOR'])
                 ->where('public_id', $data['agent_id'])->value('id');
             abort_unless($agentId, 422, 'Asesor no disponible.');
         }
-        if ($user->role() === RoleCode::SALES_ADVISOR) $agentId = $user->id;
+        if ($user->role() === RoleCode::SALES_ADVISOR) {
+            $agentId = $user->id;
+        }
         abort_if($lead && $lead->assigned_user_id && (int) $agentId !== (int) $lead->assigned_user_id, 422, 'La cita debe quedar con el responsable del lead. Reasigná primero el cliente desde su ficha.');
         $propertyId = null;
-        if (!empty($data['property_id'])) {
+        if (! empty($data['property_id'])) {
             $propertyId = DB::table('properties')->where('tenant_id', $context->id())
                 ->where('public_id', $data['property_id'])->value('id');
             abort_unless($propertyId, 422, 'Propiedad no disponible.');
         }
-        $id = (string) \Illuminate\Support\Str::uuid();
+        $id = (string) Str::uuid();
         DB::table('visits')->insert([
             'tenant_id' => $context->id(), 'public_id' => $id, 'lead_id' => $lead?->id,
             'property_id' => $propertyId, 'assigned_user_id' => $agentId, 'created_by_user_id' => $user->id,
@@ -125,6 +133,7 @@ final class AdminVisitController extends Controller
             'scheduled_at' => Carbon::parse($data['scheduled_at'])->utc(), 'notes' => $data['notes'] ?? null,
             'status' => 'SCHEDULED', 'created_at' => now(), 'updated_at' => now(),
         ]);
+
         return response()->json(['data' => ['id' => $id]], 201);
     }
 
@@ -132,10 +141,11 @@ final class AdminVisitController extends Controller
     {
         abort_if($request->user()?->role() === RoleCode::READ_ONLY, 403);
         $row = $this->query($request, $context, $policy)->where('v.public_id', $visit)->first(['v.id', 'v.status']);
-        abort_unless($row, 404);
+        abort_unless($row !== null, 404);
         abort_unless($row->status === 'SCHEDULED', 422, 'Solo se puede cancelar una cita pendiente.');
         DB::table('visits')->where('tenant_id', $context->id())->where('id', $row->id)
             ->where('status', 'SCHEDULED')->update(['status' => 'CANCELLED', 'cancelled_at' => now(), 'updated_at' => now()]);
+
         return response()->json(['data' => ['id' => $visit, 'status' => 'cancelled']]);
     }
 }

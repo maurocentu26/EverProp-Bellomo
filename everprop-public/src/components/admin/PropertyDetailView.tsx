@@ -277,10 +277,10 @@ export default function PropertyDetailView({ propertyId }: Props) {
         <div className="space-y-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-center">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-              Precio de {property.operation === 'sale' ? 'Venta' : 'Alquiler'}
+              Precio
             </span>
             <div className="mt-1.5 text-2xl sm:text-3xl font-extrabold text-slate-900">
-              {property.currency === 'ARS'
+              {property.priceKnown === false ? 'Sin moneda confirmada' : property.currency === 'ARS'
                 ? `$ ${property.price.toLocaleString('es-AR')} ARS`
                 : `USD ${property.price.toLocaleString('es-AR')}`}
             </div>
@@ -288,6 +288,9 @@ export default function PropertyDetailView({ propertyId }: Props) {
             {/* Selector de Estado en Vivo */}
             <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col items-center">
               {property.status === "rented" && <p className="mb-2 text-sm font-semibold">Alquilado</p>}
+              {property.status === "not_sellable" && <p className="mb-2 text-sm font-semibold">No vendible</p>}
+              {property.status === "not_marketed" && <p className="mb-2 text-sm font-semibold">No comercializado</p>}
+              {property.status === "unknown" && <p className="mb-2 text-sm font-semibold">Sin estado informado</p>}
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                 Estado del Inmueble
               </span>

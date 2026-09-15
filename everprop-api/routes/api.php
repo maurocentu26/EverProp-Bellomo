@@ -2,12 +2,13 @@
 
 use App\Domain\Collections\CollectionsController;
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
-use App\Domain\CRM\Http\Controllers\AdminVisitController;
 use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
+use App\Domain\CRM\Http\Controllers\AdminVisitController;
 use App\Domain\CRM\Http\Controllers\PublicLeadController;
 use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AdminUserController;
 use App\Domain\Identity\Http\Controllers\AuthController;
+use App\Domain\Identity\Http\Controllers\WebPushController;
 use App\Domain\Identity\InventoryRoleBoundary;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
 use App\Domain\Inventory\Http\Controllers\AdminProjectController;
@@ -68,9 +69,9 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'index'])->name('leads.follow-ups.index');
         Route::post('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'store'])->name('leads.follow-ups.store');
 
-        Route::get('/push/config', [\App\Domain\Identity\Http\Controllers\WebPushController::class, 'config']);
-        Route::post('/push/subscriptions', [\App\Domain\Identity\Http\Controllers\WebPushController::class, 'store'])->middleware('throttle:30,1');
-        Route::delete('/push/subscriptions', [\App\Domain\Identity\Http\Controllers\WebPushController::class, 'destroy']);
+        Route::get('/push/config', [WebPushController::class, 'config']);
+        Route::post('/push/subscriptions', [WebPushController::class, 'store'])->middleware('throttle:30,1');
+        Route::delete('/push/subscriptions', [WebPushController::class, 'destroy']);
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/count', [AdminNotificationController::class, 'count'])->name('notifications.count');
         Route::post('/notifications/mark-all-read', [AdminNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');

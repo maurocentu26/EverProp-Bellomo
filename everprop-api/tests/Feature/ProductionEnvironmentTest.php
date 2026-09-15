@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Minishlink\WebPush\VAPID;
 use Tests\TestCase;
 
 final class ProductionEnvironmentTest extends TestCase
@@ -28,7 +29,7 @@ final class ProductionEnvironmentTest extends TestCase
         $this->artisan('everprop:production-check')->assertSuccessful();
         config(['webpush.public_key' => null, 'webpush.private_key' => null, 'webpush.subject' => null]);
         $this->artisan('everprop:production-check --webpush')->assertFailed();
-        $keys = \Minishlink\WebPush\VAPID::createVapidKeys();
+        $keys = VAPID::createVapidKeys();
         config(['webpush.public_key' => $keys['publicKey'], 'webpush.private_key' => $keys['privateKey'],
             'webpush.subject' => 'mailto:qa@example.invalid', 'webpush.connection' => 'database']);
         $this->artisan('everprop:production-check --webpush')->assertSuccessful();

@@ -152,7 +152,7 @@ final readonly class PublicLeadService
                     try {
                         $assignedUser = User::find($leadRecord->assigned_user_id);
                         if ($assignedUser) {
-                            $contactName = $contact['display_name'] ?? 'Nuevo Contacto Web';
+                            $contactName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $contact['id'])->value('display_name') ?? 'Nuevo Contacto Web';
                             $assignedUser->notify(new LeadAssignedNotification(
                                 leadPublicId: (string) $leadRecord->public_id,
                                 leadName: $contactName,

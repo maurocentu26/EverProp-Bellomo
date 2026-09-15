@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Property } from "@/data/admin-sample";
-import PropertyCard from "@/components/admin/PropertyCard";
+import PropertyCard, { formatPropertyPrice } from "@/components/admin/PropertyCard";
+import { propertyStatusLabel } from "@/lib/inventory-labels";
 import { isMockDataMode } from "@/lib/data-mode";
 
 type Props = {
@@ -30,10 +31,10 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
         {properties.map((property) => <Link key={property.id} href={`/admin/properties/${property.id}`} className="min-w-0 rounded-xl border border-border bg-background p-4 focus-visible:outline-2 focus-visible:outline-blue-500">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <h3 className="min-w-0 font-semibold break-words">{property.title}</h3>
-            <span className="text-xs font-semibold">{property.status === "rented" ? "Alquilado" : property.status === "available" ? "Disponible" : property.status === "reserved" ? "Reservado" : "Vendido"}</span>
+            <span className="text-xs font-semibold">{propertyStatusLabel(property.status)}</span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">{[property.sectorName && (/^(manzana|mz[. ]?)/i.test(property.sectorName) ? property.sectorName : `Manzana ${property.sectorName}`), property.area_m2 != null && `${property.area_m2.toLocaleString("es-AR", { maximumFractionDigits: 2 })} m²`].filter(Boolean).join(" · ")}</p>
-          <p className="mt-2 font-semibold">{property.currency} {property.price.toLocaleString("es-AR")}</p>
+          <p className="mt-2 font-semibold">{property.priceKnown === false ? 'Precio sin moneda confirmada' : formatPropertyPrice(property.price, property.currency)}</p>
           <span className="mt-3 block text-sm text-blue-600 dark:text-blue-300">Ver ficha completa →</span>
         </Link>)}
       </div>

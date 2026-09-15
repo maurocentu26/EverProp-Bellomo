@@ -28,7 +28,7 @@ export function EditPropertyModal({
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: property.title,
-    price: property.price != null ? String(property.price) : "",
+    price: property.priceKnown === false ? "" : property.price != null ? String(property.price) : "",
     currency: property.currency || "USD",
     operation: property.operation || "sale",
     propertyType: property.propertyType || "Lote",
@@ -44,7 +44,7 @@ export function EditPropertyModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSaving) return;
-    if (!formData.title.trim() || !formData.price.trim() || !Number.isFinite(Number(formData.price)) || Number(formData.price) < 0) {
+    if (!formData.title.trim() || (formData.price.trim() && (!Number.isFinite(Number(formData.price)) || Number(formData.price) < 0))) {
       toast.error("Ingresá un título y un precio válido, mayor o igual a cero."); return;
     }
     if (formData.area_m2 && (!Number.isFinite(Number(formData.area_m2)) || Number(formData.area_m2) <= 0)) {
@@ -57,9 +57,9 @@ export function EditPropertyModal({
         title: formData.title.trim(),
         price: formData.price ? Number(formData.price) : 0,
         currency: formData.currency as "USD" | "ARS",
-        operation: formData.operation as "sale" | "rent" | "temporal",
+        operation: formData.operation as Property['operation'],
         propertyType: formData.propertyType,
-        status: formData.status as "available" | "reserved" | "sold" | "rented",
+        status: formData.status as Property['status'],
         sectorName: formData.sectorName.trim() || undefined,
         unitNumber: formData.unitNumber.trim() || undefined,
         area_m2: formData.area_m2 ? Number(formData.area_m2) : undefined,
@@ -72,8 +72,7 @@ export function EditPropertyModal({
         const persisted = await updateEverpropProperty(property.id, {
           version: property.version,
           title: updatedData.title,
-          price: updatedData.price,
-          currency: updatedData.currency,
+          ...(formData.price.trim() ? { price: updatedData.price, currency: updatedData.currency } : {}),
           operation: updatedData.operation,
           propertyType: updatedData.propertyType,
           status: updatedData.status,
@@ -151,6 +150,8 @@ export function EditPropertyModal({
                 <option value="sale">Venta</option>
                 <option value="rent">Alquiler</option>
                 <option value="temporal">Temporal</option>
+                <option value="leasing">Leasing</option>
+                <option value="unknown">Sin operación informada</option>
               </select>
             </Field>
 
@@ -218,7 +219,10 @@ export function EditPropertyModal({
                 className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500"
               >
                 <option value="available">Disponible</option>
-                <option value="reserved">Reservado / No Vendible</option>
+                <option value="reserved">Reservado</option>
+                <option value="not_sellable">No vendible</option>
+                <option value="not_marketed">No comercializado</option>
+                <option value="unknown">Sin estado informado</option>
                 <option value="sold">Vendido</option><option value="rented">Alquilado</option>
               </select>
             </Field>

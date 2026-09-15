@@ -2,8 +2,8 @@
 
 namespace App\Domain\CRM\Http\Controllers;
 
-use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\CRM\LeadAccessPolicy;
+use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -48,12 +48,12 @@ final class AdminLeadFollowUpController extends Controller
             ])
             ->orderBy('lead_follow_ups.id');
 
-        if ($user && isset($user->role_code) && $user->role_code === RoleCode::SALES_ADVISOR) {
+        if ($user->role() === RoleCode::SALES_ADVISOR) {
             $query->where('leads.assigned_user_id', $user->id);
         }
 
         $page = $query->simplePaginate(500);
-        $followUps = $page->getCollection();
+        $followUps = collect($page->items());
 
         return response()->json([
             'meta' => ['next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null],
@@ -172,7 +172,7 @@ final class AdminLeadFollowUpController extends Controller
 
         if (! $userId) {
             return response()->json([
-                'error' => 'El lead debe tener un asesor asignado antes de registrar un seguimiento.'
+                'error' => 'El lead debe tener un asesor asignado antes de registrar un seguimiento.',
             ], 422);
         }
 
@@ -193,8 +193,7 @@ final class AdminLeadFollowUpController extends Controller
             $occurredAt,
             $nextContactAt,
             $now,
-            $followUpUuid,
-            $request
+            $followUpUuid
         ) {
             DB::table('leads')->where('tenant_id', $tenantId)->where('id', $lead->id)->lockForUpdate()->first();
             // 1. Insert follow-up record
@@ -241,12 +240,12 @@ final class AdminLeadFollowUpController extends Controller
                     'lead_id' => $lead->id,
                     'property_id' => null,
                     'assigned_user_id' => $lead->assigned_user_id ?: $userId,
-                    'created_by_user_id' => $request->user()?->id ?? $userId,
+                    'created_by_user_id' => $userId,
                     'visit_type' => in_array($validated['type'], ['visit', 'meeting']) ? 'PHYSICAL' : 'VIRTUAL',
                     'scheduled_at' => $nextContactAt,
                     'scheduled_end_at' => (clone $nextContactAt)->addHour(),
                     'status' => 'SCHEDULED',
-                    'notes' => ($validated['next_action'] ?? null) ?: ("Próximo contacto · " . (['call' => 'Llamada', 'whatsapp' => 'WhatsApp', 'email' => 'Correo', 'meeting' => 'Reunión', 'visit' => 'Visita', 'note' => 'Nota interna'][$validated['type']] ?? 'Contacto')),
+                    'notes' => ($validated['next_action'] ?? null) ?: ('Próximo contacto · '.(['call' => 'Llamada', 'whatsapp' => 'WhatsApp', 'email' => 'Correo', 'meeting' => 'Reunión', 'visit' => 'Visita', 'note' => 'Nota interna'][$validated['type']])),
                     'outcome' => null,
                     'created_at' => $now,
                     'updated_at' => $now,
@@ -277,35 +276,10 @@ final class AdminLeadFollowUpController extends Controller
         });
     }
 
-    private function resolveUserId(mixed $agentId, int $tenantId): ?int
-    {
-        if (empty($agentId)) {
-            return null;
-        }
-
-        if (is_numeric($agentId)) {
-            $user = DB::table('users')
-                ->where('tenant_id', $tenantId)
-                ->where('id', (int) $agentId)
-                ->first(['id']);
-            return $user ? (int) $user->id : null;
-        }
-
-        if (is_string($agentId)) {
-            $user = DB::table('users')
-                ->where('tenant_id', $tenantId)
-                ->where('public_id', $agentId)
-                ->first(['id']);
-            return $user ? (int) $user->id : null;
-        }
-
-        return null;
-    }
-
     private function ensureTableExists(): void
     {
         if (! Schema::hasTable('lead_follow_ups')) {
-            DB::unprepared("
+            DB::unprepared('
                 CREATE TABLE IF NOT EXISTS `lead_follow_ups` (
                     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                     `tenant_id` BIGINT UNSIGNED NOT NULL,
@@ -328,7 +302,7 @@ final class AdminLeadFollowUpController extends Controller
                     CONSTRAINT `fk_lead_follow_ups_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
                     CONSTRAINT `fk_lead_follow_ups_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            ");
+            ');
         }
     }
 }

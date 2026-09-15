@@ -3,6 +3,7 @@ import Badge from "@/components/ui/badge";
 import type { Property } from "@/data/admin-sample";
 import { Building2, Trees } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { propertyStatusLabel } from "@/lib/inventory-labels";
 
 export function formatPropertyPrice(value?: number, currency: "USD" | "ARS" = "USD") {
   if (value == null || isNaN(value) || value <= 0) return "-";
@@ -104,11 +105,7 @@ export default function PropertyCard({ property, readOnly = false }: Props) {
               : "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
           )}
         >
-          {property.status === "rented" ? "Alquilado" : property.status === "available"
-            ? "Disponible"
-            : property.status === "reserved"
-            ? "No Vendible / Reserva"
-            : "Vendido"}
+          {propertyStatusLabel(property.status)}
         </span>
       </td>
     </tr>

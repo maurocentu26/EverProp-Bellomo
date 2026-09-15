@@ -1,4 +1,5 @@
 <?php
+
 return [
     'connection' => env('WEBPUSH_QUEUE_CONNECTION', 'database'),
     'public_key' => env('WEBPUSH_PUBLIC_KEY'),

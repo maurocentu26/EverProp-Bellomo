@@ -91,17 +91,14 @@ export default function GlobalInventoryMatrixPage() {
     const exportData = filteredProperties.map(p => {
       const row = { ...(p.legacyData || {}) };
       
-      if (p.price !== undefined) {
+      if (p.priceKnown !== false && p.price !== undefined) {
         row["ProPre"] = p.price;
       }
       
-      if (p.status) {
-        if (p.status === "sold") {
-          row["ProEId"] = 4;
-        } else if (p.status === "available") {
-          row["ProEId"] = 7;
-        }
-      }
+      const legacyStatus = p.status === 'available' ? (p.operation === 'rent' ? 1 : p.operation === 'sale' ? 2 : undefined)
+        : p.status === 'sold' ? 4 : p.status === 'rented' ? 3 : p.status === 'reserved' ? 6
+        : p.status === 'not_sellable' ? 7 : p.status === 'not_marketed' ? 8 : undefined;
+      if (legacyStatus !== undefined) row['ProEId'] = legacyStatus;
       
       return row;
     });

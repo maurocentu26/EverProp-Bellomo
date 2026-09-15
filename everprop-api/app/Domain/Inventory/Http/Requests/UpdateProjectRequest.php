@@ -25,7 +25,7 @@ final class UpdateProjectRequest extends InventoryRequest
             ],
             'name' => ['sometimes', 'string', 'max:200'],
             'project_type' => ['sometimes', Rule::enum(ProjectType::class)],
-            'status' => ['sometimes', Rule::enum(ProjectStatus::class)],
+            'status' => ['sometimes', $this->sourceEnum('status', ProjectStatus::class)],
             'progress' => ['sometimes', 'integer', 'min:0', 'max:100'],
             'total_units' => ['sometimes', 'integer', 'min:0'],
             'city' => ['sometimes', 'string', 'max:160'],

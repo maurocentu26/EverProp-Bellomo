@@ -3,6 +3,7 @@
 namespace App\Domain\Inventory\Http\Resources;
 
 use App\Domain\Inventory\Models\Property;
+use App\Domain\Inventory\Services\InventoryAccess;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -13,7 +14,7 @@ final class PropertyResource extends JsonResource
     public function toArray(Request $request): array
     {
         $user = $request->user();
-        $canViewPrices = $request->attributes->get('inventory.can_view_prices', true) === true;
+        $canViewPrices = $user === null || app(InventoryAccess::class)->mayViewPriceFields($user);
 
         return [
             'id' => $this->when($user !== null, $this->id),
@@ -45,8 +46,7 @@ final class PropertyResource extends JsonResource
                 'dep' => $this->legacy_dep,
                 'status_id' => $this->legacy_status_id,
                 'type_id' => $this->legacy_type_id,
-                'data' => $this->legacy_data_json,
-            ]),
+            ] + ($canViewPrices ? ['data' => $this->legacy_data_json] : [])),
             'version' => $this->when($user !== null, $this->version),
             'project' => new ProjectResource($this->whenLoaded('project')),
             'features' => PropertyFeatureResource::collection($this->whenLoaded('features')),

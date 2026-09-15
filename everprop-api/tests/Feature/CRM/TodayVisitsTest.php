@@ -158,10 +158,12 @@ final class TodayVisitsTest extends TestCase
         }
         DB::table('leads')->insert($rows);
         $records = [];
-        for ($i = 0; $i < 501; $i++) $records[] = [
-            'public_id' => (string) Str::uuid(), 'tenant_id' => $tenant->id, 'lead_id' => $lead,
-            'user_id' => $advisor->id, 'type' => 'call', 'occurred_at' => now(), 'summary' => 'Test', 'result' => 'Test',
-        ];
+        for ($i = 0; $i < 501; $i++) {
+            $records[] = [
+                'public_id' => (string) Str::uuid(), 'tenant_id' => $tenant->id, 'lead_id' => $lead,
+                'user_id' => $advisor->id, 'type' => 'call', 'occurred_at' => now(), 'summary' => 'Test', 'result' => 'Test',
+            ];
+        }
         DB::table('lead_follow_ups')->insert($records);
         $headers = ['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173'];
         $this->actingAs($advisor)->withHeaders($headers);
@@ -216,6 +218,7 @@ final class TodayVisitsTest extends TestCase
         $this->actingAs($advisor)->getJson('/api/v1/admin/visits')->assertOk()->assertJsonCount(0, 'data');
     }
 
+    /** @return array<mixed> */
     private function fixture(): array
     {
         $tenant = Tenant::factory()->create();
@@ -232,6 +235,7 @@ final class TodayVisitsTest extends TestCase
             'assigned_user_id' => $user->id, 'source_channel' => 'WEB_FORM', 'source_kind' => 'CONTACT_FORM',
             'title' => 'Test visit', 'first_touch_at' => now(), 'last_touch_at' => now(),
         ]);
+
         return [$tenant, $user, $lead];
     }
 
