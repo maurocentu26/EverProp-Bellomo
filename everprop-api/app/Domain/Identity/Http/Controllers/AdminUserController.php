@@ -31,7 +31,7 @@ final class AdminUserController
             'firstName' => 'required|string|max:79', 'lastName' => 'required|string|max:79',
             'email' => ['required', 'email', 'max:320', Rule::unique('users')->where('tenant_id', $tenant->id())],
             'phone' => ['required', 'regex:/^\+[1-9][0-9]{7,14}$/'],
-            'role' => ['required', Rule::in(['SALES_ADVISOR', 'INVENTORY_MANAGER'])],
+            'role' => ['required', Rule::in(['SALES_ADVISOR', 'INVENTORY_MANAGER', 'TENANT_ADMIN'])],
         ]);
         $token = Str::random(64);
         $user = DB::transaction(function () use ($data, $tenant, $token) {
@@ -44,8 +44,8 @@ final class AdminUserController
             $user->save();
             DB::table('user_inventory_settings')->insert([
                 'tenant_id' => $tenant->id(), 'user_id' => $user->id, 'visibility_mode' => 'ALL',
-                'can_view_prices' => true, 'can_manage_inventory' => $data['role'] === 'INVENTORY_MANAGER',
-                'can_manage_prices' => $data['role'] === 'INVENTORY_MANAGER',
+                'can_view_prices' => true, 'can_manage_inventory' => in_array($data['role'], ['INVENTORY_MANAGER', 'TENANT_ADMIN'], true),
+                'can_manage_prices' => in_array($data['role'], ['INVENTORY_MANAGER', 'TENANT_ADMIN'], true),
             ]);
             Cache::put('user-activation:'.hash('sha256', $token), ['tenant' => $tenant->id(), 'user' => $user->id], now()->addHours(24));
 

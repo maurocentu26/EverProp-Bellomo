@@ -132,6 +132,6 @@ export function getAvailableNavigationGroups({
   }
 
   return navigationGroups.map(group => group.label === "Gestión" && isTenantAdmin
-    ? {...group, items: [...group.items, {title: "Alta de Asesor", href: "/admin/asesores", icon: Users, matchPath: "/admin/asesores"}]}
+    ? {...group, items: [...group.items, {title: "Alta de usuarios", href: "/admin/asesores", icon: Users, matchPath: "/admin/asesores"}]}
     : group).map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))})).filter(group => group.items.length > 0);
 }

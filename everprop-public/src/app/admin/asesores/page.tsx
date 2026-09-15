@@ -40,13 +40,13 @@ export default function AdvisorsPage() {
   }
   const inputClass = "mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm";
   return <div className="mx-auto max-w-4xl space-y-6">
-    <header><h1 className="text-2xl font-bold">Alta de Asesor</h1><p className="mt-2 text-sm text-muted-foreground">Administrá asesores comerciales y encargados de inventario.</p></header>
+    <header><h1 className="text-2xl font-bold">Alta de usuarios</h1><p className="mt-2 text-sm text-muted-foreground">Administrá administradores, asesores comerciales y encargados de inventario.</p></header>
     <form onSubmit={submit} className="grid gap-4 rounded-2xl border border-border bg-card p-6 sm:grid-cols-2">
       <label className="text-sm font-medium">Nombre<input name="firstName" required maxLength={79} autoComplete="given-name" className={inputClass}/></label>
       <label className="text-sm font-medium">Apellido<input name="lastName" required maxLength={79} autoComplete="family-name" className={inputClass}/></label>
       <label className="text-sm font-medium">Correo electrónico<input name="email" type="email" required autoComplete="email" className={inputClass}/></label>
       <label className="text-sm font-medium">Teléfono<input name="phone" type="tel" required pattern="\+[1-9][0-9]{7,14}" placeholder="+5493881234567" autoComplete="tel" className={inputClass}/><span className="text-xs text-muted-foreground">Incluí código de país, sin espacios.</span></label>
-      <label className="text-sm font-medium">Perfil<select name="role" className={inputClass}><option value="SALES_ADVISOR">Asesor comercial</option><option value="INVENTORY_MANAGER">Encargado de inventario</option></select></label>
+      <label className="text-sm font-medium">Perfil<select name="role" className={inputClass}><option value="SALES_ADVISOR">Asesor comercial</option><option value="INVENTORY_MANAGER">Encargado de inventario</option><option value="TENANT_ADMIN">Administrador</option></select><span className="text-xs text-muted-foreground">El administrador puede gestionar usuarios y todas las áreas de la empresa.</span></label>
       <div className="flex items-end"><button disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white disabled:opacity-50">{saving ? <LoaderCircle className="size-4 animate-spin"/> : <UserPlus className="size-4"/>}{saving ? "Dando de alta…" : "Dar de alta"}</button></div>
     </form>
     {error && <p role="alert" className="rounded-xl border border-red-300 p-4 text-red-600">{error}</p>}

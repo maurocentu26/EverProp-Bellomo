@@ -13,6 +13,12 @@ final class UserProvisioningTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['cache.default' => 'array']);
+    }
+
     /** @return array<string, mixed> */
     private function payload(): array
     {
@@ -57,9 +63,40 @@ final class UserProvisioningTest extends TestCase
         $otherUser = User::factory()->for($otherTenant)->create();
         $this->getJson('/api/v1/admin/users')->assertOk()->assertJsonMissing(['public_id' => $otherUser->public_id]);
         $this->postJson('/api/v1/admin/users/'.$otherUser->public_id.'/activation')->assertNotFound();
-        $this->postJson('/api/v1/admin/users', array_replace($this->payload(), ['role' => 'TENANT_ADMIN']))->assertUnprocessable();
+        $this->postJson('/api/v1/admin/users', array_replace($this->payload(), ['role' => 'SUPER_ADMIN']))->assertUnprocessable();
         $this->postJson('/api/v1/admin/users', $this->payload() + ['tenant_id' => $tenant->id])->assertUnprocessable();
         $this->postJson('/api/v1/admin/users', $this->payload())->assertCreated();
         $this->postJson('/api/v1/admin/users', $this->payload())->assertUnprocessable();
+    }
+
+    public function test_new_tenant_admin_activates_and_can_manage_users_only_in_own_tenant(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $admin = User::factory()->for($tenant)->create(['role_code' => RoleCode::TENANT_ADMIN]);
+        $this->actingAs($admin)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
+        $response = $this->postJson('/api/v1/admin/users', array_replace($this->payload(), ['role' => 'TENANT_ADMIN']))->assertCreated();
+        $user = User::where('tenant_id', $tenant->id)->where('public_id', $response->json('data.id'))->firstOrFail();
+        self::assertSame(RoleCode::TENANT_ADMIN, $user->role());
+        self::assertNull($user->password_hash);
+        self::assertSame('PAUSED', $user->statusCode()->value);
+        $this->assertDatabaseHas('user_inventory_settings', ['tenant_id' => $tenant->id, 'user_id' => $user->id, 'can_manage_inventory' => true, 'can_manage_prices' => true]);
+        $this->app['auth']->forgetGuards();
+        $activation = ['token' => $response->json('data.activationToken'), 'password' => 'StrongLocalPassword123', 'password_confirmation' => 'StrongLocalPassword123'];
+        $this->postJson('/api/v1/auth/activate', $activation)->assertOk();
+        $this->postJson('/api/v1/auth/activate', $activation)->assertUnprocessable();
+        $this->actingAs($user->fresh())->getJson('/api/v1/admin/users')->assertOk();
+        $this->postJson('/api/v1/admin/users', array_replace($this->payload(), ['email' => 'second@example.invalid']))->assertCreated();
+        $otherTenant = Tenant::factory()->create();
+        $this->withHeaders(['X-Everprop-Tenant' => $otherTenant->public_id])->postJson('/api/v1/admin/users', $this->payload())->assertNotFound();
+    }
+
+    public function test_non_admin_roles_cannot_provision_administrators(): void
+    {
+        $tenant = Tenant::factory()->create();
+        foreach ([RoleCode::SALES_ADVISOR, RoleCode::INVENTORY_MANAGER, RoleCode::SALES_MANAGER, RoleCode::READ_ONLY] as $role) {
+            $actor = User::factory()->for($tenant)->create(['role_code' => $role]);
+            $this->actingAs($actor)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
+            $this->postJson('/api/v1/admin/users', array_replace($this->payload(), ['role' => 'TENANT_ADMIN']))->assertForbidden();
+        }
     }
 }
