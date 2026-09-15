@@ -317,6 +317,18 @@ async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   };
 }
 
+export async function loadEverpropProjects() {
+  const prefix = "/api/v1/admin";
+  const projects = await loadCatalogPages<ApiProject>(`${prefix}/projects`);
+  return projects.map(mapProject);
+}
+
+export async function loadEverpropPropertiesByProject(projectId: string) {
+  const prefix = "/api/v1/admin";
+  const properties = await loadCatalogPages<ApiProperty>(`${prefix}/properties?project_id=${projectId}`);
+  return properties.map(mapProperty).filter(p => p.projectId === projectId);
+}
+
 export async function loadEverpropCatalog() {
   return catalogFrom("/api/v1/admin");
 }

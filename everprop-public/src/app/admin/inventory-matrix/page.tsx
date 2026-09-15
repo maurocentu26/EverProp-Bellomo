@@ -6,7 +6,7 @@ import * as XLSX from "xlsx";
 import { type Property, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog } from "@/lib/everprop-api";
+import { loadEverpropProjects, loadEverpropPropertiesByProject } from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -19,29 +19,28 @@ export default function GlobalInventoryMatrixPage() {
   const [projects, setProjects] = useState<typeof sampleProjects>([]);
   const [loadError, setLoadError] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(false);
   const [isGenerateLotsOpen, setIsGenerateLotsOpen] = useState(false);
 
   // Filters
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
   useEffect(() => {
     let active = true;
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const catalog = await loadEverpropCatalog();
+          const projs = await loadEverpropProjects();
           if (!active) return;
-          setProperties(catalog.properties);
-          setProjects(catalog.projects);
+          setProjects(projs);
           setIsLoaded(true);
           return;
         } catch (e) {
-          if (active) { setLoadError("No se pudo cargar el inventario. Reintentá recargando la página."); setIsLoaded(true); }
+          if (active) { setLoadError("No se pudieron cargar los desarrollos."); setIsLoaded(true); }
           return;
         }
       }
       if (!active) return;
-      setProperties(loadPropertyList(sampleProperties, "c1"));
       const allProj = loadProjectList(sampleProjects, "c1");
       setProjects(allProj);
       setIsLoaded(true);
@@ -52,10 +51,39 @@ export default function GlobalInventoryMatrixPage() {
     };
   }, []);
 
-  const filteredProperties = useMemo(() => {
-    if (selectedProjectId === "all") return properties;
-    return properties.filter(p => p.projectId === selectedProjectId);
-  }, [properties, selectedProjectId]);
+  useEffect(() => {
+    let active = true;
+    if (!selectedProjectId) {
+      setProperties([]);
+      return;
+    }
+    
+    async function fetchProperties() {
+      setIsLoadingProperties(true);
+      if (!isMockDataMode) {
+        try {
+          const props = await loadEverpropPropertiesByProject(selectedProjectId);
+          if (!active) return;
+          setProperties(props);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          if (active) setIsLoadingProperties(false);
+        }
+      } else {
+        if (!active) return;
+        const allProps = loadPropertyList(sampleProperties, "c1");
+        setProperties(allProps.filter(p => p.projectId === selectedProjectId));
+        setIsLoadingProperties(false);
+      }
+    }
+    void fetchProperties();
+    return () => {
+      active = false;
+    };
+  }, [selectedProjectId]);
+
+  const filteredProperties = useMemo(() => properties, [properties]);
 
   const handleExportLegacy = () => {
     if (!filteredProperties || filteredProperties.length === 0) return;
@@ -122,7 +150,7 @@ export default function GlobalInventoryMatrixPage() {
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
             >
-              <option value="all">Todos los desarrollos</option>
+              <option value="" disabled>Seleccione un desarrollo...</option>
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -133,6 +161,7 @@ export default function GlobalInventoryMatrixPage() {
             size="sm"
             onClick={handleExportLegacy}
             variant="outline"
+            disabled={!selectedProjectId || isLoadingProperties}
             className="h-10 px-4 text-xs font-semibold text-slate-700 bg-white border-slate-200 hover:bg-slate-50 shadow-sm rounded-xl gap-1.5"
           >
             <Download className="h-4 w-4 text-slate-500" /> Exportar (Legacy)
@@ -149,7 +178,18 @@ export default function GlobalInventoryMatrixPage() {
       </div>
 
       <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 min-h-[500px]">
-        {Object.keys(groupedByProject).length > 0 ? (
+        {!selectedProjectId ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <LayoutGrid className="h-10 w-10 text-slate-300 mb-4" />
+            <p className="text-slate-500 font-medium text-lg">Seleccioná un desarrollo para ver su matriz de inventario.</p>
+            <p className="text-slate-400 text-sm mt-2">Cargar todo el inventario simultáneamente afectaría el rendimiento.</p>
+          </div>
+        ) : isLoadingProperties ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-slate-500 font-medium">Cargando propiedades...</p>
+          </div>
+        ) : Object.keys(groupedByProject).length > 0 ? (
           <div className="space-y-12">
             {Object.entries(groupedByProject).map(([pid, props]) => {
               const proj = pid === "unassigned" ? { name: "Propiedades Sin Desarrollo" } : projects.find(p => p.id === pid);
