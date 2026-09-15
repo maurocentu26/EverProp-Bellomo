@@ -319,8 +319,15 @@ async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   };
 }
 
-export async function loadEverpropPropertiesPage(page: number): Promise<Property[]> {
-  const response = await apiFetch<ApiPage<ApiProperty>>(`/api/v1/admin/properties?per_page=100&page=${page}`);
+export async function loadEverpropPropertiesPage(page: number, filters?: { projectId?: string; status?: string }): Promise<Property[]> {
+  let url = `/api/v1/admin/properties?per_page=100&page=${page}`;
+  if (filters?.projectId && filters.projectId !== 'all') url += `&project=${filters.projectId}`;
+  if (filters?.status && filters.status !== 'all') {
+    // If the frontend uses 'reserved' we map it, else pass as is
+    const apiStatus = filters.status === 'reserved' ? 'RESERVED' : filters.status.toUpperCase();
+    url += `&status=${apiStatus}`;
+  }
+  const response = await apiFetch<ApiPage<ApiProperty>>(url);
   return response.data.map(mapProperty);
 }
 
@@ -332,7 +339,7 @@ export async function loadEverpropProjects() {
 
 export async function loadEverpropPropertiesByProject(projectId: string) {
   const prefix = "/api/v1/admin";
-  const properties = await loadCatalogPages<ApiProperty>(`${prefix}/properties?project_id=${projectId}`);
+  const properties = await loadCatalogPages<ApiProperty>(`${prefix}/properties?project=${projectId}`);
   return properties.map(mapProperty).filter(p => p.projectId === projectId);
 }
 

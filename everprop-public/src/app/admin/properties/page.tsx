@@ -58,6 +58,7 @@ export default function AllPropertiesPage() {
 
   useEffect(() => {
     let active = true;
+    setDataState({ status: "loading" });
 
     async function loadData() {
       if (isMockDataMode) {
@@ -70,10 +71,15 @@ export default function AllPropertiesPage() {
       }
 
       try {
-        const catalog = await loadEverpropCatalog();
+        const [props, fetchedProjects] = await Promise.all([
+          loadEverpropPropertiesPage(1, { projectId: selectedProjectId, status: activeStatus }),
+          projects.length === 0 ? import('@/lib/everprop-api').then(m => m.loadEverpropProjects()) : Promise.resolve(projects)
+        ]);
+        
         if (!active) return;
-        setAllProperties(catalog.properties);
-        setProjects(catalog.projects);
+        setAllProperties(props);
+        if (projects.length === 0) setProjects(fetchedProjects);
+        setPage(1);
         setDataState({ status: "ready", source: "admin-api" });
       } catch (reason) {
         if (isInvalidEverpropSession(reason)) {
@@ -81,52 +87,36 @@ export default function AllPropertiesPage() {
           return;
         }
         if (!active) return;
-        setAllProperties([]);
-        setProjects([]);
-        setDataState({
-          status: "error",
-          message: reason instanceof Error ? reason.message : "No se pudo cargar el inventario.",
-        });
+        setDataState({ status: "error", message: String(reason) });
       }
     }
 
-    void loadData();
+    loadData();
     return () => {
       active = false;
     };
-  }, [attempt, invalidateSession]);
+  }, [attempt, selectedProjectId, activeStatus]);
 
   const availableManzanas = useMemo(() => {
-    const pool = selectedProjectId === "all"
-      ? allProperties
-      : allProperties.filter(p => p.projectId === selectedProjectId);
     const set = new Set<string>();
-    pool.forEach(p => {
+    // Locally extract manzanas from currently loaded properties
+    allProperties.forEach(p => {
       if (p.sectorName) set.add(p.sectorName);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [allProperties, selectedProjectId]);
+  }, [allProperties]);
 
   const filteredProperties = useMemo(() => {
     let filtered = allProperties;
 
-    // 1. Project Filter
-    if (selectedProjectId !== "all") {
-      filtered = filtered.filter(p => p.projectId === selectedProjectId);
-    }
-
-    // 2. Status Filter
-    if (activeStatus !== "all") {
-      filtered = filtered.filter(p => p.status === activeStatus || (!p.status && activeStatus === "available"));
-    }
-
+    // We no longer filter by project or status locally because the API does it.
     // 3. Manzana Filter
     if (selectedManzana !== "all") {
       filtered = filtered.filter(p => p.sectorName === selectedManzana);
     }
 
     return filtered;
-  }, [allProperties, selectedProjectId, activeStatus, selectedManzana]);
+  }, [allProperties, selectedManzana]);
 
   const groupedProperties = useMemo(() => {
     const groups: { projects: Record<string, Property[]>, individual: Property[] } = {
@@ -150,7 +140,7 @@ export default function AllPropertiesPage() {
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const newProps = await loadEverpropPropertiesPage(nextPage);
+      const newProps = await loadEverpropPropertiesPage(nextPage, { projectId: selectedProjectId, status: activeStatus });
       if (newProps.length === 0) return;
       setAllProperties(prev => [...prev, ...newProps]);
       setPage(nextPage);
