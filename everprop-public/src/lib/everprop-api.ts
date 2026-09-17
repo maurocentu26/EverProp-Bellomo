@@ -865,6 +865,11 @@ export async function detachEverpropLeadProperty(leadPublicId: string, propertyP
 }
 
 
+export async function loadEverpropPropertyById(propertyPublicId: string): Promise<Property> {
+  const response = await apiFetch<ApiEnvelope<ApiProperty>>(`/api/v1/admin/properties/${propertyPublicId}`);
+  return mapProperty(response.data);
+}
+
 export type UpdatePropertyPayload = {
   title?: string;
   operation?: Property['operation'];

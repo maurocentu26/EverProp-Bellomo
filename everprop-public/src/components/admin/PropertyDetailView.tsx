@@ -10,7 +10,7 @@ import type { Lead, Property, Visit } from "@/data/admin-sample";
 import { leads as sampleLeads, properties as sampleProperties } from "@/data/admin-sample";
 import { loadLeadList, loadPropertyList, saveLeadList, savePropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog, loadEverpropLeads, loadEverpropVisits, createEverpropVisit, cancelEverpropVisit, updateEverpropPropertyStatus } from "@/lib/everprop-api";
+import { loadEverpropCatalog, loadEverpropLeads, loadEverpropVisits, createEverpropVisit, cancelEverpropVisit, updateEverpropPropertyStatus, loadEverpropPropertyById } from "@/lib/everprop-api";
 import {
   createInterestForProperty,
   getInterestAssetIds,
@@ -48,16 +48,17 @@ export default function PropertyDetailView({ propertyId }: Props) {
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const [catalog, apiLeads, visits] = await Promise.all([
+          const [catalog, apiLeads, visits, loadedProperty] = await Promise.all([
             loadEverpropCatalog(),
             isEngineer ? Promise.resolve([]) : loadEverpropLeads(),
             isEngineer ? Promise.resolve([]) : loadEverpropVisits(),
+            loadEverpropPropertyById(propertyId).catch(() => null),
           ]);
           if (!active) return;
           setAllProperties(catalog.properties);
           setAllLeads(apiLeads);
 
-          const found = catalog.properties.find((item) => item.id === propertyId);
+          const found = loadedProperty;
           setProperty(found ? { ...found, visits: visits.filter((visit) => visit.propertyId === propertyId) } : null);
           setLoading(false);
           return;
@@ -406,3 +407,4 @@ export default function PropertyDetailView({ propertyId }: Props) {
     </div>
   );
 }
+
