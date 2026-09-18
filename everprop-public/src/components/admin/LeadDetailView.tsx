@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Building2, CircleAlert, CircleCheck, ClipboardCheck, Edit3, ExternalLink, Layers3, Plus, StickyNote, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +42,7 @@ import { isCommercialContact } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
 import {
   loadEverpropLeads,
+  deleteEverpropLead,
   loadEverpropLeadById,
   loadEverpropCatalog,
   updateEverpropLead,
@@ -98,6 +100,7 @@ type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInter
 
 export default function LeadDetailView({ leadId }: { leadId: string }) {
   const { currentUser } = useAuth();
+  const router = useRouter();
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [lead, setLead] = useState<Lead | null>(null);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
@@ -109,6 +112,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [interestEditor, setInterestEditor] = useState<InterestEditorState>(null);
   const [interestToDelete, setInterestToDelete] = useState<LeadInterest | null>(null);
+  const [leadToDelete, setLeadToDelete] = useState(false);
   const [stageUpdateModalOpen, setStageUpdateModalOpen] = useState(false);
 
   useEffect(() => {
@@ -199,6 +203,24 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     updateLeadData(nextLead);
     setProfileEditorOpen(false);
     toast.success("Ficha del cliente actualizada");
+  }
+
+  async function handleDeleteLead() {
+    if (!lead) return;
+    if (!isMockDataMode) {
+      try {
+        await deleteEverpropLead(lead.id);
+        toast.success("Lead eliminado con éxito.");
+        router.push("/admin/leads");
+      } catch (e: any) {
+        toast.error("Error al eliminar lead: " + (e.message || "Error desconocido"));
+      }
+      return;
+    }
+    const nextLeads = allLeads.filter((c) => c.id !== lead.id);
+    saveLeadList(nextLeads, lead.companyId);
+    toast.success("Lead eliminado.");
+    router.push("/admin/leads");
   }
 
   async function handleSaveInterest(nextInterest: LeadInterest) {
@@ -520,6 +542,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             <Link href={`/admin/leads/${lead.id}/edit`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
               <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
             </Link>
+            {currentUser?.role === "ADMIN" && (
+              <Button
+                variant="outline"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border-rose-200 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                onClick={() => setLeadToDelete(true)}
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" /> Eliminar cliente
+              </Button>
+            )}
           </section>
 
           {/* Assigned Advisor Card */}
@@ -761,7 +792,21 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       <Dialog open={Boolean(interestToDelete)} onOpenChange={(open) => !open && setInterestToDelete(null)}>
         <DialogContent className="sm:max-w-md dark:border-slate-800 dark:bg-slate-900"><DialogHeader><DialogTitle className="dark:text-slate-100">Eliminar este interés</DialogTitle><DialogDescription className="dark:text-slate-400">Se quitará solamente esta ficha. El cliente y sus demás intereses no serán eliminados.</DialogDescription></DialogHeader><DialogFooter className="mt-4 gap-2"><Button variant="outline" onClick={() => setInterestToDelete(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button><Button variant="destructive" onClick={handleDeleteInterest}>Eliminar interés</Button></DialogFooter></DialogContent>
       </Dialog>
+
+      <Dialog open={leadToDelete} onOpenChange={(open) => !open && setLeadToDelete(false)}>
+        <DialogContent className="sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="dark:text-slate-100">Eliminar este cliente</DialogTitle>
+            <DialogDescription className="dark:text-slate-400">
+              ¿Estás seguro de que deseás eliminar este lead? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 gap-2">
+            <Button variant="outline" onClick={() => setLeadToDelete(false)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteLead}>Eliminar cliente</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

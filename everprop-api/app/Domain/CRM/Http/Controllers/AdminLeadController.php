@@ -593,6 +593,35 @@ final class AdminLeadController extends Controller
         }
     }
 
+    public function destroy(Request $request, string $leadPublicId): JsonResponse
+    {
+        try {
+            $tenantId = $this->tenantContext->id();
+
+            $lead = DB::table('leads')
+                ->where('tenant_id', $tenantId)
+                ->where('public_id', $leadPublicId)
+                ->whereNull('deleted_at')
+                ->first();
+
+            if (! $lead) {
+                return response()->json(['error' => 'Lead not found'], 404);
+            }
+
+            $actor = $request->user();
+            abort_unless($actor && in_array($actor->role()->value, ['SUPER_ADMIN', 'TENANT_ADMIN'], true), 403, 'Solo los administradores pueden eliminar leads.');
+
+            DB::table('leads')
+                ->where('id', $lead->id)
+                ->update(['deleted_at' => \Carbon\Carbon::now('UTC')]);
+
+            return response()->json(['status' => 'success']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to delete lead", ['id' => $leadPublicId, 'error' => $e->getMessage()]);
+            return response()->json(['error' => 'Failed to delete lead'], 500);
+        }
+    }
+
     public function attachProperty(Request $request, string $leadPublicId): JsonResponse
     {
         try {

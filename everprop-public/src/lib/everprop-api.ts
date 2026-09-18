@@ -671,6 +671,12 @@ export async function updateEverpropLead(
   });
 }
 
+export async function deleteEverpropLead(leadPublicId: string) {
+  return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function loadEverpropLeadById(leadPublicId: string): Promise<Lead> {
   const response = await apiFetch<{ data: ApiLead }>(`/api/v1/admin/leads/${leadPublicId}`);
   return mapLead(response.data);
