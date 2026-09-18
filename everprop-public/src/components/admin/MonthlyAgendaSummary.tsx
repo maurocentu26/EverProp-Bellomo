@@ -131,7 +131,14 @@ export default function MonthlyAgendaSummary() {
     }
 
     items.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-      setVisits(items);
+      const now = new Date();
+    now.setHours(0,0,0,0);
+    setVisits(items.map(v => {
+      if (v.status === 'scheduled' && new Date(v.scheduledAt) < now) {
+        return { ...v, status: 'cancelled' };
+      }
+      return v;
+    }));
     });
   }, [isAdvisor, isAdmin, user, globalSelectedAgentId]);
 

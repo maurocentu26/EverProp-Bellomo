@@ -204,11 +204,11 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
       </div>
 
       {/* Vista Desktop (Tabla Pro) */}
-      <div className="hidden @min-[80rem]:block overflow-x-auto rounded-2xl">
+      <div className="hidden @min-[80rem]:block overflow-x-auto overflow-y-auto max-h-[70vh] rounded-2xl relative">
         <table className="w-full table-fixed text-left border-collapse">
           <colgroup><col style={{width:"25%"}}/><col style={{width:"17%"}}/><col style={{width:"16%"}}/><col style={{width:"11%"}}/><col style={{width:"17%"}}/><col style={{width:"14%"}}/></colgroup>
-          <thead>
-            <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95">
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Interesado</th>
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Activo / Precio</th>
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Etapa comercial</th>

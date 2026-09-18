@@ -94,7 +94,19 @@ export default function CalendarAgenda() {
     if (!isMockDataMode) {
       try {
         const visits = await loadEverpropVisits();
-        setItems(isAdmin && globalSelectedAgentId !== "all" ? visits.filter(v => v.agentId === globalSelectedAgentId) : visits);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        let filteredVisits = isAdmin && globalSelectedAgentId !== "all" ? visits.filter(v => v.agentId === globalSelectedAgentId) : visits;
+
+        filteredVisits = filteredVisits.map(v => {
+          if (v.status === 'scheduled' && new Date(v.scheduledAt) < now) {
+            return { ...v, status: 'cancelled' };
+          }
+          return v;
+        });
+
+        setItems(filteredVisits);
         setLoadError("");
       } catch {
         setLoadError("No pudimos actualizar la agenda. Reintentaremos automáticamente.");
@@ -176,7 +188,14 @@ export default function CalendarAgenda() {
       merged = merged.filter((v) => v.agentId === globalSelectedAgentId);
     }
 
-    setItems(merged);
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    setItems(merged.map(v => {
+      if (v.status === 'scheduled' && new Date(v.scheduledAt) < now) {
+        return { ...v, status: 'cancelled' };
+      }
+      return v;
+    }));
     setIsLoading(false);
   }, [isAdvisor, isAdmin, user, globalSelectedAgentId]);
 

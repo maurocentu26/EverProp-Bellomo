@@ -61,6 +61,8 @@ import {
   type TodayVisits,
 } from "@/lib/everprop-api";
 import { useCurrentSession } from "@/hooks/use-current-session";
+import { useDashboardMode } from "@/lib/dashboard-context";
+import { useLeadAdvisors } from "@/hooks/use-lead-advisors";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 import { AdminMonthBalanceWidget } from "@/components/admin/advisor/AdminMonthBalanceWidget";
@@ -80,6 +82,8 @@ const STAGE_OPTIONS: { id: Lead["stage"]; label: string; apiCode: string; color:
 
 export default function AdvisorCockpit() {
   const { user } = useCurrentSession();
+  const { globalSelectedAgentId, setGlobalSelectedAgentId } = useDashboardMode();
+  const { advisors } = useLeadAdvisors(user?.role === "ADMIN");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -202,9 +206,14 @@ export default function AdvisorCockpit() {
   // Filtrar leads del asesor comercial (si es admin, ve todos los leads de la empresa)
   const myLeads = useMemo(() => {
     if (!user) return [];
-    if (!isMockDataMode || user.role === "ADMIN") return leads;
-    return leads.filter((lead) => String(lead.agentId) === String(user.id));
-  }, [leads, user]);
+    let filtered = leads;
+    if (isMockDataMode && user.role !== "ADMIN") {
+      filtered = filtered.filter((lead) => String(lead.agentId) === String(user.id));
+    } else if (user.role === "ADMIN" && globalSelectedAgentId !== "all") {
+      filtered = filtered.filter((lead) => String(lead.agentId) === globalSelectedAgentId);
+    }
+    return filtered;
+  }, [leads, user, globalSelectedAgentId]);
 
   // Cards, tabs and visible rows share exactly the same classified snapshot.
   const queueGroups = useMemo(() => commercialQueueGroups(myLeads, followUps, clock), [myLeads, followUps, clock]);
@@ -439,8 +448,20 @@ export default function AdvisorCockpit() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
               Bienvenido, {user?.name || "Asesor"}
             </h1>
-            <p className="mt-1 text-sm text-slate-500 first-letter:uppercase dark:text-slate-400">
+            <p className="mt-1 flex items-center gap-2 text-sm text-slate-500 first-letter:uppercase dark:text-slate-400">
               {todayFormatted}
+              {user?.role === "ADMIN" && (
+                <select
+                  value={globalSelectedAgentId}
+                  onChange={(e) => setGlobalSelectedAgentId(e.target.value)}
+                  className="h-8 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                >
+                  <option value="all">Todos los asesores</option>
+                  {advisors.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              )}
             </p>
           </div>
 
@@ -1099,5 +1120,9 @@ export default function AdvisorCockpit() {
     </div>
   );
 }
+
+
+
+
 
 
