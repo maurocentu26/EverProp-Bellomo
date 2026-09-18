@@ -220,7 +220,7 @@ function mapProperty(property: ApiProperty): Property {
     LOCAL: "Local",
     GARAGE: "Cochera",
     HOUSE: "Casa",
-    TRADITIONAL: "Propiedad",
+    TRADITIONAL: "Activo",
     UNKNOWN: "Sin tipo",
   };
   const operation = property.operation.toUpperCase();

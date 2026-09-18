@@ -109,7 +109,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
       agentId: visit.agentId ?? targetLead?.agentId,
     };
 
-    // 3. Actualizamos la PROPIEDAD actual y la lista global de propiedades
+    // 3. Actualizamos la PROPIEDAD actual y la lista global de activos
     const updatedProperty: Property = { 
       ...property, 
       visits: [...(property.visits ?? []), nextVisit] 
@@ -157,7 +157,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
       return;
     }
 
-    // Eliminar de propiedades
+    // Eliminar de activos
     const updatedProperty = {
         ...property,
         visits: (property.visits ?? []).filter(v => v.id !== visitId)
@@ -181,8 +181,8 @@ export default function PropertyDetailView({ propertyId }: Props) {
   }
 
   if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4">{loadError}</p>;
-  if (loading) return <p role="status">Cargando propiedad…</p>;
-  if (!property) return <div className="p-8 text-center text-slate-500 font-medium">Propiedad no encontrada.</div>;
+  if (loading) return <p role="status">Cargando activo…</p>;
+  if (!property) return <div className="p-8 text-center text-slate-500 font-medium">Activo no encontrada.</div>;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20 animate-in fade-in duration-500">

@@ -441,7 +441,7 @@ export function NewLeadDrawer({
       toast.success("Lead registrado con éxito", {
         description: selectedAsset
           ? `${trimmedName} fue asociado a ${selectedAsset.title}.`
-          : `${trimmedName} se registró sin una propiedad asociada. Podés completar el interés después.`,
+          : `${trimmedName} se registró sin una activo asociada. Podés completar el interés después.`,
       });
 
       handleReset();
@@ -757,7 +757,7 @@ export function NewLeadDrawer({
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="lead-property-search" className="text-xs font-semibold text-slate-200">Propiedad específica</FieldLabel>
+                  <FieldLabel htmlFor="lead-property-search" className="text-xs font-semibold text-slate-200">Activo específica</FieldLabel>
 
                   {selectedAsset && (
                     <div className="my-2 flex items-center gap-2.5 rounded-lg border border-blue-500 bg-blue-950/60 p-2.5">
@@ -776,7 +776,7 @@ export function NewLeadDrawer({
                         size="icon"
                         onClick={() => setSelectedAsset(null)}
                         className="h-7 w-7 shrink-0 text-slate-300 hover:bg-slate-800 hover:text-white"
-                        aria-label="Quitar propiedad seleccionada"
+                        aria-label="Quitar activo seleccionada"
                       >
                         <X size={14} aria-hidden="true" />
                       </Button>
@@ -824,7 +824,7 @@ export function NewLeadDrawer({
                       })
                     ) : (
                       <p className="rounded-lg border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">
-                        No se encontraron propiedades con esos filtros.
+                        No se encontraron activos con esos filtros.
                       </p>
                     )}
                   </div>

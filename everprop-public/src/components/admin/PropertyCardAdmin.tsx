@@ -53,7 +53,7 @@ export default function PropertyCardAdmin({ property }: Props) {
                 <header className="shrink-0 border-b border-slate-200 bg-white px-4 pb-5 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 lg:px-12">
                   <div className="mx-auto w-full max-w-[min(94vw,2800px)] pr-16">
                     <DialogTitle className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl lg:text-4xl">
-                      Acciones de la propiedad
+                      Acciones de el activo
                     </DialogTitle>
                     <DialogDescription className="mt-2 text-base leading-7 text-slate-600 sm:text-lg">
                       {property.title} · {property.neighborhood}, {property.city}
@@ -98,7 +98,7 @@ export default function PropertyCardAdmin({ property }: Props) {
                       </span>
                       <span>
                         <span className="block text-2xl font-bold text-rose-950">Eliminar</span>
-                        <span className="mt-2 block text-base leading-7 text-rose-800">Quitar esta propiedad del inventario.</span>
+                        <span className="mt-2 block text-base leading-7 text-rose-800">Quitar esta activo del inventario.</span>
                       </span>
                     </button>
                   </div>
@@ -152,7 +152,7 @@ export default function PropertyCardAdmin({ property }: Props) {
 
           <Link href={`/admin/properties/${property.id}`} className="block mt-2">
             <Button className="w-full bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border-none rounded-xl text-xs font-bold transition-all">
-                Gestionar Propiedad
+                Gestionar Activo
             </Button>
           </Link>
         </div>

@@ -246,7 +246,7 @@ export default function AdvisorCockpit() {
     return queue.sort((a, b) => b.priorityWeight - a.priorityWeight);
   }, [queueGroups, activeQueueFilter, searchQuery]);
 
-  // Manejo de cambio de etapa en 1 clic (por propiedad o general)
+  // Manejo de cambio de etapa en 1 clic (por activo o general)
   async function handleStageChange(leadId: string, newStage: Lead["stage"], propertyId?: string) {
     const targetLead = leads.find((l) => l.id === leadId);
     if (!targetLead) return;
@@ -786,7 +786,7 @@ export default function AdvisorCockpit() {
                       </div>
                     </div>
 
-                    {/* Switcher de Propiedades si el lead tiene múltiples intereses con estados independientes */}
+                    {/* Switcher de Activos si el lead tiene múltiples intereses con estados independientes */}
                     {candidatePropertyIds.length > 1 && (
                       <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
@@ -844,7 +844,7 @@ export default function AdvisorCockpit() {
                       ) : (
                         <div className="flex items-center gap-1.5 flex-1 rounded-lg bg-slate-50 dark:bg-slate-900 px-2.5 py-1.5 border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
                           <Building2 className="size-3.5 text-slate-300 shrink-0" />
-                          <span>Sin propiedad vinculada</span>
+                          <span>Sin activo vinculada</span>
                         </div>
                       )}
                       {/* Mobile-only stage selector */}

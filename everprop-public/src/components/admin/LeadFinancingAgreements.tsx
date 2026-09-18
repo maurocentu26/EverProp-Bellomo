@@ -185,7 +185,7 @@ export function LeadFinancingAgreements({
             Financiación & Seguimiento de Cuotas
           </h2>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Planes de pago asociados al cliente, independientes de las propiedades consultadas.
+            Planes de pago asociados al cliente, independientes de las activos consultadas.
           </p>
         </div>
 

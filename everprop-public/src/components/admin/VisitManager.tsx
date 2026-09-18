@@ -205,7 +205,7 @@ export default function VisitManager({
           <form onSubmit={handleSubmit} className="min-w-0 space-y-4 p-4 @min-[32rem]:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs dark:bg-card dark:border-border">
             {propertyOptions && propertyOptions.length > 0 && (
               <div className="space-y-1.5">
-                  <label htmlFor="visit-manager-property" className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">¿Qué propiedad van a visitar?</label>
+                  <label htmlFor="visit-manager-property" className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">¿Qué activo van a visitar?</label>
                   <select id="visit-manager-property"
                       value={selectedPropertyId}
                       onChange={(e) => setSelectedPropertyId(e.target.value)}

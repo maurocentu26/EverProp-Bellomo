@@ -19,7 +19,7 @@ export default function CategorySelector({ onSelect }: Props) {
             <Home className="h-7 w-7 text-indigo-600" />
           </div>
           <h3 className="text-xl font-bold text-slate-900 mb-2">Inmobiliaria Tradicional</h3>
-          <p className="text-sm text-slate-500 leading-relaxed">Ideal para carga de casas, departamentos o propiedades individuales estándar.</p>
+          <p className="text-sm text-slate-500 leading-relaxed">Ideal para carga de casas, departamentos o activos individuales estándar.</p>
         </button>
 
         <button onClick={() => onSelect("loteo")} className="group text-left bg-white rounded-3xl p-6 border border-slate-200 shadow-sm hover:border-emerald-500 hover:ring-4 hover:ring-emerald-500/10 transition-all">

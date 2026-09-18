@@ -17,7 +17,7 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
     <div className="@container min-w-0 mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-card dark:text-card-foreground">
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 dark:border-slate-800">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Inventario de Lotes y Propiedades</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Inventario de Lotes y Activos</h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Mostrando {totalProperties} de {totalProperties} activos en cartera
           </p>
@@ -50,7 +50,7 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
 
           <thead>
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <th className="px-4 py-3">{lotsOnly ? "Lote / Parcela" : "Propiedad / Unidad"}</th>
+              <th className="px-4 py-3">{lotsOnly ? "Lote / Parcela" : "Activo / Unidad"}</th>
               <th className="px-4 py-3">{lotsOnly ? "Manzana" : "Sector"}</th>
               <th className="px-4 py-3">Superficie / Ochava</th>
               <th className="px-4 py-3">Precio</th>

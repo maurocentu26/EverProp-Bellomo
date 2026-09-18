@@ -38,7 +38,7 @@ const STAGE_OPTIONS: StageOption[] = [
     key: "visiting",
     title: "En Visita",
     badge: "Visita en curso",
-    description: "Visita presencial o virtual coordinada, agendada o realizada a la propiedad o lote.",
+    description: "Visita presencial o virtual coordinada, agendada o realizada a el activo o lote.",
     icon: CalendarCheck,
     borderClass: "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-800",
     badgeClass: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",

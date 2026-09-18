@@ -567,7 +567,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               </h1>
               <CardDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {isEditing
-                  ? "Actualizá los datos de contacto, requerimientos comerciales y propiedades de interés del prospecto."
+                  ? "Actualizá los datos de contacto, requerimientos comerciales y activos de interés del prospecto."
                   : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
               </CardDescription>
             </div>
@@ -855,7 +855,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
                 <Field>
                   <FieldLabel htmlFor="lead-property-search" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Propiedad específica
+                    Activo específica
                   </FieldLabel>
 
                   {selectedAsset && (
@@ -875,7 +875,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                         size="icon"
                         onClick={() => setSelectedAsset(null)}
                         className="h-7 w-7 shrink-0 text-slate-500 hover:bg-muted hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                        aria-label="Quitar propiedad seleccionada"
+                        aria-label="Quitar activo seleccionada"
                       >
                         <X size={14} aria-hidden="true" />
                       </Button>
@@ -925,7 +925,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                       })
                     ) : (
                       <p className="rounded-lg border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
-                        No se encontraron propiedades con esos filtros.
+                        No se encontraron activos con esos filtros.
                       </p>
                     )}
                   </div>

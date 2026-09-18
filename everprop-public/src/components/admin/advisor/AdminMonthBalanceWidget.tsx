@@ -101,7 +101,7 @@ export function AdminMonthBalanceWidget({
           ? leadFollowUps[0]
           : null;
 
-      // Propiedad resuelta
+      // Activo resuelta
       const candidateId =
         lead.propertyIds?.[0] || lead.interests?.[0]?.propertyId || lead.interests?.[0]?.unitId;
       const matchedProperty = properties.find((p) => p.id === candidateId);
@@ -109,7 +109,7 @@ export function AdminMonthBalanceWidget({
         (i) => i.propertyId === candidateId || i.unitId === candidateId
       );
       const propTitle =
-        matchedProperty?.title || matchedInterest?.propertyTitle || "Sin propiedad";
+        matchedProperty?.title || matchedInterest?.propertyTitle || "Sin activo";
       const propPrice =
         matchedProperty?.price || matchedInterest?.price || null;
       const propCurrency =
@@ -301,7 +301,7 @@ export function AdminMonthBalanceWidget({
                   <th className="px-4 py-3">Lead</th>
                   <th className="px-4 py-3">Teléfono / WhatsApp</th>
                   <th className="px-4 py-3">Asesor</th>
-                  <th className="px-4 py-3">Propiedad / Cotización</th>
+                  <th className="px-4 py-3">Activo / Cotización</th>
                   <th className="px-4 py-3">Etapa</th>
                   <th className="px-4 py-3">Seguimientos</th>
                   <th className="px-4 py-3 text-right">Acción</th>

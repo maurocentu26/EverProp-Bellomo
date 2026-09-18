@@ -3,7 +3,7 @@ import MainLayout from "./layouts/MainLayout";
 
 // 1. Importa tus páginas (créalas como componentes simples por ahora)
 const Dashboard = () => <h1 className="text-2xl font-bold">Dashboard de EverProp</h1>;
-const Properties = () => <h1 className="text-2xl font-bold">Gestión de Propiedades</h1>;
+const Properties = () => <h1 className="text-2xl font-bold">Gestión de Activos</h1>;
 const Leads = () => <h1 className="text-2xl font-bold">Pipeline de Leads</h1>;
 
 const router = createBrowserRouter([

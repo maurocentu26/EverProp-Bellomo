@@ -146,11 +146,11 @@ export default function AdminPage() {
           <section id="properties" className="scroll-mt-24">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Propiedades</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Activos</h2>
                 <p className="mt-1 text-sm text-slate-500">Inventario y filtros</p>
               </div>
               <Link href="/admin/properties">
-                <button className="text-sm font-medium text-blue-700 hover:text-blue-800">Ver todas las propiedades</button>
+                <button className="text-sm font-medium text-blue-700 hover:text-blue-800">Ver todas las activos</button>
               </Link>
             </div>
 

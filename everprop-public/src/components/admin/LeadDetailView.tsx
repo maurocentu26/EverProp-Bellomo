@@ -235,7 +235,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
 
     const targetPropertyId = nextInterest.unitId || nextInterest.propertyId;
     if (!isMockDataMode && !targetPropertyId) {
-      toast.error("Seleccioná una propiedad o unidad para guardar el interés.");
+      toast.error("Seleccioná una activo o unidad para guardar el interés.");
       return;
     }
     if (!isMockDataMode && targetPropertyId) {
@@ -325,7 +325,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     setAllProperties(nextProperties);
     saveLeadList(nextLeads, lead.companyId);
     savePropertyList(nextProperties, lead.companyId);
-    toast.success("Visita agendada y sincronizada con la propiedad");
+    toast.success("Visita agendada y sincronizada con el activo");
   }
 
   async function handleReassignAgentConfirmed(agentId?: string) {
@@ -681,7 +681,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Calificación comercial</p>
                 <h2 id="lead-interests-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">Intereses independientes</h2>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Cada ficha conserva su propio proyecto, propiedad, unidad, preferencias y notas.</p>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Cada ficha conserva su propio proyecto, activo, unidad, preferencias y notas.</p>
               </div>
               <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
                 <Plus className="size-3.5" aria-hidden="true" /> Agregar interés
@@ -692,7 +692,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               <div className="mt-5 flex min-h-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-6 text-center">
                 <Layers3 className="size-8 text-slate-400" aria-hidden="true" />
                 <h3 className="mt-3 text-base font-bold text-slate-950 dark:text-slate-100">Todavía no hay intereses cargados</h3>
-                <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">Seleccioná una propiedad o unidad para registrar el interés del cliente.</p>
+                <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">Seleccioná una activo o unidad para registrar el interés del cliente.</p>
               </div>
             ) : (
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -714,7 +714,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                       </div>
                       <dl className="mt-3.5 space-y-2 text-xs">
                         <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Proyecto</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{project?.name || "Sin informar"}</dd></div>
-                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Propiedad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Activo</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
                         <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Unidad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
                       </dl>
                       <div className="mt-3.5 space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3 text-xs">

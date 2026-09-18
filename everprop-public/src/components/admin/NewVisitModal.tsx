@@ -251,7 +251,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
 
           <div className="space-y-1.5">
             <label htmlFor="visit-property" className="text-sm font-semibold text-slate-600 dark:text-slate-400">
-              Propiedad o Lote de Interés
+              Activo o Lote de Interés
             </label>
             <select
               id="visit-property"
@@ -259,7 +259,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
               onChange={(e) => setSelectedPropertyId(e.target.value)}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-2xs focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
             >
-              <option value="">Seleccionar propiedad o lote...</option>
+              <option value="">Seleccionar activo o lote...</option>
               {properties.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title} - {p.currency} {p.price?.toLocaleString("es-AR")}

@@ -245,7 +245,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                 className="hidden items-center gap-2 xl:inline-flex"
                 onClick={() => router.push("/admin/properties/new")}
               >
-                <Plus className="h-4 w-4" /> Propiedad
+                <Plus className="h-4 w-4" /> Activo
               </Button>
             )}
             {!isEngineer && (

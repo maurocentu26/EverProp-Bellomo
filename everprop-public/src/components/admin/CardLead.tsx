@@ -24,7 +24,7 @@ type Props = {
   phone?: string; 
   email?: string;
   origin?: string;
-  properties?: PropertyLite[]; // Corregido: Array de propiedades
+  properties?: PropertyLite[]; // Corregido: Array de activos
   agentId?: string;
   followUpUpdatedAt?: string;
   followUps?: LeadFollowUp[];
@@ -61,7 +61,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
   const [showPhone, setShowPhone] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
 
-  // Lógica de múltiples propiedades
+  // Lógica de múltiples activos
   const mainProperty = properties[0];
   const extraCount = properties.length - 1;
   const op = mainProperty?.operation;
@@ -79,7 +79,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
           className
         )}
       >
-        {/* Badge de Operación (de la propiedad principal) */}
+        {/* Badge de Operación (de el activo principal) */}
         {op && (
           <span className={cn(
             "absolute top-3 right-3 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-sm",
@@ -111,7 +111,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
               </div>
             </div>
 
-            {/* Propiedad(es) de interés */}
+            {/* Activo(es) de interés */}
             <div className="mt-3 text-xs text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1">
               {mainProperty ? (
                 <>
@@ -125,7 +125,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
                   )}
                 </>
               ) : (
-                <span className="text-slate-400 dark:text-slate-500 italic font-normal">Sin propiedad</span>
+                <span className="text-slate-400 dark:text-slate-500 italic font-normal">Sin activo</span>
               )}
             </div>
 

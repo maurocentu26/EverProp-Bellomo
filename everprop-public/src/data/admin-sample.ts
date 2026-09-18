@@ -1825,7 +1825,7 @@ export const leads: Lead[] = leadScenarios.map((sc, index) => {
     };
     visits.push(v);
     
-    // Sincronizar visita en la propiedad
+    // Sincronizar visita en el activo
     const prop = properties.find(p => p.id === propertyIds[0]);
     if (prop) {
       if (!prop.visits) prop.visits = [];
@@ -1855,7 +1855,7 @@ export const leads: Lead[] = leadScenarios.map((sc, index) => {
   };
 });
 
-// Fallback: Si quedaron propiedades disponibles/reservadas sin asignar por la matemática, asignarlas al primer lead
+// Fallback: Si quedaron activos disponibles/reservadas sin asignar por la matemática, asignarlas al primer lead
 if (unassignedProps.length > 0) {
   unassignedProps.forEach(p => {
     leads[0].propertyIds.push(p.id);

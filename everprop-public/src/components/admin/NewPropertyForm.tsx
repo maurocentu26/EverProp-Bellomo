@@ -205,7 +205,7 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
       <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-lg rounded-2xl p-0">
         <div className="border-b border-border bg-card px-4 py-5 text-card-foreground sm:px-6 sm:py-6">
           <h1 className="text-xl font-bold leading-tight mb-2">
-            {category === "tradicional" && "Añadir Propiedad Tradicional"}
+            {category === "tradicional" && "Añadir Activo Tradicional"}
             {category === "loteo" && "Añadir Lote o Terreno"}
             {category === "comercial" && "Añadir Activo Comercial"}
           </h1>
@@ -214,7 +214,7 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
           </CardDescription>
 
           {/* Sub-Tabs based on category */}
-          <div role="group" aria-label="Tipo de propiedad" className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex gap-1 mt-5 p-1 bg-muted rounded-xl w-full">
+          <div role="group" aria-label="Tipo de activo" className="grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex gap-1 mt-5 p-1 bg-muted rounded-xl w-full">
             {category === "tradicional" && (
               <>
                 <button type="button" aria-pressed={activeTab === "Casa"} onClick={() => setActiveTab("Casa")} className={cn("flex min-h-11 min-w-0 items-center justify-center gap-2 px-2 py-2.5 rounded-lg text-sm font-semibold transition-colors sm:flex-1", activeTab === "Casa" ? "bg-indigo-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-background")}>
@@ -269,7 +269,7 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
           )}
 
           <form onSubmit={handleSubmit(onSubmit, invalid => setError(Object.values(invalid).map(field => field?.message).filter(Boolean).join(" ")))} className="space-y-5">
-            <Field><FieldLabel htmlFor="property-project">Desarrollo / Proyecto</FieldLabel><select id="property-project" value={projectId} onChange={e => setProjectId(e.target.value)} className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"><option value="">Propiedad independiente</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select>{projectsError && <p role="alert" className="text-sm text-red-600">{projectsError}</p>}</Field>
+            <Field><FieldLabel htmlFor="property-project">Desarrollo / Proyecto</FieldLabel><select id="property-project" value={projectId} onChange={e => setProjectId(e.target.value)} className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"><option value="">Activo independiente</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select>{projectsError && <p role="alert" className="text-sm text-red-600">{projectsError}</p>}</Field>
             <FieldGroup className="grid gap-4 md:grid-cols-2">
               
               <Field className="md:col-span-2">

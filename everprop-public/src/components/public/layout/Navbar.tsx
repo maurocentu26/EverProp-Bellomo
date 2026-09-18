@@ -31,7 +31,7 @@ type NavbarProps = {
 };
 
 const defaultNavItems: NavItem[] = [
-  { label: "Propiedades", href: "#propiedades" },
+  { label: "Activos", href: "#activos" },
   { label: "Servicios", href: "#servicios" },
   { label: "Testimonios", href: "#testimonios" },
   { label: "Contacto", href: "#contacto" },
@@ -44,7 +44,7 @@ export function Navbar({
   primaryCtaLabel = "Solicitar demo",
   primaryCtaHref = "#contacto",
   secondaryCtaLabel = "Explorar",
-  secondaryCtaHref = "#propiedades",
+  secondaryCtaHref = "#activos",
   className,
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

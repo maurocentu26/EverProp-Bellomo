@@ -86,7 +86,7 @@ export function EditPropertyModal({
         updatedData = { ...updatedData, ...persisted };
       }
 
-      toast.success("Propiedad actualizada correctamente");
+      toast.success("Activo actualizada correctamente");
       onSuccess(updatedData);
       onOpenChange(false);
     } catch (err: any) {
@@ -106,7 +106,7 @@ export function EditPropertyModal({
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Editar Propiedad / Activo</DialogTitle>
+                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Editar Activo / Activo</DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Actualizá la información de esta propiedad.
                 </DialogDescription>
