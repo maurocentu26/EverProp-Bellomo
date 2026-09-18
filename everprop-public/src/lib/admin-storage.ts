@@ -33,13 +33,18 @@ export function loadLeadList(seed: Lead[], companyId: string) {
 
 export function loadPropertyList(seed: Property[], companyId: string) {
   const stored = readList<Property>(ADMIN_STORAGE_KEYS.properties);
-  const source = stored.length > 0 ? stored : seed;
+  const storedIds = new Set(stored.map(p => p.id));
+  const missingFromSeed = seed.filter(p => !storedIds.has(p.id));
+  const source = [...stored, ...missingFromSeed];
   return source.filter((property) => property.companyId === companyId);
 }
 
 export function loadProjectList(seed: Project[], companyId: string) {
   const stored = readList<Project>(ADMIN_STORAGE_KEYS.projects);
-  const source = stored.length > 0 ? stored : seed;
+  // Merge stored and seed: keep all stored, and add any from seed that are missing
+  const storedIds = new Set(stored.map(p => p.id));
+  const missingFromSeed = seed.filter(p => !storedIds.has(p.id));
+  const source = [...stored, ...missingFromSeed];
   return source.filter((project) => project.companyId === companyId);
 }
 
