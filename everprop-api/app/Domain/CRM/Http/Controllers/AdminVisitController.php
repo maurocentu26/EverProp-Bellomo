@@ -111,6 +111,7 @@ final class AdminVisitController extends Controller
         if ($user->role() !== RoleCode::SALES_ADVISOR && ! empty($data['agent_id'])) {
             $agentId = DB::table('users')->where('tenant_id', $context->id())->where('status', 'ACTIVE')
                 ->whereIn('role_code', ['TENANT_ADMIN', 'SALES_MANAGER', 'SALES_ADVISOR'])
+                ->whereNull('deleted_at')
                 ->where('public_id', $data['agent_id'])->value('id');
             abort_unless($agentId, 422, 'Asesor no disponible.');
         }

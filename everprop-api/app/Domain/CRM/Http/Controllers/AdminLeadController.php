@@ -25,7 +25,7 @@ final class AdminLeadController extends Controller
         $tenantId = $this->tenantContext->id();
         abort_unless((new LeadAccessPolicy)->assign($request->user(), $tenantId), 403);
         $advisors = DB::table('users')->where('tenant_id', $tenantId)->where('status', 'ACTIVE')
-            ->where('role_code', 'SALES_ADVISOR')
+            ->where('role_code', 'SALES_ADVISOR')->whereNull('deleted_at')
             ->orderBy('display_name')->get(['public_id as id', 'display_name as name']);
 
         return response()->json(['data' => $advisors]);
@@ -888,6 +888,7 @@ final class AdminLeadController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'ACTIVE')
                 ->where('role_code', 'SALES_ADVISOR')
+                ->whereNull('deleted_at')
                 ->where('id', (int) $agentId)
                 ->first(['id']);
 
@@ -899,6 +900,7 @@ final class AdminLeadController extends Controller
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'ACTIVE')
                 ->where('role_code', 'SALES_ADVISOR')
+                ->whereNull('deleted_at')
                 ->where('public_id', $agentId)
                 ->first(['id']);
 
