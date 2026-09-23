@@ -73,25 +73,18 @@ const CATEGORIES: AssetCategoryOption[] = [
     color: "text-emerald-300 border-emerald-700 bg-emerald-950/60",
   },
   {
-    id: "local",
-    title: "Locales",
-    subtitle: "Locales comerciales y espacios gastronómicos",
-    icon: Store,
-    color: "text-indigo-300 border-indigo-700 bg-indigo-950/60",
-  },
-  {
-    id: "cochera",
-    title: "Cocheras",
-    subtitle: "Espacios de estacionamiento por piso o número",
-    icon: Car,
-    color: "text-blue-300 border-blue-700 bg-blue-950/60",
-  },
-  {
-    id: "tradicional",
-    title: "Inmobiliaria tradicional",
-    subtitle: "Casas, departamentos, reventa y alquileres",
+    id: "edificio",
+    title: "Edificios",
+    subtitle: "Departamentos, casas y dúplex",
     icon: Home,
     color: "text-amber-300 border-amber-700 bg-amber-950/60",
+  },
+  {
+    id: "comercial",
+    title: "Comerciales (cochera/locales)",
+    subtitle: "Espacios de estacionamiento, locales y oficinas",
+    icon: Store,
+    color: "text-indigo-300 border-indigo-700 bg-indigo-950/60",
   },
 ];
 
@@ -161,6 +154,27 @@ export function NewLeadDrawer({
     return () => { active = false; };
   }, [open, companyId]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadProjectProps() {
+      if (!selectedProjectId || isMockDataMode) return;
+      try {
+        const { loadEverpropPropertiesByProject } = await import("@/lib/everprop-api");
+        const props = await loadEverpropPropertiesByProject(selectedProjectId);
+        if (!active) return;
+        setAllProperties(prev => {
+          const map = new Map(prev.map(p => [p.id, p]));
+          props.forEach(p => map.set(p.id, p));
+          return Array.from(map.values());
+        });
+      } catch (e) {
+        console.error("Failed to load project properties", e);
+      }
+    }
+    void loadProjectProps();
+    return () => { active = false; };
+  }, [selectedProjectId]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(leadSchema),
     defaultValues: {
@@ -204,7 +218,6 @@ export function NewLeadDrawer({
     const query = assetSearchQuery.toLowerCase().trim();
 
     return allProperties
-      .filter((property) => (!property.status || property.status === "available"))
       .filter((property) => !selectedCategory || inferLeadInterestCategory(property) === selectedCategory)
       .filter((property) => !selectedProjectId || property.projectId === selectedProjectId)
       .filter((property) => {
@@ -217,20 +230,16 @@ export function NewLeadDrawer({
   }, [allProjects, allProperties, assetSearchQuery, selectedCategory, selectedProjectId]);
 
   const availableProjects = useMemo(() => {
-    const eligibleProps = allProperties.filter(
-      (p) => (!p.status || p.status === "available")
-    );
     if (!selectedCategory) {
-      return allProjects.filter((project) =>
-        eligibleProps.some((p) => p.projectId === project.id)
-      );
+      return allProjects;
     }
-    return allProjects.filter((project) =>
-      eligibleProps.some(
-        (p) => p.projectId === project.id && inferLeadInterestCategory(p) === selectedCategory
-      )
-    );
-  }, [allProjects, allProperties, selectedCategory]);
+    return allProjects.filter((project) => {
+      if (selectedCategory === "loteo") return project.type === "land_development";
+      if (selectedCategory === "edificio") return project.type === "building";
+      if (selectedCategory === "comercial") return project.type === "commercial";
+      return true;
+    });
+  }, [allProjects, selectedCategory]);
 
   const selectedProject = allProjects.find((project) => project.id === selectedProjectId);
 
@@ -239,11 +248,15 @@ export function NewLeadDrawer({
     setSelectedCategory(nextCategory);
 
     if (selectedProjectId && nextCategory) {
-      const projectHasMatchingProps = allProperties.some(
-        (p) => (!p.status || p.status === "available") && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
-      );
-      if (!projectHasMatchingProps) {
-        setSelectedProjectId("");
+      const project = allProjects.find((p) => p.id === selectedProjectId);
+      if (project) {
+        let matches = true;
+        if (nextCategory === "loteo" && project.type !== "land_development") matches = false;
+        if (nextCategory === "edificio" && project.type !== "building") matches = false;
+        if (nextCategory === "comercial" && project.type !== "commercial") matches = false;
+        if (!matches) {
+          setSelectedProjectId("");
+        }
       }
     }
 

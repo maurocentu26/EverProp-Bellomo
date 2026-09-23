@@ -74,9 +74,8 @@ import { LeadFinancingAgreements } from "@/components/admin/LeadFinancingAgreeme
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
   loteo: "Loteos",
-  local: "Locales",
-  cochera: "Cocheras",
-  tradicional: "Inmobiliaria tradicional",
+  edificio: "Edificios",
+  comercial: "Comerciales (cochera/locales)",
 };
 
 const STAGE_LABELS: Record<string, string> = {

@@ -7,7 +7,7 @@ export type Company = {
 
 export type ProjectType = 'land_development' | 'building' | 'commercial';
 export type ProjectStatus = 'planning' | 'pre_sale' | 'under_construction' | 'completed' | 'available' | 'unknown';
-export type LeadInterestCategory = 'loteo' | 'local' | 'cochera' | 'tradicional';
+export type LeadInterestCategory = 'loteo' | 'edificio' | 'comercial';
 
 // Modelo local del panel. El contrato definitivo del backend queda pendiente
 // de confirmación; por eso los campos históricos de Lead se conservan.
@@ -217,48 +217,29 @@ export function inferLeadInterestCategory(property: Property): LeadInterestCateg
   const sector = (property.sectorName || '').toLowerCase();
   const title = (property.title || '').toLowerCase();
 
-  // 1. Cocheras / Estacionamientos
+  // 1. Comerciales (Cocheras y Locales)
   if (
-    type === 'cochera' ||
-    type === 'garage' ||
-    title.includes('cochera') ||
-    title.includes('garage') ||
-    title.includes('estacionamiento') ||
-    property.isCovered !== undefined
+    type === 'cochera' || type === 'garage' || type === 'local' ||
+    title.includes('cochera') || title.includes('garage') || title.includes('estacionamiento') ||
+    title.includes('local') || title.includes('showroom') || title.includes('comercial') || title.includes('gastronóm') || title.includes('oficina') ||
+    (type !== 'lote' && type !== 'loteo' && type !== 'terreno' && property.isCovered !== undefined && !title.includes('casa') && !title.includes('departamento') && !title.includes('depto')) ||
+    sector.includes('cochera') || sector.includes('estacionamiento')
   ) {
-    return 'cochera';
+    return 'comercial';
   }
 
-  // 2. Locales comerciales / Showrooms / Espacios gastronómicos u oficinas
+  // 2. Loteos / Terrenos en barrios privados y loteos abiertos
   if (
-    type === 'local' ||
-    title.includes('local') ||
-    title.includes('showroom') ||
-    title.includes('comercial') ||
-    title.includes('gastronóm') ||
-    title.includes('oficina')
-  ) {
-    return 'local';
-  }
-
-  // 3. Loteos / Terrenos en barrios privados y loteos abiertos
-  if (
-    type === 'lote' ||
-    type === 'loteo' ||
-    type === 'lot' ||
-    type === 'terreno' ||
-    sector.includes('manzana') ||
-    sector.includes('lote') ||
-    sector.includes('etapa') ||
-    title.includes('lote') ||
-    title.includes('terreno') ||
+    type === 'lote' || type === 'loteo' || type === 'lot' || type === 'terreno' ||
+    sector.includes('manzana') || sector.includes('lote') || sector.includes('etapa') ||
+    title.includes('lote') || title.includes('terreno') ||
     Boolean(property.sectorName && property.unitNumber && !title.includes('depto') && !title.includes('departamento') && !title.includes('casa'))
   ) {
     return 'loteo';
   }
 
-  // 4. Inmobiliaria Tradicional (Departamentos, Casas, Dúplex, etc.)
-  return 'tradicional';
+  // 3. Edificios / Departamentos / Casas / Dúplex
+  return 'edificio';
 }
 
 export const companies: Company[] = [

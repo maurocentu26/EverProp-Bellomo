@@ -22,9 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 const CATEGORY_OPTIONS: { value: LeadInterestCategory; label: string }[] = [
   { value: "loteo", label: "Loteo" },
-  { value: "local", label: "Local" },
-  { value: "cochera", label: "Cochera" },
-  { value: "tradicional", label: "Tradicional" },
+  { value: "edificio", label: "Edificio" },
+  { value: "comercial", label: "Comercial (cochera/locales)" },
 ];
 
 type LeadInterestEditorProps = {

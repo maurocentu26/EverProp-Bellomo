@@ -77,25 +77,18 @@ const CATEGORIES: AssetCategoryOption[] = [
     color: "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100/70 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60",
   },
   {
-    id: "local",
-    title: "Locales",
-    subtitle: "Locales comerciales y espacios gastronómicos",
-    icon: Store,
-    color: "text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100/70 dark:text-indigo-400 dark:border-indigo-800 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60",
-  },
-  {
-    id: "cochera",
-    title: "Cocheras",
-    subtitle: "Espacios de estacionamiento por piso o número",
-    icon: Car,
-    color: "text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100/70 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-950/60",
-  },
-  {
-    id: "tradicional",
-    title: "Inmobiliaria tradicional",
-    subtitle: "Casas, departamentos, reventa y alquileres",
+    id: "edificio",
+    title: "Edificios",
+    subtitle: "Departamentos, casas y dúplex",
     icon: Home,
     color: "text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100/70 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-950/60",
+  },
+  {
+    id: "comercial",
+    title: "Comerciales (cochera/locales)",
+    subtitle: "Espacios de estacionamiento, locales y oficinas",
+    icon: Store,
+    color: "text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100/70 dark:text-indigo-400 dark:border-indigo-800 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60",
   },
 ];
 
@@ -208,6 +201,29 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     };
   }, [companyId]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadProjectProps() {
+      if (!selectedProjectId || isMockDataMode) return;
+      try {
+        const { loadEverpropPropertiesByProject } = await import("@/lib/everprop-api");
+        const props = await loadEverpropPropertiesByProject(selectedProjectId);
+        console.log("Loaded properties for project", selectedProjectId, "count:", props.length);
+        if (!active) return;
+        setAllProperties(prev => {
+          const map = new Map(prev.map(p => [p.id, p]));
+          props.forEach(p => map.set(p.id, p));
+          console.log("Updated allProperties, new size:", map.size);
+          return Array.from(map.values());
+        });
+      } catch (e) {
+        console.error("Failed to load project properties", e);
+      }
+    }
+    void loadProjectProps();
+    return () => { active = false; };
+  }, [selectedProjectId]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -279,26 +295,21 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   }, [isEditing, activeLead, watchedPhone, watchedEmail]);
 
   const availableProjects = useMemo(() => {
-    const eligibleProps = allProperties.filter(
-      (p) => (!p.status || p.status === "available")
-    );
     if (!selectedCategory) {
-      return allProjects.filter((project) =>
-        eligibleProps.some((p) => p.projectId === project.id)
-      );
+      return allProjects;
     }
-    return allProjects.filter((project) =>
-      eligibleProps.some(
-        (p) => p.projectId === project.id && inferLeadInterestCategory(p) === selectedCategory
-      )
-    );
-  }, [allProjects, allProperties, selectedCategory]);
+    return allProjects.filter((project) => {
+      if (selectedCategory === "loteo") return project.type === "land_development";
+      if (selectedCategory === "edificio") return project.type === "building";
+      if (selectedCategory === "comercial") return project.type === "commercial";
+      return true;
+    });
+  }, [allProjects, selectedCategory]);
 
   const availableAssets = useMemo(() => {
     const query = assetSearchQuery.toLowerCase().trim();
 
     return allProperties
-      .filter((property) => (!property.status || property.status === "available"))
       .filter((property) => !selectedCategory || inferLeadInterestCategory(property) === selectedCategory)
       .filter((property) => !selectedProjectId || property.projectId === selectedProjectId)
       .filter((property) => {
@@ -317,11 +328,15 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     setSelectedCategory(nextCategory);
 
     if (selectedProjectId && nextCategory) {
-      const projectHasMatchingProps = allProperties.some(
-        (p) => (!p.status || p.status === "available") && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
-      );
-      if (!projectHasMatchingProps) {
-        setSelectedProjectId("");
+      const project = allProjects.find((p) => p.id === selectedProjectId);
+      if (project) {
+        let matches = true;
+        if (nextCategory === "loteo" && project.type !== "land_development") matches = false;
+        if (nextCategory === "edificio" && project.type !== "building") matches = false;
+        if (nextCategory === "comercial" && project.type !== "commercial") matches = false;
+        if (!matches) {
+          setSelectedProjectId("");
+        }
       }
     }
 

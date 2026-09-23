@@ -530,9 +530,8 @@ export function mapLead(apiLead: ApiLead): Lead {
     const rawCat = (p.category || "").toUpperCase();
     let mappedCategory: LeadInterestCategory | undefined = undefined;
     if (rawCat === "LOT" || rawCat === "LOTEO") mappedCategory = "loteo";
-    else if (rawCat === "LOCAL" || rawCat === "COMMERCIAL") mappedCategory = "local";
-    else if (rawCat === "GARAGE" || rawCat === "COCHERA") mappedCategory = "cochera";
-    else if (rawCat === "APARTMENT" || rawCat === "HOUSE" || rawCat === "TRADITIONAL") mappedCategory = "tradicional";
+    else if (rawCat === "LOCAL" || rawCat === "COMMERCIAL" || rawCat === "GARAGE" || rawCat === "COCHERA") mappedCategory = "comercial";
+    else if (rawCat === "APARTMENT" || rawCat === "HOUSE" || rawCat === "TRADITIONAL") mappedCategory = "edificio";
 
     return {
       id: p.id,
