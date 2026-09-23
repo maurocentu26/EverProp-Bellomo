@@ -475,7 +475,7 @@ export default function CalendarAgenda() {
                   {selectedDayItems.map((ev) => {
                     const time = new Date(ev.scheduledAt).toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
                     const wa = ev.phone
-                      ? `https://wa.me/${ev.phone.replace(/[^0-9]/g, "")}?text=Hola%20${encodeURIComponent(ev.leadName)}%2C%20recordamos%20tu%20visita%20de%20hoy.`
+                      ? `https://wa.me/${(ev.phone.replace(/[^0-9]/g, "").startsWith("54") ? ev.phone.replace(/[^0-9]/g, "") : "549" + ev.phone.replace(/[^0-9]/g, ""))}?text=Hola%20${encodeURIComponent(ev.leadName)}%2C%20recordamos%20tu%20visita%20de%20hoy.`
                       : null;
 
                     return (
@@ -682,7 +682,8 @@ export default function CalendarAgenda() {
                   hour: "2-digit",
                   minute: "2-digit",
                 });
-                const cleanPhone = ev.phone?.replace(/[^0-9]/g, "");
+                let cleanPhone = ev.phone?.replace(/[^0-9]/g, "");
+                if (cleanPhone && !cleanPhone.startsWith("54")) cleanPhone = "549" + cleanPhone;
 
                 return (
                   <div

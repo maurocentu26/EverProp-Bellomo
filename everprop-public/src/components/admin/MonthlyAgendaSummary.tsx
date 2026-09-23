@@ -290,7 +290,8 @@ export default function MonthlyAgendaSummary() {
                   day: "numeric",
                   month: "short",
                 });
-                const cleanPhone = v.phone ? v.phone.replace(/[^0-9]/g, "") : "";
+                let cleanPhone = v.phone ? v.phone.replace(/[^0-9]/g, "") : "";
+                if (cleanPhone && !cleanPhone.startsWith("54")) cleanPhone = "549" + cleanPhone;
                 const whatsappUrl = cleanPhone
                   ? `https://wa.me/${cleanPhone}?text=Hola%20${encodeURIComponent(v.leadName)},%20te%20recordamos%20tu%20visita%20agendada%20para%20${encodeURIComponent(v.propertyTitle || "el activo")}.`
                   : null;

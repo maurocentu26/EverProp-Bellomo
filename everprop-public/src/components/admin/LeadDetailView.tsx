@@ -485,7 +485,8 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     : undefined;
   const assignedAgent = getAdvisor(lead.agentId, lead.agentName);
 
-  const cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
+  let cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
+  if (cleanPhone && !cleanPhone.startsWith("54")) cleanPhone = "549" + cleanPhone;
 
   return (
     <div className="mx-auto w-full max-w-[120rem] space-y-5 pb-12">
