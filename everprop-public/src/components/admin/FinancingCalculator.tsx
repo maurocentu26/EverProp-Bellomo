@@ -256,7 +256,16 @@ export default function FinancingCalculator({
 
       onPlanCreated?.();
       toast.success(
-        `Plan ${result.agreement.publicId} creado exitosamente con ${numericMonths} cuotas`
+        `Plan de pago creado con éxito`, {
+          description: `El plan ${result.agreement.publicId} se generó con ${numericMonths} cuotas.`,
+          action: {
+            label: "Ver plan de pago",
+            onClick: () => {
+              const el = document.getElementById("financing-agreements");
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            }
+          }
+        }
       );
       setIsConfirmModalOpen(false);
     } catch (err: any) {
