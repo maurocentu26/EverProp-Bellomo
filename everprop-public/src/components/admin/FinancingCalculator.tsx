@@ -327,6 +327,15 @@ export default function FinancingCalculator({
           id={`${componentId}-body`}
           className="border-t border-slate-100 dark:border-slate-800 p-4 sm:p-5 space-y-5"
         >
+          {(!projectName || !propertyTitle) && (
+            <div className="rounded-lg bg-amber-50 p-3 text-amber-800 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50 flex items-start gap-2 text-xs">
+              <AlertCircle className="size-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Falta información requerida</p>
+                <p>Este módulo requiere que el lead tenga asignado un {!projectName ? "proyecto" : ""}{!projectName && !propertyTitle ? " y un " : ""}{!propertyTitle && projectName ? "activo (inmueble/lote)" : ""}{!propertyTitle && !projectName ? "activo" : ""}. Podrás simular, pero no generar el plan de pago hasta que se asocie en la sección de intereses.</p>
+              </div>
+            </div>
+          )}
           {/* Row 1: Plan selector & Stage */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
             <div className="sm:col-span-8">

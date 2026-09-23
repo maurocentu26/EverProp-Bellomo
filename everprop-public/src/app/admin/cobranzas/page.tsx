@@ -13,7 +13,10 @@ import adminSample, {
   type Installment,
   type Lead,
   type InstallmentPaymentMethod,
+  type Project,
+  type LeadInterest,
 } from "@/data/admin-sample";
+import { loadEverpropLeadById, loadEverpropProjects } from "@/lib/everprop-api";
 import {
   recordInstallmentPayment,
   createAgreementWithInstallments,
@@ -83,8 +86,11 @@ export default function CobranzasPage() {
 
   // New agreement form state
   const [newAgrLeadId, setNewAgrLeadId] = useState("");
-  const [newAgrProjectName, setNewAgrProjectName] = useState("San Pablo 1");
+  const [newAgrProjectName, setNewAgrProjectName] = useState("");
   const [newAgrPropertyTitle, setNewAgrPropertyTitle] = useState("");
+  const [fullLead, setFullLead] = useState<Lead | null>(null);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [noInterestModalOpen, setNoInterestModalOpen] = useState(false);
   const [newAgrCurrency, setNewAgrCurrency] = useState<"ARS" | "USD">("ARS");
   const [newAgrModality, setNewAgrModality] = useState<"FIXED" | "CAC" | "STEPPED">("FIXED");
   const [newAgrTotalPrice, setNewAgrTotalPrice] = useState<number>(15000000);
@@ -97,6 +103,43 @@ export default function CobranzasPage() {
 
   const [leadsLoading, setLeadsLoading] = useState(true);
   const [leadsError, setLeadsError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    async function loadProjects() {
+      try {
+        const p = await loadEverpropProjects();
+        if (active) setAllProjects(p);
+      } catch (e) {}
+    }
+    loadProjects();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!newAgrLeadId || !isNewAgreementModalOpen) {
+      setFullLead(null);
+      return;
+    }
+    let active = true;
+    async function fetchLead() {
+      try {
+        const lead = await loadEverpropLeadById(newAgrLeadId);
+        if (active) {
+          setFullLead(lead);
+          if (!lead.interests || lead.interests.length === 0) {
+            setNoInterestModalOpen(true);
+          } else {
+            const project = allProjects.find(p => p.id === lead.interests![0].projectId);
+            setNewAgrProjectName(project?.name || "");
+            setNewAgrPropertyTitle(lead.interests[0].propertyTitle || "");
+          }
+        }
+      } catch (e) {}
+    }
+    fetchLead();
+    return () => { active = false; };
+  }, [newAgrLeadId, isNewAgreementModalOpen, allProjects]);
+
   useEffect(() => {
     if (!session.user?.id) return;
     let active = true;
@@ -330,10 +373,22 @@ export default function CobranzasPage() {
   const handleCreateAgreement = (e: React.FormEvent) => {
     e.preventDefault();
     void run(async () => {
-      if (!newAgrLeadId) {
+      if (!newAgrLeadId || !fullLead) {
         toast.error("Selecciona un lead para el acuerdo");
         return;
       }
+      
+      const modalLeadProjects = Array.from(new Set((fullLead.interests || []).map(i => i.projectId).filter(Boolean))).map(id => ({ id: id as string, title: allProjects.find(p => p.id === id)?.name || "Proyecto" }));
+      const modalLeadAssets = (fullLead.interests || []).map(i => ({ id: i.propertyId || i.id, title: i.propertyTitle || "Activo", projectId: i.projectId })).filter(a => a.title);
+      
+      const finalProjectName = modalLeadProjects.length === 1 ? modalLeadProjects[0].title : newAgrProjectName;
+      const finalPropertyTitle = modalLeadAssets.length === 1 ? modalLeadAssets[0].title : newAgrPropertyTitle;
+
+      if (!finalProjectName) {
+        toast.error("Debes seleccionar o tener asignado un proyecto para generar el plan.");
+        return;
+      }
+
       const financed = Math.max(0, newAgrTotalPrice - newAgrDownPayment);
 
       const targetLead = leads.find((l) => l.id === newAgrLeadId);
@@ -343,8 +398,8 @@ export default function CobranzasPage() {
         {
           leadId: newAgrLeadId,
           advisorId,
-          projectName: newAgrProjectName,
-          propertyTitle: newAgrPropertyTitle || undefined,
+          projectName: finalProjectName,
+          propertyTitle: finalPropertyTitle || undefined,
           currency: newAgrCurrency,
           modality: newAgrModality,
           totalPrice: newAgrTotalPrice,
@@ -380,6 +435,8 @@ export default function CobranzasPage() {
 
   if (loading || leadsLoading) return <CollectionsLoading />;
   if (error || leadsError) return <section className="rounded-xl border p-5"><h2>Cobranzas y Cuotas</h2>{loading ? <p role="status">Cargando…</p> : <p role="alert">{error || leadsError}</p>}<button onClick={() => { void refresh(); window.dispatchEvent(new Event("focus")); }}>Reintentar</button></section>;
+  const modalLeadProjects = fullLead ? Array.from(new Set((fullLead.interests || []).map(i => i.projectId).filter(Boolean))).map(id => ({ id: id as string, title: allProjects.find(p => p.id === id)?.name || "Proyecto" })) : [];
+  const modalLeadAssets = fullLead ? (fullLead.interests || []).map(i => ({ id: i.propertyId || i.id, title: i.propertyTitle || "Activo", projectId: i.projectId })).filter(a => a.title) : [];
 
   return (
     <div className="space-y-6">
@@ -1089,25 +1146,49 @@ export default function CobranzasPage() {
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Proyecto / Desarrollo
                   </label>
-                  <input
-                    type="text"
-                    value={newAgrProjectName}
-                    onChange={(e) => setNewAgrProjectName(e.target.value)}
-                    placeholder="ej. San Pablo 1"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
+                  {modalLeadProjects.length > 1 ? (
+                    <select
+                      value={newAgrProjectName}
+                      onChange={(e) => setNewAgrProjectName(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                    >
+                      <option value="" disabled>Seleccioná un proyecto</option>
+                      {modalLeadProjects.map(p => <option key={p.id} value={p.title}>{p.title}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={modalLeadProjects.length === 1 ? modalLeadProjects[0].title : ""}
+                      disabled
+                      placeholder="Sin proyecto asociado aún"
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-900/50"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Lote / Unidad Descriptiva
                   </label>
-                  <input
-                    type="text"
-                    value={newAgrPropertyTitle}
-                    onChange={(e) => setNewAgrPropertyTitle(e.target.value)}
-                    placeholder="ej. Lote 15 Mz AP8"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
+                  {modalLeadAssets.length > 1 || modalLeadProjects.length > 1 ? (
+                    <select
+                      value={newAgrPropertyTitle}
+                      onChange={(e) => setNewAgrPropertyTitle(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                    >
+                      <option value="" disabled>Seleccioná un activo</option>
+                      {modalLeadAssets
+                        .filter(a => modalLeadProjects.length <= 1 || !newAgrProjectName || newAgrProjectName === modalLeadProjects.find(p => p.id === a.projectId)?.title)
+                        .map(a => <option key={a.id} value={a.title}>{a.title}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={modalLeadAssets.length === 1 ? modalLeadAssets[0].title : ""}
+                      disabled
+                      placeholder="Sin activo asociado aún"
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-400 cursor-not-allowed dark:border-slate-800 dark:bg-slate-900/50"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1268,6 +1349,34 @@ export default function CobranzasPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Missing Interest Modal */}
+      {noInterestModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900 text-center">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">
+              El lead no tiene ninguna propiedad
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Para generar un plan de cobranza correctamente, el cliente debería tener al menos un proyecto o unidad asignada en su ficha de intereses.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Link
+                href={`/admin/leads/${newAgrLeadId}`}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 w-full"
+              >
+                Ir a la ficha del lead para asignar
+              </Link>
+              <button
+                type="button"
+                onClick={() => setNoInterestModalOpen(false)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 w-full"
+              >
+                Omitir por ahora
+              </button>
+            </div>
           </div>
         </div>
       )}

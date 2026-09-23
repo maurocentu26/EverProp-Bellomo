@@ -222,6 +222,16 @@ export function LeadFinancingAgreements({
         </div>
       </div>
 
+      {leadProjects.length === 0 && (
+        <div className="mt-4 rounded-lg bg-amber-50 p-3 text-amber-800 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50 flex items-start gap-2 text-xs">
+          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Falta información requerida</p>
+            <p>El cliente no tiene asociado ningún proyecto ni activo. Para generar un plan de pago o cronograma, deberías asociar primero un interés en la ficha del lead.</p>
+          </div>
+        </div>
+      )}
+
       {loading && <p role="status">Cargando cobranzas…</p>}
       {error && <div role="alert" className="rounded-lg border border-red-300 p-3 text-red-700">{error} <button onClick={() => void refresh()}>Reintentar</button></div>}
       {saving && <p role="status">Guardando…</p>}
