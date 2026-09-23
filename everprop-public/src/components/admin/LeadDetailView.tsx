@@ -675,6 +675,12 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 leadPhone={lead.phone}
                 companyId={lead.companyId}
                 advisorId={lead.agentId}
+                leadProjects={Array.from(new Set(interests.map(i => i.projectId).filter(Boolean))).map(id => ({ id: id as string, title: projectById.get(id as string)?.name || "Proyecto" }))}
+                leadAssets={interests.map(i => ({ id: i.propertyId || i.id, title: i.propertyTitle || propertyById.get(i.propertyId || "")?.title || "Activo", projectId: i.projectId })).filter(a => a.title)}
+                onScrollToInterests={() => {
+                  const el = document.getElementById("lead-interests-title");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
               />
             </div>
           )}
