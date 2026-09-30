@@ -399,7 +399,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     title: data.title,
     operation: (data.operation === "temporal" ? "TEMPORARY" : (data.operation || "sale").toUpperCase()),
     category: categoryMap[data.propertyType || ""] || "LOT",
-    status: "AVAILABLE",
+    // Status is decided by the API: publishers get AVAILABLE, other editors NOT_MARKETED.
     price: data.price == null ? null : Number(data.price),
     currency_code: data.price == null ? null : (data.currency || "USD"),
     city: data.city,
@@ -975,7 +975,7 @@ export async function generateLotsBatch(payload: GenerateLotsPayload) {
       fondo_m: payload.fondo_m ? Number(payload.fondo_m) : undefined,
       ochava_m2: payload.ochava_m2 ? Number(payload.ochava_m2) : undefined,
       price: payload.price ? Number(payload.price) : null,
-      currency_code: payload.price ? (payload.currency || "USD") : null,
+      currency_code: payload.price || payload.cornerPrice ? (payload.currency || "USD") : null,
       corner_lots: payload.cornerLots || [],
       corner_price: payload.cornerPrice ? Number(payload.cornerPrice) : null,
       corner_area_m2: payload.cornerArea_m2 ? Number(payload.cornerArea_m2) : null,
