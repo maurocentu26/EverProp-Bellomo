@@ -115,6 +115,16 @@ export function ConversationInbox() {
     bottom.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
+  // Deep link from other screens (e.g. visit requests): /admin/conversaciones?c=<uuid>
+  useEffect(() => {
+    const linked = new URLSearchParams(window.location.search).get("c");
+    if (linked && /^[0-9a-f-]{36}$/i.test(linked)) {
+      setFilter("all");
+      selectedRef.current = linked;
+      setSelected(linked);
+    }
+  }, []);
+
   function open(id: string) {
     selectedRef.current = id;
     setSelected(id);
