@@ -158,9 +158,15 @@ final class InboundMessageService
         return $find(true) ?? throw new \RuntimeException('Conversation could not be created.');
     }
 
+    /**
+     * Fail-safe: in production a synchronous queue would run the model call inside the visitor's
+     * (or Meta's webhook) request and lose delayed retries, so the assistant stays off and
+     * conversations wait for an advisor instead.
+     */
     public static function aiEnabled(): bool
     {
-        return (bool) config('conversations.ai_enabled', false);
+        return (bool) config('conversations.ai_enabled', false)
+            && ! (app()->isProduction() && config('queue.connections.'.config('queue.default').'.driver') === 'sync');
     }
 
     /** @return array{message_id: int, conversation_id: int, conversation_public_id: string, sequence: int}|null */

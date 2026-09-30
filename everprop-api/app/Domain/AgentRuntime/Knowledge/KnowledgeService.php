@@ -70,16 +70,35 @@ final class KnowledgeService
             return [];
         }
 
-        $rows = DB::table('knowledge_chunks as c')
+        $base = fn () => DB::table('knowledge_chunks as c')
             ->join('knowledge_documents as d', fn ($j) => $j->on('d.id', '=', 'c.document_id')->on('d.tenant_id', '=', 'c.tenant_id')
                 ->on('d.version', '=', 'c.document_version'))
             ->where('c.tenant_id', $tenantId)
             ->where('d.status', 'APPROVED')->whereNull('d.revoked_at')->whereIn('d.audience', $audiences)
-            ->where(fn ($q) => $q->whereNull('d.valid_until')->orWhere('d.valid_until', '>', now()))
-            ->whereRaw('MATCH(c.heading, c.body) AGAINST (? IN NATURAL LANGUAGE MODE) > 0', [$terms])
-            ->orderByRaw('MATCH(c.heading, c.body) AGAINST (? IN NATURAL LANGUAGE MODE) DESC', [$terms])
-            ->limit($limit)
-            ->get(['d.public_id', 'c.ordinal', 'c.heading', 'c.body', 'd.valid_until']);
+            ->where(fn ($q) => $q->whereNull('d.valid_until')->orWhere('d.valid_until', '>', now()));
+        $columns = ['d.public_id', 'c.ordinal', 'c.heading', 'c.body', 'd.valid_until'];
+
+        // Candidates by boolean match: InnoDB natural-language relevance is IDF-based over the WHOLE
+        // table and drops to 0 when every chunk shares the terms (tiny corpora), so it is never used as a filter.
+        $candidates = $base()->whereRaw('MATCH(c.heading, c.body) AGAINST (? IN BOOLEAN MODE)', [$terms])->limit(50)->get($columns);
+        $words = $this->terms($terms);
+        if ($candidates->isEmpty() && $words !== []) {
+            // Fallback for tokens FULLTEXT ignores (stopwords, short tokens): accent-insensitive LIKE (ai_ci collation).
+            $candidates = $base()->where(function ($q) use ($words): void {
+                foreach ($words as $word) {
+                    $q->orWhere('c.body', 'like', '%'.addcslashes($word, '%_\\').'%')->orWhere('c.heading', 'like', '%'.addcslashes($word, '%_\\').'%');
+                }
+            })->limit(50)->get($columns);
+        }
+        // Rank by distinct query terms present (then heading hits), deterministic tie-break.
+        $rows = $candidates->map(function ($r) use ($words) {
+            $heading = $this->fold((string) $r->heading);
+            $text = $heading.' '.$this->fold((string) $r->body);
+            $r->score = count(array_filter($words, fn ($w) => str_contains($text, $w))) * 10
+                + count(array_filter($words, fn ($w) => str_contains($heading, $w)));
+
+            return $r;
+        })->filter(fn ($r) => $r->score > 0)->sortBy([['score', 'desc'], ['public_id', 'asc'], ['ordinal', 'asc']])->take($limit)->values();
 
         return $rows->map(fn ($r) => [
             'source_id' => $r->public_id.'#'.$r->ordinal,
@@ -87,6 +106,22 @@ final class KnowledgeService
             'excerpt' => (string) $r->body,
             'valid_until' => $r->valid_until === null ? null : CarbonImmutable::parse($r->valid_until, 'UTC')->toDateString(),
         ])->values()->all();
+    }
+
+    /** @return list<string> folded query terms (>= 4 chars, deduplicated) */
+    private function terms(string $query): array
+    {
+        $stop = ['para', 'como', 'tienen', 'tenes', 'tenés', 'alguna', 'algun', 'algún', 'esta', 'este', 'donde', 'cuando', 'sobre', 'hola', 'quiero', 'saber'];
+        $words = preg_split('/\s+/u', $this->fold($query)) ?: [];
+
+        return array_values(array_unique(array_filter($words, fn ($w) => mb_strlen($w) >= 4 && ! in_array($w, array_map($this->fold(...), $stop), true))));
+    }
+
+    private function fold(string $text): string
+    {
+        $text = mb_strtolower($text);
+
+        return strtr($text, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n']);
     }
 
     /** @return list<array{0: ?string, 1: string}> [heading, text] by markdown headings and paragraphs */

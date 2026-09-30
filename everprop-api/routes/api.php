@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\AgentRuntime\Knowledge\Http\AdminKnowledgeController;
+use App\Domain\AgentRuntime\VisitRequests\AdminVisitRequestController;
 use App\Domain\Collections\CollectionsController;
 use App\Domain\Conversations\Http\Controllers\AdminConversationController;
 use App\Domain\Conversations\Http\Controllers\MetaWhatsAppWebhookController;
@@ -85,6 +86,10 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::post('/knowledge', [AdminKnowledgeController::class, 'store']);
         Route::post('/knowledge/{document}/approve', [AdminKnowledgeController::class, 'approve'])->whereUuid('document');
         Route::post('/knowledge/{document}/revoke', [AdminKnowledgeController::class, 'revoke'])->whereUuid('document');
+
+        Route::get('/visit-requests', [AdminVisitRequestController::class, 'index']);
+        Route::post('/visit-requests/{visitRequest}/confirm', [AdminVisitRequestController::class, 'confirm'])->whereUuid('visitRequest');
+        Route::post('/visit-requests/{visitRequest}/decline', [AdminVisitRequestController::class, 'decline'])->whereUuid('visitRequest');
 
         Route::get('/push/config', [WebPushController::class, 'config']);
         Route::post('/push/subscriptions', [WebPushController::class, 'store'])->middleware('throttle:30,1');
