@@ -2,6 +2,7 @@
 
 namespace App\Domain\Inventory\Policies;
 
+use App\Domain\Inventory\Models\Project;
 use App\Domain\Inventory\Models\Property;
 use App\Domain\Inventory\Services\InventoryAccess;
 use App\Models\User;
@@ -48,5 +49,15 @@ final class PropertyPolicy
     public function setInitialPrices(User $user): bool
     {
         return $this->access->canSetInitialPrices($user);
+    }
+
+    public function publishNew(User $user): bool
+    {
+        return $this->access->canPublishNew($user);
+    }
+
+    public function placeInProject(User $user, Project $project): bool
+    {
+        return $this->access->canPlaceInProject($user, $project);
     }
 }

@@ -49,7 +49,7 @@ final class SendWebPush implements ShouldQueue
         foreach ($rows as $row) {
             $subscription = Subscription::create(json_decode(Crypt::decryptString($row->subscription), true));
             // Lock-screen payload deliberately excludes client names and contact details.
-            $payload = json_encode(['title' => 'Bellomo', 'body' => 'Tenés una nueva notificación comercial. Abrí el panel para verla.', 'tag' => $notification->id, 'url' => '/admin/notifications']);
+            $payload = json_encode(['title' => $tenant->name, 'body' => 'Tenés una nueva notificación comercial. Abrí el panel para verla.', 'tag' => $notification->id, 'url' => '/admin/notifications']);
             $report = $sender->sendOneNotification($subscription, $payload);
             if ($report->isSubscriptionExpired()) {
                 DB::table('web_push_subscriptions')->where('tenant_id', $context->id())->where('user_id', $user->id)->where('id', $row->id)->delete();

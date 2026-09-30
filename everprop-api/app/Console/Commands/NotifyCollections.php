@@ -9,18 +9,37 @@ use Illuminate\Support\Facades\DB;
 
 final class NotifyCollections extends Command
 {
-    protected $signature = 'everprop:collections:notify {tenant : Trusted tenant slug}';
+    protected $signature = 'everprop:collections:notify {tenant? : Trusted tenant slug; omitted = every ACTIVE tenant}';
 
     protected $description = 'Persist due/overdue advisor notifications once per installment, recipient and business day';
 
     public function handle(): int
     {
-        $tenant = DB::table('tenants')->where('slug', $this->argument('tenant'))->where('status', 'ACTIVE')->first();
-        if (! $tenant) {
+        $tenants = DB::table('tenants')->where('status', 'ACTIVE')
+            ->when($this->argument('tenant') !== null, fn ($q) => $q->where('slug', $this->argument('tenant')))
+            ->orderBy('id')->get();
+        if ($this->argument('tenant') !== null && $tenants->isEmpty()) {
             $this->error('Active tenant not found.');
 
             return self::FAILURE;
         }
+        $failed = false;
+        foreach ($tenants as $tenant) {
+            // One broken tenant must not stop notifications for the others.
+            try {
+                $this->notifyTenant($tenant);
+            } catch (\Throwable $e) {
+                report($e);
+                $this->error("{$tenant->slug}: notifications failed.");
+                $failed = true;
+            }
+        }
+
+        return $failed ? self::FAILURE : self::SUCCESS;
+    }
+
+    private function notifyTenant(object $tenant): void
+    {
         $today = CarbonImmutable::now($tenant->timezone)->toDateString();
         $paid = DB::table('installment_payments')->where('tenant_id', $tenant->id)->whereNull('reversed_at')
             ->selectRaw('installment_id, SUM(amount) as paid')->groupBy('installment_id');
@@ -54,8 +73,6 @@ final class NotifyCollections extends Command
                 ], JSON_THROW_ON_ERROR), 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
-        $this->info("Created {$count} notifications.");
-
-        return self::SUCCESS;
+        $this->info("{$tenant->slug}: created {$count} notifications.");
     }
 }

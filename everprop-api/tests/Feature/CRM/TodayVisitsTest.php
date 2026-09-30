@@ -26,6 +26,11 @@ final class TodayVisitsTest extends TestCase
                 'status' => 'AVAILABLE', 'price' => 100000, 'currency_code' => 'USD', 'city' => 'Salta', 'province' => 'Salta']);
             $ids[] = $uuid;
         }
+        // Linking a property now requires inventory visibility (E02).
+        DB::table('user_inventory_settings')->insert([
+            'tenant_id' => $tenant->id, 'user_id' => $advisor->id, 'workspace_mode' => 'BOTH',
+            'visibility_mode' => 'ALL', 'can_manage_inventory' => false, 'can_manage_prices' => false, 'can_view_prices' => true,
+        ]);
         $this->actingAs($advisor)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173']);
         $path = "/api/v1/admin/leads/$leadUuid/properties";
         $this->postJson($path, ['property_id' => $ids[0], 'notes' => 'Original'])->assertOk();
