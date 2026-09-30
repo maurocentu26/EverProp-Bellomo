@@ -2,11 +2,19 @@ name: API quality
 
 on:
   pull_request:
+    paths: ['everprop-api/**', '.github/workflows/api.yml']
   push:
     branches: [main]
+    paths: ['everprop-api/**', '.github/workflows/api.yml']
 
 permissions:
   contents: read
+
+# Monorepo: GitHub only reads workflows from the repository root, so this job
+# runs from everprop-api/ explicitly (it was previously inert under everprop-api/.github).
+defaults:
+  run:
+    working-directory: everprop-api
 
 jobs:
   verify:

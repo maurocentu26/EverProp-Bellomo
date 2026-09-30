@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(node evals/validate.mjs)",
+      "Bash(docker compose --project-name everprop-api exec everprop-api-php vendor/bin/pint --test:*)",
+      "Bash(docker compose --project-name everprop-api exec everprop-api-php vendor/bin/phpstan analyse:*)",
+      "Bash(docker compose --project-name everprop-api exec everprop-api-php php artisan test:*)",
+      "Bash(npm run lint:*)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.production)",
+      "Read(**/.env.testing)",
+      "Read(**/.env.*.local)",
+      "Read(**/.docker/secrets/**)",
+      "Edit(/everprop-api/database/schema/*.baseline.sql)",
+      "Write(/everprop-api/database/schema/*.baseline.sql)",
+      "Bash(git push:*)",
+      "Bash(railway:*)",
+      "Bash(vercel:*)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(docker compose --project-name everprop-api down:*)",
+      "Bash(docker volume:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs\"", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}
