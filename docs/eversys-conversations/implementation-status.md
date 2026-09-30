@@ -47,6 +47,16 @@ Revisiones independientes: aislamiento/seguridad y concurrencia. Hallazgos corre
 
 Proveedor LLM: interfaz `LlmClient`; adaptador Anthropic Messages listo pero **apagado** (`AGENT_LLM_PROVIDER=disabled`, sin modelo por defecto). Con IA habilitada y proveedor apagado, cada turno deriva a un asesor con aviso. Evals: +4 casos (23). Revisiones independientes LLM-security y aislamiento/concurrencia: hallazgos corregidos (guard monto+moneda y "mil", bypass de negación, fugas del ledger, turnos sin run, TTL del lock vs `retry_after`, asignado inactivo, sesión fuera de transacción, reconciliador). Aceptado: `registrar_interes` puede crear el lead abierto (idempotente) justo antes de perder el control.
 
+## Go-live (chat web) — hecho
+
+- Solicitudes de visita: API `/api/v1/admin/visit-requests` (listar, confirmar → crea `visits` SCHEDULED una sola vez, rechazar) y pantalla `/admin/solicitudes-visita`. Test `VisitRequestAdminTest`.
+- Pantalla `/admin/conocimiento` (alta, aprobar, revocar, vigencia). Enlace directo a la conversación (`/admin/conversaciones?c=`).
+- `php artisan everprop:channels:web-chat` crea/actualiza el widget del tenant e imprime el `<script>` y `EVERSYS_WIDGET_FRAME_ANCESTORS`.
+- Cola en base (forward `2026-09-30.001`: `jobs`, `failed_jobs`) para correr worker sin Redis.
+- `everprop:production-check`: exige las tablas de G1/G2 (el arranque falla si no se aplicó el SQL) y, con IA encendida, cola asíncrona, `retry_after` > lock del turno y proveedor configurado. Con cola `sync` en producción la IA queda apagada sola.
+- Corrección: la búsqueda de conocimiento no usa la relevancia natural de InnoDB como filtro (daba 0 cuando todos los fragmentos compartían los términos); filtra por coincidencia booleana y ordena por términos presentes.
+- Runbook: [go-live.md](go-live.md).
+
 ## Pendiente conocido
 
 - Webhook Meta procesa sincrónicamente antes del ACK (persistencia primero). Pasar a receipt → ACK → worker si el volumen lo exige.
@@ -55,7 +65,6 @@ Proveedor LLM: interfaz `LlmClient`; adaptador Anthropic Messages listo pero **a
 - Bandeja: búsqueda, etiquetas, notas internas y adjuntos (diseño S04) aún no.
 - Alta de `channel_accounts`/integraciones (onboarding S14/Embedded Signup) sin endpoint.
 - Activar IA: aprobar proveedor/región (X03), elegir modelo, cargar `ANTHROPIC_API_KEY` en el gestor de secretos, `REDIS_QUEUE_RETRY_AFTER` > 180, y correr evals contra el modelo real antes de `CONVERSATIONS_AI_ENABLED=true`.
-- Pantallas G2: base de conocimiento y bandeja de solicitudes de visita (hoy solo API/outbox).
 - Conciliar filas UNKNOWN del ledger contra el uso real del proveedor (hoy conservan la reserva máxima).
 - Montos escritos en palabras ("ochenta y cinco mil") no los detecta el guard.
 - Dependencias externas: X01 (Tech Provider: verificación de negocio, App Review, videos), X02–X04.
