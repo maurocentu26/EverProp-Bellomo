@@ -83,6 +83,17 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
 
   useEffect(() => { bottom.current?.scrollIntoView({ block: "end" }); }, [messages.length, pending.length]);
 
+  // Keyboard users are inside the iframe after opening it; Escape must reach the host page loader,
+  // which only accepts this message from its own iframe and origin. The message carries no data.
+  useEffect(() => {
+    if (window.parent === window) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") window.parent.postMessage({ type: "eversys:close" }, "*");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   async function deliver(item: Pending) {
     // Concurrent first messages share one session instead of creating two conversations.
     sessionPromise.current ??= token ? Promise.resolve(token) : startSession();
@@ -114,7 +125,8 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
     <section className="flex h-dvh flex-col bg-background text-foreground" aria-label={title}>
       <header className="border-b border-border bg-blue-600 px-4 py-3 text-white">
         <h1 className="text-base font-bold">{title}</h1>
-        <p className="text-xs opacity-90">Te responde un asistente y, si hace falta, un asesor del equipo.</p>
+        {/* Neutral: with the assistant off only people answer. Automatic replies are labelled per message. */}
+        <p className="text-xs opacity-90">Te respondemos por este chat. Las respuestas automáticas dicen «Asistente virtual».</p>
       </header>
       {error && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{error}</p>}
       <ol aria-label="Mensajes" aria-live="polite" className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
@@ -124,7 +136,7 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
         {messages.map((m) => (
           <li key={m.sequence} className={`flex ${m.from === "visitor" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.from === "visitor" ? "bg-blue-600 text-white" : "bg-muted"}`}>
-              {m.from !== "visitor" && <p className="mb-0.5 text-[11px] font-semibold opacity-75">{m.from === "advisor" ? "Asesor" : "Asistente"}</p>}
+              {m.from !== "visitor" && <p className="mb-0.5 text-[11px] font-semibold opacity-75">{m.from === "advisor" ? "Asesor" : "Asistente virtual"}</p>}
               <p className="whitespace-pre-wrap break-words">{m.text}</p>
             </div>
           </li>

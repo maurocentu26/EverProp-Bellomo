@@ -38,6 +38,11 @@
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && frame.style.display !== "none") toggle(false);
   });
+  // Escape pressed inside the chat (focus is in the iframe): accept only from our frame and origin.
+  window.addEventListener("message", function (event) {
+    if (event.source === frame.contentWindow && event.origin === origin && event.data && event.data.type === "eversys:close"
+      && frame.style.display !== "none") toggle(false);
+  });
   document.body.appendChild(frame);
   document.body.appendChild(button);
 })();
