@@ -22,20 +22,30 @@
       "Write(/everprop-api/database/schema/*.baseline.sql)",
       "Bash(git push:*)",
       "Bash(railway:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "PowerShell(git push:*)",
+      "PowerShell(railway:*)",
+      "PowerShell(vercel:*)"
     ],
     "ask": [
       "Bash(git commit:*)",
       "Bash(docker compose --project-name everprop-api down:*)",
-      "Bash(docker volume:*)"
+      "Bash(docker volume:*)",
+      "PowerShell(git commit:*)",
+      "PowerShell(docker compose --project-name everprop-api down:*)",
+      "PowerShell(docker volume:*)"
     ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|Bash",
+        "matcher": "Edit|Write|MultiEdit|Bash|PowerShell",
         "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs\"", "timeout": 10 }
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.mjs\"",
+            "timeout": 10
+          }
         ]
       }
     ]
