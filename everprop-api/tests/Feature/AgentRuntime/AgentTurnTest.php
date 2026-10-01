@@ -14,6 +14,7 @@ use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\Feature\Conversations\ConversationTestSupport;
 use Tests\TestCase;
@@ -427,10 +428,11 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('SKIPPED_DUPLICATE', $coordinator->handle($f['tenant']->id, $conversationId, 1));
 
         $this->llm([ScriptedLlm::text('Respuesta al segundo')]);
-        config(['conversations.ai_enabled' => false]); // store two messages without running turns
+        // Store two messages without running their turns (switching the assistant off would now hand the
+        // conversation to a human, by design).
+        Queue::fake([RunAgentJob::class]);
         $this->visitorSays($f, 'Uno');
         $this->visitorSays($f, 'Dos');
-        config(['conversations.ai_enabled' => true]);
         $latest = (int) DB::table('messages')->where('tenant_id', $f['tenant']->id)->where('direction', 'INBOUND')->max('sequence');
         $coordinator = app(AgentCoordinator::class);
         $this->assertSame('SKIPPED_SUPERSEDED', $coordinator->handle($f['tenant']->id, $conversationId, $latest - 1));

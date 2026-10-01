@@ -11,6 +11,7 @@ use App\Domain\AgentRuntime\Tools\ToolGateway;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
 use App\Domain\Conversations\Services\ConversationControl;
+use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Usage\QuotaExceeded;
 use App\Domain\Usage\UsageLedger;
 use Carbon\CarbonImmutable;
@@ -49,6 +50,12 @@ final class AgentCoordinator
             ->first(['c.id', 'c.contact_id', 'c.channel_account_id', 'c.control_state', 'c.control_epoch', 'ca.channel_type']);
         if ($conversation === null || ! in_array($conversation->control_state, ConversationControl::BOT_STATES, true)) {
             return 'SKIPPED_NOT_BOT';
+        }
+        // A turn queued before the assistant was switched off must not call the model.
+        if (! InboundMessageService::aiEnabled()) {
+            InboundMessageService::handOffOrphanedBotConversation($tenantId, $conversationId);
+
+            return 'SKIPPED_AI_DISABLED';
         }
         $latestInbound = (int) DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
             ->where('direction', 'INBOUND')->max('sequence');

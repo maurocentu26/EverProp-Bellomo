@@ -3,6 +3,9 @@
 return [
     // Off until the AI coordinator exists (G2): new conversations wait for an advisor instead.
     'ai_enabled' => (bool) env('CONVERSATIONS_AI_ENABLED', false),
+    // With the assistant off, the reconciler hands to humans bot conversations with an unanswered visitor
+    // message within this window (older rows are left untouched).
+    'ai_off_sweep_hours' => (int) env('CONVERSATIONS_AI_OFF_SWEEP_HOURS', 72),
     // Outbound dispatch lease; an expired PROCESSING job becomes UNKNOWN (never resent blindly).
     'dispatch_lease_seconds' => (int) env('CONVERSATIONS_DISPATCH_LEASE_SECONDS', 60),
     // Anonymous web chat sessions.

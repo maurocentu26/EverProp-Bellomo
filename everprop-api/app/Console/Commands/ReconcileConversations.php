@@ -6,6 +6,7 @@ use App\Domain\AgentRuntime\Coordinator\PromptBuilder;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
 use App\Domain\Conversations\Services\ConversationControl;
+use App\Domain\Conversations\Services\InboundMessageService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -61,7 +62,27 @@ final class ReconcileConversations extends Command
             }
         }
 
-        $this->info("expired={$expired} requeued={$due->count()} stuck_runs={$stuck->count()}");
+        // Assistant switched off: OPEN conversations left under bot control with a recent unanswered visitor
+        // go to humans. Bounded to recent activity: rows that predate the runtime got control_state AI_ACTIVE
+        // by column default (forward 2026-09-29.002) and must not flood the inbox.
+        $orphaned = 0;
+        if (! InboundMessageService::aiEnabled()) {
+            $candidates = DB::table('conversations')->whereIn('control_state', ConversationControl::BOT_STATES)
+                ->where('status', 'OPEN')->whereNull('closed_at')
+                ->where('last_inbound_at', '>=', now()->subHours((int) config('conversations.ai_off_sweep_hours', 72)))
+                ->where(fn ($q) => $q->whereNull('last_outbound_at')->orWhereColumn('last_inbound_at', '>', 'last_outbound_at'))
+                // ponytail: oldest unanswered first; >500 rows failing on every run would still starve the rest (then page by id).
+                ->orderBy('last_inbound_at')->limit(500)->get(['id', 'tenant_id']);
+            foreach ($candidates as $c) {
+                try {
+                    $orphaned += (int) InboundMessageService::handOffOrphanedBotConversation((int) $c->tenant_id, (int) $c->id);
+                } catch (\Throwable $e) {
+                    report($e); // one bad row must not stop the sweep
+                }
+            }
+        }
+
+        $this->info("expired={$expired} requeued={$due->count()} stuck_runs={$stuck->count()} ai_off_handoffs={$orphaned}");
 
         return self::SUCCESS;
     }

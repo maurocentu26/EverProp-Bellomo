@@ -154,7 +154,7 @@ final class ConversationControl
                 throw new ConversationConflict('NOT_IN_CONTROL', 'Tomá el control de la conversación antes de responder.');
             }
 
-            return $this->queueOutbound($conversation, $text, 'USER', $user->id, null, 'user:'.$user->id.':'.$idempotencyKey);
+            return $this->queueOutbound($conversation, $text, 'USER', $user->id, null, 'user:'.$user->id.':c'.$conversationId.':'.$idempotencyKey);
         }, 3);
     }
 
@@ -197,7 +197,7 @@ final class ConversationControl
             }
 
             return ['message_id' => (int) $existing->message_id, 'job_id' => (int) $existing->id,
-                'sequence' => (int) DB::table('messages')->where('id', $existing->message_id)->value('sequence'), 'replayed' => true];
+                'sequence' => (int) DB::table('messages')->where('tenant_id', $tenantId)->where('id', $existing->message_id)->value('sequence'), 'replayed' => true];
         }
 
         $now = CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v');

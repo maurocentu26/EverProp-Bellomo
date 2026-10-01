@@ -4,6 +4,7 @@ namespace App\Domain\Conversations\Services;
 
 use App\Domain\AgentRuntime\Jobs\RunAgentJob;
 use App\Domain\Conversations\Data\InboundMessage;
+use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\CRM\Services\ContactIdentityResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -51,6 +52,11 @@ final class InboundMessageService
         // G2: the assistant answers text turns of conversations under bot control (checked again in the job).
         if (self::aiEnabled() && $message->type === 'TEXT' && $message->text !== null && trim($message->text) !== '') {
             RunAgentJob::dispatch($message->tenantId, $result['conversation_id'], $result['sequence']);
+        } elseif (! self::aiEnabled()) {
+            // Assistant switched off (rollback) while this conversation was under bot control: nobody would
+            // answer it and it would not show under "Esperan asesor". Hand it to a human. The message is already
+            // stored: a failure here must not turn into a 500 (a retry would replay and skip this), the sweep recovers it.
+            rescue(fn () => self::handOffOrphanedBotConversation($message->tenantId, $result['conversation_id']));
         }
 
         return $result;
@@ -156,6 +162,22 @@ final class InboundMessageService
         ]);
 
         return $find(true) ?? throw new \RuntimeException('Conversation could not be created.');
+    }
+
+    /** Assistant off: moves a conversation still under bot control to WAITING_HUMAN (epoch-fenced, tenant-scoped). */
+    public static function handOffOrphanedBotConversation(int $tenantId, int $conversationId): bool
+    {
+        $conversation = DB::table('conversations')->where('tenant_id', $tenantId)->where('id', $conversationId)->first(['control_state', 'control_epoch']);
+        if ($conversation === null || ! in_array($conversation->control_state, ConversationControl::BOT_STATES, true)) {
+            return false;
+        }
+        try {
+            app(ConversationControl::class)->requestHuman($tenantId, $conversationId, (int) $conversation->control_epoch, 'AI_DISABLED: asistente apagado');
+
+            return true;
+        } catch (ConversationConflict) {
+            return false; // control moved meanwhile
+        }
     }
 
     /**
