@@ -34,10 +34,24 @@ Producción Bellomo y `main` están fuera de alcance. No se modificaron. No se c
 
 - Widget de staging `8f32042b-a9b8-4a74-91c0-40837d962910` provisionado y CSP comprobada tras redeploy.
 - Recorrido visitante → bandeja → asesor → respuesta y reinicio del worker con trabajo pendiente aún NO verificados.
-- No hay cuenta humana de acceso habilitada ni sitio de pruebas externo integrado todavía.
+- Cuenta humana sintética `admin-staging@e2e.invalid` habilitada; contraseña fuera del repositorio. Sitio de pruebas externo todavía pendiente.
 - API tiene volumen privado persistente. Worker no comparte ese volumen: no considerar verificados flujos que requieren compartir archivos; antes de habilitarlos resolver almacenamiento común privado.
 - Biblioteca de materiales es específica del tenant `bellomo`; el tenant sintético no está autorizado. No se habilitó ni se modificó ese contrato.
-- Scheduler no desplegado.
+- Scheduler desplegado; ver actualización abajo.
 - MySQL 9 de la plantilla inicial quedó sin despliegue; su volumen vacío se conserva. La base utilizada es `mysql84`, no `MySQL`.
 
 Esta evidencia NO completa F0 de producción ni autoriza merge a `main`.
+
+## Actualización verificada — PWA, push y scheduler (2026-10-02)
+
+- Siete commits revisados y publicados en `chore/agentic-setup`, hasta `fb66065`. Revisión independiente de aislamiento y seguridad: sin vulnerabilidades nuevas identificadas en ese diff.
+- API, worker, scheduler y panel desplegados con `fb66065`; todos SUCCESS en Railway.
+- Redis independiente de staging, sin dominio público: sesiones y caché usan `redis`; conexión comprobada con PING. Cola general y web push siguen en `database`, consumida por el worker existente.
+- Scheduler `77b6fa75-9557-4ef5-916c-8d04426e1003`: una réplica, sin dominio HTTP, arranque `entrypoint.sh scheduler`; logs muestran `everprop:conversations:reconcile` DONE en dos minutos consecutivos.
+- VAPID generado dentro del contenedor y guardado únicamente en variables de staging para API, worker y scheduler. No se imprimieron ni guardaron claves en Git; subject HTTPS del panel de staging.
+- `everprop:production-check --connections --webpush`: OK en API, worker y scheduler. API efectiva: IA false, proveedor disabled, Meta false; cola pendiente y fallida ambas 0 en la comprobación.
+- Panel: `/login`, `/icon/192`, `/icon/512`, `/manifest.webmanifest`, `/notifications-sw.js` y `/healthz`: 200. API `/readyz`: 200. Consultas JSON sin sesión a `/api/v1/auth/me` y `/api/v1/admin/conversations`: 401.
+- Verificación local: ConversationAlertsTest, 7 tests / 49 assertions, sin fallos (warnings por ausencia de .env); frontend 6 tests OK; Pint 5 archivos OK; lint frontend sin errores, con warnings existentes. El host map del contenedor E2E se vació solo para el proceso de test, sin cambiar archivos ni servicios.
+- CI del commit: guard, evals y frontend en verde; backend todavía en curso al registrar esta evidencia. Preview Vercel automático generado, pero no se usó ni se modificaron sus variables: usar únicamente el panel Railway verificado.
+
+S8 queda **parcial**: configuración y recursos PWA comprobados; instalación, permiso y entrega push en un celular físico NO verificados. S6 (respuesta asesor y reinicio con envío pendiente), logout en navegador y sitio externo continúan pendientes. Redis no borra las tablas auxiliares creadas antes; no se hizo ninguna eliminación.
