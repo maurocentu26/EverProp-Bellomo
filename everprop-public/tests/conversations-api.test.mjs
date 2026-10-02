@@ -37,3 +37,25 @@ test('reply reuses the draft idempotency key and ids are URL-encoded', async () 
   assert.equal(call.path, '/api/v1/admin/conversations/abc%2F../messages');
   assert.deepEqual(JSON.parse(call.init.body), { text: 'hola', idempotency_key: 'draft-key-000000001' });
 });
+
+const msg = (sequence, direction, status, text = `m${sequence}`) => ({ sequence, direction, sender: direction === 'INBOUND' ? 'CONTACT' : 'USER', text, status, at: '' });
+
+test('polling resumes after the last message, or before the oldest send that can still change', () => {
+  assert.equal(api.threadCursor([]), 0);
+  assert.equal(api.threadCursor([msg(1, 'INBOUND', 'RECEIVED'), msg(2, 'OUTBOUND', 'SENT')]), 2);
+  assert.equal(api.threadCursor([msg(1, 'INBOUND', 'RECEIVED'), msg(2, 'OUTBOUND', 'QUEUED'), msg(3, 'OUTBOUND', 'UNKNOWN'), msg(4, 'INBOUND', 'RECEIVED')]), 1);
+});
+
+test('merging keeps order and lets a newer delivery status replace the old copy', () => {
+  const merged = api.mergeMessages([msg(1, 'INBOUND', 'RECEIVED'), msg(2, 'OUTBOUND', 'QUEUED')], [msg(2, 'OUTBOUND', 'SENT'), msg(3, 'INBOUND', 'RECEIVED')]);
+  assert.equal(merged.map((m) => `${m.sequence}:${m.status}`).join(' '), '1:RECEIVED 2:SENT 3:RECEIVED');
+});
+
+test('incremental reads pass the cursor and the list preview names who spoke', async () => {
+  calls.length = 0;
+  await api.getConversationMessages('a b', 41);
+  assert.equal(calls[0].path, '/api/v1/admin/conversations/a%20b/messages?after=41');
+  assert.equal(api.previewText({ last_message: { sender: 'BOT', text: 'Hola\n  ¿en qué\tte ayudo?' } }), 'IA: Hola ¿en qué te ayudo?');
+  assert.equal(api.previewText({ last_message: { sender: 'CONTACT', text: null } }), '[contenido no textual]');
+  assert.equal(api.previewText({ last_message: null }), '');
+});

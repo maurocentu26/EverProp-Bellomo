@@ -17,6 +17,7 @@ export type ConversationSummary = {
   unread: number;
   assigned_user: { id: string; name: string } | null;
   last_activity_at: string;
+  last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string } | null;
 };
 
 export type ConversationMessage = {
@@ -70,9 +71,39 @@ export async function listConversations(filter: ConversationFilter) {
   return apiFetch<{ data: ConversationSummary[] }>(conversationQuery(filter));
 }
 
-export async function getConversationMessages(id: string) {
+/** One line under the contact name: who spoke last and what, never more than one line. */
+export function previewText(item: Pick<ConversationSummary, "last_message">): string {
+  const last = item.last_message;
+  if (!last) return "";
+  const who: Record<string, string> = { USER: "Asesor: ", BOT: "IA: " };
+  return `${who[last.sender] ?? ""}${last.text?.replace(/\s+/g, " ").trim() || "[contenido no textual]"}`;
+}
+
+/** The API pages 200 messages per call, oldest first. */
+export const MESSAGE_PAGE = 200;
+const SETTLED = new Set(["RECEIVED", "SENT", "DELIVERED", "READ", "FAILED", "CANCELLED"]);
+
+/**
+ * Where the next poll starts: right before the oldest outbound message whose delivery can still
+ * change (queued, unconfirmed), else after the last one. New messages and status changes both arrive.
+ */
+export function threadCursor(messages: ConversationMessage[]): number {
+  const pending = messages.filter((m) => m.direction === "OUTBOUND" && !SETTLED.has(m.status));
+  if (pending.length) return Math.min(...pending.map((m) => m.sequence)) - 1;
+  return messages.length ? messages[messages.length - 1].sequence : 0;
+}
+
+/** Newer copies replace older ones by sequence; the result stays ordered. */
+export function mergeMessages(current: ConversationMessage[], incoming: ConversationMessage[]): ConversationMessage[] {
+  if (!incoming.length) return current;
+  const bySequence = new Map(current.map((m) => [m.sequence, m]));
+  for (const message of incoming) bySequence.set(message.sequence, message);
+  return [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
+}
+
+export async function getConversationMessages(id: string, after = 0) {
   return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean }; data: ConversationMessage[] }>(
-    `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages`,
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages${after > 0 ? `?after=${after}` : ""}`,
   );
 }
 
