@@ -66,7 +66,7 @@ Proveedor LLM: interfaz `LlmClient`; adaptador Anthropic Messages listo pero **a
 - Alta de `channel_accounts`/integraciones (onboarding S14/Embedded Signup) sin endpoint.
 - Activar IA: aprobar proveedor/región (X03), elegir modelo, cargar `ANTHROPIC_API_KEY` en el gestor de secretos, `REDIS_QUEUE_RETRY_AFTER` > 180, y correr evals contra el modelo real antes de `CONVERSATIONS_AI_ENABLED=true`.
 - Conciliar filas UNKNOWN del ledger contra el uso real del proveedor (hoy conservan la reserva máxima).
-- Montos escritos en palabras ("ochenta y cinco mil") no los detecta el guard.
+- ~~Montos escritos en palabras~~: corregido 2026-10-02 (`OutputGuard::wordsToDigits`, "ochenta y cinco mil", "un millón y medio"; `OutputGuardTest` 37 casos). Formas mixtas raras ("85 mil quinientos") siguen sin cubrirse.
 - Dependencias externas: X01 (Tech Provider: verificación de negocio, App Review, videos), X02–X04.
 
 ## Plan de cierre (2026-10-02)
@@ -81,7 +81,7 @@ Cada fase abre solo con el gate de la anterior. Responsables: **R** = Ramiro (op
 | F3 WhatsApp | `ChannelPolicy` por número (D19); receipt → ACK → worker; X01 Tech Provider; alta de números (S14); número general y luego 1–2 asesores | N + R + L | S17: ambos canales reales; ningún simulador cuenta |
 | F4 SaaS | S02 completo, S14, S15, billing manual (D15); n8n periférico (D20) si suma | N + L | Segundo tenant sin fork; restore medido |
 
-Deuda transversal (cualquier fase, ítems chicos): E2E de pantallas (`ui-vertical`) en CI, conciliación UNKNOWN del ledger, montos en palabras en `OutputGuard`, búsqueda/notas en bandeja.
+Deuda transversal (cualquier fase, ítems chicos): E2E de pantallas (`ui-vertical`) en CI, conciliación UNKNOWN del ledger, búsqueda/notas en bandeja.
 
 ## Lote 3 — verificación para piloto de chat web (2026-09-30/10-01)
 

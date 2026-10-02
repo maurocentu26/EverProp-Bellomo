@@ -25,6 +25,14 @@ final class OutputGuardTest extends TestCase
             'invented' => ['Sale USD 70.000.', ['UNSUPPORTED_AMOUNT'], false],
             'invented in mil' => ['Sale 90 mil dólares.', ['UNSUPPORTED_AMOUNT'], false],
             'bare scaled price' => ['El precio anda por 90 mil.', ['UNSUPPORTED_AMOUNT'], false],
+            'spelled exact price' => ['Sale ochenta y cinco mil dólares.', [], false],
+            'spelled knowledge amount' => ['Son treinta y seis cuotas de ciento cincuenta mil pesos.', [], false],
+            'spelled invented' => ['El lote sale setenta mil dólares.', ['UNSUPPORTED_AMOUNT'], false],
+            'spelled bare scaled price' => ['El precio anda por noventa mil.', ['UNSUPPORTED_AMOUNT'], false],
+            'spelled millions' => ['Cuesta un millón doscientos mil pesos.', ['UNSUPPORTED_AMOUNT'], false],
+            'spelled half million' => ['Vale medio millón de dólares.', ['UNSUPPORTED_AMOUNT'], false],
+            'spelled currency swap' => ['Sale ochenta y cinco mil pesos.', ['UNSUPPORTED_AMOUNT'], false],
+            'spelled counts, no money' => ['Hay dos o tres lotes, un depto de dos y tres ambientes y medio baño.', [], false],
             'confirmed visit' => ['Tu visita quedó confirmada.', ['CONFIRMATION_CLAIM'], false],
             'subjectless confirmation' => ['Perfecto, está confirmado para el jueves.', ['CONFIRMATION_CLAIM'], false],
             'programmed' => ['El jueves 10hs quedó programada tu visita.', ['CONFIRMATION_CLAIM'], false],
@@ -37,6 +45,28 @@ final class OutputGuardTest extends TestCase
             'requested visit ok' => ['Registré tu pedido; un asesor te confirma el horario.', [], true],
             'requested visit silent' => ['Genial, el jueves a las 10 entonces.', ['VISIT_NOT_MARKED_PENDING'], true],
         ];
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function spelled(): array
+    {
+        return [
+            ['ochenta y cinco mil dólares', '85 mil dólares'],
+            ['un millón doscientos mil', '1200 mil'],
+            ['un millón y medio', '1500 mil'],
+            ['medio millón', '500 mil'],
+            ['mil quinientos', '1500'],
+            ['dieciséis cuotas', '16 cuotas'],
+            ['entre dos y tres ambientes', 'entre 2 y 3 ambientes'],
+            ['un lote y medio baño', 'un lote y medio baño'],
+            ['85 mil y 1,2 millones', '85 mil y 1,2 millones'],
+        ];
+    }
+
+    #[DataProvider('spelled')]
+    public function test_words_to_digits(string $text, string $expected): void
+    {
+        $this->assertSame($expected, (new OutputGuard)->wordsToDigits($text));
     }
 
     /** @param list<string> $expected */

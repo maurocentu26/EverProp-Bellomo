@@ -97,6 +97,7 @@ final class OutputGuard
      */
     public function money(string $text): array
     {
+        $text = $this->wordsToDigits($text);
         $number = '(\d[\d.,]*)';
         $found = [];
         $patterns = [
@@ -125,6 +126,60 @@ final class OutputGuard
         }
 
         return $found;
+    }
+
+    private const WORDS = [
+        'un' => 1, 'uno' => 1, 'una' => 1, 'dos' => 2, 'tres' => 3, 'cuatro' => 4, 'cinco' => 5, 'seis' => 6,
+        'siete' => 7, 'ocho' => 8, 'nueve' => 9, 'diez' => 10, 'once' => 11, 'doce' => 12, 'trece' => 13,
+        'catorce' => 14, 'quince' => 15, 'dieciséis' => 16, 'dieciseis' => 16, 'diecisiete' => 17, 'dieciocho' => 18,
+        'diecinueve' => 19, 'veinte' => 20, 'veintiún' => 21, 'veintiun' => 21, 'veintiuno' => 21, 'veintiuna' => 21,
+        'veintidós' => 22, 'veintidos' => 22, 'veintitrés' => 23, 'veintitres' => 23, 'veinticuatro' => 24,
+        'veinticinco' => 25, 'veintiséis' => 26, 'veintiseis' => 26, 'veintisiete' => 27, 'veintiocho' => 28,
+        'veintinueve' => 29, 'treinta' => 30, 'cuarenta' => 40, 'cincuenta' => 50, 'sesenta' => 60, 'setenta' => 70,
+        'ochenta' => 80, 'noventa' => 90, 'cien' => 100, 'ciento' => 100, 'doscientos' => 200, 'doscientas' => 200,
+        'trescientos' => 300, 'trescientas' => 300, 'cuatrocientos' => 400, 'cuatrocientas' => 400, 'quinientos' => 500,
+        'quinientas' => 500, 'seiscientos' => 600, 'seiscientas' => 600, 'setecientos' => 700, 'setecientas' => 700,
+        'ochocientos' => 800, 'ochocientas' => 800, 'novecientos' => 900, 'novecientas' => 900,
+    ];
+
+    /**
+     * Spelled-out Spanish amounts to digits so money() sees them: "ochenta y cinco mil" -> "85 mil",
+     * "un millón doscientos mil" -> "1200 mil", "medio millón" -> "500 mil". A lone article or "medio"
+     * ("un lote", "medio baño") is left alone.
+     */
+    public function wordsToDigits(string $text): string
+    {
+        $word = '(?:'.implode('|', array_keys(self::WORDS)).'|mil|mill[oó]n|millones|medio)';
+        // "y" joins only tens+units ("ochenta y cinco") or a scale + "medio" ("un millón y medio"),
+        // so a range ("entre dos y tres") is not summed.
+        $and = '(?<=treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa|mil|millón|millon|millones)\s+y';
+
+        // Not right after digits: "85 mil" / "1,2 millones" are already handled by money().
+        return (string) preg_replace_callback('/(?<![\d.,]\s)(?<![\d.,])\b'.$word.'(?:(?:'.$and.')?\s+'.$word.')*\b/iu', function (array $m): string {
+            $tokens = preg_split('/\s+/u', mb_strtolower($m[0]), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            if (array_diff($tokens, ['un', 'uno', 'una', 'medio', 'y']) === []) {
+                return $m[0];
+            }
+            $total = 0;
+            $current = 0.0;
+            $scale = 0;
+            foreach ($tokens as $token) {
+                if ($token === 'mil' || in_array($token, ['millón', 'millon', 'millones'], true)) {
+                    $scale = $token === 'mil' ? 1_000 : 1_000_000;
+                    $total += (int) round(($current ?: 1) * $scale);
+                    $current = 0.0;
+                } elseif ($token === 'medio' && $current === 0.0 && $scale > 0) {
+                    $total += intdiv($scale, 2); // "un millón y medio"
+                } elseif ($token === 'medio') {
+                    $current += 0.5; // "medio millón"
+                } elseif ($token !== 'y') {
+                    $current += self::WORDS[$token];
+                }
+            }
+            $total += (int) $current;
+
+            return $total >= 1_000 && $total % 1_000 === 0 ? ($total / 1_000).' mil' : (string) $total;
+        }, $text);
     }
 
     /** "85.000", "85,000", "85000.00", "85.000,00", "90"+"mil", "1,2"+"millones" -> integer string */
