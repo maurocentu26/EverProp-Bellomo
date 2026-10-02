@@ -55,3 +55,12 @@ Esta evidencia NO completa F0 de producción ni autoriza merge a `main`.
 - CI del commit: guard, evals y frontend en verde; backend todavía en curso al registrar esta evidencia. Preview Vercel automático generado, pero no se usó ni se modificaron sus variables: usar únicamente el panel Railway verificado.
 
 S8 queda **parcial**: configuración y recursos PWA comprobados; instalación, permiso y entrega push en un celular físico NO verificados. S6 (respuesta asesor y reinicio con envío pendiente), logout en navegador y sitio externo continúan pendientes. Redis no borra las tablas auxiliares creadas antes; no se hizo ninguna eliminación.
+
+## Corrección de activación push — 2026-10-02
+
+- Prueba IP14-01: mensaje sintético visible una vez en el widget; el usuario reportó un aviso solamente al abrir la PWA, no en pantalla bloqueada. No cuenta como entrega push verificada.
+- Consulta acotada a `admin-staging@e2e.invalid`: cero suscripciones push, notificación database creada y leída, cero jobs pendientes/fallidos. No se imprimieron endpoints ni claves.
+- `5b766b1` unifica la activación: permiso desde el clic, suscripción local y registro confirmado por servidor. Campana dirige a Configuración; no existe falso éxito por permiso aislado.
+- Correcciones adicionales: estado activo requiere permiso granted; errores síncronos de permiso recuperables; error de desactivación visible; conflicto 409 muestra recuperación por cuenta anterior sin exponer datos técnicos.
+- Verificación local: 58 tests frontend, TypeScript y build OK. Lint completo: 0 errores, 153 advertencias. Revisión independiente de aislamiento/CSRF y recuperación: sin bloqueantes después de las correcciones.
+- Entrega física pendiente: actualizar/reabrir PWA, activar desde Configuración, comprobar suscripción Apple registrada y repetir con iPhone bloqueado. No es necesario reinstalar de entrada; el service worker no cambió en este arreglo.

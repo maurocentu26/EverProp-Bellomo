@@ -46,6 +46,20 @@ test('permission granted but nothing registered on the server is NOT active', as
   assert.equal(await currentPushState(env({ permission: 'granted' }), deps), 'inactive');
 });
 
+test('registered subscription without granted permission is not active', async () => {
+  const { deps } = device({ existing: 'https://push.example/a', server: ['h:https://push.example/a'] });
+  assert.equal(await currentPushState(env({ permission: 'default' }), deps), 'inactive');
+});
+
+test('a synchronous permission error returns a recoverable error', async () => {
+  const { deps, log } = device();
+  deps.requestPermission = () => { throw new Error('Unavailable'); };
+  const result = await activatePush(deps, KEY);
+  assert.equal(result.state, 'error');
+  assert.match(result.message, /Reintentá/);
+  assert.equal(log.length, 0);
+});
+
 test('a local subscription the server does not list is not active; one it lists is', async () => {
   assert.equal(await currentPushState(env({ permission: 'granted' }), device({ existing: 'https://push.example/a', server: ['h:https://push.example/b'] }).deps), 'inactive');
   assert.equal(await currentPushState(env({ permission: 'granted' }), device({ existing: 'https://push.example/a', server: ['h:https://push.example/a'] }).deps), 'active');
@@ -73,6 +87,15 @@ test('a server that accepts the POST but does not list the device is not active'
   const { deps } = device();
   deps.register = async () => {};
   assert.equal((await activatePush(deps, KEY)).state, 'error');
+});
+
+test('an ownership conflict explains recovery without exposing the endpoint', async () => {
+  const { deps } = device();
+  deps.register = async () => { throw { status: 409 }; };
+  const result = await activatePush(deps, KEY);
+  assert.equal(result.state, 'error');
+  assert.match(result.message, /otra cuenta/);
+  assert.doesNotMatch(result.message, /https:/);
 });
 
 test('denied permission is blocked and nothing is subscribed', async () => {

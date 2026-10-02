@@ -77,7 +77,7 @@ export async function currentPushState(env: PushEnvironment, deps: Pick<PushDeps
   const config = await deps.config();
   if (!config.enabled) return 'server-off';
   const subscription = await (await deps.registration()).pushManager.getSubscription();
-  return subscription && config.subscriptionHashes.includes(await deps.hash(subscription.endpoint)) ? 'active' : 'inactive';
+  return env.permission === 'granted' && subscription && config.subscriptionHashes.includes(await deps.hash(subscription.endpoint)) ? 'active' : 'inactive';
 }
 
 /**
@@ -86,9 +86,8 @@ export async function currentPushState(env: PushEnvironment, deps: Pick<PushDeps
  * failed registration is retried without reinstalling.
  */
 export async function activatePush(deps: PushDeps, publicKey: string): Promise<{ state: PushState; message: string }> {
-  const asked = deps.requestPermission();
   try {
-    const permission = await asked;
+    const permission = await deps.requestPermission();
     if (permission === 'denied') return { state: 'blocked', message: 'Las notificaciones están bloqueadas para el panel. Habilitalas en la configuración del dispositivo.' };
     if (permission !== 'granted') return { state: 'inactive', message: 'No se activaron: el permiso quedó sin responder.' };
     const manager = (await deps.registration()).pushManager;
@@ -98,7 +97,10 @@ export async function activatePush(deps: PushDeps, publicKey: string): Promise<{
     return confirmed
       ? { state: 'active', message: 'Listo: este dispositivo recibe avisos con el panel cerrado.' }
       : { state: 'error', message: 'El servidor no confirmó este dispositivo. Reintentá.' };
-  } catch {
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'status' in error && error.status === 409) {
+      return { state: 'error', message: 'Este dispositivo tiene avisos registrados en otra cuenta. Ingresá a esa cuenta, desactivalos y volvé a esta para activarlos.' };
+    }
     return { state: 'error', message: 'No pudimos registrar este dispositivo para avisos. Reintentá.' };
   }
 }

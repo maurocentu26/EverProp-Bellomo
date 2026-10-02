@@ -110,7 +110,7 @@ export function PushPreferences() {
       <p role="status" className="text-sm font-semibold">{STATUS[state]}</p>
       {state === "install" && <InstallSteps />}
       {state === "blocked" && <p className="text-sm text-muted-foreground">Habilitalas en Configuración del dispositivo → Notificaciones → Bellomo (o en los permisos del sitio del navegador) y volvé a esta pantalla.</p>}
-      {message && state !== "active" && <p className="text-sm">{message}</p>}
+      {message && <p role="status" className="text-sm">{message}</p>}
       {(state === "inactive" || state === "error") && (
         <button type="button" onClick={activate} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white">
           {state === "error" ? "Reintentar" : "Activar avisos en este dispositivo"}
