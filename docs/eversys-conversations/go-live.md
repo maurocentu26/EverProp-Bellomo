@@ -4,7 +4,39 @@ Objetivo: poner en producción el chat web con asistente en el sitio de Bellomo 
 
 **Regla de oro:** `main` despliega solo (Railway/Vercel). El SQL NO se aplica solo. Aplicar los forward **antes** del merge: desde este release, `everprop:production-check --connections` falla el arranque si faltan las tablas y Railway mantiene el despliegue anterior.
 
-## Fase 1 — Panel (bandeja, visitas, conocimiento) con IA apagada
+## Entornos (desde 2026-10-02)
+
+| | Staging `bellomito-staging` | Producción Bellomo |
+|---|---|---|
+| Railway | Proyecto independiente, cuenta de Mauro | Proyecto actual |
+| Base | MySQL 8.4, volumen nuevo, solo datos sintéticos | `bellomo_crm` real |
+| Código | Rama `chore/agentic-setup` | `main` |
+| Credenciales | Propias; nunca copiadas de producción | Las actuales |
+| Estado | **En curso** (abajo) | **Sin tocar.** Merge a `main`, backup/restore y SQL de producción **no autorizados** |
+
+### Staging — avance
+
+Reportado por Ramiro (hecho con Codex el 2026-10-02; no verificado desde esta sesión):
+
+- [x] MySQL 8.4 con volumen nuevo; baseline y los 16 forward aplicados (incluidos `2026-09-29.002`, `.003`, `2026-09-30.001`, `.002`).
+- [x] Sin contactos, leads ni conversaciones reales.
+- [x] Servicios `api` y `worker` creados, sin desplegar; `CONVERSATIONS_AI_ENABLED=false`, `AGENT_LLM_PROVIDER=disabled`, `META_SEND_ENABLED=false` en ambos.
+
+Pendiente:
+
+| # | Paso | Verificación |
+|---|---|---|
+| S1 | `api` y `worker` desplegan desde `chore/agentic-setup` (no `main`); worker con `railway-worker.json` y la **misma** `QUEUE_CONNECTION` que la API | `/readyz` 200; `everprop:production-check --connections` todo OK |
+| S2 | Tenant sintético en la base de staging y `TENANT_HOST_MAP_JSON` con el hostname de la API de staging → ese tenant; usuarios de prueba con dominio `@e2e.invalid` o similar, nunca personas reales | login en el panel de staging |
+| S3 | Panel apuntando a staging: preview de Vercel de la rama con `NEXT_PUBLIC_EVERPROP_API_URL` = API de staging. **Revisar antes** que las variables de Preview en Vercel no apunten a la API de producción (se comparten entre previews) | la red del navegador muestra solo el host de staging |
+| S4 | `SANCTUM_STATEFUL_DOMAINS` y `CORS_ALLOWED_ORIGINS` de la API de staging = host del panel de staging | login y bandeja sin errores CORS |
+| S5 | `everprop:channels:web-chat --tenant=<sintético> --panel-origin=<panel staging> --site=<sitio de prueba>`; `EVERSYS_WIDGET_FRAME_ANCESTORS` en el panel y redeploy | `curl -I` de `/widget/<id>`: `frame-ancestors` solo con el sitio de prueba; `/admin/*` con `'none'` |
+| S6 | Recorrido manual: visitante → "Espera asesor" → tomar control → responder → visitante la ve; reiniciar worker con una respuesta en cola | "Enviado" una sola vez; 0 duplicados en `messages` |
+| S7 | Sitio de prueba: preview del sitio (rama `feat/eversys-chat-widget`) con `NEXT_PUBLIC_EVERSYS_*` de staging; el sitio público de Bellomo no se toca | widget de staging visible solo en el preview |
+
+Staging verde **no completa F0 de producción**: los pasos de "Fase 1" de abajo siguen pendientes y requieren autorización nueva.
+
+## Fase 1 — Panel (bandeja, visitas, conocimiento) con IA apagada — **producción, no autorizada**
 
 | # | Paso | Quién | Cómo verificar |
 |---|---|---|---|

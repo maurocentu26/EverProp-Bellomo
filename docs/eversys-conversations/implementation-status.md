@@ -75,7 +75,8 @@ Cada fase abre solo con el gate de la anterior. Responsables: **R** = Ramiro (op
 
 | Fase | Entregable | Quién | Gate de salida |
 |---|---|---|---|
-| F0 Release | Backup manual + restore de prueba; 4 forward con `lock_wait_timeout` (runbook); variables con IA/Meta apagadas; servicio worker; PR #7 fuera de borrador y merge | R | `/readyz` 200, `production-check` OK, respuesta de prueba en "Enviado" |
+| F0-S Staging (**en curso**) | Proyecto Railway independiente `bellomito-staging` (cuenta de Mauro): MySQL 8.4 nuevo con baseline + 16 forward, `api` y `worker` desde `chore/agentic-setup`, IA/Meta apagadas, tenant y usuarios sintéticos, panel y sitio en preview. Sin credenciales ni datos de producción. Pasos S1–S7 en `go-live.md` | R | `/readyz` 200, `production-check` OK, recorrido S6 con "Enviado" una vez |
+| F0-P Producción (**no autorizado**, 2026-10-02) | Backup manual + restore de prueba; 4 forward con `lock_wait_timeout`; variables; worker; PR #7 fuera de borrador y merge a `main` (dispara el despliegue) | R | Requiere autorización nueva; mismo gate que F0-S sobre producción |
 | F1 Piloto web humano | Sitio con widget por variables; conocimiento cargado desde `knowledge.ts`; responsables y horario; KPIs S16 mínimos | R + L | 2 semanas: tiempo de primera respuesta, leads completos, 0 duplicados |
 | F2 IA en web | X03 aprobado, modelo, secreto; evals Q01 contra el modelo real; tope del ledger; rollback probado en Railway | R + L | Gates de `evaluation-and-security.md`; costo por conversación dentro de USD 150 |
 | F3 WhatsApp | `ChannelPolicy` por número (D19); receipt → ACK → worker; X01 Tech Provider; alta de números (S14); número general y luego 1–2 asesores | N + R + L | S17: ambos canales reales; ningún simulador cuenta |
@@ -158,7 +159,7 @@ Con Laravel 13.24 la suite falla igual que con 13.34 cuando el entorno está mal
 
 ### 5. Pendientes por severidad
 
-**Bloqueantes previos al piloto (fuera de este lote):** backup de producción **restaurado de prueba**; staging con dominios reales (Railway + Vercel preview: CORS, Sanctum, `frame-ancestors`, `TENANT_HOST_MAP_JSON`); definir quién atiende la bandeja y en qué horario.
+**Bloqueantes previos al piloto (fuera de este lote):** staging con dominios reales **en curso** en `bellomito-staging` (F0-S; pasos S1–S7 de `go-live.md`); backup de producción restaurado de prueba y SQL de producción **no autorizados** (F0-P, 2026-10-02); definir quién atiende la bandeja y en qué horario.
 
 - **Media**: `schema:verify` contra producción real sin medir; conteo de conversaciones heredadas antes del SQL; rollback de IA sin medir en Railway; `compose.yaml` local: el worker de desarrollo sigue con `queue:work redis` fijo (solo dev).
 - **Baja**: `2026-09-14.001` no re-ejecutable y `2026-09-29.001` no registrado en `schema_versions` (documentado en runbook); advertencias del runner sin `.env`; aviso al visitante en handoff por IA apagada.
