@@ -9,7 +9,7 @@ Objetivo: poner en producción el chat web con asistente en el sitio de Bellomo 
 | # | Paso | Quién | Cómo verificar |
 |---|---|---|---|
 | 1 | Backup de MySQL producción **con procedures**: `mysqldump --single-transaction --routines --triggers --events --set-gtid-purged=OFF bellomo_crm`. Restaurarlo de prueba en un MySQL 8.4 aparte y anotar `MAX(applied_at)` de `schema_versions` y conteos de tablas | Ramiro | el restore levanta y `sp_create_or_get_open_lead` existe en la copia |
-| 2 | Aplicar los 3 forward siguiendo **"Aplicar el SQL"** (abajo) | Ramiro (X04) | las 3 versiones en `schema_versions` + chequeos posteriores OK |
+| 2 | Aplicar los 4 forward siguiendo **"Aplicar el SQL"** (abajo) | Ramiro (X04) | las 4 versiones en `schema_versions` + chequeos posteriores OK |
 
 ### Aplicar el SQL (paso 2)
 
@@ -28,11 +28,12 @@ Ventana de bajo tráfico, sin importaciones de inventario corriendo. Las tablas 
 1. `2026-09-29.002_conversation_runtime.sql`
 2. `2026-09-29.003_agent_runtime.sql`
 3. `2026-09-30.001_queue_tables.sql`
+4. `2026-09-30.002_conversation_sweep_index.sql` (índice en línea, `LOCK=NONE`; el arranque no lo exige, pero el barrido de IA apagada lo usa)
 
-**Si falla a mitad:** no restaurar el backup. Cada DDL es atómico y los 3 scripts son re-ejecutables (probado aplicándolos dos veces): corregir la causa (`1205` = lock: esperar y reintentar; `1062` = duplicado del chequeo 4) y volver a correr **el mismo archivo**. La app actual sigue funcionando porque los cambios solo agregan. No mergear hasta tener las 3 versiones registradas (si se mergea antes, `production-check` hace que Railway mantenga el despliegue anterior).
+**Si falla a mitad:** no restaurar el backup. Cada DDL es atómico y los 4 scripts son re-ejecutables (probado aplicándolos dos veces): corregir la causa (`1205` = lock: esperar y reintentar; `1062` = duplicado del chequeo 4) y volver a correr **el mismo archivo**. La app actual sigue funcionando porque los cambios solo agregan. No mergear hasta tener las 3 versiones registradas (si se mergea antes, `production-check` hace que Railway mantenga el despliegue anterior).
 
 **Chequeos posteriores:**
-- `SELECT version FROM schema_versions WHERE version IN ('2026-09-29.002','2026-09-29.003','2026-09-30.001');` → 3 filas.
+- `SELECT version FROM schema_versions WHERE version IN ('2026-09-29.002','2026-09-29.003','2026-09-30.001','2026-09-30.002');` → 4 filas.
 - `information_schema.CHECK_CONSTRAINTS`: `ck_messages_delivery` incluye `UNKNOWN` y `ck_outbound_jobs_status` incluye `UNKNOWN_FINAL`.
 - `information_schema.STATISTICS`: `uq_messages_channel_provider`, `uq_outbound_jobs_message`, `uq_channel_accounts_whatsapp_phone`, `ix_chatbot_runs_status_started`.
 - `everprop:schema:verify` cuenta tablas/FKs contra una instalación limpia (60/54/131). Producción puede tener FKs extra de `2026-09-15.002` (se crean solo si había inventario importado): correrlo primero contra el restore del paso 1 y anotar el valor real antes de usarlo como control.
