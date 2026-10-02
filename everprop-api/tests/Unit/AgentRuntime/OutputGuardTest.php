@@ -47,7 +47,7 @@ final class OutputGuardTest extends TestCase
         ];
     }
 
-    /** @return array<string, array{string, string}> */
+    /** @return list<array{string, string}> */
     public static function spelled(): array
     {
         return [
