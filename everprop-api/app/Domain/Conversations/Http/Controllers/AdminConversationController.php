@@ -50,6 +50,9 @@ final class AdminConversationController extends Controller
             ->orderByDesc('c.last_activity_at')->orderByDesc('c.id')
             ->select(['c.public_id', 'c.control_state', 'c.control_epoch', 'c.unread_count', 'c.last_activity_at', 'c.status',
                 'ca.channel_type', 'ct.display_name', 'u.public_id as assigned_user_id', 'u.display_name as assigned_user_name'])
+            // Last message preview: one row per conversation through uq_messages_sequence.
+            ->selectSub($this->lastMessage('LEFT(m.text_body, 140)'), 'preview_text')
+            ->selectSub($this->lastMessage('m.sender_type'), 'preview_sender')
             ->simplePaginate(50);
 
         return response()->json([
@@ -59,8 +62,16 @@ final class AdminConversationController extends Controller
                 'channel' => $c->channel_type, 'contact_name' => $c->display_name, 'unread' => (int) $c->unread_count,
                 'assigned_user' => $c->assigned_user_id ? ['id' => $c->assigned_user_id, 'name' => $c->assigned_user_name] : null,
                 'last_activity_at' => CarbonImmutable::parse($c->last_activity_at, 'UTC')->toISOString(),
+                'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender],
             ])->all(),
         ]);
+    }
+
+    private function lastMessage(string $column): Builder
+    {
+        return DB::table('messages as m')->selectRaw($column)
+            ->whereColumn('m.tenant_id', 'c.tenant_id')->whereColumn('m.conversation_id', 'c.id')
+            ->whereIn('m.direction', ['INBOUND', 'OUTBOUND'])->orderByDesc('m.sequence')->limit(1);
     }
 
     public function messages(Request $request, string $conversation): JsonResponse

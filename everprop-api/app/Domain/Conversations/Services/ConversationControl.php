@@ -3,6 +3,7 @@
 namespace App\Domain\Conversations\Services;
 
 use App\Domain\Conversations\Exceptions\ConversationConflict;
+use App\Domain\Conversations\Notifications\ConversationNeedsAttention;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -96,11 +97,17 @@ final class ConversationControl
             $epoch = (int) $conversation->control_epoch + 1;
             $this->cancelPendingBotSends($tenantId, $conversationId, $epoch);
             $changes = ['control_state' => 'WAITING_HUMAN', 'control_epoch' => $epoch, 'bot_mode' => 'HUMAN_FIRST'];
-            if ($conversation->assigned_user_id === null && $suggestedAssigneeId !== null) {
+            // The suggestion comes from CRM data: only an active user of this tenant who can attend is assigned.
+            if ($conversation->assigned_user_id === null && $suggestedAssigneeId !== null && DB::table('users')->where('tenant_id', $tenantId)
+                ->where('id', $suggestedAssigneeId)->where('status', 'ACTIVE')->whereIn('role_code', ['TENANT_ADMIN', 'SALES_MANAGER', 'SALES_ADVISOR'])->exists()) {
                 $changes['assigned_user_id'] = $suggestedAssigneeId;
             }
             $this->write($tenantId, $conversationId, $changes);
             $this->outbox($tenantId, $conversationId, 'CONVERSATION_HANDOFF_REQUESTED', ['epoch' => $epoch, 'reason' => mb_substr($reason, 0, 500)]);
+            ConversationNeedsAttention::sendFor((object) [
+                'tenant_id' => $tenantId, 'public_id' => $conversation->public_id, 'controlled_by_user_id' => null,
+                'assigned_user_id' => $changes['assigned_user_id'] ?? $conversation->assigned_user_id,
+            ]);
             // The assistant session ends with the handoff, atomically.
             DB::table('chatbot_sessions')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)->where('status', 'ACTIVE')
                 ->update(['status' => 'HANDED_OFF', 'handoff_reason' => mb_substr($reason, 0, 500), 'ended_at' => now(), 'last_activity_at' => now()]);

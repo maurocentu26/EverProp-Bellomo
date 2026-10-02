@@ -5,6 +5,7 @@ namespace App\Domain\Conversations\Services;
 use App\Domain\AgentRuntime\Jobs\RunAgentJob;
 use App\Domain\Conversations\Data\InboundMessage;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
+use App\Domain\Conversations\Notifications\ConversationNeedsAttention;
 use App\Domain\CRM\Services\ContactIdentityResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -86,19 +87,26 @@ final class InboundMessageService
         ]);
 
         $reopen = $conversation->control_state === 'CLOSED';
+        // A new message reopens a closed conversation with a fresh epoch; AI stays off if a human owned it.
+        $state = $reopen ? ($conversation->controlled_by_user_id || ! self::aiEnabled() ? 'WAITING_HUMAN' : 'AI_ACTIVE') : $conversation->control_state;
         DB::table('conversations')->where('tenant_id', $message->tenantId)->where('id', $conversation->id)->update([
             'next_sequence' => $sequence + 1,
             'unread_count' => DB::raw('unread_count + 1'),
             'first_inbound_at' => $conversation->first_inbound_at ?? $now->format('Y-m-d H:i:s.v'),
             'last_inbound_at' => $now->format('Y-m-d H:i:s.v'),
             'last_activity_at' => $now->format('Y-m-d H:i:s.v'),
-            // A new message reopens a closed conversation with a fresh epoch; AI stays off if a human owned it.
-            'control_state' => $reopen ? ($conversation->controlled_by_user_id || ! self::aiEnabled() ? 'WAITING_HUMAN' : 'AI_ACTIVE') : $conversation->control_state,
+            'control_state' => $state,
             'control_epoch' => $reopen ? DB::raw('control_epoch + 1') : $conversation->control_epoch,
             'state_version' => DB::raw('state_version + 1'),
             'status' => 'OPEN',
             'closed_at' => null,
         ]);
+
+        // One alert per unattended episode: the first unread message in a conversation people handle.
+        // unread_count only resets when the assignee reads, so follow-ups before that don't repeat it.
+        if (in_array($state, ['WAITING_HUMAN', 'HUMAN_ACTIVE'], true) && ($reopen || (int) $conversation->unread_count === 0)) {
+            ConversationNeedsAttention::sendFor($conversation);
+        }
 
         DB::table('domain_outbox')->insert([
             'tenant_id' => $message->tenantId,
