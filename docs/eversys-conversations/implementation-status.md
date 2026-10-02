@@ -82,6 +82,35 @@ Cada fase abre solo con el gate de la anterior. Responsables: **R** = Ramiro (op
 | F3 WhatsApp | `ChannelPolicy` por número (D19); receipt → ACK → worker; X01 Tech Provider; alta de números (S14); número general y luego 1–2 asesores | N + R + L | S17: ambos canales reales; ningún simulador cuenta |
 | F4 SaaS | S02 completo, S14, S15, billing manual (D15); n8n periférico (D20) si suma | N + L | Segundo tenant sin fork; restore medido |
 
+### F0-S — estado de `bellomito-staging` (2026-10-02)
+
+API `https://api-staging-30f3d.up.railway.app`, panel en Railway `https://panel-staging-staging-62ec.up.railway.app`, tenant sintético `bellomito-staging`, despliegue inicial `30d9573`. Vercel no se usó. Detalle de Codex en [staging-evidence.md](staging-evidence.md).
+
+| Comprobación | Reportado (Codex) | Verificado desde la sesión local (solo GET/HEAD públicos, sin credenciales) |
+|---|---|---|
+| `/healthz`, `/readyz` de la API | 200 | 200 / 200 |
+| `/login` y `/healthz` vía panel | 200 | 200 / 200 |
+| API privada sin sesión | 401 | `auth/me` 401, `admin/conversations` 401 |
+| `/admin/*` | `frame-ancestors 'none'` | `frame-ancestors 'none'` + `X-Frame-Options: DENY` |
+| `/widget/*` | CSP limitada al panel | `frame-ancestors 'self' <panel staging>` |
+| CORS | limitado al panel | preflight desde `evil.example` y desde el panel de producción en Vercel: `Allow-Origin` responde solo el panel de staging |
+| Bundles del panel | — | 9 chunks, 0 URLs de Railway/Vercel ni de producción (el destino del proxy vive en el servidor) |
+| Proxy del servidor → API de staging | variables explícitas; login de usuario solo de staging 200 con tenant correcto; logs de la API lo registran | no verificable desde afuera; la prueba del usuario exclusivo es la evidencia fuerte |
+| `production-check --connections` | todo OK | — |
+| Worker consume `database` | trabajo inocuo DONE, 0 pendientes y 0 fallidos | — |
+| Chat público idempotente | `replayed=true`, un solo mensaje | — |
+| IA/Meta apagados | sí, en API y worker | — |
+
+Hallazgos de la revisión (2026-10-02):
+- **Deriva de esquema en staging**: `cache`, `cache_locks` y `sessions` se crearon con SQL de `SetupSimulationDatabaseCommand`, fuera del baseline y los forward (invariante 3). Producción usa Redis para sesión y caché (`environment.example`). Recomendado: Redis en staging y no formalizar esas tablas, así staging reproduce producción.
+- **Logout 419**: el panel lee `XSRF-TOKEN` en cada request (`everprop-api.ts`), el 419 vino del script que reutilizó el token previo al login. Confirmar con navegador.
+- **Volumen del worker**: hoy ningún job usa archivos (solo `TenantMediaService`, en la API). Riesgo solo si un job futuro los necesita.
+- `staging-evidence.md` dice "no hay cuenta humana"; después se creó `admin-staging@e2e.invalid` (TENANT_ADMIN). La contraseña no se documenta.
+
+Pendiente F0-S, en este orden: (1) Redis para sesión/caché; (2) **scheduler** (sin él no corren el reconciliador, la expiración de leases ni el barrido de IA apagada, de los que depende el paso 3); (3) recorrido visitante → bandeja → tomar control → responder → una sola respuesta, y repetirlo con el worker detenido y un envío pendiente; (4) logout desde el navegador; (5) sitio de prueba externo con el widget. La biblioteca de materiales queda limitada al tenant `bellomo`: no se habilita en staging ni se usan materiales reales. El sitio público de Bellomo no tiene el widget.
+
+Staging no completa F0-P, ni autoriza encender IA o WhatsApp, ni mergear a `main`.
+
 Deuda transversal (cualquier fase, ítems chicos): conciliación UNKNOWN del ledger, búsqueda/notas en bandeja.
 
 ## Lote 3 — verificación para piloto de chat web (2026-09-30/10-01)
