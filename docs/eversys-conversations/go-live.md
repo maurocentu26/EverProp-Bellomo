@@ -34,6 +34,8 @@ Pendiente:
 | S6 | Recorrido manual: visitante → "Espera asesor" → tomar control → responder → visitante la ve; reiniciar worker con una respuesta en cola | "Enviado" una sola vez; 0 duplicados en `messages` |
 | S7 | Sitio de prueba: preview del sitio (rama `feat/eversys-chat-widget`) con `NEXT_PUBLIC_EVERSYS_*` de staging; el sitio público de Bellomo no se toca | widget de staging visible solo en el preview |
 
+| S8 | PWA y avisos (desde `9cc8986`): `WEBPUSH_PUBLIC_KEY`, `WEBPUSH_PRIVATE_KEY` (secreto) y `WEBPUSH_SUBJECT` (`mailto:` del equipo) **propias de staging** en `api` y `worker`, generadas dentro del contenedor de la API con `php -r 'require "vendor/autoload.php"; print_r(Minishlink\WebPush\VAPID::createVapidKeys());'`; nunca las de producción ni en Git | `everprop:production-check --connections --webpush` OK; `/icon/192` y `/manifest.webmanifest` 200; con la app instalada en el celular y notificaciones activadas, un mensaje del widget de prueba produce un push sin nombre ni texto del cliente que abre ese chat |
+
 Staging verde **no completa F0 de producción**: los pasos de "Fase 1" de abajo siguen pendientes y requieren autorización nueva.
 
 ## Fase 1 — Panel (bandeja, visitas, conocimiento) con IA apagada — **producción, no autorizada**
