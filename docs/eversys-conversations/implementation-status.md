@@ -81,7 +81,7 @@ Cada fase abre solo con el gate de la anterior. Responsables: **R** = Ramiro (op
 | F3 WhatsApp | `ChannelPolicy` por número (D19); receipt → ACK → worker; X01 Tech Provider; alta de números (S14); número general y luego 1–2 asesores | N + R + L | S17: ambos canales reales; ningún simulador cuenta |
 | F4 SaaS | S02 completo, S14, S15, billing manual (D15); n8n periférico (D20) si suma | N + L | Segundo tenant sin fork; restore medido |
 
-Deuda transversal (cualquier fase, ítems chicos): E2E y `guard.test.mjs` en CI, conciliación UNKNOWN del ledger, montos en palabras en `OutputGuard`, búsqueda/notas en bandeja.
+Deuda transversal (cualquier fase, ítems chicos): E2E de pantallas (`ui-vertical`) en CI, conciliación UNKNOWN del ledger, montos en palabras en `OutputGuard`, búsqueda/notas en bandeja.
 
 ## Lote 3 — verificación para piloto de chat web (2026-09-30/10-01)
 
@@ -160,8 +160,8 @@ Con Laravel 13.24 la suite falla igual que con 13.34 cuando el entorno está mal
 
 **Bloqueantes previos al piloto (fuera de este lote):** backup de producción **restaurado de prueba**; staging con dominios reales (Railway + Vercel preview: CORS, Sanctum, `frame-ancestors`, `TENANT_HOST_MAP_JSON`); definir quién atiende la bandeja y en qué horario.
 
-- **Media**: E2E fuera de CI (propuesta abajo); `schema:verify` contra producción real sin medir; conteo de conversaciones heredadas antes del SQL; rollback de IA sin medir en Railway; `compose.yaml` local: el worker de desarrollo sigue con `queue:work redis` fijo (solo dev).
-- **Baja**: `2026-09-14.001` no re-ejecutable y `2026-09-29.001` no registrado en `schema_versions` (documentado en runbook); `guard.test.mjs` fuera de CI; advertencias del runner sin `.env`; aviso al visitante en handoff por IA apagada.
+- **Media**: E2E de pantallas fuera de CI (el de API ya corre en `api.yml` desde 2026-10-02); `schema:verify` contra producción real sin medir; conteo de conversaciones heredadas antes del SQL; rollback de IA sin medir en Railway; `compose.yaml` local: el worker de desarrollo sigue con `queue:work redis` fijo (solo dev).
+- **Baja**: `2026-09-14.001` no re-ejecutable y `2026-09-29.001` no registrado en `schema_versions` (documentado en runbook); advertencias del runner sin `.env`; aviso al visitante en handoff por IA apagada.
 
 **Propuesta (no aplicada) para versionar el E2E:** `e2e/` en la raíz con `@playwright/test`, `playwright.config.ts` con dos proyectos (`api` y `ui`), `globalSetup` que levanta el stack Docker aislado, importa baseline + forward, siembra los 2 tenants con un comando artisan de fixtures sintéticas (solo `local`/`testing`) y arranca `next start`; los 31 checks pasan a `test()` con `expect`; job de CI nocturno y manual, no en cada push (≈6 min).
 

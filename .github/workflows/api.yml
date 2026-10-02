@@ -123,6 +123,13 @@ jobs:
       - name: Run MySQL and Redis backed tests
         run: docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php php artisan test --no-coverage
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Vertical E2E (widget → inbox → advisor reply, two synthetic tenants, AI off)
+        run: node tests/e2e/api-vertical.mjs
+
       - name: Build production image
         run: docker build --target production -t "$CI_PRODUCTION_IMAGE" .
 
