@@ -69,6 +69,20 @@ Proveedor LLM: interfaz `LlmClient`; adaptador Anthropic Messages listo pero **a
 - Montos escritos en palabras ("ochenta y cinco mil") no los detecta el guard.
 - Dependencias externas: X01 (Tech Provider: verificación de negocio, App Review, videos), X02–X04.
 
+## Plan de cierre (2026-10-02)
+
+Cada fase abre solo con el gate de la anterior. Responsables: **R** = Ramiro (operación, autorizaciones), **N** = sesión en la nube (implementa, abre PR), **L** = sesión local (revisión con subagentes, ítems chicos). Ningún paso activa IA ni Meta sin autorización expresa.
+
+| Fase | Entregable | Quién | Gate de salida |
+|---|---|---|---|
+| F0 Release | Backup manual + restore de prueba; 4 forward con `lock_wait_timeout` (runbook); variables con IA/Meta apagadas; servicio worker; PR #7 fuera de borrador y merge | R | `/readyz` 200, `production-check` OK, respuesta de prueba en "Enviado" |
+| F1 Piloto web humano | Sitio con widget por variables; conocimiento cargado desde `knowledge.ts`; responsables y horario; KPIs S16 mínimos | R + L | 2 semanas: tiempo de primera respuesta, leads completos, 0 duplicados |
+| F2 IA en web | X03 aprobado, modelo, secreto; evals Q01 contra el modelo real; tope del ledger; rollback probado en Railway | R + L | Gates de `evaluation-and-security.md`; costo por conversación dentro de USD 150 |
+| F3 WhatsApp | `ChannelPolicy` por número (D19); receipt → ACK → worker; X01 Tech Provider; alta de números (S14); número general y luego 1–2 asesores | N + R + L | S17: ambos canales reales; ningún simulador cuenta |
+| F4 SaaS | S02 completo, S14, S15, billing manual (D15); n8n periférico (D20) si suma | N + L | Segundo tenant sin fork; restore medido |
+
+Deuda transversal (cualquier fase, ítems chicos): E2E y `guard.test.mjs` en CI, conciliación UNKNOWN del ledger, montos en palabras en `OutputGuard`, búsqueda/notas en bandeja.
+
 ## Lote 3 — verificación para piloto de chat web (2026-09-30/10-01)
 
 Corrido en la máquina local de Ramiro, **no** en sandbox. Sin push, PR, deploy ni SQL contra producción. Flags intactos: `CONVERSATIONS_AI_ENABLED=false`, `AGENT_LLM_PROVIDER=disabled`, `META_SEND_ENABLED=false`. No se leyó ningún `.env` ni secreto real: los stacks usan secretos sintéticos generados fuera del repo.
@@ -133,7 +147,7 @@ Con Laravel 13.24 la suite falla igual que con 13.34 cuando el entorno está mal
 | schema-guardian | Media | Runbook pedía ver `2026-09-29.001` en `schema_versions`, pero ese script no se registra | **Corregido**: verificación por contenido del procedure |
 | schema-guardian | Media | Faltaban chequeos previos (WhatsApp duplicado, `jobs` existente, grants), backup sin `--routines`, sin verificación posterior ni plan ante falla a mitad | **Corregido en runbook** |
 | schema-guardian | Media | `schema:verify` cuenta contra instalación limpia; producción puede tener 133 FKs | Documentado: correr primero contra el restore |
-| schema-guardian | Baja | Barrido IA-apagada hace full scan por minuto (sin índice) | Pendiente: forward `2026-09-30.002` propuesto, no creado |
+| schema-guardian | Baja | Barrido IA-apagada hace full scan por minuto (sin índice) | **Corregido** (2026-10-02): forward `2026-09-30.002` `ix_conversations_sweep (status, last_inbound_at)`; MySQL 8.4 limpio: baseline + 16 forward OK, re-ejecución OK, `EXPLAIN` usa el índice (range, sin filesort) |
 | Info | — | `postMessage` de cierre a `*` sin datos; docblock fuera de lugar (corregido); tenants inactivos en el barrido; FK `fk_visits_follow_up` no compuesta (preexistente) | Anotados |
 
 ### Hallazgos del propio lote (no venían de la revisión)
@@ -147,7 +161,7 @@ Con Laravel 13.24 la suite falla igual que con 13.34 cuando el entorno está mal
 **Bloqueantes previos al piloto (fuera de este lote):** backup de producción **restaurado de prueba**; staging con dominios reales (Railway + Vercel preview: CORS, Sanctum, `frame-ancestors`, `TENANT_HOST_MAP_JSON`); definir quién atiende la bandeja y en qué horario.
 
 - **Media**: E2E fuera de CI (propuesta abajo); `schema:verify` contra producción real sin medir; conteo de conversaciones heredadas antes del SQL; rollback de IA sin medir en Railway; `compose.yaml` local: el worker de desarrollo sigue con `queue:work redis` fijo (solo dev).
-- **Baja**: índice para el barrido (`2026-09-30.002` propuesto); `2026-09-14.001` no re-ejecutable y `2026-09-29.001` no registrado en `schema_versions` (documentado en runbook); `guard.test.mjs` fuera de CI; advertencias del runner sin `.env`; aviso al visitante en handoff por IA apagada.
+- **Baja**: `2026-09-14.001` no re-ejecutable y `2026-09-29.001` no registrado en `schema_versions` (documentado en runbook); `guard.test.mjs` fuera de CI; advertencias del runner sin `.env`; aviso al visitante en handoff por IA apagada.
 
 **Propuesta (no aplicada) para versionar el E2E:** `e2e/` en la raíz con `@playwright/test`, `playwright.config.ts` con dos proyectos (`api` y `ui`), `globalSetup` que levanta el stack Docker aislado, importa baseline + forward, siembra los 2 tenants con un comando artisan de fixtures sintéticas (solo `local`/`testing`) y arranca `next start`; los 31 checks pasan a `test()` con `expect`; job de CI nocturno y manual, no en cada push (≈6 min).
 
