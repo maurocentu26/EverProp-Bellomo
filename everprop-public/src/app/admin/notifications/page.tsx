@@ -34,7 +34,7 @@ export default function NotificationsPage() {
   }
   return <section className="mx-auto w-full max-w-5xl min-w-0 space-y-5 pb-8">
     <header><h1 className="text-2xl font-bold">Notificaciones</h1><p className="mt-2 text-sm text-muted-foreground">Novedades y asignaciones de tu cuenta.</p></header>
-    <details className="rounded-xl border border-border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Configurar avisos del dispositivo</summary><div className="px-3 pb-3"><PushPreferences /></div></details>
+    <details className="rounded-xl border border-border bg-card"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Avisos con el panel cerrado</summary><div className="px-3 pb-3"><PushPreferences /></div></details>
     <div role="group" aria-label="Filtrar notificaciones" className="grid grid-cols-2 gap-1 sm:flex sm:gap-2">
       {([["all", "Todas"], ["unread", "No leídas"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)} className={`min-h-11 rounded-xl border px-2 py-2 text-xs sm:px-4 sm:text-sm font-semibold ${filter === id ? "border-blue-600 bg-blue-600 text-white" : "border-border bg-card"}`}>{label}</button>)}
     </div>
