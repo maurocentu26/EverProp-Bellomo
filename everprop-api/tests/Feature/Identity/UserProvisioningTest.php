@@ -7,6 +7,7 @@ use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 final class UserProvisioningTest extends TestCase
@@ -17,6 +18,9 @@ final class UserProvisioningTest extends TestCase
     {
         parent::setUp();
         config(['cache.default' => 'array']);
+        // The limiter captured the Redis store at boot, so the line above does not isolate it.
+        // Clear the login/activation bucket so earlier suites cannot leave this test at 429.
+        RateLimiter::clear(md5('login'.'login|127.0.0.1'));
     }
 
     /** @return array<string, mixed> */

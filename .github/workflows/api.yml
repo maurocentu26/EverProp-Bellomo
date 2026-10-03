@@ -2,11 +2,19 @@ name: API quality
 
 on:
   pull_request:
+    paths: ['everprop-api/**', '.github/workflows/api.yml', 'everprop-public/src/app/admin/conversaciones/**', 'everprop-public/src/app/widget/**', 'everprop-public/src/components/admin/conversations/**', 'everprop-public/src/components/public/ChatWidget.tsx', 'everprop-public/src/lib/conversations-api.ts', 'everprop-public/src/lib/everprop-api.ts', 'everprop-public/public/eversys-widget.js', 'everprop-public/next.config.ts', 'everprop-public/package-lock.json']
   push:
     branches: [main]
+    paths: ['everprop-api/**', '.github/workflows/api.yml', 'everprop-public/src/app/admin/conversaciones/**', 'everprop-public/src/app/widget/**', 'everprop-public/src/components/admin/conversations/**', 'everprop-public/src/components/public/ChatWidget.tsx', 'everprop-public/src/lib/conversations-api.ts', 'everprop-public/src/lib/everprop-api.ts', 'everprop-public/public/eversys-widget.js', 'everprop-public/next.config.ts', 'everprop-public/package-lock.json']
 
 permissions:
   contents: read
+
+# Monorepo: GitHub only reads workflows from the repository root, so this job
+# runs from everprop-api/ explicitly (it was previously inert under everprop-api/.github).
+defaults:
+  run:
+    working-directory: everprop-api
 
 jobs:
   verify:
@@ -43,6 +51,10 @@ jobs:
               -ResourcePrefix $env:EVERPROP_RESOURCE_PREFIX `
               -PhpImage $env:EVERPROP_PHP_IMAGE `
               -HttpPort ([int] $env:HTTP_PORT)
+
+          # Browser E2E: the production-mode panel calls the API as "localhost"; map that host to the
+          # synthetic tenant like Railway maps the API hostname. 127.0.0.1 keeps header resolution.
+          (Get-Content .env) -replace '^TENANT_HOST_MAP_JSON=.*', 'TENANT_HOST_MAP_JSON=''{"localhost":"e2e-a"}''' | Set-Content .env
 
           if ($IsLinux) {
               chmod 0700 -- .docker/secrets
@@ -104,7 +116,7 @@ jobs:
           docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T -e COMPOSER_HOME=/tmp/composer -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/var/www/html everprop-api-php composer validate --strict
           docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T -e COMPOSER_HOME=/tmp/composer -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/var/www/html everprop-api-php composer audit --locked --no-interaction
           docker compose --project-name "$COMPOSE_PROJECT_NAME" run --rm --no-deps --user "$(id -u):$(id -g)" everprop-api-php vendor/bin/pint --test
-          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php vendor/bin/phpstan analyse --no-progress
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
       - name: Validate OpenAPI and routes
         run: |
@@ -114,6 +126,49 @@ jobs:
 
       - name: Run MySQL and Redis backed tests
         run: docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php php artisan test --no-coverage
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Vertical E2E (widget → inbox → advisor reply, two synthetic tenants, AI off)
+        run: node tests/e2e/api-vertical.mjs
+
+      - name: Build and start the panel in production mode against this API
+        working-directory: everprop-public
+        env:
+          NEXT_PUBLIC_DATA_MODE: api
+          NEXT_PUBLIC_EVERPROP_API_URL: http://localhost:${{ env.HTTP_PORT }}
+          NEXT_PUBLIC_API_URL: http://localhost:${{ env.HTTP_PORT }}
+          EVERSYS_WIDGET_FRAME_ANCESTORS: http://127.0.0.1:4000
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          NODE_OPTIONS=--dns-result-order=ipv4first nohup npm start -- -p 3000 > "$RUNNER_TEMP/panel.log" 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:3000/login && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:3000/login
+
+      - name: Install Playwright outside the repo (pinned)
+        run: |
+          npm i --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.63.0
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+          echo "PLAYWRIGHT_PATH=$RUNNER_TEMP/pw/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+
+      - name: Browser E2E (site widget → panel inbox → reply, desktop and mobile)
+        env:
+          E2E_SHOTS: ${{ runner.temp }}/e2e-shots
+        run: node tests/e2e/ui-vertical.mjs
+
+      - name: Upload E2E screenshots and panel log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/e2e-shots
+            ${{ runner.temp }}/panel.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Build production image
         run: docker build --target production -t "$CI_PRODUCTION_IMAGE" .

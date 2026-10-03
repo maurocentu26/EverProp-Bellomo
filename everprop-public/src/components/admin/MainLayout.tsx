@@ -55,6 +55,12 @@ export default function MainLayout({ children }: Props) {
         }
     }, [currentUserId]);
 
+    // Installable app + offline notice: same script and scope as push, so this reuses that registration.
+    useEffect(() => {
+        if (!currentUserId || !("serviceWorker" in navigator)) return;
+        void navigator.serviceWorker.register("/notifications-sw.js").catch(() => {});
+    }, [currentUserId]);
+
     useEffect(() => {
         const frame = window.requestAnimationFrame(() => {
             document.querySelector<HTMLElement>('[data-admin-scroll-container="true"]')?.scrollTo({ top: 0, behavior: "instant" });

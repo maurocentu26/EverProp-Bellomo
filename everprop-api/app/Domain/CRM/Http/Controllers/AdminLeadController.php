@@ -5,6 +5,8 @@ namespace App\Domain\CRM\Http\Controllers;
 use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\Notifications\LeadAssignedNotification;
 use App\Domain\Identity\Enums\RoleCode;
+use App\Domain\Inventory\Models\Property;
+use App\Domain\Inventory\Services\InventoryAccess;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -12,13 +14,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 final class AdminLeadController extends Controller
 {
-    public function __construct(private readonly TenantContext $tenantContext) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly InventoryAccess $inventoryAccess,
+    ) {}
 
     public function advisors(Request $request): JsonResponse
     {
@@ -107,13 +113,14 @@ final class AdminLeadController extends Controller
                     ])
                     ->get();
 
+                $canViewPrices = $this->inventoryAccess->mayViewPriceFields($user);
                 foreach ($linkedProps as $prop) {
                     $linkedPropertyIds[$prop->lead_id][] = $prop->property_public_id;
                     $linkedPropertiesMap[$prop->lead_id][] = [
                         'id' => $prop->property_public_id,
                         'title' => $prop->property_title,
-                        'price' => $prop->property_price ? (float) $prop->property_price : null,
-                        'currency' => $prop->property_currency,
+                        'price' => $canViewPrices && $prop->property_price !== null ? (float) $prop->property_price : null,
+                        'currency' => $canViewPrices ? $prop->property_currency : null,
                         'category' => $prop->property_category,
                         'project_id' => $prop->project_public_id,
                         'project_name' => $prop->project_name,
@@ -193,7 +200,7 @@ final class AdminLeadController extends Controller
                 throw ValidationException::withMessages(['stage' => 'Creá el lead como Nuevo y registrá un contacto antes de avanzar su etapa.']);
             }
 
-            return DB::transaction(function () use ($tenantId, $validated) {
+            return DB::transaction(function () use ($tenantId, $validated, $user) {
                 $now = Carbon::now('UTC');
                 $contactUuid = (string) Str::uuid();
 
@@ -253,16 +260,7 @@ final class AdminLeadController extends Controller
                 // 4.1 Attach initial property if provided
                 $linkedPropertyIds = [];
                 if (! empty($validated['property_id'])) {
-                    $propIdentifier = $validated['property_id'];
-                    $property = DB::table('properties')
-                        ->where('tenant_id', $tenantId)
-                        ->where(function ($q) use ($propIdentifier) {
-                            $q->where('public_id', $propIdentifier);
-                            if (is_numeric($propIdentifier)) {
-                                $q->orWhere('id', (int) $propIdentifier);
-                            }
-                        })
-                        ->first();
+                    $property = $this->linkableProperty($user, (string) $validated['property_id']);
 
                     if (! $property) {
                         throw ValidationException::withMessages(['property_id' => 'La propiedad seleccionada no está disponible en esta empresa.']);
@@ -402,12 +400,13 @@ final class AdminLeadController extends Controller
                 ->get();
 
             $propertyIds = $linkedProps->pluck('property_public_id')->all();
-            $propertiesList = $linkedProps->map(function ($prop) {
+            $canViewPrices = $this->inventoryAccess->mayViewPriceFields($request->user());
+            $propertiesList = $linkedProps->map(function ($prop) use ($canViewPrices) {
                 return [
                     'id' => $prop->property_public_id,
                     'title' => $prop->property_title,
-                    'price' => $prop->property_price ? (float) $prop->property_price : null,
-                    'currency' => $prop->property_currency,
+                    'price' => $canViewPrices && $prop->property_price !== null ? (float) $prop->property_price : null,
+                    'currency' => $canViewPrices ? $prop->property_currency : null,
                     'category' => $prop->property_category,
                     'project_id' => $prop->project_public_id,
                     'project_name' => $prop->project_name,
@@ -617,7 +616,8 @@ final class AdminLeadController extends Controller
 
             return response()->json(['status' => 'success']);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Failed to delete lead", ['id' => $leadPublicId, 'error' => $e->getMessage()]);
+            Log::error('Failed to delete lead', ['id' => $leadPublicId, 'error' => $e->getMessage()]);
+
             return response()->json(['error' => 'Failed to delete lead'], 500);
         }
     }
@@ -650,16 +650,7 @@ final class AdminLeadController extends Controller
                 'quoted_currency_code' => 'nullable|string|in:USD,ARS',
             ]);
 
-            $propertyIdentifier = $validated['property_id'];
-            $property = DB::table('properties')
-                ->where('tenant_id', $tenantId)
-                ->where(function ($q) use ($propertyIdentifier) {
-                    $q->where('public_id', $propertyIdentifier);
-                    if (is_numeric($propertyIdentifier)) {
-                        $q->orWhere('id', (int) $propertyIdentifier);
-                    }
-                })
-                ->first();
+            $property = $this->linkableProperty($actor, (string) $validated['property_id']);
 
             if (! $property) {
                 return response()->json(['error' => 'Property not found'], 404);
@@ -877,6 +868,22 @@ final class AdminLeadController extends Controller
         }
     }
 
+    /**
+     * Property that may receive a NEW lead link: same tenant, not deleted and inside the
+     * actor's inventory scope. Existing links to retired assets stay readable/detachable.
+     */
+    private function linkableProperty(User $actor, string $identifier): ?Property
+    {
+        return $this->inventoryAccess->scopeProperties(Property::query(), $actor)
+            ->where(function ($q) use ($identifier): void {
+                $q->where('properties.public_id', $identifier);
+                if (ctype_digit($identifier)) {
+                    $q->orWhere('properties.id', (int) $identifier);
+                }
+            })
+            ->first();
+    }
+
     private function resolveUserId(mixed $agentId, int $tenantId): ?int
     {
         if (empty($agentId)) {
@@ -910,4 +917,3 @@ final class AdminLeadController extends Controller
         return null;
     }
 }
-

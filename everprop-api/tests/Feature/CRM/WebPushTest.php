@@ -114,7 +114,7 @@ final class WebPushTest extends TestCase
         $sender = \Mockery::mock(WebPush::class);
         $sender->shouldNotReceive('sendOneNotification');
         $this->app->instance(WebPush::class, $sender);
-        (new SendWebPush($tenant->id,$user->id,$notification->id))->handle();
-        $this->assertDatabaseHas('notifications',['id' => $notification->id]);
+        (new SendWebPush($tenant->id, $user->id, $notification->id))->handle();
+        $this->assertDatabaseHas('notifications', ['id' => $notification->id]);
     }
 }

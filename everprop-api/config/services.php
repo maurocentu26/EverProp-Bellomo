@@ -42,6 +42,27 @@ return [
         ],
     ],
 
+    // EverSys Meta app (Tech Provider). One app-level webhook for every tenant: the tenant is
+    // derived from the verified phone_number_id -> channel_accounts mapping, never from the body.
+    // Anthropic Messages API for the assistant (AGENT_LLM_PROVIDER=anthropic). Key only via env/secret store.
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+        'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
+        'version' => env('ANTHROPIC_VERSION', '2023-06-01'),
+    ],
+
+    'meta' => [
+        'app_secret' => env('META_APP_SECRET'),
+        'webhook_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
+        'graph_version' => env('META_GRAPH_VERSION', 'v24.0'), // v24 (2025-10-08): status webhooks drop `conversation` (unused here)
+        'send_enabled' => (bool) env('META_SEND_ENABLED', false),
+        'send_timeout_seconds' => (int) env('META_SEND_TIMEOUT_SECONDS', 10),
+        // Embedded Signup (Tech Provider): connecting real business accounts is gated like sending (X04).
+        'app_id' => env('META_APP_ID'),
+        'embedded_signup_config_id' => env('META_EMBEDDED_SIGNUP_CONFIG_ID'),
+        'onboarding_enabled' => (bool) env('META_ONBOARDING_ENABLED', false),
+    ],
+
     'webhooks' => [
         'secrets' => $webhookSecrets,
         'tolerance_seconds' => (int) env('WEBHOOK_TOLERANCE_SECONDS', 300),

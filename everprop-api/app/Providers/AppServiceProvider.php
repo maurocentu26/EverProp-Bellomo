@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Domain\AgentRuntime\Llm\AnthropicMessagesClient;
+use App\Domain\AgentRuntime\Llm\DisabledLlmClient;
+use App\Domain\AgentRuntime\Llm\LlmClient;
+use App\Domain\Conversations\Transports\TransportRegistry;
 use App\Domain\Identity\Policies\UserPolicy;
 use App\Domain\Inventory\Models\Project;
 use App\Domain\Inventory\Models\Property;
@@ -35,6 +39,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(TransportRegistry::class);
+        $this->app->bind(LlmClient::class, fn (): LlmClient => config('agent.llm_provider') === 'anthropic'
+            && filled(config('services.anthropic.key')) && filled(config('agent.llm_model'))
+            ? new AnthropicMessagesClient((string) config('services.anthropic.key'), (string) config('agent.llm_model'),
+                (string) config('services.anthropic.base_url'), (string) config('services.anthropic.version'), (int) config('agent.timeout_seconds'))
+            : new DisabledLlmClient);
         $this->app->bind(WebPush::class, fn () => new WebPush(['VAPID' => ['subject' => config('webpush.subject'), 'publicKey' => config('webpush.public_key'), 'privateKey' => config('webpush.private_key')]], ['TTL' => 3600], new Client(['timeout' => 10, 'connect_timeout' => 5, 'allow_redirects' => false])));
         $this->app->bind(TenantResolver::class, TrustedTenantResolver::class);
         $this->app->scoped(
@@ -80,6 +90,18 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('public-leads', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('security.public_lead_rate_limit_per_minute', 20),
         )->by('public-leads|'.$request->ip()));
+
+        // Keyed by IP (+ token when present): random bearer tokens cannot escape the per-IP budget.
+        RateLimiter::for('public-chat', static fn (Request $request): Limit => Limit::perMinute(
+            (int) config('conversations.web_rate_limit_per_minute', 20),
+        )->by('public-chat|'.$request->ip()));
+        RateLimiter::for('public-chat-read', static fn (Request $request): Limit => Limit::perMinute(
+            (int) config('conversations.web_read_rate_limit_per_minute', 120),
+        )->by('public-chat-read|'.$request->ip()));
+        // Meta delivers from shared infrastructure in bursts; the signature is the real gate.
+        RateLimiter::for('meta-webhooks', static fn (Request $request): Limit => Limit::perMinute(
+            (int) config('conversations.meta_webhook_rate_limit_per_minute', 2000),
+        )->by('meta-webhooks|'.$request->ip()));
 
         RateLimiter::for('webhooks', static fn (Request $request): Limit => Limit::perMinute(120)
             ->by('webhooks|'.$request->ip()));

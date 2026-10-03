@@ -71,6 +71,21 @@ final class InventoryAccess
             && $this->canUpdate($user, $resource);
     }
 
+    /** Publishing capability for a property that does not exist yet (create/batch). */
+    public function canPublishNew(User $user): bool
+    {
+        return $this->baseAllows($user, Capability::PUBLISH)
+            && $this->canCreate($user);
+    }
+
+    /** Whether the user may place inventory inside the given project (create/move/batch). */
+    public function canPlaceInProject(User $user, Project $project): bool
+    {
+        return $this->canCreate($user)
+            && (int) $project->tenant_id === $this->tenantContext->id()
+            && $this->canAccessProject($user, $project, 'can_edit');
+    }
+
     public function canViewPrices(User $user, Property $property): bool
     {
         if (! $this->canView($user, $property)) {

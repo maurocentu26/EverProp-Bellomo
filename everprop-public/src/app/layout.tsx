@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Bellomo", statusBarStyle: "default" },
   description: "Panel de gestión de desarrollos, inventario y atención comercial de Bellomo.",
-  icons: { icon: "/brand/bellomo/symbol.png" },
+  // Icons come from app/icon.tsx and app/apple-icon.tsx (192/512/maskable and iOS home screen).
 };
 
 import { AuthProvider } from "@/lib/auth-context";

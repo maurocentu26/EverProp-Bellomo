@@ -26,7 +26,7 @@ final class ProductionCheck extends Command
             'APP_KEY configured' => is_string($key) && Encrypter::supported($key, config('app.cipher')),
             'APP_URL uses HTTPS' => str_starts_with((string) config('app.url'), 'https://'),
             'MySQL connection' => config('database.default') === 'mysql',
-            'Persistent sessions/cache and supported queue' => in_array(config('session.driver'), ['redis', 'database'], true) && in_array(config('cache.default'), ['redis', 'database'], true) && in_array(config('queue.default'), ['redis', 'sync'], true),
+            'Persistent sessions/cache and supported queue' => in_array(config('session.driver'), ['redis', 'database'], true) && in_array(config('cache.default'), ['redis', 'database'], true) && in_array(config('queue.default'), ['redis', 'database', 'sync'], true),
             'Secure HTTP-only encrypted sessions' => config('session.secure') && config('session.http_only') && config('session.encrypt'),
             'Trusted tenant hosts configured' => config('tenancy.hosts') !== [] && config('tenancy.trusted_hosts') !== [] && ! config('tenancy.allow_local_resolver'),
             'Explicit frontend origins' => config('cors.allowed_origins') !== [] && ! in_array('*', config('cors.allowed_origins'), true),
@@ -62,9 +62,24 @@ final class ProductionCheck extends Command
             }
             $this->line('MANUAL: verify the supervised worker and delivery on a physical phone; configuration alone does not prove delivery.');
         }
+        if (config('conversations.ai_enabled')) {
+            // The assistant needs a real worker (turn lock, delayed retries) and an approved provider.
+            $checks['Assistant: asynchronous queue'] = in_array(config('queue.connections.'.config('queue.default').'.driver'), ['database', 'redis'], true);
+            $checks['Assistant: queue retry_after above turn lock'] = (int) config('queue.connections.'.config('queue.default').'.retry_after', 0) > (int) config('agent.turn_lock_seconds');
+            $checks['Assistant: LLM provider configured'] = config('agent.llm_provider') === 'anthropic'
+                && filled(config('services.anthropic.key')) && filled(config('agent.llm_model'));
+        }
         if ($this->option('connections')) {
             try {
                 ProductionDependencies::check();
+                // Eversys Conversations (forward 2026-09-29.002/.003): the code must never serve without them.
+                $checks['Schema: conversation runtime'] = Schema::hasColumns('conversations', ['control_state', 'control_epoch', 'next_sequence'])
+                    && Schema::hasTable('public_chat_sessions') && Schema::hasTable('usage_ledger') && Schema::hasTable('outbox_consumptions');
+                $checks['Schema: agent runtime'] = Schema::hasTable('knowledge_chunks') && Schema::hasTable('tool_executions')
+                    && Schema::hasTable('visit_requests') && Schema::hasColumn('chatbot_runs', 'control_epoch');
+                if (config('queue.connections.'.config('queue.default').'.driver') === 'database') {
+                    $checks['Schema: database queue tables'] = Schema::hasTable('jobs') && Schema::hasTable('failed_jobs');
+                }
                 foreach (['payment_agreements', 'installments', 'installment_payments', 'user_inventory_settings'] as $table) {
                     $checks['Schema: '.$table] = Schema::hasTable($table);
                 }

@@ -17,7 +17,7 @@ Crear/configurar tres servicios desde el mismo repositorio y commit, con raíz `
 | Servicio | Archivo | Función |
 | --- | --- | --- |
 | API | `/everprop-api/railway.json` | HTTP sobre `$PORT`, readiness `/readyz` |
-| Cola | `/everprop-api/railway-worker.json` | Worker Redis, sin dominio público |
+| Cola | `/everprop-api/railway-worker.json` | Worker de la conexión `QUEUE_CONNECTION` (redis o database; override con `QUEUE_WORKER_CONNECTION`), sin dominio público |
 | Scheduler | `/everprop-api/railway-scheduler.json` | Scheduler continuo, una réplica, sin dominio público |
 
 Los tres comparten MySQL, Redis, APP_KEY y el almacenamiento privado. El proceso de cola termina de forma controlada cada hora; la política `ALWAYS` lo reinicia. Mantener una sola réplica del scheduler. Usar MySQL y Redis por red privada. No publicar sus puertos.
