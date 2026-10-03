@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Domain\AgentRuntime\Coordinator\PromptBuilder;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
+use App\Domain\Conversations\Jobs\ProcessMetaWebhookReceipt;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
 use Illuminate\Console\Command;
@@ -21,7 +22,7 @@ final class ReconcileConversations extends Command
 {
     protected $signature = 'everprop:conversations:reconcile';
 
-    protected $description = 'Mark expired dispatch leases UNKNOWN, re-enqueue due outbound jobs and hand off stuck assistant turns';
+    protected $description = 'Mark expired dispatch leases UNKNOWN, re-enqueue due outbound jobs and WhatsApp webhook receipts, and hand off stuck assistant turns';
 
     public function handle(): int
     {
@@ -36,6 +37,24 @@ final class ReconcileConversations extends Command
         foreach ($due as $job) {
             DispatchOutboundJob::dispatch((int) $job->tenant_id, (int) $job->id);
         }
+
+        // WhatsApp webhook receipts stored before the 200 whose job was lost, is due for retry, or whose worker died
+        // (PROCESSING lease in next_attempt_at expired). Processing is idempotent; after 10 attempts → DEAD_LETTER.
+        $whatsapp = fn () => DB::table('webhook_receipts')->where('provider', 'META')->where('provider_object', 'whatsapp_messages');
+        $whatsapp()->whereIn('processing_status', ['RECEIVED', 'RETRY', 'PROCESSING'])->where('attempt_count', '>=', 10)
+            ->update(['processing_status' => 'DEAD_LETTER', 'last_error_code' => 'MAX_ATTEMPTS']);
+        $whatsapp()->where('processing_status', 'PROCESSING')->where('next_attempt_at', '<', now())
+            ->update(['processing_status' => 'RETRY', 'last_error_code' => 'LEASE_EXPIRED']);
+        $receipts = $whatsapp()
+            ->where(fn ($q) => $q->where(fn ($q) => $q->where('processing_status', 'RECEIVED')->where('received_at', '<', now()->subMinutes(2)))
+                ->orWhere(fn ($q) => $q->where('processing_status', 'RETRY')->where(fn ($q) => $q->whereNull('next_attempt_at')->orWhere('next_attempt_at', '<=', now()))))
+            ->orderBy('received_at')->limit(200)->get(['id', 'tenant_id']);
+        foreach ($receipts as $receipt) {
+            ProcessMetaWebhookReceipt::dispatch((int) $receipt->tenant_id, (int) $receipt->id);
+        }
+        // Failed receipts keep the client text only until expires_at (30 days) for review.
+        $whatsapp()->where('expires_at', '<', now())->where('raw_payload', '!=', DB::raw("CAST('".ProcessMetaWebhookReceipt::REDACTED."' AS JSON)"))
+            ->update(['raw_payload' => ProcessMetaWebhookReceipt::REDACTED]);
 
         // Assistant turns that died mid-way (worker crash): fail them and hand the conversation to a human,
         // so a visitor is never left in AI_ACTIVE without an answer.
@@ -82,7 +101,7 @@ final class ReconcileConversations extends Command
             }
         }
 
-        $this->info("expired={$expired} requeued={$due->count()} stuck_runs={$stuck->count()} ai_off_handoffs={$orphaned}");
+        $this->info("expired={$expired} requeued={$due->count()} webhook_receipts={$receipts->count()} stuck_runs={$stuck->count()} ai_off_handoffs={$orphaned}");
 
         return self::SUCCESS;
     }

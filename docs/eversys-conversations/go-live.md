@@ -77,7 +77,7 @@ Ventana de bajo tráfico, sin importaciones de inventario corriendo. Las tablas 
 **Rollback:** de la app, redeployar el commit anterior en Railway; el esquema queda (es compatible hacia atrás). Restaurar el backup es último recurso y pierde lo escrito desde el dump.
 | 3 | Variables API (Railway): `CONVERSATIONS_AI_ENABLED=false`, `AGENT_LLM_PROVIDER=disabled`, `META_SEND_ENABLED=false` | Ramiro | `everprop:production-check --connections` todo OK |
 | 4 | Merge del PR a `main` → despliega API y panel | Ramiro | `/readyz` 200; `/admin/conversaciones`, `/admin/solicitudes-visita`, `/admin/conocimiento` cargan |
-| 5 | Scheduler corriendo (reconciliador cada minuto) | Ramiro | log `expired=… requeued=… stuck_runs=… ai_off_handoffs=…` |
+| 5 | Scheduler corriendo (reconciliador cada minuto) | Ramiro | log `expired=… requeued=… webhook_receipts=… stuck_runs=… ai_off_handoffs=…` |
 | 6 | Crear widget: `php artisan everprop:channels:web-chat --tenant=bellomo --panel-origin=https://ever-prop-bellomo.vercel.app --site=https://<sitio-bellomo>` | Ramiro | imprime `widget_id`, `<script>` y el valor de `EVERSYS_WIDGET_FRAME_ANCESTORS` |
 | 7 | Vercel (panel): `EVERSYS_WIDGET_FRAME_ANCESTORS` con el valor impreso. Se lee en `next.config.ts` al construir: **requiere redeploy** | Ramiro | el iframe carga en el sitio y no en otros dominios |
 | 8 | Sitio Bellomo (rama `feat/eversys-chat-widget`): `NEXT_PUBLIC_EVERSYS_WIDGET_ID` y `NEXT_PUBLIC_EVERSYS_PANEL_ORIGIN` en Vercel. Las `NEXT_PUBLIC_*` quedan **incrustadas en el build**: activar y revertir exige rebuild/redeploy del sitio | EverSys | mensaje de prueba aparece en la bandeja como "Espera asesor"; sin variables sigue Bellomito |

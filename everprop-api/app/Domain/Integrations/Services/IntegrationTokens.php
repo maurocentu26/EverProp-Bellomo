@@ -36,16 +36,17 @@ final class IntegrationTokens
     }
 
     /**
-     * Meta rejected the token (OAuth error 190): stop using it and tell the admins, once. Only an ACTIVE
-     * integration whose current token is the rejected one flips, atomically with its audit row.
+     * Meta rejected the token (OAuth error 190) or reported lost access (account_update, token null):
+     * stop using it and tell the admins, once, atomically with its audit row.
      */
-    public function revoke(int $tenantId, int $integrationId, #[SensitiveParameter] string $rejectedToken, string $reason): bool
+    public function revoke(int $tenantId, int $integrationId, #[SensitiveParameter] ?string $rejectedToken, string $reason): bool
     {
         return DB::transaction(function () use ($tenantId, $integrationId, $rejectedToken, $reason): bool {
             $row = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)
-                ->where('status', 'ACTIVE')->lockForUpdate()->first(['public_id']);
-            // Only the token Meta rejected is revoked: a send that raced a reconnection must not kill the new one.
-            if ($row === null || ! hash_equals((string) $this->forSending($tenantId, $integrationId), $rejectedToken)) {
+                ->whereIn('status', $rejectedToken === null ? ['ACTIVE', 'DEGRADED', 'PENDING'] : ['ACTIVE'])->lockForUpdate()->first(['public_id']);
+            // A rejected token only revokes itself: a send that raced a reconnection must not kill the new one.
+            // null = Meta itself says access is gone (account_update), whatever token is stored.
+            if ($row === null || ($rejectedToken !== null && ! hash_equals((string) $this->forSending($tenantId, $integrationId), $rejectedToken))) {
                 return false;
             }
             DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->update(['status' => 'REVOKED']);

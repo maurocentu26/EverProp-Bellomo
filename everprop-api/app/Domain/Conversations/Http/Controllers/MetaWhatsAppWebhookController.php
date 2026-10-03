@@ -2,10 +2,9 @@
 
 namespace App\Domain\Conversations\Http\Controllers;
 
-use App\Domain\Conversations\Data\InboundMessage;
-use App\Domain\Conversations\Services\InboundMessageService;
+use App\Domain\Conversations\Jobs\ProcessMetaWebhookReceipt;
+use App\Domain\Conversations\Services\MetaWebhookProcessor;
 use App\Http\Controllers\Controller;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -17,14 +16,16 @@ use Illuminate\Support\Facades\Log;
  * Verified against Meta docs on 2026-09-29: GET handshake with hub.mode/hub.verify_token/
  * hub.challenge; POST signed with X-Hub-Signature-256 = "sha256=" + HMAC-SHA256(app secret, raw
  * body); payload entry[].changes[] with field "messages" and value.metadata.phone_number_id;
- * payloads up to 3 MB; non-200 answers are retried by Meta. The statuses[] shape is not covered
- * by that page and is parsed defensively.
+ * payloads up to 3 MB; non-200 answers are retried by Meta.
+ *
+ * Plan W6: each "messages" change is stored as a durable webhook_receipt (deduplicated per
+ * integration) before the 200, then applied by ProcessMetaWebhookReceipt in the worker, so a slow
+ * database or AI turn never makes Meta time out and redeliver. account_update stays inline: it is
+ * one small update and must not wait behind a queue.
  */
 final class MetaWhatsAppWebhookController extends Controller
 {
     private const MAX_BYTES = 3 * 1024 * 1024;
-
-    private const STATUS_RANK = ['QUEUED' => 1, 'UNKNOWN' => 1, 'SENT' => 2, 'DELIVERED' => 3, 'READ' => 4];
 
     public function verify(Request $request): Response
     {
@@ -40,7 +41,7 @@ final class MetaWhatsAppWebhookController extends Controller
         return response($challenge, 200)->header('Content-Type', 'text/plain');
     }
 
-    public function receive(Request $request, InboundMessageService $inbound): Response
+    public function receive(Request $request, MetaWebhookProcessor $processor): Response
     {
         $secret = (string) config('services.meta.app_secret');
         if ($secret === '') {
@@ -68,127 +69,61 @@ final class MetaWhatsAppWebhookController extends Controller
 
         // Malformed elements are skipped (a 500 would make Meta redeliver the batch forever);
         // database failures still bubble up so the delivery is retried.
-        foreach ($this->arrays($payload['entry'] ?? null) as $entry) {
-            foreach ($this->arrays($entry['changes'] ?? null) as $change) {
-                if (($change['field'] ?? null) !== 'messages' || ! is_array($change['value'] ?? null)) {
+        foreach ($processor->arrays($payload['entry'] ?? null) as $entry) {
+            $wabaId = is_scalar($entry['id'] ?? null) ? (string) $entry['id'] : null;
+            foreach ($processor->arrays($entry['changes'] ?? null) as $change) {
+                if (! is_array($change['value'] ?? null)) {
                     continue;
                 }
-                $this->handleValue($change['value'], is_scalar($entry['id'] ?? null) ? (string) $entry['id'] : null, $inbound);
+                if (($change['field'] ?? null) === 'account_update' && $wabaId !== null) {
+                    $processor->accountUpdate($wabaId, $change['value']);
+                } elseif (($change['field'] ?? null) === 'messages') {
+                    $this->store($processor, $change['value'], $wabaId);
+                }
             }
         }
 
-        // Everything above is persisted (or deliberately ignored) before acknowledging.
+        // Every change above is durably stored (or deliberately ignored) before acknowledging.
         return response('EVENT_RECEIVED', 200);
     }
 
     /** @param array<string, mixed> $value */
-    private function handleValue(array $value, ?string $wabaId, InboundMessageService $inbound): void
+    private function store(MetaWebhookProcessor $processor, array $value, ?string $wabaId): void
     {
         $phoneNumberId = is_scalar($value['metadata']['phone_number_id'] ?? null) ? (string) $value['metadata']['phone_number_id'] : '';
-        // whatsapp_phone_number_id is unique platform-wide (2026-09-29.002), so at most one row.
-        $channel = $phoneNumberId === '' ? null : DB::table('channel_accounts as ca')
-            ->join('integration_connections as ic', fn ($j) => $j->on('ic.id', '=', 'ca.integration_id')->on('ic.tenant_id', '=', 'ca.tenant_id'))
-            ->where('ca.whatsapp_phone_number_id', $phoneNumberId)
-            ->first(['ca.id', 'ca.tenant_id', 'ca.status', 'ca.metadata_json', 'ic.provider', 'ic.status as integration_status']);
-
-        // The tenant comes only from this verified mapping; anything else fails closed.
-        $expectedWaba = $channel === null ? null : (json_decode((string) $channel->metadata_json, true)['waba_id'] ?? null);
-        if ($channel === null || $channel->status !== 'ACTIVE' || $channel->provider !== 'META' || $channel->integration_status !== 'ACTIVE'
-            || ($expectedWaba !== null && $expectedWaba !== $wabaId)) {
-            Log::warning('whatsapp.webhook.unmapped_phone_number', ['mapped' => $channel !== null]);
+        // The tenant comes only from the platform-wide phone mapping; unknown numbers are ignored here,
+        // and the processor re-checks status and WABA before applying anything.
+        $channel = $processor->channelFor($phoneNumberId);
+        if ($channel === null) {
+            Log::warning('whatsapp.webhook.unmapped_phone_number', ['mapped' => false]);
 
             return;
         }
-        $names = collect($this->arrays($value['contacts'] ?? null))
-            ->filter(fn ($c) => is_scalar($c['wa_id'] ?? null))
-            ->mapWithKeys(fn ($c) => [(string) $c['wa_id'] => is_string($c['profile']['name'] ?? null) ? $c['profile']['name'] : null]);
-
-        foreach ($this->arrays($value['messages'] ?? null) as $message) {
-            $from = is_scalar($message['from'] ?? null) ? (string) $message['from'] : '';
-            $id = is_scalar($message['id'] ?? null) ? (string) $message['id'] : '';
-            if ($from === '' || $id === '' || preg_match('/\A[0-9]{6,20}\z/', $from) !== 1) {
-                continue;
-            }
-            $type = is_string($message['type'] ?? null) ? $message['type'] : 'unknown';
-            $body = $message['text']['body'] ?? null;
-            $inbound->accept(new InboundMessage(
-                tenantId: (int) $channel->tenant_id,
-                channelAccountId: (int) $channel->id,
-                identityChannelType: 'WHATSAPP',
-                senderProviderId: $from,
-                threadId: 'wa:'.$from,
-                providerMessageId: mb_substr($id, 0, 191),
-                type: $this->messageType($type),
-                text: $type === 'text' && is_string($body) ? mb_substr($body, 0, 4096) : null,
-                occurredAt: $this->timestamp($message['timestamp'] ?? null),
-                senderDisplayName: is_string($names[$from] ?? null) ? mb_substr($names[$from], 0, 200) : null,
-                senderPhoneE164: '+'.$from,
-                // Minimized: only the campaign identifiers needed for attribution.
-                metadata: array_filter([
-                    'native_type' => $type,
-                    'context_id' => is_scalar($message['context']['id'] ?? null) ? (string) $message['context']['id'] : null,
-                    'referral' => is_array($message['referral'] ?? null) ? array_filter(array_intersect_key($message['referral'], array_flip(['source_type', 'source_id', 'ctwa_clid'])), 'is_scalar') ?: null : null,
-                ]),
-            ));
+        $json = json_encode(['waba_id' => $wabaId, 'value' => $value], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $digest = hash('sha256', $json, true);
+        // An identical redelivery maps to the same receipt (unique per integration + digest).
+        DB::table('webhook_receipts')->insertOrIgnore([
+            'tenant_id' => $channel->tenant_id, 'integration_id' => $channel->integration_id, 'provider' => 'META',
+            'idempotency_key' => 'wa-change:'.bin2hex($digest), 'provider_object' => 'whatsapp_messages',
+            'provider_object_id' => mb_substr($phoneNumberId, 0, 191), 'signature_algorithm' => 'HMAC-SHA256', 'signature_valid' => 1,
+            'payload_sha256' => $digest, 'raw_payload' => $json, 'processing_status' => 'RECEIVED',
+            // Client text is dropped once processed; failed receipts keep it this long for review, then the reconciler redacts it.
+            'expires_at' => now()->addDays(30),
+        ]);
+        $receipt = DB::table('webhook_receipts')->where('integration_id', $channel->integration_id)
+            ->where('idempotency_key', 'wa-change:'.bin2hex($digest))->first(['id', 'processing_status']);
+        if ($receipt === null) {
+            // INSERT IGNORE turned an error into a warning: never acknowledge a change that is not stored.
+            throw new \RuntimeException('WhatsApp webhook receipt was not stored.');
         }
-
-        foreach ($this->arrays($value['statuses'] ?? null) as $status) {
-            $this->applyStatus((int) $channel->tenant_id, (int) $channel->id, $status);
-        }
-    }
-
-    /** @param array<string, mixed> $status */
-    private function applyStatus(int $tenantId, int $channelId, array $status): void
-    {
-        $new = is_string($status['status'] ?? null) ? strtoupper($status['status']) : '';
-        $providerId = is_scalar($status['id'] ?? null) ? (string) $status['id'] : '';
-        if ($providerId === '' || ! in_array($new, ['SENT', 'DELIVERED', 'READ', 'FAILED'], true)) {
+        if (! in_array($receipt->processing_status, ['RECEIVED', 'RETRY'], true)) {
             return;
         }
-
-        DB::transaction(function () use ($tenantId, $channelId, $providerId, $new, $status): void {
-            $message = DB::table('messages')->where('tenant_id', $tenantId)->where('channel_account_id', $channelId)
-                ->where('provider_message_id', $providerId)->where('direction', 'OUTBOUND')->lockForUpdate()->first(['id', 'delivery_status']);
-            if ($message === null) {
-                return;
-            }
-            $current = (string) $message->delivery_status;
-            // Out-of-order callbacks never move a message backwards (READ never returns to SENT).
-            $advance = $new === 'FAILED'
-                ? in_array($current, ['QUEUED', 'SENT', 'UNKNOWN'], true)
-                : self::STATUS_RANK[$new] > (self::STATUS_RANK[$current] ?? 99);
-            if (! $advance) {
-                return;
-            }
-            $at = $this->timestamp($status['timestamp'] ?? null)->format('Y-m-d H:i:s.v');
-            DB::table('messages')->where('tenant_id', $tenantId)->where('id', $message->id)->update(array_filter([
-                'delivery_status' => $new,
-                'sent_at' => $new === 'SENT' ? $at : null,
-                'delivered_at' => $new === 'DELIVERED' ? $at : null,
-                'read_at' => $new === 'READ' ? $at : null,
-                'failed_at' => $new === 'FAILED' ? $at : null,
-                'provider_error_code' => $new === 'FAILED' ? mb_substr(is_scalar($status['errors'][0]['code'] ?? null) ? (string) $status['errors'][0]['code'] : 'FAILED', 0, 80) : null,
-            ], fn ($v) => $v !== null));
-        });
-    }
-
-    /** @return list<array<string, mixed>> */
-    private function arrays(mixed $value): array
-    {
-        return is_array($value) ? array_values(array_filter($value, 'is_array')) : [];
-    }
-
-    private function messageType(string $native): string
-    {
-        return match ($native) {
-            'text' => 'TEXT', 'image' => 'IMAGE', 'video' => 'VIDEO', 'audio' => 'AUDIO', 'document' => 'DOCUMENT',
-            'location' => 'LOCATION', 'contacts' => 'CONTACT', 'sticker' => 'STICKER', 'reaction' => 'REACTION',
-            'interactive', 'button' => 'INTERACTIVE', default => 'SYSTEM',
-        };
-    }
-
-    private function timestamp(mixed $value): CarbonImmutable
-    {
-        return is_numeric($value) ? CarbonImmutable::createFromTimestampUTC((int) $value) : CarbonImmutable::now('UTC');
+        try {
+            ProcessMetaWebhookReceipt::dispatch((int) $channel->tenant_id, (int) $receipt->id);
+        } catch (\Throwable $error) {
+            // The receipt is already durable: the reconciler requeues it, so Meta still gets its 200.
+            report($error);
+        }
     }
 }
