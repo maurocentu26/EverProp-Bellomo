@@ -13,6 +13,7 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Feature\Conversations\ConversationTestSupport;
 use Tests\TestCase;
@@ -210,6 +211,84 @@ final class WhatsAppOnboardingTest extends TestCase
             $this->assertStringNotContainsString('app-secret', $line);
             $this->assertStringNotContainsString($pin, $line);
         }
+    }
+
+    public function test_disconnecting_erases_credentials_and_tells_meta(): void
+    {
+        $this->meta(['graph.facebook.com/v24.0/1001/subscribed_apps' => Http::response(['success' => true])]);
+        [$tenant, $admin] = $this->admin();
+        $id = (string) $this->connect($tenant, $admin)->assertCreated()->json('data.integration_id');
+        $this->actingAs($admin)->getJson('/api/v1/admin/integrations/whatsapp/config')->assertJsonPath('data.connections.0.id', $id)
+            ->assertJsonPath('data.connections.0.display_phone_number', '+54 388 400-0000');
+
+        $this->actingAs($admin)->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertOk();
+
+        $row = DB::table('integration_connections')->where('public_id', $id)->first();
+        $this->assertSame('REVOKED', $row->status);
+        $this->assertNull($row->access_token_ciphertext);
+        $this->assertArrayNotHasKey('registration_pin', json_decode((string) $row->settings_json, true));
+        $this->assertDatabaseHas('channel_accounts', ['integration_id' => $row->id, 'status' => 'DISCONNECTED']);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action_code' => 'WHATSAPP_DISCONNECTED', 'entity_id' => $row->id]);
+        Http::assertSent(fn (Request $r) => $r->method() === 'DELETE' && str_contains($r->url(), '/1001/subscribed_apps') && $r->hasHeader('Authorization', 'Bearer '.self::TOKEN));
+        $this->actingAs($admin)->getJson('/api/v1/admin/integrations/whatsapp/config')->assertJsonCount(0, 'data.connections');
+    }
+
+    public function test_disconnect_still_happens_locally_when_meta_fails(): void
+    {
+        $this->meta(['graph.facebook.com/v24.0/1001/subscribed_apps' => Http::sequence()->push(['success' => true])->push(['error' => ['code' => 2]], 500)]);
+        [$tenant, $admin] = $this->admin();
+        $id = (string) $this->connect($tenant, $admin)->assertCreated()->json('data.integration_id');
+
+        $this->actingAs($admin)->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertOk();
+        Http::assertSent(fn (Request $r) => $r->method() === 'DELETE');
+
+        $this->assertDatabaseHas('integration_connections', ['public_id' => $id, 'status' => 'REVOKED', 'access_token_ciphertext' => null]);
+    }
+
+    public function test_only_this_tenants_admins_can_disconnect_its_numbers(): void
+    {
+        $this->meta();
+        [$tenant, $admin] = $this->admin();
+        $id = (string) $this->connect($tenant, $admin)->assertCreated()->json('data.integration_id');
+        [$other, $otherAdmin] = $this->admin();
+        $manager = $this->user($tenant, RoleCode::SALES_MANAGER);
+
+        $this->actingAs($otherAdmin)->withHeaders($this->tenantHeaders($other))->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertNotFound();
+        $this->actingAs($otherAdmin)->getJson('/api/v1/admin/integrations/whatsapp/config')->assertJsonCount(0, 'data.connections');
+        $this->actingAs($manager)->withHeaders($this->tenantHeaders($tenant))->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertForbidden();
+
+        $this->assertDatabaseHas('integration_connections', ['public_id' => $id, 'status' => 'ACTIVE']);
+    }
+
+    public function test_a_disconnected_number_can_be_reconnected_here_or_by_another_tenant_with_a_new_token(): void
+    {
+        $this->meta();
+        [$tenant, $admin] = $this->admin();
+        $first = (string) $this->connect($tenant, $admin)->assertCreated()->json('data.integration_id');
+        $this->actingAs($admin)->postJson("/api/v1/admin/integrations/whatsapp/$first/disconnect")->assertOk();
+        $this->actingAs($admin)->postJson("/api/v1/admin/integrations/whatsapp/$first/disconnect")->assertOk(); // idempotent
+        $this->actingAs($admin)->postJson('/api/v1/admin/integrations/whatsapp/'.Str::uuid().'/disconnect')->assertNotFound();
+        $this->assertDatabaseHas('channel_accounts', ['tenant_id' => $tenant->id, 'status' => 'DISCONNECTED']);
+        $this->assertDatabaseMissing('channel_accounts', ['whatsapp_phone_number_id' => '2002']); // the number is free again
+        $this->assertSame('2002', json_decode((string) DB::table('channel_accounts')->where('tenant_id', $tenant->id)->value('metadata_json'), true)['disconnected_phone_number_id']);
+
+        [$other, $otherAdmin] = $this->admin();
+        $second = (string) $this->connect($other, $otherAdmin)->assertCreated()->json('data.integration_id');
+
+        $this->assertNotSame($first, $second);
+        $this->assertDatabaseHas('channel_accounts', ['tenant_id' => $other->id, 'whatsapp_phone_number_id' => '2002', 'status' => 'ACTIVE']);
+        $this->assertDatabaseHas('integration_connections', ['public_id' => $first, 'status' => 'REVOKED', 'access_token_ciphertext' => null]);
+    }
+
+    public function test_a_pending_registration_is_still_unsubscribed_on_disconnect(): void
+    {
+        $this->meta(['graph.facebook.com/v24.0/2002/register' => Http::response(['error' => ['code' => 133016]], 400)]);
+        [$tenant, $admin] = $this->admin();
+        $id = (string) $this->connect($tenant, $admin)->assertStatus(202)->json('data.integration_id');
+
+        $this->actingAs($admin)->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertOk();
+
+        Http::assertSent(fn (Request $r) => $r->method() === 'DELETE' && str_contains($r->url(), '/1001/subscribed_apps'));
     }
 
     public function test_ids_must_be_numeric(): void

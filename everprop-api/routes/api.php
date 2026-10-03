@@ -94,6 +94,8 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
 
         Route::get('/integrations/whatsapp/config', [WhatsAppConnectionController::class, 'config']);
         Route::post('/integrations/whatsapp/connect', [WhatsAppConnectionController::class, 'connect'])->middleware('throttle:6,1');
+        Route::post('/integrations/whatsapp/{integration}/disconnect', [WhatsAppConnectionController::class, 'disconnect'])
+            ->whereUuid('integration')->middleware('throttle:6,1');
 
         Route::get('/push/config', [WebPushController::class, 'config']);
         Route::post('/push/subscriptions', [WebPushController::class, 'store'])->middleware('throttle:30,1');

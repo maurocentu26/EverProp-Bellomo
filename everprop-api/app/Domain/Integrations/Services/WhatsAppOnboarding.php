@@ -126,6 +126,73 @@ final class WhatsAppOnboarding
         }, 3);
     }
 
+    /**
+     * Disconnect a tenant's WhatsApp account (Plan W9a). Meta is told best-effort (unsubscribe from the
+     * WABA's webhooks); locally it always happens: integration REVOKED, numbers DISCONNECTED, and no
+     * credential kept (token and registration PIN erased). Reconnecting is a new Embedded Signup.
+     */
+    public function disconnect(int $tenantId, User $actor, string $integrationPublicId): void
+    {
+        // Read, capture and erase under the row lock; Meta is told after commit, so a concurrent connect
+        // either sees the disconnection or runs entirely after it (and subscribes again).
+        [$token, $wabaId] = DB::transaction(function () use ($tenantId, $actor, $integrationPublicId): array {
+            $integration = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('public_id', $integrationPublicId)
+                ->where('provider', 'META')->lockForUpdate()->first(['id', 'settings_json']);
+            if ($integration === null) {
+                throw new OnboardingFailed('NOT_FOUND', 'No encontramos esa conexión de WhatsApp.', 404);
+            }
+            $settings = json_decode((string) $integration->settings_json, true) ?: [];
+            $wabaId = is_string($settings['waba_id'] ?? null) ? $settings['waba_id'] : null;
+            $token = $this->tokens->stored($tenantId, (int) $integration->id);
+
+            DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integration->id)
+                ->update(['status' => 'REVOKED'] + IntegrationTokens::erased());
+            // Free the number platform-wide (it may move to another account later); the original id stays in metadata.
+            DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('integration_id', $integration->id)
+                ->where('provider_account_id', 'not like', 'disconnected:%')->update([
+                    'metadata_json' => DB::raw("JSON_SET(COALESCE(metadata_json, JSON_OBJECT()), '$.disconnected_phone_number_id', provider_account_id)"),
+                    'provider_account_id' => DB::raw("CONCAT('disconnected:', id)"),
+                    'status' => 'DISCONNECTED',
+                ]);
+            DB::table('audit_logs')->insert([
+                'tenant_id' => $tenantId, 'actor_type' => 'USER', 'actor_user_id' => $actor->id, 'action_code' => 'WHATSAPP_DISCONNECTED',
+                'entity_type' => 'INTEGRATION_CONNECTION', 'entity_id' => $integration->id, 'occurred_at' => now(),
+                'metadata_json' => json_encode(['waba_id' => $wabaId], JSON_THROW_ON_ERROR),
+            ]);
+
+            return [$token, $wabaId];
+        });
+
+        if ($token !== null && $wabaId !== null) {
+            try {
+                $response = $this->graph($token)->delete($this->url($wabaId.'/subscribed_apps'));
+                if (! $response->successful()) {
+                    Log::warning('whatsapp.disconnect.unsubscribe_failed', ['status' => $response->status(), 'code' => $response->json('error.code')]);
+                }
+            } catch (ConnectionException) {
+                Log::warning('whatsapp.disconnect.unsubscribe_failed', ['status' => 0, 'code' => 'connection']);
+            }
+        }
+    }
+
+    /**
+     * WhatsApp connections of this tenant for the settings card (no tokens, no PIN).
+     *
+     * @return list<array{id: string, status: string, display_phone_number: string|null}>
+     */
+    public function connections(int $tenantId): array
+    {
+        return DB::table('integration_connections as ic')
+            ->leftJoin('channel_accounts as ca', fn ($j) => $j->on('ca.integration_id', '=', 'ic.id')->on('ca.tenant_id', '=', 'ic.tenant_id'))
+            ->where('ic.tenant_id', $tenantId)->where('ic.provider', 'META')->whereIn('ic.status', ['ACTIVE', 'DEGRADED', 'PENDING'])
+            ->orderBy('ic.id')->get(['ic.public_id', 'ic.status', 'ca.metadata_json'])
+            ->map(fn ($row) => [
+                'id' => (string) $row->public_id,
+                'status' => (string) $row->status,
+                'display_phone_number' => json_decode((string) $row->metadata_json, true)['display_phone_number'] ?? null,
+            ])->values()->all();
+    }
+
     private function exchange(#[SensitiveParameter] string $code): string
     {
         try {

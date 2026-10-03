@@ -49,7 +49,7 @@ final class IntegrationTokens
             if ($row === null || ($rejectedToken !== null && ! hash_equals((string) $this->forSending($tenantId, $integrationId), $rejectedToken))) {
                 return false;
             }
-            DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->update(['status' => 'REVOKED']);
+            DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->update(['status' => 'REVOKED'] + self::erased());
             DB::table('audit_logs')->insert([
                 'tenant_id' => $tenantId, 'actor_type' => 'SYSTEM', 'action_code' => 'INTEGRATION_REVOKED',
                 'entity_type' => 'INTEGRATION_CONNECTION', 'entity_id' => $integrationId, 'occurred_at' => now(),
@@ -61,6 +61,20 @@ final class IntegrationTokens
         });
     }
 
+    /**
+     * Revoked or disconnected integrations keep no credential: token, legacy reference and registration PIN go.
+     *
+     * @return array<string, mixed>
+     */
+    public static function erased(): array
+    {
+        return [
+            'access_token_ciphertext' => null,
+            'access_token_secret_ref' => null,
+            'settings_json' => DB::raw("JSON_REMOVE(COALESCE(settings_json, JSON_OBJECT()), '$.registration_pin')"),
+        ];
+    }
+
     /** Usable token for an ACTIVE integration of this tenant, or null (missing, expired, revoked, unreadable). */
     public function forSending(int $tenantId, int $integrationId): ?string
     {
@@ -69,6 +83,24 @@ final class IntegrationTokens
         if ($row === null || ($row->token_expires_at !== null && CarbonImmutable::parse($row->token_expires_at, 'UTC')->isPast())) {
             return null;
         }
+
+        return $this->decrypt($row);
+    }
+
+    /**
+     * Whatever token is stored, regardless of status (DEGRADED/PENDING too), so a disconnection can still
+     * tell Meta to stop sending webhooks. Never used to send messages.
+     */
+    public function stored(int $tenantId, int $integrationId): ?string
+    {
+        $row = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)
+            ->first(['access_token_ciphertext', 'access_token_secret_ref']);
+
+        return $row === null ? null : $this->decrypt($row);
+    }
+
+    private function decrypt(object $row): ?string
+    {
         if ($row->access_token_ciphertext !== null) {
             try {
                 return Crypt::decryptString($row->access_token_ciphertext);

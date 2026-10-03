@@ -117,7 +117,7 @@ final class IntegrationTokensTest extends TestCase
         $this->assertSame('META_TOKEN_REVOKED', $transport->send($channel, '5493881111111', 'hola', 'n')->errorCode);
         $this->assertSame('CHANNEL_NOT_CONFIGURED', $transport->send($channel, '5493881111111', 'hola', 'n')->errorCode);
 
-        $this->assertDatabaseHas('integration_connections', ['id' => $integration, 'status' => 'REVOKED']);
+        $this->assertDatabaseHas('integration_connections', ['id' => $integration, 'status' => 'REVOKED', 'access_token_ciphertext' => null, 'access_token_secret_ref' => null]);
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'actor_type' => 'SYSTEM', 'action_code' => 'INTEGRATION_REVOKED', 'entity_id' => $integration]);
         Http::assertSentCount(1);
         Notification::assertSentToTimes($admin, IntegrationRevoked::class, 1);

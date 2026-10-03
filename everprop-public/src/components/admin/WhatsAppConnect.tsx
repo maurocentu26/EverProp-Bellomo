@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, EverpropApiError } from "@/lib/everprop-api";
 import { connectPayload, parseSignupMessage, type SignupSession } from "@/lib/whatsapp-signup";
 
-type Config = { enabled: boolean; app_id: string | null; config_id: string | null; graph_version: string };
+type Connection = { id: string; status: "ACTIVE" | "DEGRADED" | "PENDING" | string; display_phone_number: string | null };
+type Config = { enabled: boolean; app_id: string | null; config_id: string | null; graph_version: string; connections: Connection[] };
 type Connected = { display_phone_number: string; state: "ACTIVE" | "REGISTRATION_PENDING" };
 type State = "checking" | "hidden" | "unavailable" | "loading-sdk" | "ready" | "connecting" | "done" | "cancelled" | "error";
 
@@ -42,6 +43,30 @@ export function WhatsAppConnect() {
   const [message, setMessage] = useState("");
   const [connected, setConnected] = useState<Connected | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const reloadConnections = useCallback(async () => {
+    try {
+      const { data } = await apiFetch<{ data: Config }>("/api/v1/admin/integrations/whatsapp/config");
+      setConnections(data.connections ?? []);
+    } catch { /* the list refreshes on the next visit */ }
+  }, []);
+
+  async function disconnect(id: string) {
+    setDisconnecting(true);
+    try {
+      await apiFetch(`/api/v1/admin/integrations/whatsapp/${encodeURIComponent(id)}/disconnect`, { method: "POST" });
+      setMessage("WhatsApp desconectado. Los mensajes de ese número ya no llegan a la bandeja.");
+      setConfirming(null);
+      await reloadConnections();
+    } catch (error) {
+      setMessage(error instanceof EverpropApiError ? error.message : "No pudimos desconectar. Volvé a intentarlo.");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
   const config = useRef<Config | null>(null);
   const code = useRef<string | null>(null);
   const session = useRef<SignupSession | null>(null);
@@ -55,6 +80,7 @@ export function WhatsAppConnect() {
     try {
       const result = await apiFetch<{ data: Connected }>("/api/v1/admin/integrations/whatsapp/connect", { method: "POST", body: JSON.stringify(body) });
       setConnected(result.data);
+      void reloadConnections();
       setState("done");
     } catch (error) {
       setMessage(error instanceof EverpropApiError ? error.message : "No pudimos conectar WhatsApp. Volvé a intentarlo.");
@@ -63,7 +89,7 @@ export function WhatsAppConnect() {
       code.current = null;
       session.current = null;
     }
-  }, []);
+  }, [reloadConnections]);
 
   useEffect(() => {
     let alive = true;
@@ -71,6 +97,7 @@ export function WhatsAppConnect() {
       .then(async ({ data }) => {
         if (!alive) return;
         config.current = data;
+        setConnections(data.connections ?? []);
         if (!data.enabled) { setState("unavailable"); return; }
         setState("loading-sdk");
         await loadSdk(data);
@@ -140,6 +167,28 @@ export function WhatsAppConnect() {
         {state === "error" && "No se pudo conectar."}
       </p>
       {message && <p className="text-sm">{message}</p>}
+      {connections.length > 0 && (
+        <ul className="divide-y divide-border rounded-xl border border-border" aria-label="Números conectados">
+          {connections.map((connection) => (
+            <li key={connection.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+              <span>
+                <strong>{connection.display_phone_number ?? "Número de WhatsApp"}</strong>
+                <span className="ml-2 text-muted-foreground">{connection.status === "ACTIVE" ? "Conectado" : "Pendiente de habilitación en Meta"}</span>
+              </span>
+              {confirming === connection.id ? (
+                <span className="flex gap-2">
+                  <button type="button" onClick={() => setConfirming(null)} disabled={disconnecting} className="min-h-10 rounded-lg border border-border px-3">Cancelar</button>
+                  <button type="button" onClick={() => void disconnect(connection.id)} disabled={disconnecting}
+                    className="min-h-10 rounded-lg bg-red-600 px-3 font-semibold text-white disabled:opacity-50">{disconnecting ? "Desconectando…" : "Sí, desconectar"}</button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirming(connection.id)} className="min-h-10 rounded-lg border border-border px-3 font-semibold">Desconectar</button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {confirming && <p role="alert" className="text-sm text-muted-foreground">Al desconectar se borra el acceso guardado y ese número deja de recibir y enviar mensajes desde la bandeja. Para volver a usarlo hay que conectarlo de nuevo.</p>}
       {["ready", "cancelled", "error", "done"].includes(state) && (
         <button type="button" onClick={start} disabled={!sdkReady}
           className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-50">

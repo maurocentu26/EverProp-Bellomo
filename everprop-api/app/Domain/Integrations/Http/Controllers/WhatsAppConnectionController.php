@@ -20,7 +20,7 @@ use Illuminate\Http\Request;
 final class WhatsAppConnectionController extends Controller
 {
     /** Public values the panel needs to open Meta's signup dialog; null ids when it is not available here. */
-    public function config(Request $request): JsonResponse
+    public function config(Request $request, WhatsAppOnboarding $onboarding): JsonResponse
     {
         $this->admin($request);
         $enabled = config('services.meta.onboarding_enabled') && config('services.meta.app_id') && config('services.meta.embedded_signup_config_id');
@@ -30,7 +30,21 @@ final class WhatsAppConnectionController extends Controller
             'app_id' => $enabled ? (string) config('services.meta.app_id') : null,
             'config_id' => $enabled ? (string) config('services.meta.embedded_signup_config_id') : null,
             'graph_version' => (string) config('services.meta.graph_version'),
+            // Listed even when onboarding is off here, so an admin can always disconnect.
+            'connections' => $onboarding->connections(app(TenantContext::class)->id()),
         ]]);
+    }
+
+    public function disconnect(Request $request, string $integration, WhatsAppOnboarding $onboarding): JsonResponse
+    {
+        $user = $this->admin($request);
+        try {
+            $onboarding->disconnect(app(TenantContext::class)->id(), $user, $integration);
+        } catch (OnboardingFailed $failure) {
+            return response()->json(['error' => ['code' => $failure->reason, 'message' => $failure->getMessage()]], $failure->status);
+        }
+
+        return response()->json(['data' => ['id' => $integration, 'status' => 'REVOKED']]);
     }
 
     public function connect(Request $request, WhatsAppOnboarding $onboarding): JsonResponse
