@@ -22,6 +22,7 @@ final class OutboundDispatcher
     public function __construct(
         private readonly TransportRegistry $transports,
         private readonly ConversationControl $control,
+        private readonly ChannelPolicy $policy,
     ) {}
 
     /** @return string final job status after this attempt */
@@ -80,6 +81,19 @@ final class OutboundDispatcher
             return ['status' => 'CANCELLED'];
         }
 
+        // Channel rules at send time (Plan W2): a job queued inside the WhatsApp window may outlive it.
+        // Checked before PROCESSING, so an error here leaves the job retryable instead of UNKNOWN.
+        $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $job->channel_account_id)->first();
+        $blocked = $this->policy->check($tenantId, (int) $job->conversation_id, $channel);
+        if ($blocked !== null) {
+            $now = CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v');
+            DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('id', $jobId)->update(['status' => 'FAILED', 'last_error_code' => $blocked]);
+            DB::table('messages')->where('tenant_id', $tenantId)->where('id', $job->message_id)
+                ->update(['delivery_status' => 'FAILED', 'failed_at' => $now, 'provider_error_code' => $blocked]);
+
+            return ['status' => 'FAILED'];
+        }
+
         $nonce = (string) Str::uuid();
         $now = CarbonImmutable::now('UTC');
         DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('id', $jobId)->update([
@@ -88,7 +102,6 @@ final class OutboundDispatcher
             'lease_expires_at' => $now->addSeconds((int) config('conversations.dispatch_lease_seconds', 60))->format('Y-m-d H:i:s.v'),
         ]);
 
-        $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $job->channel_account_id)->first();
         // Reply to the exact identity of this thread, never to "the contact's latest number".
         $recipient = str_starts_with((string) $conversation->provider_thread_id, 'wa:')
             ? substr((string) $conversation->provider_thread_id, 3)

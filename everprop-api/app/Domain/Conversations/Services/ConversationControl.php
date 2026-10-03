@@ -160,8 +160,20 @@ final class ConversationControl
             if ($conversation->control_state !== 'HUMAN_ACTIVE' || (int) $conversation->controlled_by_user_id !== (int) $user->id) {
                 throw new ConversationConflict('NOT_IN_CONTROL', 'Tomá el control de la conversación antes de responder.');
             }
+            $key = 'user:'.$user->id.':c'.$conversationId.':'.$idempotencyKey;
+            // Same rule the dispatcher enforces, checked up front so the advisor keeps the draft and sees why.
+            // A retry of an already queued reply is a replay, not a new send: it skips the check.
+            $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $conversation->channel_account_id)->first();
+            $blocked = DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('idempotency_key', $key)->exists()
+                ? null : app(ChannelPolicy::class)->check($tenantId, $conversationId, $channel);
+            if ($blocked === 'OUTSIDE_SERVICE_WINDOW') {
+                throw new ConversationConflict($blocked, 'Pasaron más de 24 horas desde el último mensaje del cliente por WhatsApp. Solo se puede escribir con una plantilla aprobada, o esperar a que el cliente vuelva a escribir.');
+            }
+            if ($blocked !== null) {
+                throw new ConversationConflict($blocked, 'Este canal no está disponible para enviar mensajes.');
+            }
 
-            return $this->queueOutbound($conversation, $text, 'USER', $user->id, null, 'user:'.$user->id.':c'.$conversationId.':'.$idempotencyKey);
+            return $this->queueOutbound($conversation, $text, 'USER', $user->id, null, $key);
         }, 3);
     }
 
