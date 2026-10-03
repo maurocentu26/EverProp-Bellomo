@@ -2,6 +2,7 @@
 
 namespace App\Domain\Integrations\Services;
 
+use App\Domain\Integrations\Notifications\IntegrationRevoked;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
@@ -32,6 +33,31 @@ final class IntegrationTokens
         if ($updated !== 1) {
             throw new \RuntimeException('Integración inexistente para este tenant.');
         }
+    }
+
+    /**
+     * Meta rejected the token (OAuth error 190): stop using it and tell the admins, once. Only an ACTIVE
+     * integration whose current token is the rejected one flips, atomically with its audit row.
+     */
+    public function revoke(int $tenantId, int $integrationId, #[SensitiveParameter] string $rejectedToken, string $reason): bool
+    {
+        return DB::transaction(function () use ($tenantId, $integrationId, $rejectedToken, $reason): bool {
+            $row = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)
+                ->where('status', 'ACTIVE')->lockForUpdate()->first(['public_id']);
+            // Only the token Meta rejected is revoked: a send that raced a reconnection must not kill the new one.
+            if ($row === null || ! hash_equals((string) $this->forSending($tenantId, $integrationId), $rejectedToken)) {
+                return false;
+            }
+            DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->update(['status' => 'REVOKED']);
+            DB::table('audit_logs')->insert([
+                'tenant_id' => $tenantId, 'actor_type' => 'SYSTEM', 'action_code' => 'INTEGRATION_REVOKED',
+                'entity_type' => 'INTEGRATION_CONNECTION', 'entity_id' => $integrationId, 'occurred_at' => now(),
+                'metadata_json' => json_encode(['reason' => mb_substr($reason, 0, 80)], JSON_THROW_ON_ERROR),
+            ]);
+            IntegrationRevoked::sendFor($tenantId, (string) $row->public_id);
+
+            return true;
+        });
     }
 
     /** Usable token for an ACTIVE integration of this tenant, or null (missing, expired, revoked, unreadable). */

@@ -59,6 +59,14 @@ final class WhatsAppCloudTransport implements ChannelTransport
             throw new DeliveryAmbiguous('WhatsApp returned '.$response->status().'.');
         }
 
+        // Invalid or revoked token (OAuth error 190): stop using it and tell the admins (Plan W7). A bare 401
+        // (proxy, transient) or a permission error (10, 200) does not prove the token is dead.
+        if ((int) $response->json('error.code') === 190) {
+            $this->tokens->revoke((int) $channel['tenant_id'], (int) $channel['integration_id'], $token, 'META_TOKEN_REJECTED');
+
+            return SendResult::rejected('META_TOKEN_REVOKED', false);
+        }
+
         // 4xx: rejected before acceptance. 429 is retryable; auth errors are not.
         return SendResult::rejected('META_HTTP_'.$response->status(), $response->status() === 429);
     }

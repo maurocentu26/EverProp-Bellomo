@@ -54,7 +54,7 @@ return [
     'meta' => [
         'app_secret' => env('META_APP_SECRET'),
         'webhook_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
-        'graph_version' => env('META_GRAPH_VERSION', 'v23.0'),
+        'graph_version' => env('META_GRAPH_VERSION', 'v24.0'), // v24 (2025-10-08): status webhooks drop `conversation` (unused here)
         'send_enabled' => (bool) env('META_SEND_ENABLED', false),
         'send_timeout_seconds' => (int) env('META_SEND_TIMEOUT_SECONDS', 10),
         // Embedded Signup (Tech Provider): connecting real business accounts is gated like sending (X04).

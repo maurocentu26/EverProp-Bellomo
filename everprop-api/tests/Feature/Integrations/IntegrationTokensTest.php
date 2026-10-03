@@ -3,12 +3,17 @@
 namespace Tests\Feature\Integrations;
 
 use App\Domain\Conversations\Transports\WhatsAppCloudTransport;
+use App\Domain\Identity\Enums\RoleCode;
+use App\Domain\Integrations\Notifications\IntegrationRevoked;
 use App\Domain\Integrations\Services\IntegrationTokens;
+use App\Jobs\SendWebPush;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Tests\Feature\Conversations\ConversationTestSupport;
 use Tests\TestCase;
 
@@ -92,6 +97,101 @@ final class IntegrationTokensTest extends TestCase
         $revoked = app(WhatsAppCloudTransport::class)->send((array) DB::table('channel_accounts')->find($channelId), '5493881111111', 'hola', 'n');
         $this->assertSame('CHANNEL_NOT_CONFIGURED', $revoked->errorCode);
         Http::assertNothingSent();
+    }
+
+    public function test_a_token_meta_rejects_is_revoked_once_and_only_this_tenants_admins_are_told(): void
+    {
+        Notification::fake();
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        $channel = (array) DB::table('channel_accounts')->find($this->whatsappChannel($tenant->id, $integration, 'PN-W7'));
+        app(IntegrationTokens::class)->store($tenant->id, $integration, self::TOKEN);
+        $admin = $this->user($tenant, RoleCode::TENANT_ADMIN);
+        $advisor = $this->user($tenant, RoleCode::SALES_ADVISOR);
+        ['tenant' => $other] = $this->tenantWithIntegration();
+        $foreignAdmin = $this->user($other, RoleCode::TENANT_ADMIN);
+        config(['services.meta.send_enabled' => true]);
+        Http::preventStrayRequests();
+        Http::fake(['graph.facebook.com/*' => Http::response(['error' => ['code' => 190, 'type' => 'OAuthException']], 401)]);
+        $transport = app(WhatsAppCloudTransport::class);
+
+        $this->assertSame('META_TOKEN_REVOKED', $transport->send($channel, '5493881111111', 'hola', 'n')->errorCode);
+        $this->assertSame('CHANNEL_NOT_CONFIGURED', $transport->send($channel, '5493881111111', 'hola', 'n')->errorCode);
+
+        $this->assertDatabaseHas('integration_connections', ['id' => $integration, 'status' => 'REVOKED']);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'actor_type' => 'SYSTEM', 'action_code' => 'INTEGRATION_REVOKED', 'entity_id' => $integration]);
+        Http::assertSentCount(1);
+        Notification::assertSentToTimes($admin, IntegrationRevoked::class, 1);
+        Notification::assertNotSentTo($advisor, IntegrationRevoked::class);
+        Notification::assertNotSentTo($foreignAdmin, IntegrationRevoked::class);
+    }
+
+    public function test_error_190_revokes_but_a_permission_error_does_not(): void
+    {
+        Notification::fake();
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        $channel = (array) DB::table('channel_accounts')->find($this->whatsappChannel($tenant->id, $integration, 'PN-W7B'));
+        app(IntegrationTokens::class)->store($tenant->id, $integration, self::TOKEN);
+        config(['services.meta.send_enabled' => true]);
+        Http::fake(['graph.facebook.com/*' => Http::sequence()
+            ->push(['error' => ['code' => 10, 'type' => 'OAuthException']], 403)
+            ->push(['error' => ['code' => 190, 'type' => 'OAuthException']], 400)]);
+        $transport = app(WhatsAppCloudTransport::class);
+
+        $this->assertSame('META_HTTP_403', $transport->send($channel, '5493881111111', 'hola', 'n')->errorCode);
+        $this->assertDatabaseHas('integration_connections', ['id' => $integration, 'status' => 'ACTIVE']);
+
+        $this->assertSame('META_TOKEN_REVOKED', $transport->send($channel, '5493881111111', 'hola', 'n')->errorCode);
+        $this->assertDatabaseHas('integration_connections', ['id' => $integration, 'status' => 'REVOKED']);
+    }
+
+    public function test_a_send_that_raced_a_reconnection_never_revokes_the_new_token(): void
+    {
+        Notification::fake();
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        $channel = (array) DB::table('channel_accounts')->find($this->whatsappChannel($tenant->id, $integration, 'PN-RACE'));
+        $tokens = app(IntegrationTokens::class);
+        $tokens->store($tenant->id, $integration, 'old-token');
+        config(['services.meta.send_enabled' => true]);
+        // While the old token is in flight, the admin reconnects and Meta then rejects the old one.
+        Http::fake(['graph.facebook.com/*' => function () use ($tokens, $tenant, $integration) {
+            $tokens->store($tenant->id, $integration, 'new-token');
+
+            return Http::response(['error' => ['code' => 190]], 401);
+        }]);
+
+        $this->assertSame('META_TOKEN_REVOKED', app(WhatsAppCloudTransport::class)->send($channel, '5493881111111', 'hola', 'n')->errorCode);
+
+        $this->assertDatabaseHas('integration_connections', ['id' => $integration, 'status' => 'ACTIVE']);
+        $this->assertSame('new-token', $tokens->forSending($tenant->id, $integration));
+        Notification::assertNothingSent();
+    }
+
+    public function test_a_bare_401_or_a_second_revocation_changes_nothing_and_inactive_admins_are_not_told(): void
+    {
+        Notification::fake();
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        $channel = (array) DB::table('channel_accounts')->find($this->whatsappChannel($tenant->id, $integration, 'PN-401'));
+        $tokens = app(IntegrationTokens::class);
+        $tokens->store($tenant->id, $integration, self::TOKEN);
+        $inactive = User::factory()->for($tenant)->disabled()->create(['role_code' => RoleCode::TENANT_ADMIN->value]);
+        config(['services.meta.send_enabled' => true]);
+        Http::fake(['graph.facebook.com/*' => Http::response('', 401)]);
+
+        $this->assertSame('META_HTTP_401', app(WhatsAppCloudTransport::class)->send($channel, '5493881111111', 'hola', 'n')->errorCode);
+        $this->assertDatabaseHas('integration_connections', ['id' => $integration, 'status' => 'ACTIVE']);
+
+        $this->assertTrue($tokens->revoke($tenant->id, $integration, self::TOKEN, 'test'));
+        $this->assertFalse($tokens->revoke($tenant->id, $integration, self::TOKEN, 'test'));
+        $this->assertSame(1, DB::table('audit_logs')->where('tenant_id', $tenant->id)->where('action_code', 'INTEGRATION_REVOKED')->count());
+        Notification::assertNotSentTo($inactive, IntegrationRevoked::class);
+    }
+
+    public function test_revocation_push_opens_settings_without_client_data(): void
+    {
+        $payload = (new SendWebPush(1, 1, 'n-1'))->payload('Bellomo', 'n-1', ['event_type' => 'INTEGRATION_REVOKED', 'integration_id' => 'x']);
+
+        $this->assertSame('/admin/settings#whatsapp', $payload['url']);
+        $this->assertSame('integration-revoked', $payload['tag']);
     }
 
     public function test_whatsapp_transport_sends_with_the_stored_token(): void
