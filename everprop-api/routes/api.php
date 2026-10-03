@@ -16,6 +16,7 @@ use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Identity\Http\Controllers\WebPushController;
 use App\Domain\Identity\InventoryRoleBoundary;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
+use App\Domain\Integrations\Http\Controllers\WhatsAppConnectionController;
 use App\Domain\Inventory\Http\Controllers\AdminProjectController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyFeatureController;
@@ -90,6 +91,9 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/visit-requests', [AdminVisitRequestController::class, 'index']);
         Route::post('/visit-requests/{visitRequest}/confirm', [AdminVisitRequestController::class, 'confirm'])->whereUuid('visitRequest');
         Route::post('/visit-requests/{visitRequest}/decline', [AdminVisitRequestController::class, 'decline'])->whereUuid('visitRequest');
+
+        Route::get('/integrations/whatsapp/config', [WhatsAppConnectionController::class, 'config']);
+        Route::post('/integrations/whatsapp/connect', [WhatsAppConnectionController::class, 'connect'])->middleware('throttle:6,1');
 
         Route::get('/push/config', [WebPushController::class, 'config']);
         Route::post('/push/subscriptions', [WebPushController::class, 'store'])->middleware('throttle:30,1');

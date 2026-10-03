@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use SensitiveParameter;
 
 /**
  * Provider access tokens per tenant integration. Stored encrypted with the app key, so a database
@@ -21,7 +22,7 @@ final class IntegrationTokens
      * only a tenant admin may connect; a foreign integration must surface as NOT_FOUND, not this exception.
      * Revoking means status <> ACTIVE: storing clears the legacy reference so it can never come back.
      */
-    public function store(int $tenantId, int $integrationId, string $token, ?CarbonImmutable $expiresAt = null): void
+    public function store(int $tenantId, int $integrationId, #[SensitiveParameter] string $token, ?CarbonImmutable $expiresAt = null): void
     {
         $updated = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->update([
             'access_token_ciphertext' => Crypt::encryptString($token),

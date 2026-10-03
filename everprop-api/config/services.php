@@ -57,6 +57,10 @@ return [
         'graph_version' => env('META_GRAPH_VERSION', 'v23.0'),
         'send_enabled' => (bool) env('META_SEND_ENABLED', false),
         'send_timeout_seconds' => (int) env('META_SEND_TIMEOUT_SECONDS', 10),
+        // Embedded Signup (Tech Provider): connecting real business accounts is gated like sending (X04).
+        'app_id' => env('META_APP_ID'),
+        'embedded_signup_config_id' => env('META_EMBEDDED_SIGNUP_CONFIG_ID'),
+        'onboarding_enabled' => (bool) env('META_ONBOARDING_ENABLED', false),
     ],
 
     'webhooks' => [
