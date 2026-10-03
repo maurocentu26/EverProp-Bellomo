@@ -27,7 +27,7 @@ export default function DataDeletionPage() {
 
       <h2>Si sos una empresa que conectó su cuenta de WhatsApp Business</h2>
       <p>
-        Para desconectar tu cuenta y eliminar los datos asociados, <PrivacyContact />. Al desconectarla se deja de usar el acceso que otorgaste y se eliminan los mensajes y contactos guardados de esa cuenta, salvo obligación legal de conservarlos.
+        Para desconectar tu cuenta, <PrivacyContact />. Al desconectarla se deja de usar el acceso que otorgaste y se borran las credenciales de conexión. Esto no elimina automáticamente los mensajes y contactos ya guardados. La eliminación de esos datos se solicita por separado y hoy la procesa una persona del equipo, previa verificación del pedido.
       </p>
 
       <p>Más información en la <Link href="/privacidad" className="font-semibold text-foreground underline">Política de privacidad</Link>.</p>

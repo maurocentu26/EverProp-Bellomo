@@ -34,6 +34,15 @@ final class WhatsAppOnboarding
             throw new OnboardingFailed('ONBOARDING_DISABLED', 'La conexión con WhatsApp no está habilitada en este entorno.', 503);
         }
 
+        return $this->withWabaLock($signup['waba_id'], fn () => $this->connectLocked($tenantId, $actor, $signup));
+    }
+
+    /**
+     * @param  array{code: string, waba_id: string, phone_number_id: string, business_id: string|null}  $signup
+     * @return array{integration_id: string, channel_id: string, display_phone_number: string, state: 'ACTIVE'|'REGISTRATION_PENDING'}
+     */
+    private function connectLocked(int $tenantId, User $actor, #[SensitiveParameter] array $signup): array
+    {
         $token = $this->exchange($signup['code']);
         $phone = $this->phoneInWaba($signup['waba_id'], $signup['phone_number_id'], $token);
 
@@ -72,9 +81,18 @@ final class WhatsAppOnboarding
         if (! $ok) {
             Log::warning('whatsapp.onboarding.register_failed', $failure);
         }
-        if ($ok || ! $wasActive) {
-            DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->update(['status' => $ok ? 'ACTIVE' : 'DEGRADED']);
-        }
+        DB::transaction(function () use ($tenantId, $integrationId, $token, $ok, $wasActive): void {
+            $current = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)
+                ->lockForUpdate()->value('status');
+            $stored = $this->tokens->stored($tenantId, $integrationId);
+            // An account_update or token rejection during the HTTP call must remain revoked.
+            if (! in_array($current, ['ACTIVE', 'PENDING', 'DEGRADED'], true) || $stored === null || ! hash_equals($token, $stored)) {
+                throw new OnboardingFailed('CONNECTION_CHANGED', 'El acceso cambió durante la conexión. Volvé a iniciar el proceso.', 409);
+            }
+            if ($ok || ! $wasActive) {
+                DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->update(['status' => $ok ? 'ACTIVE' : 'DEGRADED']);
+            }
+        });
 
         return [
             'integration_id' => (string) DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->value('public_id'),
@@ -133,9 +151,20 @@ final class WhatsAppOnboarding
      */
     public function disconnect(int $tenantId, User $actor, string $integrationPublicId): void
     {
-        // Read, capture and erase under the row lock; Meta is told after commit, so a concurrent connect
-        // either sees the disconnection or runs entirely after it (and subscribes again).
-        [$token, $wabaId] = DB::transaction(function () use ($tenantId, $actor, $integrationPublicId): array {
+        $integration = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('public_id', $integrationPublicId)
+            ->where('provider', 'META')->first(['settings_json']);
+        if ($integration === null) {
+            throw new OnboardingFailed('NOT_FOUND', 'No encontramos esa conexión de WhatsApp.', 404);
+        }
+        $wabaId = json_decode((string) $integration->settings_json, true)['waba_id'] ?? null;
+        $this->withWabaLock(is_string($wabaId) ? $wabaId : $integrationPublicId, function () use ($tenantId, $actor, $integrationPublicId, $wabaId): void {
+            $this->disconnectLocked($tenantId, $actor, $integrationPublicId, $wabaId);
+        });
+    }
+
+    private function disconnectLocked(int $tenantId, User $actor, string $integrationPublicId, mixed $expectedWaba): void
+    {
+        [$token, $wabaId] = DB::transaction(function () use ($tenantId, $actor, $integrationPublicId, $expectedWaba): array {
             $integration = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('public_id', $integrationPublicId)
                 ->where('provider', 'META')->lockForUpdate()->first(['id', 'settings_json']);
             if ($integration === null) {
@@ -143,6 +172,9 @@ final class WhatsAppOnboarding
             }
             $settings = json_decode((string) $integration->settings_json, true) ?: [];
             $wabaId = is_string($settings['waba_id'] ?? null) ? $settings['waba_id'] : null;
+            if ($wabaId !== $expectedWaba) {
+                throw new OnboardingFailed('CONNECTION_CHANGED', 'La conexión cambió. Actualizá el estado y volvé a intentarlo.', 409);
+            }
             $token = $this->tokens->stored($tenantId, (int) $integration->id);
 
             DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integration->id)
@@ -163,7 +195,10 @@ final class WhatsAppOnboarding
             return [$token, $wabaId];
         });
 
-        if ($token !== null && $wabaId !== null) {
+        // Subscription belongs to the WABA, not to a phone or tenant. Keep it for any live sibling.
+        $hasSibling = $wabaId !== null && DB::table('integration_connections')->where('provider', 'META')
+            ->where('settings_json->waba_id', $wabaId)->whereIn('status', ['ACTIVE', 'PENDING', 'DEGRADED'])->exists();
+        if ($token !== null && $wabaId !== null && ! $hasSibling) {
             try {
                 $response = $this->graph($token)->delete($this->url($wabaId.'/subscribed_apps'));
                 if (! $response->successful()) {
@@ -172,6 +207,28 @@ final class WhatsAppOnboarding
             } catch (ConnectionException) {
                 Log::warning('whatsapp.disconnect.unsubscribe_failed', ['status' => 0, 'code' => 'connection']);
             }
+        }
+    }
+
+    /**
+     * Serialize WABA-wide HTTP effects with their local commits, without an expiring cache lease.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $operation
+     * @return T
+     */
+    private function withWabaLock(string $wabaId, callable $operation): mixed
+    {
+        $connection = DB::connection();
+        $lock = 'meta-waba:'.substr(hash('sha256', $connection->getDatabaseName().':'.$wabaId), 0, 40);
+        if ((int) $connection->selectOne('SELECT GET_LOCK(?, 0) AS acquired', [$lock])->acquired !== 1) {
+            throw new OnboardingFailed('CONNECT_IN_PROGRESS', 'Hay una operación de WhatsApp en curso. Esperá unos segundos y volvé a intentarlo.', 409);
+        }
+        try {
+            return $operation();
+        } finally {
+            $connection->selectOne('SELECT RELEASE_LOCK(?) AS released', [$lock]);
         }
     }
 

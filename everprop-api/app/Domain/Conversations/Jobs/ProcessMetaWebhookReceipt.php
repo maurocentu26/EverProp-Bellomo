@@ -69,7 +69,11 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
 
                 return;
             }
-            $processor->messages($stored['value'], is_string($stored['waba_id'] ?? null) ? $stored['waba_id'] : null);
+            if (! $processor->messages($stored['value'], is_string($stored['waba_id'] ?? null) ? $stored['waba_id'] : null, $this->tenantId, (int) $receipt->integration_id)) {
+                $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
+
+                return;
+            }
         } catch (Throwable $error) {
             $this->mark('RETRY', class_basename($error), CarbonImmutable::now('UTC')->addSeconds($this->backoff()[min($this->attempts() - 1, 3)] ?? 300), ['PROCESSING']);
             throw $error;

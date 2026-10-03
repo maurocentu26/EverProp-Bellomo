@@ -24,6 +24,8 @@ Reportado por Ramiro (hecho con Codex el 2026-10-02; no verificado desde esta se
 
 Pendiente:
 
+Antes de subir los cambios de Tech Provider a la rama que Railway despliega automáticamente, aplicar **solo en staging** `2026-10-02.001_integration_token_ciphertext.sql` con `lock_wait_timeout` acotado (ver paso 5 de "Aplicar el SQL"). Verificar la columna `access_token_ciphertext` y la versión `2026-10-02.001` en `schema_versions`. El código consulta esa columna incluso con onboarding apagado; el chequeo de arranque no sustituye esta verificación. Mantener `META_ONBOARDING_ENABLED=false`, `META_SEND_ENABLED=false` y la IA apagada. No ejecutar este paso en producción.
+
 | # | Paso | Verificación |
 |---|---|---|
 | S1 | `api` y `worker` desplegan desde `chore/agentic-setup` (no `main`); worker con `railway-worker.json` y la **misma** `QUEUE_CONNECTION` que la API | `/readyz` 200; `everprop:production-check --connections` todo OK |
@@ -43,7 +45,7 @@ Staging verde **no completa F0 de producción**: los pasos de "Fase 1" de abajo 
 | # | Paso | Quién | Cómo verificar |
 |---|---|---|---|
 | 1 | Backup de MySQL producción **con procedures**: `mysqldump --single-transaction --routines --triggers --events --set-gtid-purged=OFF bellomo_crm`. Restaurarlo de prueba en un MySQL 8.4 aparte y anotar `MAX(applied_at)` de `schema_versions` y conteos de tablas | Ramiro | el restore levanta y `sp_create_or_get_open_lead` existe en la copia |
-| 2 | Aplicar los 4 forward siguiendo **"Aplicar el SQL"** (abajo) | Ramiro (X04) | las 4 versiones en `schema_versions` + chequeos posteriores OK |
+| 2 | Aplicar los 5 forward siguiendo **"Aplicar el SQL"** (abajo) | Ramiro (X04) | las 5 versiones en `schema_versions` + chequeos posteriores OK |
 
 ### Aplicar el SQL (paso 2)
 
@@ -65,10 +67,11 @@ Ventana de bajo tráfico, sin importaciones de inventario corriendo. Las tablas 
 4. `2026-09-30.002_conversation_sweep_index.sql` (índice en línea, `LOCK=NONE`; el arranque no lo exige, pero el barrido de IA apagada lo usa)
 5. `2026-10-02.001_integration_token_ciphertext.sql` (columna nullable con `ALGORITHM=INSTANT`; toma un lock de metadatos breve, por eso también va con `lock_wait_timeout`). Antes, en producción: `SELECT TOTAL_ROW_VERSIONS FROM information_schema.INNODB_TABLES WHERE NAME = CONCAT(DATABASE(), '/integration_connections');` debe ser menor a 64; si falla con `ER_INNODB_MAX_ROW_VERSION`, re-ejecutar con `ALGORITHM=INPLACE` (tabla chica). Lo exige el token cifrado por tenant (Tech Provider W3), no el arranque.
 
-**Si falla a mitad:** no restaurar el backup. Cada DDL es atómico y los 4 scripts son re-ejecutables (probado aplicándolos dos veces): corregir la causa (`1205` = lock: esperar y reintentar; `1062` = duplicado del chequeo 4) y volver a correr **el mismo archivo**. La app actual sigue funcionando porque los cambios solo agregan. No mergear hasta tener las 3 versiones registradas (si se mergea antes, `production-check` hace que Railway mantenga el despliegue anterior).
+**Si falla a mitad:** no restaurar el backup. Cada DDL es atómico y los scripts están diseñados para re-ejecución: corregir la causa (`1205` = lock: esperar y reintentar; `1062` = duplicado del chequeo 4) y volver a correr **el mismo archivo**. La app actual sigue funcionando porque los cambios solo agregan. No mergear hasta tener las 5 versiones registradas y los chequeos posteriores completos; el arranque no comprueba la columna del token.
 
 **Chequeos posteriores:**
-- `SELECT version FROM schema_versions WHERE version IN ('2026-09-29.002','2026-09-29.003','2026-09-30.001','2026-09-30.002');` → 4 filas.
+- `SELECT version FROM schema_versions WHERE version IN ('2026-09-29.002','2026-09-29.003','2026-09-30.001','2026-09-30.002','2026-10-02.001');` → 5 filas.
+- `SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='integration_connections' AND COLUMN_NAME='access_token_ciphertext';` → 1.
 - `information_schema.CHECK_CONSTRAINTS`: `ck_messages_delivery` incluye `UNKNOWN` y `ck_outbound_jobs_status` incluye `UNKNOWN_FINAL`.
 - `information_schema.STATISTICS`: `uq_messages_channel_provider`, `uq_outbound_jobs_message`, `uq_channel_accounts_whatsapp_phone`, `ix_chatbot_runs_status_started`.
 - `everprop:schema:verify` cuenta tablas/FKs contra una instalación limpia (60/54/131). Producción puede tener FKs extra de `2026-09-15.002` (se crean solo si había inventario importado): correrlo primero contra el restore del paso 1 y anotar el valor real antes de usarlo como control.

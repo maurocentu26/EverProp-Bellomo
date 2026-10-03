@@ -4,6 +4,7 @@ namespace Tests\Feature\Conversations;
 
 use App\Domain\Conversations\Jobs\ProcessMetaWebhookReceipt;
 use App\Domain\Conversations\Services\MetaWebhookProcessor;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -112,6 +113,30 @@ final class WhatsAppWebhookReceiptTest extends TestCase
         $this->assertDatabaseHas('webhook_receipts', ['id' => $id, 'processing_status' => 'REJECTED', 'last_error_code' => 'CHANNEL_CHANGED']);
         $this->assertDatabaseMissing('messages', ['tenant_id' => $tenantB, 'provider_message_id' => 'wamid.M1']);
         $this->assertDatabaseMissing('messages', ['provider_message_id' => 'wamid.M1']);
+    }
+
+    public function test_moving_a_number_between_validation_and_use_cannot_leak_the_receipt(): void
+    {
+        Queue::fake([ProcessMetaWebhookReceipt::class]);
+        [$tenantA, $channelA] = $this->channel('PN-RACE');
+        ['tenant' => $tenantB, 'integration' => $integrationB] = $this->tenantWithIntegration();
+        $this->postWebhook($this->waPayload('PN-RACE', [$this->waText('wamid.RACE', 'Dato privado de A')]))->assertOk();
+        $id = (int) DB::table('webhook_receipts')->where('tenant_id', $tenantA)->value('id');
+        $moved = false;
+        DB::listen(function (QueryExecuted $query) use (&$moved, $channelA, $tenantB, $integrationB): void {
+            if ($moved || ! str_contains($query->sql, '`channel_accounts` as `ca`')) {
+                return;
+            }
+            $moved = true; // The first lookup has fetched A; move the mapping before the second lookup.
+            DB::table('channel_accounts')->where('id', $channelA)->update(['provider_account_id' => 'PN-ARCHIVED']);
+            $this->whatsappChannel($tenantB->id, $integrationB, 'PN-RACE');
+        });
+
+        (new ProcessMetaWebhookReceipt($tenantA, $id))->handle(app(MetaWebhookProcessor::class));
+
+        $this->assertTrue($moved);
+        $this->assertDatabaseHas('webhook_receipts', ['id' => $id, 'processing_status' => 'REJECTED']);
+        $this->assertDatabaseMissing('messages', ['provider_message_id' => 'wamid.RACE']);
     }
 
     public function test_a_receipt_held_by_another_worker_is_not_processed_twice_until_its_lease_expires(): void

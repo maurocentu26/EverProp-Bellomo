@@ -59,18 +59,19 @@ final class MetaWebhookProcessor
     }
 
     /** @param array<string, mixed> $value */
-    public function messages(array $value, ?string $wabaId): void
+    public function messages(array $value, ?string $wabaId, int $tenantId, int $integrationId): bool
     {
         $phoneNumberId = is_scalar($value['metadata']['phone_number_id'] ?? null) ? (string) $value['metadata']['phone_number_id'] : '';
         $channel = $this->channelFor($phoneNumberId);
 
         // The tenant comes only from this verified mapping; anything else fails closed.
         $expectedWaba = $channel === null ? null : (json_decode((string) $channel->metadata_json, true)['waba_id'] ?? null);
-        if ($channel === null || $channel->status !== 'ACTIVE' || $channel->provider !== 'META' || $channel->integration_status !== 'ACTIVE'
+        if ($channel === null || (int) $channel->tenant_id !== $tenantId || (int) $channel->integration_id !== $integrationId
+            || $channel->status !== 'ACTIVE' || $channel->provider !== 'META' || $channel->integration_status !== 'ACTIVE'
             || ($expectedWaba !== null && $expectedWaba !== $wabaId)) {
             Log::warning('whatsapp.webhook.unmapped_phone_number', ['mapped' => $channel !== null]);
 
-            return;
+            return false;
         }
         $names = collect($this->arrays($value['contacts'] ?? null))
             ->filter(fn ($c) => is_scalar($c['wa_id'] ?? null))
@@ -108,6 +109,8 @@ final class MetaWebhookProcessor
         foreach ($this->arrays($value['statuses'] ?? null) as $status) {
             $this->applyStatus((int) $channel->tenant_id, (int) $channel->id, $status);
         }
+
+        return true;
     }
 
     /** @param array<string, mixed> $status */

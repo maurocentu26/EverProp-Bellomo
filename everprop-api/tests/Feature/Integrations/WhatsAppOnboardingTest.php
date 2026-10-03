@@ -299,4 +299,79 @@ final class WhatsAppOnboardingTest extends TestCase
         $this->connect($tenant, $admin, ['code' => 'x', 'waba_id' => '../me', 'phone_number_id' => '2002'])->assertStatus(422);
         Http::assertNothingSent();
     }
+
+    public function test_registration_completion_never_revives_a_concurrent_revocation(): void
+    {
+        foreach ([200, 400] as $status) {
+            [$tenant, $admin] = $this->admin();
+            $this->meta(['graph.facebook.com/v24.0/2002/register' => function () use ($tenant, $status) {
+                $id = (int) DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('provider', 'META')->value('id');
+                app(IntegrationTokens::class)->revoke($tenant->id, $id, null, 'META_ACCOUNT_OFFBOARDED');
+
+                return Http::response(['success' => $status === 200], $status);
+            }]);
+            $this->connect($tenant, $admin)->assertStatus(409)->assertJsonPath('error.code', 'CONNECTION_CHANGED');
+            $row = DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('provider', 'META')->first();
+            $this->assertSame('REVOKED', $row->status);
+            $this->assertNull($row->access_token_ciphertext);
+            $this->assertArrayNotHasKey('registration_pin', json_decode((string) $row->settings_json, true));
+            // Free the synthetic number before the next control (revocation intentionally does not disconnect).
+            DB::table('channel_accounts')->where('tenant_id', $tenant->id)->update(['provider_account_id' => 'revoked-'.$tenant->id]);
+        }
+    }
+
+    public function test_registration_completion_cannot_overwrite_a_replaced_credential(): void
+    {
+        [$tenant, $admin] = $this->admin();
+        $this->meta(['graph.facebook.com/v24.0/2002/register' => function () use ($tenant) {
+            $id = (int) DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('provider', 'META')->value('id');
+            app(IntegrationTokens::class)->store($tenant->id, $id, 'synthetic-newer-token');
+
+            return Http::response(['success' => true]);
+        }]);
+
+        $this->connect($tenant, $admin)->assertStatus(409)->assertJsonPath('error.code', 'CONNECTION_CHANGED');
+        $row = DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('provider', 'META')->first();
+        $this->assertSame('PENDING', $row->status);
+        $this->assertSame('synthetic-newer-token', app(IntegrationTokens::class)->stored($tenant->id, (int) $row->id));
+    }
+
+    public function test_disconnect_preserves_a_waba_subscription_for_another_tenants_pending_number(): void
+    {
+        $this->meta(['graph.facebook.com/v24.0/1001/phone_numbers*' => Http::response(['data' => [['id' => '2002'], ['id' => '2003']]]),
+            'graph.facebook.com/v24.0/2003/register' => Http::response(['error' => ['code' => 133016]], 400)]);
+        [$tenant, $admin] = $this->admin();
+        $id = (string) $this->connect($tenant, $admin)->assertCreated()->json('data.integration_id');
+        [$other, $otherAdmin] = $this->admin();
+        $otherId = (string) $this->connect($other, $otherAdmin, array_replace(self::SIGNUP, ['phone_number_id' => '2003']))->assertStatus(202)->json('data.integration_id');
+
+        $this->actingAs($admin)->withHeaders($this->tenantHeaders($tenant))->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertOk();
+        Http::assertNotSent(fn (Request $r) => $r->method() === 'DELETE');
+        $this->assertDatabaseHas('integration_connections', ['public_id' => $otherId, 'status' => 'DEGRADED']);
+        $this->actingAs($otherAdmin)->withHeaders($this->tenantHeaders($other))->postJson("/api/v1/admin/integrations/whatsapp/$otherId/disconnect")->assertOk();
+        Http::assertSent(fn (Request $r) => $r->method() === 'DELETE');
+    }
+
+    public function test_waba_lock_blocks_connect_and_disconnect_and_releases_after_failure(): void
+    {
+        $this->meta(['graph.facebook.com/v24.0/1001/subscribed_apps' => Http::sequence()
+            ->push(['success' => true])->push([], 403)->push(['success' => true])->push(['success' => true])]);
+        [$tenant, $admin] = $this->admin();
+        $id = (string) $this->connect($tenant, $admin)->assertCreated()->json('data.integration_id');
+        $name = 'meta-waba:'.substr(hash('sha256', DB::connection()->getDatabaseName().':1001'), 0, 40);
+        config(['database.connections.meta_lock_test' => config('database.connections.'.DB::getDefaultConnection())]);
+        $other = DB::connection('meta_lock_test');
+        $this->assertSame(1, (int) $other->selectOne('SELECT GET_LOCK(?, 0) AS acquired', [$name])->acquired);
+        try {
+            $this->connect($tenant, $admin)->assertStatus(409)->assertJsonPath('error.code', 'CONNECT_IN_PROGRESS');
+            $this->actingAs($admin)->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertStatus(409);
+            Http::assertNotSent(fn (Request $r) => $r->method() === 'DELETE');
+        } finally {
+            $other->selectOne('SELECT RELEASE_LOCK(?) AS released', [$name]);
+            DB::purge('meta_lock_test');
+        }
+        $this->connect($tenant, $admin)->assertStatus(502);
+        $this->connect($tenant, $admin)->assertCreated();
+        $this->actingAs($admin)->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertOk();
+    }
 }
