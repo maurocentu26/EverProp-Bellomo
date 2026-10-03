@@ -5,9 +5,8 @@ namespace App\Domain\Conversations\Transports;
 use App\Domain\Conversations\Contracts\ChannelTransport;
 use App\Domain\Conversations\Data\SendResult;
 use App\Domain\Conversations\Exceptions\DeliveryAmbiguous;
-use App\Domain\Integrations\Services\ConfigWebhookSecretResolver;
+use App\Domain\Integrations\Services\IntegrationTokens;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -20,7 +19,7 @@ use Illuminate\Support\Facades\Http;
  */
 final class WhatsAppCloudTransport implements ChannelTransport
 {
-    public function __construct(private readonly ConfigWebhookSecretResolver $secrets) {}
+    public function __construct(private readonly IntegrationTokens $tokens) {}
 
     public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce): SendResult
     {
@@ -28,10 +27,12 @@ final class WhatsAppCloudTransport implements ChannelTransport
             return SendResult::rejected('CHANNEL_SEND_DISABLED', false);
         }
 
-        $tokenRef = (string) DB::table('integration_connections')
-            ->where('tenant_id', $channel['tenant_id'])->where('id', $channel['integration_id'])
-            ->where('status', 'ACTIVE')->value('access_token_secret_ref');
-        $token = $this->secrets->resolve($tokenRef);
+        // A paused or disconnected number never sends, even if its integration is still ACTIVE.
+        if (($channel['status'] ?? null) !== 'ACTIVE') {
+            return SendResult::rejected('CHANNEL_INACTIVE', false);
+        }
+
+        $token = $this->tokens->forSending((int) $channel['tenant_id'], (int) $channel['integration_id']);
         if ($token === null) {
             return SendResult::rejected('CHANNEL_NOT_CONFIGURED', false);
         }

@@ -111,6 +111,12 @@ Pendiente F0-S, en este orden: (1) Redis para sesión/caché; (2) **scheduler** 
 
 Staging no completa F0-P, ni autoriza encender IA o WhatsApp, ni mergear a `main`.
 
+### Tech Provider (plan W1–W12, 2026-10-02)
+
+- **W1 hecho**: `/privacidad` y `/eliminacion-de-datos` públicas en el panel (sin sesión, estáticas). Contacto por `NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL`; sin él, el pedido se hace en el chat. Sin plazos de retención (D18 sin aprobar) ni proveedor de IA nombrado. **Antes de cargar la URL en Meta: revisión legal y email de contacto.**
+- **W3 hecho**: forward `2026-10-02.001` (`integration_connections.access_token_ciphertext`, INSTANT); `IntegrationTokens` guarda el token cifrado (Crypt/APP_KEY), lo entrega solo a una integración ACTIVE, del tenant y no vencida, y al guardar anula la referencia legacy. El transporte de WhatsApp lo usa y no envía si el número no está ACTIVE. Revisiones schema-guardian y tenant-isolation aplicadas. MySQL 8.4 aislado: forward ×2 OK, `schema:verify` OK, suite 216/216, Pint y PHPStan OK.
+- Siguiente: W4/W5 (Embedded Signup) y W2 en la nube. `store()` exige al llamador tenant desde TenantContext, solo admin y NOT_FOUND ante integración ajena.
+
 Deuda transversal (cualquier fase, ítems chicos): conciliación UNKNOWN del ledger, búsqueda/notas en bandeja.
 
 ## Lote 3 — verificación para piloto de chat web (2026-09-30/10-01)

@@ -63,6 +63,7 @@ Ventana de bajo tráfico, sin importaciones de inventario corriendo. Las tablas 
 2. `2026-09-29.003_agent_runtime.sql`
 3. `2026-09-30.001_queue_tables.sql`
 4. `2026-09-30.002_conversation_sweep_index.sql` (índice en línea, `LOCK=NONE`; el arranque no lo exige, pero el barrido de IA apagada lo usa)
+5. `2026-10-02.001_integration_token_ciphertext.sql` (columna nullable con `ALGORITHM=INSTANT`; toma un lock de metadatos breve, por eso también va con `lock_wait_timeout`). Antes, en producción: `SELECT TOTAL_ROW_VERSIONS FROM information_schema.INNODB_TABLES WHERE NAME = CONCAT(DATABASE(), '/integration_connections');` debe ser menor a 64; si falla con `ER_INNODB_MAX_ROW_VERSION`, re-ejecutar con `ALGORITHM=INPLACE` (tabla chica). Lo exige el token cifrado por tenant (Tech Provider W3), no el arranque.
 
 **Si falla a mitad:** no restaurar el backup. Cada DDL es atómico y los 4 scripts son re-ejecutables (probado aplicándolos dos veces): corregir la causa (`1205` = lock: esperar y reintentar; `1062` = duplicado del chequeo 4) y volver a correr **el mismo archivo**. La app actual sigue funcionando porque los cambios solo agregan. No mergear hasta tener las 3 versiones registradas (si se mergea antes, `production-check` hace que Railway mantenga el despliegue anterior).
 
