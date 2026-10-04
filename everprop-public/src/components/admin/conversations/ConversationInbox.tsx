@@ -108,6 +108,8 @@ export function ConversationInbox() {
   const [openedSummary, setOpenedSummary] = useState<ConversationSummary | null>(null);
   const [state, setState] = useState<ConversationState | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
+  // WhatsApp only: when the 24 h service window closes (null closes_at = already closed).
+  const [replyWindow, setReplyWindow] = useState<{ closes_at: string | null } | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const messagesRef = useRef<ConversationMessage[]>([]);
   const [threadError, setThreadError] = useState("");
@@ -162,6 +164,7 @@ export function ConversationInbox() {
       setMessages(merged);
       setState(response.conversation.state);
       setAiEnabled(response.conversation.ai_enabled);
+      setReplyWindow(response.conversation.reply_window ?? null);
       setThreadError("");
     } catch {
       setThreadError("No pudimos cargar los mensajes. Reintentamos en unos segundos.");
@@ -215,6 +218,7 @@ export function ConversationInbox() {
     messagesRef.current = [];
     setMessages([]);
     setState(null);
+    setReplyWindow(null);
     setUnseen(0);
     atBottom.current = true;
     setShowQuick(false);
@@ -248,7 +252,7 @@ export function ConversationInbox() {
   async function sendDraft() {
     const text = draft.trim();
     const conversation = selected;
-    if (!conversation || !text) return;
+    if (!conversation || !text || windowClosed) return;
     if (draftKey.current.text !== text) draftKey.current = { key: newKey(), text };
     atBottom.current = true;
     await run("reply", async () => {
@@ -269,6 +273,8 @@ export function ConversationInbox() {
 
   const current = items.find((item) => item.id === selected) ?? (openedSummary?.id === selected ? openedSummary : undefined);
   const humanInControl = state === "HUMAN_ACTIVE";
+  // A reply queued just before the window closed still shows up in the thread through polling.
+  const windowClosed = replyWindow !== null && replyWindow.closes_at === null;
 
   return (
     <section className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 pb-6">
@@ -424,6 +430,13 @@ export function ConversationInbox() {
                       </button>
                     </div>
                   )}
+                  {replyWindow && (
+                    <p role="status" className={`px-3 pt-3 text-xs ${windowClosed ? "font-semibold text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
+                      {replyWindow.closes_at
+                        ? `Podés responder por WhatsApp hasta el ${time(replyWindow.closes_at)}.`
+                        : "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp no permite escribirle hasta que vuelva a escribir (o con una plantilla aprobada)."}
+                    </p>
+                  )}
                   <form onSubmit={(event) => { event.preventDefault(); void sendDraft(); }} className="flex items-end gap-2 p-3">
                     <button type="button" aria-expanded={showQuick} aria-label="Respuestas rápidas" onClick={() => { if (!showQuick) loadReplies(); setShowQuick(!showQuick); }}
                       className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border ${showQuick ? "bg-muted" : ""}`}>
@@ -435,7 +448,7 @@ export function ConversationInbox() {
                       // On a phone keyboard Enter is a line break; there the Send button sends.
                       onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !isTouch()) { event.preventDefault(); void sendDraft(); } }}
                       className="min-h-11 flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm" placeholder="Escribí tu respuesta…" />
-                    <button type="submit" disabled={busy !== null || draft.trim() === ""} aria-label="Enviar respuesta"
+                    <button type="submit" disabled={busy !== null || draft.trim() === "" || windowClosed} aria-label="Enviar respuesta"
                       className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-60">
                       <Send className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Enviar</span>
                     </button>

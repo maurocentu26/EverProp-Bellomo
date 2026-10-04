@@ -102,7 +102,7 @@ export function mergeMessages(current: ConversationMessage[], incoming: Conversa
 }
 
 export async function getConversationMessages(id: string, after = 0) {
-  return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean }; data: ConversationMessage[] }>(
+  return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean; reply_window: { closes_at: string | null } | null }; data: ConversationMessage[] }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages${after > 0 ? `?after=${after}` : ""}`,
   );
 }

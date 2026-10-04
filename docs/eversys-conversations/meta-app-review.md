@@ -61,7 +61,7 @@ EverSys no crea plantillas: usa este permiso para administrar los activos de las
 
 - Panel de pruebas: URL de staging. Usuario de revisión con rol admin del tenant sintético, creado para la revisión. **Las credenciales se cargan solo en el formulario de App Review**; nunca en el repo, tickets ni chats.
 - Qué probar: Configuración → "WhatsApp de la inmobiliaria" → Conectar (Embedded Signup); Conversaciones → responder a un mensaje recibido.
-- Límites a declarar: los mensajes libres solo se envían dentro de las 24 h de un mensaje del cliente; fuera de la ventana el panel lo rechaza y explica el motivo.
+- Límites a declarar: los mensajes libres solo se envían dentro de las 24 h de un mensaje del cliente. El panel muestra hasta cuándo se puede responder; con la ventana cerrada explica el motivo y desactiva el envío, y el servidor también lo rechaza.
 
 ## Textos de justificación (borrador, en inglés)
 

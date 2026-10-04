@@ -144,6 +144,27 @@ final class ChannelPolicyTest extends TestCase
         $this->assertSame('OUTSIDE_SERVICE_WINDOW', app(ChannelPolicy::class)->check($c['tenant']->id, $c['conversation'], $c['channel']));
     }
 
+    public function test_the_inbox_shows_when_the_window_closes(): void
+    {
+        $wrote = CarbonImmutable::parse('2026-01-05 10:00:00', 'UTC');
+        CarbonImmutable::setTestNow($wrote->addHour());
+        $c = $this->whatsappConversation('PN-UI', $wrote);
+        $publicId = (string) DB::table('conversations')->where('id', $c['conversation'])->value('public_id');
+        $get = fn () => $this->actingAs($c['advisor'])->withHeaders($this->tenantHeaders($c['tenant']))
+            ->getJson("/api/v1/admin/conversations/$publicId/messages")->assertOk();
+
+        $get()->assertJsonPath('conversation.reply_window.closes_at', '2026-01-06T10:00:00.000000Z');
+        CarbonImmutable::setTestNow($wrote->addHours(25));
+        $get()->assertJsonPath('conversation.reply_window', ['closes_at' => null]);
+
+        // Read-only users may see it; another tenant's admin does not even learn the conversation exists.
+        $this->actingAs($this->user($c['tenant'], RoleCode::READ_ONLY))->withHeaders($this->tenantHeaders($c['tenant']))
+            ->getJson("/api/v1/admin/conversations/$publicId/messages")->assertOk()->assertJsonPath('conversation.reply_window', ['closes_at' => null]);
+        ['tenant' => $other] = $this->tenantWithIntegration();
+        $this->actingAs($this->user($other, RoleCode::TENANT_ADMIN))->withHeaders($this->tenantHeaders($other))
+            ->getJson("/api/v1/admin/conversations/$publicId/messages")->assertNotFound()->assertJsonMissingPath('conversation');
+    }
+
     public function test_missing_data_fails_closed(): void
     {
         $c = $this->whatsappConversation('PN-MISS', CarbonImmutable::now()->subHour());

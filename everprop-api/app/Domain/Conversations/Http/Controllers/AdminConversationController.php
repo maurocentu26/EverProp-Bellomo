@@ -3,6 +3,7 @@
 namespace App\Domain\Conversations\Http\Controllers;
 
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
+use App\Domain\Conversations\Services\ChannelPolicy;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Conversations\Services\OutboundDispatcher;
@@ -85,10 +86,14 @@ final class AdminConversationController extends Controller
         if ($user->role() !== RoleCode::READ_ONLY && (int) $row->assigned_user_id === (int) $user->id) {
             DB::table('conversations')->where('tenant_id', $row->tenant_id)->where('id', $row->id)->update(['unread_count' => 0]);
         }
+        // WhatsApp's 24 h service window (Plan W2), so the advisor knows before writing. null = the channel has none.
+        $isWhatsApp = DB::table('channel_accounts')->where('tenant_id', $row->tenant_id)->where('id', $row->channel_account_id)->value('channel_type') === 'WHATSAPP';
 
         return response()->json([
             'conversation' => ['id' => $row->public_id, 'state' => $row->control_state, 'epoch' => (int) $row->control_epoch,
-                'ai_enabled' => InboundMessageService::aiEnabled()],
+                'ai_enabled' => InboundMessageService::aiEnabled(),
+                'reply_window' => $isWhatsApp ? ['closes_at' => app(ChannelPolicy::class)
+                    ->windowClosesAt((int) $row->tenant_id, (int) $row->id, (int) $row->channel_account_id)?->toISOString()] : null],
             'data' => $messages->map(fn ($m) => [
                 'sequence' => (int) $m->sequence, 'direction' => $m->direction, 'sender' => $m->sender_type,
                 'text' => $m->text_body, 'status' => $m->delivery_status,
@@ -189,7 +194,7 @@ final class AdminConversationController extends Controller
     private function find(User $user, string $publicId): object
     {
         $row = $this->visible($user)->where('c.public_id', $publicId)
-            ->first(['c.id', 'c.tenant_id', 'c.public_id', 'c.control_state', 'c.control_epoch', 'c.assigned_user_id', 'c.controlled_by_user_id']);
+            ->first(['c.id', 'c.tenant_id', 'c.public_id', 'c.control_state', 'c.control_epoch', 'c.assigned_user_id', 'c.controlled_by_user_id', 'c.channel_account_id']);
         abort_unless($row !== null, 404);
 
         return $row;
