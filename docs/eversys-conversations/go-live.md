@@ -115,4 +115,4 @@ No borra datos. Medir en staging cuánto tarda de punta a punta antes de promete
 
 ## Fase 3 — WhatsApp
 
-Bloqueado por X01 (verificación de negocio, App Review con videos, permisos avanzados) y por `ChannelPolicy`. Hasta entonces `META_SEND_ENABLED=false`.
+Bloqueado por X01 (verificación de negocio, App Review con videos, permisos avanzados) y por la autorización X04. `ChannelPolicy` ya está (W2), probada solo con simuladores. Hasta entonces `META_SEND_ENABLED=false` y `META_ONBOARDING_ENABLED=false`. La checklist de staging, los guiones, los requisitos de X04 y el procedimiento de apagado están en [meta-app-review.md](meta-app-review.md).
