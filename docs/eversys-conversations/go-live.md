@@ -92,6 +92,8 @@ Con IA apagada el chat ya sirve: toda conversación entra a la bandeja y un ases
 - `QUEUE_CONNECTION=database` o `redis`: **hace falta un worker vivo** consumiendo esa misma conexión (`railway-worker.json`; el worker usa `QUEUE_CONNECTION` o `QUEUE_WORKER_CONNECTION`). Sin worker, las respuestas quedan "En cola" y el visitante no las ve. Que el contenedor arranque no prueba que consuma trabajos: verificar enviando una respuesta de prueba y viendo el estado "Enviado" en la bandeja.
 - Si Web Push usa otra conexión (`WEBPUSH_QUEUE_CONNECTION`), levantar un segundo worker con `QUEUE_WORKER_CONNECTION` = esa conexión.
 
+**KPIs del piloto (S16 mínimo, revisión semanal):** `php artisan everprop:conversations:kpis --tenant=<slug> --from=AAAA-MM-DD --to=AAAA-MM-DD` imprime un JSON solo con agregados, sin textos ni datos de contacto. Incluye, por canal: conversaciones, minutos a la primera respuesta humana (p50/p95, en horario corrido), conversaciones sin respuesta humana (un mensaje en cola, fallido o anterior al del cliente no cuenta) y conversaciones con lead de ese canal creado en el rango (completo = con teléfono o email). También cuenta duplicados: contactos con más de un lead y mensajes del asesor enviados dos veces en menos de 60 s. Las fechas son UTC y `--to` no se incluye. El gate F1 pide duplicados en 0. Antes del piloto se registra una semana de línea base, y cada semana se contrasta con una muestra revisada por una persona.
+
 ## Fase 2 — Asistente IA
 
 **Costo y riesgo:** el modelo se paga en USD. Tope en código: USD 30/mes (`USAGE_GLOBAL_CAP_MICROS`), por turno ≤ ~USD 0,03 con tarifas tipo Haiku 4.5. Requiere tarjeta/cuenta del proveedor (decisión X03) y un worker: Redis en Railway o cola en base (`QUEUE_CONNECTION=database`, sin costo extra).

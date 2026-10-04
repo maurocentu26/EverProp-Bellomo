@@ -63,6 +63,7 @@ Proveedor LLM: interfaz `LlmClient`; adaptador Anthropic Messages listo pero **a
 - ~~`ChannelPolicy` inexistente~~: resuelta en W2. El transporte real sigue apagado hasta X04.
 - Integrar el widget en el sitio de Bellomo (hoy Bellomito usa su propio `/api/chat` con Gemini): reemplazar por el `<script>` cuando G2 esté listo.
 - Bandeja: búsqueda, etiquetas, notas internas y adjuntos (diseño S04) aún no.
+- **S16 mínimo hecho (2026-10-04, solo datos sintéticos)**: comando `everprop:conversations:kpis` con los KPIs del gate F1 (ver `go-live.md`). Falta el tablero en el panel, la atribución bot/asesor más allá de la primera respuesta humana y el horario de atención. Las definiciones son provisorias: el equipo las confirma con la línea base.
 - ~~Alta de integraciones sin endpoint~~: Embedded Signup resuelto en W4/W5. El resto de S14 (baja completa del tenant) sigue pendiente.
 - Activar IA: aprobar proveedor/región (X03), elegir modelo, cargar `ANTHROPIC_API_KEY` en el gestor de secretos, `REDIS_QUEUE_RETRY_AFTER` > 180, y correr evals contra el modelo real antes de `CONVERSATIONS_AI_ENABLED=true`.
 - Conciliar filas UNKNOWN del ledger contra el uso real del proveedor (hoy conservan la reserva máxima).
