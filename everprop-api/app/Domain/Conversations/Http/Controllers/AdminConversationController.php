@@ -39,10 +39,11 @@ final class AdminConversationController extends Controller
         $user = $this->viewer($request);
         $filters = $request->validate([
             'state' => 'nullable|in:AI_ACTIVE,WAITING_TOOL,WAITING_HUMAN,TRANSITION_PENDING,HUMAN_ACTIVE,CLOSED',
-            'mine' => 'nullable|boolean', 'unread' => 'nullable|boolean',
+            'mine' => 'nullable|boolean', 'unread' => 'nullable|boolean', 'q' => 'nullable|string|min:2|max:100',
         ]);
         $page = $this->visible($user)
             ->when($filters['state'] ?? null, fn ($q, $s) => $q->where('c.control_state', $s))
+            ->when(trim($filters['q'] ?? ''), fn ($q, $term) => $this->search($q, $term))
             ->when($request->boolean('mine'), fn ($q) => $q->where('c.assigned_user_id', $user->id))
             ->when($request->boolean('unread'), fn ($q) => $q->where('c.unread_count', '>', 0))
             ->leftJoin('contacts as ct', fn ($j) => $j->on('ct.id', '=', 'c.contact_id')->on('ct.tenant_id', '=', 'c.tenant_id'))
@@ -66,6 +67,27 @@ final class AdminConversationController extends Controller
                 'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender],
             ])->all(),
         ]);
+    }
+
+    /**
+     * Inbox search (S04): contact name, email or phone, or any text in the thread, including team notes
+     * (whoever lists the conversation can already read them). Case and accent insensitive (utf8mb4_0900_ai_ci).
+     * Phone matching only runs when the term looks like a phone, so "lote 2024" does not match numbers. Searching
+     * by phone or email can confirm those of contacts the user already lists; accepted (advisors reply to them).
+     * ponytail: LIKE '%term%' scans the tenant's messages; fine for the pilot, move to a FULLTEXT index on
+     * messages (forward script) once a tenant has hundreds of thousands of messages.
+     */
+    private function search(Builder $query, string $term): Builder
+    {
+        $like = '%'.addcslashes($term, '%_\\').'%';
+        $digits = preg_match('/^[\d\s()+.\-]+$/', $term) === 1 ? (preg_replace('/\D+/', '', $term) ?? '') : '';
+
+        return $query->where(fn ($w) => $w
+            ->whereExists(fn ($ct) => $ct->from('contacts as sc')->whereColumn('sc.tenant_id', 'c.tenant_id')->whereColumn('sc.id', 'c.contact_id')
+                ->where(fn ($f) => $f->where('sc.display_name', 'like', $like)->orWhere('sc.email', 'like', $like)
+                    ->when(strlen($digits) >= 4, fn ($p) => $p->orWhere('sc.phone_e164', 'like', '%'.$digits.'%'))))
+            ->orWhereExists(fn ($m) => $m->from('messages as sm')->whereColumn('sm.tenant_id', 'c.tenant_id')->whereColumn('sm.conversation_id', 'c.id')
+                ->where('sm.text_body', 'like', $like)));
     }
 
     private function lastMessage(string $column): Builder

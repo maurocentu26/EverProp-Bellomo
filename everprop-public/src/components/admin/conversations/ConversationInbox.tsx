@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Bot, CheckCircle2, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Send, StickyNote, UserRound, X, XCircle } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bot, CheckCircle2, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, UserRound, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import {
@@ -13,6 +13,7 @@ import {
   deliveryLabel,
   getConversationMessages,
   listConversations,
+  MIN_SEARCH,
   mergeMessages,
   previewText,
   resolveUnknownSends,
@@ -102,6 +103,13 @@ export function ConversationInbox() {
   const { user } = useCurrentSession();
   const readOnly = user?.apiRole === "READ_ONLY";
   const [filter, setFilter] = useState<ConversationFilter>("waiting");
+  // What the user types, and the term actually sent once they pause typing.
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(query.trim().length >= MIN_SEARCH ? query.trim() : ""), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
   const [items, setItems] = useState<ConversationSummary[]>([]);
   const [listError, setListError] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -137,14 +145,14 @@ export function ConversationInbox() {
     if (!user) return;
     const request = ++listRequest.current;
     try {
-      const response = await listConversations(filter);
+      const response = await listConversations(filter, search);
       if (request !== listRequest.current) return; // a newer filter/refresh already answered
       setItems(response.data);
       setListError("");
     } catch {
       setListError("No pudimos actualizar la bandeja. Reintentamos en unos segundos.");
     }
-  }, [filter, user]);
+  }, [filter, search, user]);
 
   const refreshThread = useCallback(async () => {
     const conversation = selected;
@@ -310,6 +318,15 @@ export function ConversationInbox() {
 
       <div className="grid min-h-[70vh] gap-4 lg:grid-cols-[minmax(280px,360px)_1fr]">
         <aside className={`${selected ? "hidden lg:flex" : "flex"} min-w-0 flex-col rounded-2xl border border-border bg-card`} aria-label="Listado de conversaciones">
+          <div role="search" className="border-b border-border p-2">
+            <label htmlFor="inbox-search" className="sr-only">Buscar conversaciones</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <input id="inbox-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={100}
+                placeholder="Nombre, teléfono, email o texto…" enterKeyHint="search"
+                className="min-h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-base sm:text-sm" />
+            </div>
+          </div>
           <div role="group" aria-label="Filtrar conversaciones" className="grid grid-cols-2 gap-1 border-b border-border p-2 sm:grid-cols-4 lg:grid-cols-2">
             {FILTERS.map(([id, label]) => (
               <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}
@@ -321,7 +338,9 @@ export function ConversationInbox() {
           {listError && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{listError}</p>}
           <ul role="list" className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
             {items.length === 0 && !listError && (
-              <li className="p-6 text-center text-sm text-muted-foreground">No hay conversaciones en este filtro.</li>
+              <li className="p-6 text-center text-sm text-muted-foreground">
+                {search ? `Nada coincide con “${search}” en este filtro.` : "No hay conversaciones en este filtro."}
+              </li>
             )}
             {items.map((item) => {
               const preview = previewText(item);

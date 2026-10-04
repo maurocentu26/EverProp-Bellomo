@@ -45,11 +45,16 @@ export const STATE_LABELS: Record<ConversationState, string> = {
 
 export const CHANNEL_LABELS: Record<string, string> = { WHATSAPP: "WhatsApp", WEB_CHAT: "Chat web" };
 
-export function conversationQuery(filter: ConversationFilter): string {
+/** Search terms shorter than this are ignored (the API rejects them). */
+export const MIN_SEARCH = 2;
+
+export function conversationQuery(filter: ConversationFilter, search = ""): string {
   const params = new URLSearchParams();
   if (filter === "waiting") params.set("state", "WAITING_HUMAN");
   if (filter === "mine") params.set("mine", "1");
   if (filter === "unread") params.set("unread", "1");
+  const term = search.trim().slice(0, 100);
+  if (term.length >= MIN_SEARCH) params.set("q", term);
   const query = params.toString();
   return `/api/v1/admin/conversations${query ? `?${query}` : ""}`;
 }
@@ -69,8 +74,8 @@ export function deliveryLabel(message: Pick<ConversationMessage, "direction" | "
   return labels[message.status] ?? message.status;
 }
 
-export async function listConversations(filter: ConversationFilter) {
-  return apiFetch<{ data: ConversationSummary[] }>(conversationQuery(filter));
+export async function listConversations(filter: ConversationFilter, search = "") {
+  return apiFetch<{ data: ConversationSummary[] }>(conversationQuery(filter, search));
 }
 
 /** One line under the contact name: who spoke last and what, never more than one line. */

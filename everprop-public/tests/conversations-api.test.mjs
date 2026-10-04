@@ -24,6 +24,12 @@ test('inbox filters map to the API query contract', () => {
   assert.equal(api.conversationQuery('unread'), '/api/v1/admin/conversations?unread=1');
 });
 
+test('search is trimmed, encoded, combined with the filter and skipped when too short', () => {
+  assert.equal(api.conversationQuery('waiting', '  lote 12B&x=1 '), '/api/v1/admin/conversations?state=WAITING_HUMAN&q=lote+12B%26x%3D1');
+  assert.equal(api.conversationQuery('all', ' a '), '/api/v1/admin/conversations');
+  assert.equal(api.conversationQuery('all', 'x'.repeat(150)), `/api/v1/admin/conversations?q=${'x'.repeat(100)}`);
+});
+
 test('an unconfirmed send is never presented as sent and inbound has no delivery label', () => {
   assert.equal(api.deliveryLabel({ direction: 'OUTBOUND', status: 'UNKNOWN' }), 'Envío sin confirmar');
   assert.equal(api.deliveryLabel({ direction: 'OUTBOUND', status: 'CANCELLED' }), 'Descartado');

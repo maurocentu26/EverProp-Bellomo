@@ -75,7 +75,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'index'])->name('leads.follow-ups.index');
         Route::post('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'store'])->name('leads.follow-ups.store');
 
-        Route::get('/conversations', [AdminConversationController::class, 'index']);
+        Route::get('/conversations', [AdminConversationController::class, 'index'])->middleware('throttle:120,1');
         Route::get('/conversations/{conversation}/messages', [AdminConversationController::class, 'messages'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/takeover', [AdminConversationController::class, 'takeover'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resume', [AdminConversationController::class, 'resume'])->whereUuid('conversation');

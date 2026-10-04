@@ -62,7 +62,8 @@ Proveedor LLM: interfaz `LlmClient`; adaptador Anthropic Messages listo pero **a
 - ~~Webhook síncrono antes del ACK~~: resuelto en W6 (recibo durable → 200 → worker).
 - ~~`ChannelPolicy` inexistente~~: resuelta en W2. El transporte real sigue apagado hasta X04.
 - Integrar el widget en el sitio de Bellomo (hoy Bellomito usa su propio `/api/chat` con Gemini): reemplazar por el `<script>` cuando G2 esté listo.
-- Bandeja: búsqueda, etiquetas y adjuntos (diseño S04) aún no.
+- Bandeja: etiquetas y adjuntos (diseño S04) aún no.
+- **Búsqueda en la bandeja hecha (2026-10-04)**: `GET /admin/conversations?q=` busca por nombre, email o teléfono del contacto (por dígitos, en cualquier formato) y por texto del hilo, incluidas las notas. No distingue mayúsculas ni acentos, se combina con los filtros y solo devuelve conversaciones que el usuario ya puede ver. Usa `LIKE`, que alcanza para el volumen del piloto; con cientos de miles de mensajes por tenant habrá que pasar a un índice FULLTEXT con un script forward.
 - **Notas internas hechas (2026-10-04)**: `POST /admin/conversations/{id}/notes`. Son mensajes `INTERNAL` en el hilo, con autor, idempotentes y para cualquier rol que pueda escribir y ver la conversación. No se envían, no aparecen en el widget ni en el historial de la IA, y no cambian el orden ni los no leídos de la bandeja. En el panel se ven como "Nota interna de …" y se agregan desde "Agregar nota interna".
 - **S16 mínimo hecho (2026-10-04, solo datos sintéticos)**: comando `everprop:conversations:kpis` con los KPIs del gate F1 (ver `go-live.md`). Falta el tablero en el panel, la atribución bot/asesor más allá de la primera respuesta humana y el horario de atención. Las definiciones son provisorias: el equipo las confirma con la línea base.
 - ~~Alta de integraciones sin endpoint~~: Embedded Signup resuelto en W4/W5. El resto de S14 (baja completa del tenant) sigue pendiente.
