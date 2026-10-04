@@ -177,6 +177,41 @@ final class ConversationControl
         }, 3);
     }
 
+    /**
+     * Internal note (S04). Stored as an INTERNAL message in the thread's sequence: the widget, the
+     * assistant's history and the transports only read INBOUND/OUTBOUND, so it never leaves the team.
+     * Idempotent per author and key through the existing unique provider_message_id.
+     *
+     * @return array{sequence: int, replayed: bool}
+     */
+    public function addNote(int $tenantId, int $conversationId, User $user, string $text, string $idempotencyKey): array
+    {
+        return DB::transaction(function () use ($tenantId, $conversationId, $user, $text, $idempotencyKey): array {
+            $conversation = $this->lock($tenantId, $conversationId);
+            $key = 'note:c'.$conversationId.':u'.$user->id.':'.$idempotencyKey;
+            $existing = DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
+                ->where('provider_message_id', $key)->first(['sequence', 'text_body']);
+            if ($existing !== null) {
+                if ($existing->text_body !== $text) {
+                    throw new ConversationConflict('IDEMPOTENCY_CONFLICT', 'La clave ya se usó con otro contenido.');
+                }
+
+                return ['sequence' => (int) $existing->sequence, 'replayed' => true];
+            }
+            $sequence = (int) $conversation->next_sequence;
+            DB::table('messages')->insert([
+                'tenant_id' => $tenantId, 'conversation_id' => $conversationId, 'channel_account_id' => $conversation->channel_account_id,
+                'sequence' => $sequence, 'provider_message_id' => $key, 'direction' => 'INTERNAL', 'sender_type' => 'USER',
+                'message_type' => 'TEXT', 'text_body' => $text, 'metadata_json' => json_encode(['author_user_id' => $user->id], JSON_THROW_ON_ERROR),
+                'occurred_at' => CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v'),
+            ]);
+            // A note is not customer activity: it does not reorder the inbox or touch unread counts.
+            DB::table('conversations')->where('tenant_id', $tenantId)->where('id', $conversationId)->update(['next_sequence' => $sequence + 1]);
+
+            return ['sequence' => $sequence, 'replayed' => false];
+        }, 3);
+    }
+
     /** Called by the dispatcher once an in-flight send resolved; completes a pending takeover. */
     public function settleTransition(int $tenantId, int $conversationId): void
     {

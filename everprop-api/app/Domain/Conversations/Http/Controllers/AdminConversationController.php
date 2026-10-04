@@ -82,7 +82,9 @@ final class AdminConversationController extends Controller
         $after = max(0, (int) $request->query('after', 0));
         $messages = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)
             ->where('sequence', '>', $after)->orderBy('sequence')->limit(200)
-            ->get(['sequence', 'direction', 'sender_type', 'text_body', 'delivery_status', 'occurred_at']);
+            ->get(['sequence', 'direction', 'sender_type', 'text_body', 'delivery_status', 'occurred_at', 'metadata_json']);
+        $noteAuthor = fn ($m): ?int => $m->direction === 'INTERNAL' ? (json_decode((string) $m->metadata_json, true)['author_user_id'] ?? null) : null;
+        $authors = DB::table('users')->where('tenant_id', $row->tenant_id)->whereIn('id', $messages->map($noteAuthor)->filter()->unique()->all())->pluck('display_name', 'id');
         if ($user->role() !== RoleCode::READ_ONLY && (int) $row->assigned_user_id === (int) $user->id) {
             DB::table('conversations')->where('tenant_id', $row->tenant_id)->where('id', $row->id)->update(['unread_count' => 0]);
         }
@@ -98,7 +100,7 @@ final class AdminConversationController extends Controller
                 'sequence' => (int) $m->sequence, 'direction' => $m->direction, 'sender' => $m->sender_type,
                 'text' => $m->text_body, 'status' => $m->delivery_status,
                 'at' => CarbonImmutable::parse($m->occurred_at, 'UTC')->toISOString(),
-            ])->all(),
+            ] + ($m->direction === 'INTERNAL' ? ['author' => $authors[$noteAuthor($m)] ?? null] : []))->all(),
         ]);
     }
 
@@ -133,6 +135,17 @@ final class AdminConversationController extends Controller
         }
 
         return response()->json(['data' => ['sequence' => $result['sequence'], 'replayed' => $result['replayed']]], $result['replayed'] ? 200 : 202);
+    }
+
+    /** Internal note for the team: never sent to the customer nor shown to the assistant. */
+    public function note(Request $request, string $conversation): JsonResponse
+    {
+        $user = $this->writer($request);
+        $row = $this->find($user, $conversation);
+        $data = $request->validate(['text' => 'required|string|max:4096', 'idempotency_key' => 'required|string|min:16|max:120']);
+        $result = $this->control->addNote((int) $row->tenant_id, (int) $row->id, $user, $data['text'], $data['idempotency_key']);
+
+        return response()->json(['data' => $result], $result['replayed'] ? 200 : 201);
     }
 
     public function close(Request $request, string $conversation): JsonResponse

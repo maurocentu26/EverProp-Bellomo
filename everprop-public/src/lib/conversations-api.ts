@@ -27,6 +27,8 @@ export type ConversationMessage = {
   text: string | null;
   status: string;
   at: string;
+  /** Internal notes only: who wrote it. */
+  author?: string | null;
 };
 
 export type ConversationFilter = "all" | "waiting" | "mine" | "unread";
@@ -111,6 +113,14 @@ export async function takeOver(id: string) {
   return apiFetch<{ data: { state: ConversationState; epoch: number; confirmed: boolean } }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/takeover`,
     { method: "POST" },
+  );
+}
+
+/** Team-only note: never sent to the customer. */
+export async function addNote(id: string, text: string, idempotencyKey: string) {
+  return apiFetch<{ data: { sequence: number; replayed: boolean } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/notes`,
+    { method: "POST", body: JSON.stringify({ text, idempotency_key: idempotencyKey }) },
   );
 }
 

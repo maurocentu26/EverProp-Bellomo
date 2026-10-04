@@ -38,6 +38,15 @@ test('reply reuses the draft idempotency key and ids are URL-encoded', async () 
   assert.deepEqual(JSON.parse(call.init.body), { text: 'hola', idempotency_key: 'draft-key-000000001' });
 });
 
+test('internal notes go to their own endpoint, never the reply one, and do not hold the polling cursor', async () => {
+  await api.addNote('abc/..', 'ojo con el 12B', 'note-key-000000001');
+  const call = calls.at(-1);
+  assert.equal(call.path, '/api/v1/admin/conversations/abc%2F../notes');
+  assert.deepEqual(JSON.parse(call.init.body), { text: 'ojo con el 12B', idempotency_key: 'note-key-000000001' });
+  assert.equal(api.deliveryLabel({ direction: 'INTERNAL', status: 'RECEIVED' }), null);
+  assert.equal(api.threadCursor([{ sequence: 1, direction: 'INBOUND', status: 'RECEIVED' }, { sequence: 2, direction: 'INTERNAL', status: 'RECEIVED' }]), 2);
+});
+
 const msg = (sequence, direction, status, text = `m${sequence}`) => ({ sequence, direction, sender: direction === 'INBOUND' ? 'CONTACT' : 'USER', text, status, at: '' });
 
 test('polling resumes after the last message, or before the oldest send that can still change', () => {

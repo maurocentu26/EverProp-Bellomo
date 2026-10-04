@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Bot, CheckCircle2, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Send, UserRound, X, XCircle } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bot, CheckCircle2, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Send, StickyNote, UserRound, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import {
   CHANNEL_LABELS,
   MESSAGE_PAGE,
   STATE_LABELS,
+  addNote,
   closeConversation,
   deliveryLabel,
   getConversationMessages,
@@ -122,6 +123,9 @@ export function ConversationInbox() {
   const listRequest = useRef(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [resumeReason, setResumeReason] = useState("");
+  const [note, setNote] = useState("");
+  // Same rule as replies: the key belongs to the exact text it was created for.
+  const noteKey = useRef({ key: newKey(), text: "" });
   const threadHeading = useRef<HTMLHeadingElement>(null);
   const thread = useRef<HTMLOListElement>(null);
   const atBottom = useRef(true);
@@ -224,6 +228,8 @@ export function ConversationInbox() {
     setShowQuick(false);
     setDraft(drafts.current.get(id) ?? "");
     draftKey.current = { key: newKey(), text: "" };
+    setNote("");
+    noteKey.current = { key: newKey(), text: "" };
     window.setTimeout(() => threadHeading.current?.focus(), 0);
   }
 
@@ -263,6 +269,20 @@ export function ConversationInbox() {
         draftKey.current = { key: newKey(), text: "" };
       }
     });
+  }
+
+  async function saveNote() {
+    const text = note.trim();
+    const conversation = selected;
+    if (!conversation || !text) return;
+    if (noteKey.current.text !== text) noteKey.current = { key: newKey(), text };
+    await run("note", async () => {
+      await addNote(conversation, text, noteKey.current.key);
+      if (selectedRef.current === conversation) {
+        setNote("");
+        noteKey.current = { key: newKey(), text: "" };
+      }
+    }, "Nota guardada. Solo la ve el equipo.");
   }
 
   function insertQuickReply(text: string) {
@@ -384,6 +404,19 @@ export function ConversationInbox() {
 
               <ol ref={thread} onScroll={onThreadScroll} aria-label="Mensajes" aria-live="polite" className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                 {messages.map((message) => {
+                  if (message.direction === "INTERNAL") {
+                    return (
+                      <li key={message.sequence} className="flex justify-center">
+                        <div className="max-w-[85%] rounded-xl border border-dashed border-amber-400 bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+                          <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold opacity-80">
+                            <StickyNote className="h-3 w-3" aria-hidden />
+                            Nota interna{message.author ? ` de ${message.author}` : ""} · <time dateTime={message.at}>{time(message.at)}</time>
+                          </p>
+                          <p className="whitespace-pre-wrap break-words">{message.text}</p>
+                        </div>
+                      </li>
+                    );
+                  }
                   const mine = message.direction === "OUTBOUND";
                   const who = message.sender === "BOT" ? "IA" : message.sender === "USER" ? "Asesor" : message.sender === "SYSTEM" ? "Sistema" : "Cliente";
                   const status = deliveryLabel(message);
@@ -454,6 +487,21 @@ export function ConversationInbox() {
                     </button>
                   </form>
                 </div>
+              )}
+              {!readOnly && (
+                <details className="border-t border-border px-3 py-2 text-sm">
+                  <summary className="cursor-pointer font-semibold text-muted-foreground">Agregar nota interna (el cliente no la ve)</summary>
+                  <form onSubmit={(event) => { event.preventDefault(); void saveNote(); }} className="mt-2 flex flex-wrap items-end gap-2">
+                    <label className="flex min-w-60 flex-1 flex-col gap-1 text-xs font-semibold">Nota para el equipo
+                      <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={4096} rows={2}
+                        className="min-h-10 resize-none rounded-lg border border-border bg-background px-3 py-2 text-base font-normal sm:text-sm" />
+                    </label>
+                    <button type="submit" disabled={busy !== null || note.trim() === ""}
+                      className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-amber-400 px-3 font-semibold disabled:opacity-60">
+                      <StickyNote className="h-4 w-4" aria-hidden /> Guardar nota
+                    </button>
+                  </form>
+                </details>
               )}
               {!readOnly && humanInControl && aiEnabled && (
                 <details className="border-t border-border px-3 py-2 text-sm">

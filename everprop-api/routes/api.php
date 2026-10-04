@@ -80,6 +80,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::post('/conversations/{conversation}/takeover', [AdminConversationController::class, 'takeover'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resume', [AdminConversationController::class, 'resume'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/messages', [AdminConversationController::class, 'reply'])->whereUuid('conversation');
+        Route::post('/conversations/{conversation}/notes', [AdminConversationController::class, 'note'])->whereUuid('conversation')->middleware('throttle:30,1');
         Route::post('/conversations/{conversation}/close', [AdminConversationController::class, 'close'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resolve-unknown', [AdminConversationController::class, 'resolveUnknown'])->whereUuid('conversation');
 

@@ -79,6 +79,23 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('AI_ACTIVE', $this->state($f)->control_state);
     }
 
+    public function test_internal_notes_never_reach_the_model_nor_trigger_a_turn(): void
+    {
+        $f = $this->fixture();
+        $llm = $this->llm([ScriptedLlm::text('Hola, ¿en qué te ayudo?'), ScriptedLlm::text('Te cuento del L-101.')]);
+        $this->visitorSays($f, 'Hola');
+        $conversation = (int) DB::table('conversations')->where('tenant_id', $f['tenant']->id)->value('id');
+
+        app(ConversationControl::class)->addNote($f['tenant']->id, $conversation, $this->user($f['tenant'], RoleCode::SALES_MANAGER),
+            'SECRETO-NOTA: no bajar de USD 100.000', 'note-key-agent-0001');
+        $this->assertCount(1, $llm->calls, 'a note does not start a turn');
+        $this->visitorSays($f, '¿Y el L-101?');
+
+        $this->assertCount(2, $llm->calls);
+        $this->assertStringNotContainsString('SECRETO-NOTA', json_encode($llm->calls, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
+        $this->assertNotContains('SECRETO-NOTA: no bajar de USD 100.000', $this->visible($f));
+    }
+
     public function test_an_invented_price_or_a_confirmed_visit_never_reaches_the_visitor(): void
     {
         foreach (['Ese lote sale USD 70.000, es una oportunidad.', 'Listo, tu visita quedó confirmada para mañana.'] as $i => $unsafe) {
