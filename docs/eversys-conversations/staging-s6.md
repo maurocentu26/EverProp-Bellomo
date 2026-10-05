@@ -18,9 +18,9 @@ Objetivo: probar en `bellomito-staging`, con navegador y servicios reales, que u
 | P2 | API sana | `/readyz` 200; `everprop:production-check --connections` todo OK en api y worker |
 | P3 | Cola limpia | En el chequeo anterior, pendientes y fallidos en 0 |
 | P4 | Usuario de prueba con rol admin o asesor del tenant `bellomito-staging` | Login en el panel de staging |
-| P5 | Widget de staging `8f32042b-a9b8-4a74-91c0-40837d962910` | Abrir `https://panel-staging-staging-62ec.up.railway.app/widget/8f32042b-a9b8-4a74-91c0-40837d962910` en una **ventana de incógnito** (es el visitante) |
+| P5 | Widget de staging `8f32042b-a9b8-4a74-91c0-40837d962910` | Abrir `https://panel-staging-staging-62ec.up.railway.app/widget/8f32042b-a9b8-4a74-91c0-40837d962910` en un navegador **sin la sesión del asesor** (es el visitante) |
 
-Usar dos ventanas: una de incógnito para el visitante y una normal con el panel logueado para el asesor.
+El visitante y el asesor no pueden compartir almacenamiento del navegador. Cualquiera de estas opciones sirve: una ventana de incógnito, **otro navegador** (por ejemplo, Edge si el asesor usa Chrome), otro perfil del mismo navegador, o un celular. Dos pestañas del mismo navegador y perfil **no** sirven.
 
 ## Recorrido A: ida y vuelta
 
