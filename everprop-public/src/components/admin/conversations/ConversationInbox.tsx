@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Bot, CheckCircle2, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, UserRound, X, XCircle } from "lucide-react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowLeft, Bot, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import {
@@ -9,8 +9,12 @@ import {
   MESSAGE_PAGE,
   STATE_LABELS,
   addNote,
+  clockTime,
   closeConversation,
+  dayLabel,
   deliveryLabel,
+  initials,
+  sameDay,
   getConversationMessages,
   listConversations,
   MIN_SEARCH,
@@ -58,8 +62,19 @@ function displayName(item: ConversationSummary): string {
   return item.contact_name || (item.channel === "WEB_CHAT" ? "Visitante del chat web" : "Contacto sin nombre");
 }
 
-function time(iso: string): string {
-  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }).format(new Date(iso));
+/** WhatsApp-style ticks. Problems always carry words, never color alone; UNKNOWN is never shown as sent. */
+function DeliveryMark({ status }: { status: string }) {
+  const label = deliveryLabel({ direction: "OUTBOUND", status }) ?? status;
+  const icon = "h-3.5 w-3.5 shrink-0";
+  switch (status) {
+    case "QUEUED": return <Clock className={icon} role="img" aria-label={label} />;
+    case "SENT": return <Check className={icon} role="img" aria-label={label} />;
+    case "DELIVERED": return <CheckCheck className={icon} role="img" aria-label={label} />;
+    case "READ": return <CheckCheck className={`${icon} wa-read`} role="img" aria-label={label} />;
+    case "FAILED": return <span className="inline-flex items-center gap-0.5 font-semibold text-red-600 dark:text-red-400"><CircleAlert className={icon} aria-hidden />{label}</span>;
+    case "UNKNOWN": return <span className="inline-flex items-center gap-0.5 font-semibold text-amber-700 dark:text-amber-300"><TriangleAlert className={icon} aria-hidden />{label}</span>;
+    default: return <span>{label}</span>;
+  }
 }
 
 /** Polls only while the app is visible (battery and mobile data) and catches up at once on return. */
@@ -112,6 +127,8 @@ export function ConversationInbox() {
   }, [query]);
   const [items, setItems] = useState<ConversationSummary[]>([]);
   const [listError, setListError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   // Kept when the conversation leaves the current filter (e.g. after taking control).
   const [openedSummary, setOpenedSummary] = useState<ConversationSummary | null>(null);
@@ -149,6 +166,7 @@ export function ConversationInbox() {
       if (request !== listRequest.current) return; // a newer filter/refresh already answered
       setItems(response.data);
       setListError("");
+      setRefreshedAt(new Date().toISOString());
     } catch {
       setListError("No pudimos actualizar la bandeja. Reintentamos en unos segundos.");
     }
@@ -263,6 +281,16 @@ export function ConversationInbox() {
     }
   }
 
+  /** Manual refresh with visible feedback: list and open thread together. */
+  async function refreshNow() {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshList(), refreshThread()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   async function sendDraft() {
     const text = draft.trim();
     const conversation = selected;
@@ -305,20 +333,24 @@ export function ConversationInbox() {
   const windowClosed = replyWindow !== null && replyWindow.closes_at === null;
 
   return (
-    <section className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 pb-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <section className="wa-inbox mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 pb-6">
+      <header className={`${selected ? "hidden lg:flex" : "flex"} flex-wrap items-end justify-between gap-3`}>
         <div>
           <h1 className="text-2xl font-bold">Conversaciones</h1>
           <p className="mt-1 text-sm text-muted-foreground">WhatsApp y chat web en una sola bandeja. La IA se detiene cuando tomás el control.</p>
         </div>
-        <button type="button" onClick={() => void refreshList()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold">
-          <RefreshCw className="h-4 w-4" aria-hidden /> Actualizar
+        <button type="button" disabled={refreshing} onClick={() => void refreshNow()} aria-describedby="inbox-refresh-status"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold disabled:opacity-70">
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden /> {refreshing ? "Actualizando…" : "Actualizar"}
         </button>
+        <p id="inbox-refresh-status" role="status" className="w-full text-right text-xs text-muted-foreground sm:w-auto">
+          {refreshedAt ? `Actualizado ${clockTime(refreshedAt)} · se actualiza solo` : "Se actualiza solo cada pocos segundos"}
+        </p>
       </header>
 
-      <div className="grid min-h-[70vh] gap-4 lg:grid-cols-[minmax(280px,360px)_1fr]">
+      <div className="grid gap-4 lg:min-h-[70vh] lg:grid-cols-[minmax(280px,360px)_1fr]">
         <aside className={`${selected ? "hidden lg:flex" : "flex"} min-w-0 flex-col rounded-2xl border border-border bg-card`} aria-label="Listado de conversaciones">
-          <div role="search" className="border-b border-border p-2">
+          <div role="search" className="p-2">
             <label htmlFor="inbox-search" className="sr-only">Buscar conversaciones</label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -327,10 +359,10 @@ export function ConversationInbox() {
                 className="min-h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-base sm:text-sm" />
             </div>
           </div>
-          <div role="group" aria-label="Filtrar conversaciones" className="grid grid-cols-2 gap-1 border-b border-border p-2 sm:grid-cols-4 lg:grid-cols-2">
+          <div role="group" aria-label="Filtrar conversaciones" className="flex flex-wrap gap-1.5 border-b border-border px-2 pb-2">
             {FILTERS.map(([id, label]) => (
               <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}
-                className={`min-h-10 rounded-lg px-2 text-xs font-semibold ${filter === id ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-muted"}`}>
+                className={`min-h-10 rounded-full px-3 text-xs font-semibold ${filter === id ? "wa-accent" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
                 {label}
               </button>
             ))}
@@ -347,23 +379,27 @@ export function ConversationInbox() {
               return (
                 <li key={item.id}>
                   <button id={`conversation-${item.id}`} type="button" onClick={() => open(item.id)} aria-current={selected === item.id ? "true" : undefined}
-                    className={`flex w-full min-w-0 flex-col gap-1 px-4 py-3 text-left hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-blue-600 ${selected === item.id ? "bg-blue-50 dark:bg-blue-500/10" : ""}`}>
-                    <span className="flex items-center justify-between gap-2">
-                      <span className={`truncate ${item.unread > 0 ? "font-bold" : "font-semibold"}`}>{displayName(item)}</span>
-                      <time dateTime={item.last_activity_at} className="shrink-0 text-xs text-muted-foreground">{time(item.last_activity_at)}</time>
+                    className={`flex w-full min-w-0 items-start gap-3 px-3 py-3 text-left hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-blue-600 ${selected === item.id ? "wa-selected" : ""}`}>
+                    <span aria-hidden className="wa-accent mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+                      {initials(displayName(item))}
                     </span>
-                    {preview && (
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="flex items-center justify-between gap-2">
-                        <span className={`truncate text-sm ${item.unread > 0 ? "text-foreground" : "text-muted-foreground"}`}>{preview}</span>
-                        {item.unread > 0 && <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white" aria-label={`${item.unread} sin leer`}>{item.unread}</span>}
+                        <span className={`truncate ${item.unread > 0 ? "font-bold" : "font-semibold"}`}>{displayName(item)}</span>
+                        <time dateTime={item.last_activity_at} className={`shrink-0 text-xs ${item.unread > 0 ? "font-semibold text-[var(--wa-accent)]" : "text-muted-foreground"}`}>
+                          {sameDay(item.last_activity_at, new Date().toISOString()) ? clockTime(item.last_activity_at) : dayLabel(item.last_activity_at)}
+                        </time>
                       </span>
-                    )}
-                    <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_STYLES[item.state]}`}>{STATE_LABELS[item.state]}</span>
-                      <span>{CHANNEL_LABELS[item.channel] ?? item.channel}</span>
-                      {!preview && item.unread > 0 && <span className="rounded-full bg-blue-600 px-2 py-0.5 font-bold text-white" aria-label={`${item.unread} sin leer`}>{item.unread}</span>}
+                      <span className="flex items-center justify-between gap-2">
+                        <span className={`truncate text-sm ${item.unread > 0 ? "text-foreground" : "text-muted-foreground"}`}>{preview || "Sin mensajes"}</span>
+                        {item.unread > 0 && <span className="wa-accent shrink-0 rounded-full px-2 py-0.5 text-xs font-bold" aria-label={`${item.unread} sin leer`}>{item.unread}</span>}
+                      </span>
+                      <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_STYLES[item.state]}`}>{STATE_LABELS[item.state]}</span>
+                        <span>{CHANNEL_LABELS[item.channel] ?? item.channel}</span>
+                        {item.assigned_user && <span className="truncate">· {item.assigned_user.name}</span>}
+                      </span>
                     </span>
-                    {item.assigned_user && <span className="truncate text-xs text-muted-foreground">Asignada a {item.assigned_user.name}</span>}
                   </button>
                 </li>
               );
@@ -371,7 +407,7 @@ export function ConversationInbox() {
           </ul>
         </aside>
 
-        <div className={`${selected ? "flex" : "hidden lg:flex"} relative min-w-0 flex-col rounded-2xl border border-border bg-card`}>
+        <div className={`${selected ? "flex h-[calc(100dvh-6.5rem)] lg:h-auto" : "hidden lg:flex"} relative min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card`}>
           {!selected ? (
             <div className="m-auto flex max-w-sm flex-col items-center gap-3 p-8 text-center text-muted-foreground">
               <MessageSquare className="h-8 w-8" aria-hidden />
@@ -379,28 +415,38 @@ export function ConversationInbox() {
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
-                <button type="button" onClick={backToList} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-semibold lg:hidden">
-                  <ArrowLeft className="h-4 w-4" aria-hidden /> Bandeja
+              <div className="wa-bar flex items-center gap-2 rounded-t-2xl border-b border-border p-2 sm:p-3">
+                <button type="button" onClick={backToList} aria-label="Volver a la bandeja" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full lg:hidden">
+                  <ArrowLeft className="h-5 w-5" aria-hidden />
                 </button>
-                <h2 ref={threadHeading} tabIndex={-1} className="mr-auto min-w-0 truncate text-lg font-bold outline-none">
-                  {current ? displayName(current) : "Conversación"}
-                </h2>
-                {state && <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATE_STYLES[state]}`}>{STATE_LABELS[state]}</span>}
+                <span aria-hidden className="wa-accent inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+                  {initials(current ? displayName(current) : "?")}
+                </span>
+                <div className="mr-auto min-w-0">
+                  <h2 ref={threadHeading} tabIndex={-1} className="truncate text-base font-bold outline-none">
+                    {current ? displayName(current) : "Conversación"}
+                  </h2>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {state && <span className="sm:hidden">{STATE_LABELS[state]} · </span>}
+                    {current ? (CHANNEL_LABELS[current.channel] ?? current.channel) : ""}
+                    {replyWindow?.closes_at ? ` · podés responder hasta ${dayLabel(replyWindow.closes_at).toLowerCase()} ${clockTime(replyWindow.closes_at)}` : ""}
+                  </p>
+                </div>
+                {state && <span className={`hidden shrink-0 rounded-full px-3 py-1 text-xs font-semibold sm:inline ${STATE_STYLES[state]}`}>{STATE_LABELS[state]}</span>}
                 {!readOnly && state && !["HUMAN_ACTIVE", "CLOSED"].includes(state) && (
                   <button type="button" disabled={busy !== null} onClick={() => void run("takeover", async () => {
                     await takeOver(selected);
                     // The button disappears once in control: keep keyboard focus in the thread.
                     window.setTimeout(() => (document.getElementById("reply") ?? threadHeading.current)?.focus(), 300);
                   }, "Tomaste el control. La IA dejó de responder.")}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-60">
+                    className="wa-accent inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-60">
                     <Hand className="h-4 w-4" aria-hidden /> Tomar control
                   </button>
                 )}
                 {!readOnly && humanInControl && (
                   <button type="button" disabled={busy !== null} onClick={() => void run("close", () => closeConversation(selected), "Conversación cerrada.")}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-60">
-                    <CheckCircle2 className="h-4 w-4" aria-hidden /> Cerrar
+                    <CheckCircle2 className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Cerrar</span>
                   </button>
                 )}
               </div>
@@ -421,41 +467,59 @@ export function ConversationInbox() {
               )}
               {threadError && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{threadError}</p>}
 
-              <ol ref={thread} onScroll={onThreadScroll} aria-label="Mensajes" aria-live="polite" className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-                {messages.map((message) => {
+              <ol ref={thread} onScroll={onThreadScroll} aria-label="Mensajes" aria-live="polite" className="wa-thread min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-10">
+                {messages.map((message, index) => {
+                  const previous = messages[index - 1];
+                  const newDay = !previous || !sameDay(previous.at, message.at);
+                  // Like WhatsApp: consecutive messages from the same side stack tightly; only the first gets the tail.
+                  const first = newDay || previous.direction !== message.direction || previous.sender !== message.sender;
+                  const separator = newDay && (
+                    <li className="sticky top-1 z-10 my-2 flex justify-center">
+                      <span className="wa-chip rounded-lg px-3 py-1 text-xs font-medium shadow-sm first-letter:uppercase">{dayLabel(message.at)}</span>
+                    </li>
+                  );
                   if (message.direction === "INTERNAL") {
                     return (
-                      <li key={message.sequence} className="flex justify-center">
-                        <div className="max-w-[85%] rounded-xl border border-dashed border-amber-400 bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
-                          <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold opacity-80">
-                            <StickyNote className="h-3 w-3" aria-hidden />
-                            Nota interna{message.author ? ` de ${message.author}` : ""} · <time dateTime={message.at}>{time(message.at)}</time>
-                          </p>
-                          <p className="whitespace-pre-wrap break-words">{message.text}</p>
-                        </div>
-                      </li>
+                      <Fragment key={message.sequence}>
+                        {separator}
+                        <li className="my-2 flex justify-center">
+                          <div className="max-w-[85%] rounded-lg border border-dashed border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">
+                            <p className="mb-0.5 flex items-center gap-1 text-[11px] font-semibold">
+                              <StickyNote className="h-3 w-3" aria-hidden />
+                              Nota interna{message.author ? ` de ${message.author}` : ""} · solo la ve el equipo
+                            </p>
+                            <p className="whitespace-pre-wrap break-words">{message.text}</p>
+                            <p className="mt-0.5 text-right text-[11px] opacity-80"><time dateTime={message.at}>{clockTime(message.at)}</time></p>
+                          </div>
+                        </li>
+                      </Fragment>
                     );
                   }
                   const mine = message.direction === "OUTBOUND";
                   const who = message.sender === "BOT" ? "IA" : message.sender === "USER" ? "Asesor" : message.sender === "SYSTEM" ? "Sistema" : "Cliente";
-                  const status = deliveryLabel(message);
                   return (
-                    <li key={message.sequence} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${mine ? (message.sender === "BOT" ? "bg-violet-600 text-white" : "bg-blue-600 text-white") : "bg-muted"} ${message.status === "CANCELLED" ? "opacity-50 line-through" : ""}`}>
-                        <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold opacity-80">
-                          {message.sender === "BOT" ? <Bot className="h-3 w-3" aria-hidden /> : <UserRound className="h-3 w-3" aria-hidden />}
-                          {who} · <time dateTime={message.at}>{time(message.at)}</time>
-                        </p>
-                        <p className="whitespace-pre-wrap break-words">{message.text ?? "[contenido no textual]"}</p>
-                        {status && <p className="mt-1 text-right text-[11px] opacity-80">{status}</p>}
-                      </div>
-                    </li>
+                    <Fragment key={message.sequence}>
+                      {separator}
+                      <li className={`flex ${mine ? "justify-end" : "justify-start"} ${first ? "mt-2" : "mt-0.5"}`}>
+                        <div className={`wa-bubble ${mine ? "wa-out" : "wa-in"} max-w-[85%] rounded-lg px-2.5 pb-1 pt-1.5 text-sm sm:max-w-[65%] ${first ? (mine ? "rounded-tr-none" : "rounded-tl-none") : ""} ${message.status === "CANCELLED" ? "opacity-60" : ""}`}>
+                          <span className="sr-only">{who}: </span>
+                          {message.sender === "BOT" && first && (
+                            <p className="mb-0.5 flex items-center gap-1 text-[11px] font-semibold text-violet-700 dark:text-violet-300"><Bot className="h-3 w-3" aria-hidden /> IA</p>
+                          )}
+                          <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{message.text ?? "[contenido no textual]"}</p>
+                          <p className="wa-meta -mb-0.5 mt-0.5 flex items-center justify-end gap-1 text-[11px]">
+                            <time dateTime={message.at}>{clockTime(message.at)}</time>
+                            {mine && <DeliveryMark status={message.status} />}
+                          </p>
+                        </div>
+                      </li>
+                    </Fragment>
                   );
                 })}
               </ol>
               {unseen > 0 && (
                 <button type="button" onClick={jumpToLatest}
-                  className="absolute bottom-28 left-1/2 inline-flex min-h-10 -translate-x-1/2 items-center gap-1 rounded-full bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg">
+                  className="wa-accent absolute bottom-28 left-1/2 inline-flex min-h-10 -translate-x-1/2 items-center gap-1 rounded-full px-4 text-sm font-semibold shadow-lg">
                   <ArrowDown className="h-4 w-4" aria-hidden /> {unseen === 1 ? "1 mensaje nuevo" : `${unseen} mensajes nuevos`}
                 </button>
               )}
@@ -482,27 +546,24 @@ export function ConversationInbox() {
                       </button>
                     </div>
                   )}
-                  {replyWindow && (
-                    <p role="status" className={`px-3 pt-3 text-xs ${windowClosed ? "font-semibold text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
-                      {replyWindow.closes_at
-                        ? `Podés responder por WhatsApp hasta el ${time(replyWindow.closes_at)}.`
-                        : "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp no permite escribirle hasta que vuelva a escribir (o con una plantilla aprobada)."}
-                    </p>
-                  )}
-                  <form onSubmit={(event) => { event.preventDefault(); void sendDraft(); }} className="flex items-end gap-2 p-3">
+                  {/* The open window is shown in the header; here only the blocking case. */}
+                  <p role="status" className={windowClosed ? "wa-bar px-4 pt-3 text-xs font-semibold text-amber-800 dark:text-amber-300" : "sr-only"}>
+                    {windowClosed ? "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp no permite escribirle hasta que vuelva a escribir (o con una plantilla aprobada)." : ""}
+                  </p>
+                  <form onSubmit={(event) => { event.preventDefault(); void sendDraft(); }} className="wa-bar flex items-end gap-2 px-2 py-2 sm:px-3">
                     <button type="button" aria-expanded={showQuick} aria-label="Respuestas rápidas" onClick={() => { if (!showQuick) loadReplies(); setShowQuick(!showQuick); }}
-                      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border ${showQuick ? "bg-muted" : ""}`}>
+                      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${showQuick ? "bg-muted" : ""}`}>
                       <MessageSquareText className="h-5 w-5" aria-hidden />
                     </button>
                     <label htmlFor="reply" className="sr-only">Respuesta al cliente</label>
-                    <textarea id="reply" value={draft} maxLength={4096} rows={2} enterKeyHint="enter"
+                    <textarea id="reply" value={draft} maxLength={4096} rows={1} enterKeyHint="enter"
                       onChange={(event) => { setDraft(event.target.value); }}
                       // On a phone keyboard Enter is a line break; there the Send button sends.
                       onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !isTouch()) { event.preventDefault(); void sendDraft(); } }}
-                      className="min-h-11 flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm" placeholder="Escribí tu respuesta…" />
+                      className="wa-input field-sizing-content max-h-36 min-h-11 flex-1 resize-none rounded-3xl px-4 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-accent)] sm:text-sm" placeholder="Escribí un mensaje" />
                     <button type="submit" disabled={busy !== null || draft.trim() === "" || windowClosed} aria-label="Enviar respuesta"
-                      className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-60">
-                      <Send className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Enviar</span>
+                      className="wa-accent inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50">
+                      <Send className="h-5 w-5" aria-hidden />
                     </button>
                   </form>
                 </div>

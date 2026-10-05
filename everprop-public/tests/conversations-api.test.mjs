@@ -53,6 +53,20 @@ test('internal notes go to their own endpoint, never the reply one, and do not h
   assert.equal(api.threadCursor([{ sequence: 1, direction: 'INBOUND', status: 'RECEIVED' }, { sequence: 2, direction: 'INTERNAL', status: 'RECEIVED' }]), 2);
 });
 
+test('WhatsApp-style thread helpers: day separators, bubble time and avatar letters', () => {
+  const now = new Date(2026, 9, 5, 13, 0);
+  assert.equal(api.dayLabel(new Date(2026, 9, 5, 0, 1).toISOString(), now), 'Hoy');
+  assert.equal(api.dayLabel(new Date(2026, 9, 4, 23, 59).toISOString(), now), 'Ayer');
+  assert.match(api.dayLabel(new Date(2026, 9, 1, 10).toISOString(), now), /1 de octubre/);
+  assert.match(api.dayLabel(new Date(2025, 9, 1, 10).toISOString(), now), /2025/);
+  assert.equal(api.sameDay(new Date(2026, 9, 5, 0, 1).toISOString(), new Date(2026, 9, 5, 23, 59).toISOString()), true);
+  assert.equal(api.sameDay(new Date(2026, 9, 4, 23, 59).toISOString(), new Date(2026, 9, 5, 0, 1).toISOString()), false);
+  assert.match(api.clockTime(new Date(2026, 9, 5, 9, 5).toISOString()), /^09:05$/);
+  assert.equal(api.initials('tomás  peralta gómez'), 'TP');
+  assert.equal(api.initials('Visitante'), 'V');
+  assert.equal(api.initials('   '), '?');
+});
+
 const msg = (sequence, direction, status, text = `m${sequence}`) => ({ sequence, direction, sender: direction === 'INBOUND' ? 'CONTACT' : 'USER', text, status, at: '' });
 
 test('polling resumes after the last message, or before the oldest send that can still change', () => {

@@ -78,6 +78,35 @@ export async function listConversations(filter: ConversationFilter, search = "")
   return apiFetch<{ data: ConversationSummary[] }>(conversationQuery(filter, search));
 }
 
+/** "14:05", like the time inside a WhatsApp bubble. */
+export function clockTime(iso: string): string {
+  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+}
+
+const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+/** Separator between days in the thread: "Hoy", "Ayer" or the date (with year only when it differs). */
+export function dayLabel(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (dayKey(date) === dayKey(now)) return "Hoy";
+  if (dayKey(date) === dayKey(yesterday)) return "Ayer";
+  return new Intl.DateTimeFormat("es-AR", {
+    weekday: "long", day: "numeric", month: "long", ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  }).format(date);
+}
+
+/** True when two instants fall on the same local day. */
+export function sameDay(a: string, b: string): boolean {
+  return dayKey(new Date(a)) === dayKey(new Date(b));
+}
+
+/** Avatar letters: first letter of the first two words ("Tomás Peralta" → "TP"). */
+export function initials(name: string): string {
+  const letters = name.trim().split(/\s+/).slice(0, 2).map((word) => word[0] ?? "").join("");
+  return letters.toUpperCase() || "?";
+}
+
 /** One line under the contact name: who spoke last and what, never more than one line. */
 export function previewText(item: Pick<ConversationSummary, "last_message">): string {
   const last = item.last_message;

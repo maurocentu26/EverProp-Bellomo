@@ -55,6 +55,8 @@
 .admin-workspace h1 { font-size: clamp(1.5rem, 2.2vw, 2rem); line-height: 1.2; letter-spacing: -.035em; }
 .admin-workspace h2 { letter-spacing: -.02em; }
 .admin-workspace :is(h1, h2, h3) { text-wrap: balance; }
+/* text-wrap also sets wrapping: keep truncated headings on one line. */
+.admin-workspace :is(h1, h2, h3).truncate { text-wrap: nowrap; }
 .admin-workspace :is(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 3px;
@@ -274,3 +276,26 @@
 .admin-workspace [data-slot="input-group"]:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
 .admin-workspace [data-slot="input-group"] input:focus-visible { outline: none; box-shadow: none; }
 html[data-panel-text-size="grande"] .admin-workspace .lead-actions-expanded > :is(button,a) { font-size: 14.4px; }
+
+/* Inbox styled like WhatsApp (S04). Colors are WhatsApp's own light/dark palettes; status is never color-only. */
+.wa-inbox {
+  --wa-panel: #f0f2f5; --wa-thread: #efeae2; --wa-in: #ffffff; --wa-out: #d9fdd3; --wa-text: #111b21;
+  --wa-meta: #667781; --wa-accent: #008069; --wa-accent-text: #ffffff; --wa-read: #53bdeb; --wa-chip: #ffffff;
+  --wa-selected: #f0f2f5; --wa-input: #ffffff;
+}
+.dark .wa-inbox {
+  --wa-panel: #202c33; --wa-thread: #0b141a; --wa-in: #202c33; --wa-out: #005c4b; --wa-text: #e9edef;
+  --wa-meta: #8696a0; --wa-accent: #00a884; --wa-accent-text: #111b21; --wa-read: #53bdeb; --wa-chip: #182229;
+  --wa-selected: #2a3942; --wa-input: #2a3942;
+}
+.wa-inbox .wa-thread { background-color: var(--wa-thread); }
+.wa-inbox .wa-bubble { color: var(--wa-text); box-shadow: 0 1px 0.5px rgb(11 20 26 / 0.13); }
+.wa-inbox .wa-in { background-color: var(--wa-in); }
+.wa-inbox .wa-out { background-color: var(--wa-out); }
+.wa-inbox .wa-meta { color: var(--wa-meta); }
+.wa-inbox .wa-read { color: var(--wa-read); }
+.wa-inbox .wa-chip { background-color: var(--wa-chip); color: var(--wa-meta); }
+.wa-inbox .wa-bar { background-color: var(--wa-panel); }
+.wa-inbox .wa-input { background-color: var(--wa-input); color: var(--wa-text); }
+.wa-inbox .wa-accent { background-color: var(--wa-accent); color: var(--wa-accent-text); }
+.wa-inbox .wa-selected { background-color: var(--wa-selected); }
