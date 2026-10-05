@@ -93,7 +93,8 @@ try {
   await item.click();
   await pp.getByText(text1).waitFor({ timeout: 15000 });
   await pp.getByRole("button", { name: /Tomar control/ }).click();
-  const reply = pp.getByPlaceholder("Escribí tu respuesta…");
+  // By its accessible label, not the placeholder (the WhatsApp-style composer changed it).
+  const reply = pp.getByLabel("Respuesta al cliente");
   await reply.waitFor({ timeout: 15000 });
   const answer = `Respuesta del asesor ${stamp}`;
   await reply.fill(answer); await pp.getByRole("button", { name: "Enviar respuesta" }).click();
