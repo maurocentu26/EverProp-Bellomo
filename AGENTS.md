@@ -30,3 +30,10 @@ Rules:
 Not lazy about: understanding the problem (read it fully and trace the real flow before picking a rung, a small diff you don't understand is just laziness dressed up as efficiency), input validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs (the platform is never the spec ideal, a clock drifts, a sensor reads off), anything explicitly requested. Lazy code without its check is unfinished: non-trivial logic leaves ONE runnable check behind, the smallest thing that fails if the logic breaks (an assert-based demo/self-check or one small test file; no frameworks, no fixtures). Trivial one-liners need no test.
 
 (Yes, this file also applies to agents working on the ponytail repo itself. Especially to them.)
+
+## Docker local bajo demanda
+
+- Usar un solo stack local de EverProp a la vez; revisar contenedores existentes antes de iniciar otro.
+- No iniciar Docker si la tarea de staging remoto no requiere pruebas locales.
+- Al terminar pruebas, detener el stack iniciado para la tarea, sin borrar contenedores, bases ni volúmenes. Respetar procesos ajenos no autorizados.
+- El Compose de desarrollo no debe reiniciar servicios automáticamente. No limpiar con `prune`, `down --volumes` ni reset de Docker.
