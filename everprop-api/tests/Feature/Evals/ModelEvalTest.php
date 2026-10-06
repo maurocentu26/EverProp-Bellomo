@@ -50,7 +50,7 @@ final class ModelEvalTest extends TestCase
     public function test_self_check_the_runner_catches_a_leak_and_passes_a_correct_answer(): void
     {
         // Copy of SEARCH-001: CI mounts only everprop-api, and this checks the runner, not the dataset.
-        $case = ['id' => 'SEARCH-001', 'actor' => 'visitor', 'tenant' => 'bellomo-sintetico', 'critical' => true,
+        $case = ['id' => 'SEARCH-001', 'actor' => 'visitor', 'tenant' => 'bellomo-sintetico', 'channel' => 'web', 'critical' => true,
             'turns' => [['role' => 'user', 'text' => 'tenés el 12a?']],
             'fixtures' => ['properties' => [
                 ['code' => '12', 'project' => 'Huasi Sintético', 'price' => ['amount' => '85000', 'currency' => 'USD']],
@@ -68,6 +68,16 @@ final class ModelEvalTest extends TestCase
         $leak = $this->play($case);
         $this->assertSame('FAIL', $leak['result']);
         $this->assertContains('must_not_include: 12B', $leak['failures']);
+
+        // WhatsApp cases get the contact's number, so registering interest works without asking for it (CRM-007).
+        $whatsapp = ['channel' => 'whatsapp', 'turns' => [['role' => 'user', 'text' => 'anotame en el 12A']],
+            'expected' => ['behavior' => 'answer', 'tools' => ['registrar_interes'], 'persisted' => ['lead_properties.count' => 1]]] + $case;
+        // The id is read from the fixture: one tool round per turn cannot search and register (see implementation-status, F2 blocker).
+        $this->app->instance(LlmClient::class, new ScriptedLlm([
+            ScriptedLlm::tool('registrar_interes', fn (): array => ['property_id' => DB::table('properties')->where('code', '12A')->orderByDesc('id')->value('public_id'), 'interest_level' => 'HIGH']),
+            ScriptedLlm::text('Listo, un asesor te contacta por el 12A.')]));
+        $registered = $this->play($whatsapp);
+        $this->assertSame('PASS', $registered['result'], implode('; ', $registered['failures']));
 
         $this->assertSame('deterministic', $this->kind(['actor' => 'visitor', 'turns' => [['role' => 'user', 'text' => 'hola'], ['role' => 'system_event', 'text' => 'LLM responde 503']]]));
         $this->assertSame('deterministic', $this->kind(['actor' => 'advisor', 'turns' => [['role' => 'user', 'text' => 'tomar']]]));
@@ -182,6 +192,12 @@ final class ModelEvalTest extends TestCase
 
         $headers = $this->tenantHeaders($tenant);
         $token = $this->withHeaders($headers)->postJson('/api/v1/public/chat/sessions', ['widget_id' => $channel['public_id']])->assertCreated()->json('data.token');
+        if ($case['channel'] === 'whatsapp') {
+            // A WhatsApp contact always has the number it writes from; the widget session does not.
+            // The session's contact is the newest one: fixture contacts (SEC-010) were seeded before.
+            $contact = DB::table('contacts')->where('tenant_id', $tenant->id)->max('id');
+            $this->assertSame(1, DB::table('contacts')->where('tenant_id', $tenant->id)->where('id', $contact)->update(['phone_e164' => '+5493885550100']));
+        }
         foreach ($case['turns'] as $turn) {
             $this->withHeaders($headers)->withToken($token)
                 ->postJson('/api/v1/public/chat/messages', ['client_message_id' => (string) Str::uuid(), 'text' => $turn['text']])->assertCreated();
@@ -282,9 +298,10 @@ final class ModelEvalTest extends TestCase
             $codes[$t->id.'|'.$p['code']] = true;
             DB::table('properties')->insert([
                 'tenant_id' => $t->id, 'public_id' => $publicId ?? (string) Str::uuid(), 'project_id' => $project($t, $p['project'] ?? null),
-                'code' => $code, 'title' => 'Lote '.$p['code'], 'operation' => 'SALE', 'category' => 'LOT', 'status' => $p['status'] ?? 'AVAILABLE',
+                'code' => $code, 'title' => ($p['category'] ?? 'LOT') === 'LOT' ? 'Lote '.$p['code'] : 'Unidad '.$p['code'],
+                'operation' => $p['operation'] ?? 'SALE', 'category' => $p['category'] ?? 'LOT', 'status' => $p['status'] ?? 'AVAILABLE',
                 'price' => $p['price']['amount'] ?? null, 'currency_code' => $p['price']['currency'] ?? null,
-                'city' => 'San Salvador de Jujuy', 'province' => 'Jujuy',
+                'city' => $p['city'] ?? 'San Salvador de Jujuy', 'province' => 'Jujuy',
             ]);
         };
 
