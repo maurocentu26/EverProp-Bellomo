@@ -29,15 +29,14 @@ final class RegistrarInteres implements AgentTool
     public function description(): string
     {
         return 'Registra el interés del visitante en una propiedad para que un asesor lo contacte. En el chat web pedí antes un teléfono o email '
-            .'y pasalo en contact_phone o contact_email. No inventes datos de contacto.';
+            .'y pasalo en contact_phone o contact_email. No inventes datos de contacto.'.PublicInventory::PROPERTY_REF_HINT;
     }
 
     public function schema(): array
     {
         return [
-            'type' => 'object', 'additionalProperties' => false, 'required' => ['property_id', 'interest_level'],
-            'properties' => [
-                'property_id' => ['type' => 'string', 'format' => 'uuid'],
+            'type' => 'object', 'additionalProperties' => false, 'required' => ['interest_level'],
+            'properties' => PublicInventory::PROPERTY_REF + [
                 'interest_level' => ['type' => 'string', 'enum' => ['LOW', 'MEDIUM', 'HIGH']],
                 'notes' => ['type' => 'string', 'maxLength' => 1000],
             ] + ContactDetails::SCHEMA,

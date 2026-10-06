@@ -31,7 +31,7 @@ final class SolicitarVisita implements AgentTool
     public function description(): string
     {
         return 'Registra una SOLICITUD de visita con 1 a 3 franjas preferidas. No confirma la visita: un asesor la confirma después. '
-            .'Cada franja lleva inicio y fin (ISO 8601) y zona horaria IANA (por ejemplo America/Argentina/Jujuy).';
+            .'Cada franja lleva inicio y fin (ISO 8601) y zona horaria IANA (por ejemplo America/Argentina/Jujuy).'.PublicInventory::PROPERTY_REF_HINT;
     }
 
     public function schema(): array
@@ -46,9 +46,8 @@ final class SolicitarVisita implements AgentTool
         ];
 
         return [
-            'type' => 'object', 'additionalProperties' => false, 'required' => ['property_id', 'preferred_slots'],
-            'properties' => [
-                'property_id' => ['type' => 'string', 'format' => 'uuid'],
+            'type' => 'object', 'additionalProperties' => false, 'required' => ['preferred_slots'],
+            'properties' => PublicInventory::PROPERTY_REF + [
                 'preferred_slots' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 3, 'items' => $slot],
                 'note' => ['type' => 'string', 'maxLength' => 1000],
             ] + ContactDetails::SCHEMA,

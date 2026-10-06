@@ -94,15 +94,17 @@ Gateway interno recibe contexto confiable {tenant, actor, conversation, run, epo
 | Herramienta | Arguments requeridos y opcionales | Salida y autorización |
 |---|---|---|
 | buscar_propiedades | filtros objeto cerrado: operation enum SALE/RENT, category enum del catálogo permitido, city string≤160, project_id UUID, unit_code string≤80, budget {amount decimal-string,currency enum ARS/USD}; limit 1..10 | items {id,code,title,price:null o {amount,currency},availability,as_of,version,url}, next_cursor. Solo publicación pública para visitante; scopes reales para asesor. No búsqueda presupuestaria sin moneda. |
-| consultar_propiedad | property_id UUID | mismos campos más atributos públicos/fuentes, as_of. Eliminada/retirada/inaccesible devuelve NOT_FOUND. Leer vigente, no copia vectorial. |
-| registrar_interes | property_id UUID; interest_level enum LOW/MEDIUM/HIGH; notes string≤1000 opcional | {interest_id,lead_id,status:PERSISTED,replayed}. Contacto y lead se resuelven desde conversación; nunca acepta tenant ni lead arbitrario ni precio cotizado. CRM policy y visibilidad de propiedad; transacción con outbox. |
-| solicitar_visita | property_id UUID; preferred_slots array 1..3 de {start date-time,end date-time,timezone IANA}; note≤1000 opcional | {request_id,status:REQUESTED,confirmed:false}. Verifica futuro, zona y disponibilidad de propiedad. No invoca store actual que fija SCHEDULED como si calendario hubiera confirmado. |
+| consultar_propiedad | property_id UUID **o** unit_code (código exacto, ≤80; uno solo) | mismos campos más atributos públicos/fuentes, as_of. Eliminada/retirada/inaccesible devuelve NOT_FOUND. Leer vigente, no copia vectorial. |
+| registrar_interes | property_id UUID **o** unit_code (código exacto, ≤80; uno solo); interest_level enum LOW/MEDIUM/HIGH; notes string≤1000 opcional | {interest_id,lead_id,status:PERSISTED,replayed}. Contacto y lead se resuelven desde conversación; nunca acepta tenant ni lead arbitrario ni precio cotizado. CRM policy y visibilidad de propiedad; transacción con outbox. |
+| solicitar_visita | property_id UUID **o** unit_code (código exacto, ≤80; uno solo); preferred_slots array 1..3 de {start date-time,end date-time,timezone IANA}; note≤1000 opcional | {request_id,status:REQUESTED,confirmed:false}. Verifica futuro, zona y disponibilidad de propiedad. No invoca store actual que fija SCHEDULED como si calendario hubiera confirmado. |
 | derivar_a_asesor | reason enum USER_REQUEST/NO_EVIDENCE/TOOL_FAILURE/COMMERCIAL_EXCEPTION; summary string≤1500 | {handoff_id,state:WAITING_HUMAN,assigned_user_id:null o UUID}. Backend elige responsable/pool, incrementa epoch y cancela pendientes; no garantiza asesor online. |
+
+El gateway resuelve `unit_code` contra el inventario público del tenant (código exacto, sin distinguir mayúsculas ni acentos, igual que el índice único por tenant; reservada, vendida, retirada, eliminada o de otro tenant → NOT_FOUND) y lo reemplaza por `property_id` **antes** de calcular la clave de idempotencia: pedir por código o por id es el mismo pedido. La traducción no mira el estado (solo nombra el pedido): un reintento después de que la unidad se vendió devuelve lo ya guardado; la visibilidad la sigue exigiendo cada herramienta con el mismo NOT_FOUND. Límite conocido: si entre un intento y su reintento se reasigna el código a otra propiedad, el reintento actúa sobre la propiedad vigente. Motivo: una sola ronda de herramientas por turno no deja buscar y registrar en el mismo turno (2026-10-06).
 
 Ejemplo de schema de escritura:
 
 ```json
-{"name":"registrar_interes","parameters":{"type":"object","additionalProperties":false,"required":["property_id","interest_level"],"properties":{"property_id":{"type":"string","format":"uuid"},"interest_level":{"type":"string","enum":["LOW","MEDIUM","HIGH"]},"notes":{"type":"string","maxLength":1000}}}}
+{"name":"registrar_interes","parameters":{"type":"object","additionalProperties":false,"required":["interest_level"],"properties":{"property_id":{"type":"string","format":"uuid"},"unit_code":{"type":"string","minLength":1,"maxLength":80},"interest_level":{"type":"string","enum":["LOW","MEDIUM","HIGH"]},"notes":{"type":"string","maxLength":1000}}}}
 ```
 
 Respuesta validada (ejemplos sintéticos):

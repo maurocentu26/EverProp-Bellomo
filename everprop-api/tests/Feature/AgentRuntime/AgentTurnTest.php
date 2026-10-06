@@ -189,6 +189,81 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('+5493885551234', DB::table('contacts')->where('id', $context->contactId)->value('phone_e164'));
     }
 
+    public function test_property_tools_accept_the_unit_code_the_visitor_said(): void
+    {
+        $f = $this->fixture();
+        $gateway = app(ToolGateway::class);
+        $context = $this->context($f);
+        $otherTenant = Tenant::factory()->create();
+        $this->tenants[] = (int) $otherTenant->id;
+        DB::table('properties')->insert(['tenant_id' => $otherTenant->id, 'public_id' => (string) Str::uuid(), 'code' => 'Z-900', 'title' => 'Ajeno',
+            'operation' => 'SALE', 'category' => 'LOT', 'status' => 'AVAILABLE', 'price' => '1.00', 'currency_code' => 'USD', 'city' => 'Salta', 'province' => 'Salta']);
+
+        $t = (int) $f['tenant']->id;
+        $hidden = (int) DB::table('projects')->insertGetId(['tenant_id' => $t, 'public_id' => (string) Str::uuid(), 'name' => 'En planificación',
+            'project_type' => 'LAND_DEVELOPMENT', 'status' => 'PLANNING', 'city' => 'Jujuy', 'province' => 'Jujuy']);
+        foreach (['L-105' => ['RESERVED', null], 'L-106' => ['AVAILABLE', $hidden]] as $code => [$status, $project]) {
+            DB::table('properties')->insert(['tenant_id' => $t, 'public_id' => (string) Str::uuid(), 'code' => $code, 'title' => 'Lote '.$code, 'project_id' => $project,
+                'operation' => 'SALE', 'category' => 'LOT', 'status' => $status, 'price' => '1.00', 'currency_code' => 'USD', 'city' => 'Jujuy', 'province' => 'Jujuy']);
+        }
+
+        $detail = $gateway->execute($context, 'consultar_propiedad', ['unit_code' => ' l-101 ']);
+        $this->assertSame([$f['priced'], 'L-101'], [$detail['data']['id'], $detail['data']['code']], 'exact code, case-insensitive');
+        foreach (['L-103' => 'sold', 'L-104' => 'deleted', 'L-105' => 'reserved', 'L-106' => 'project not public', 'Z-900' => 'other tenant', 'L-1' => 'prefix only'] as $code => $why) {
+            $this->assertSame('NOT_FOUND', $gateway->execute($context, 'consultar_propiedad', ['unit_code' => $code])['error']['code'], $why);
+        }
+        foreach (['L-10%', 'L-10_', '%', "L-101' OR 1=1 -- "] as $code) {
+            $this->assertSame('NOT_FOUND', $gateway->execute($context, 'consultar_propiedad', ['unit_code' => $code])['error']['code'], 'literal, not a pattern: '.$code);
+        }
+        foreach (['   ', str_repeat('A', 81)] as $code) {
+            $this->assertSame('VALIDATION_ERROR', $gateway->execute($context, 'consultar_propiedad', ['unit_code' => $code])['error']['code']);
+        }
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($context, 'consultar_propiedad', [])['error']['code'], 'neither');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($context, 'consultar_propiedad', ['unit_code' => 'L-101', 'property_id' => $f['no_price']])['error']['code'], 'both');
+
+        // Another tenant's code creates nothing anywhere: no lead, no interest, no outbox event.
+        $this->assertSame('NOT_FOUND', $gateway->execute($context, 'registrar_interes', ['unit_code' => 'Z-900', 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234'])['error']['code']);
+        $this->assertSame(0, DB::table('leads')->whereIn('tenant_id', [$t, $otherTenant->id])->count(), 'leads');
+        $this->assertSame(0, DB::table('lead_properties')->whereIn('tenant_id', [$t, $otherTenant->id])->count(), 'lead_properties');
+        $this->assertSame(0, DB::table('domain_outbox')->whereIn('tenant_id', [$t, $otherTenant->id])->where('event_type', 'LEAD_INTEREST_REGISTERED')->count(), 'outbox');
+
+        // By code and by id are the same request: one effect, the second is a replay.
+        $byCode = $gateway->execute($context, 'registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234']);
+        $byId = $gateway->execute($context, 'registrar_interes', ['property_id' => $f['priced'], 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234']);
+        $this->assertTrue($byCode['ok']);
+        $this->assertFalse($byCode['meta']['replayed']);
+        $this->assertTrue($byId['meta']['replayed']);
+        $this->assertSame(1, DB::table('lead_properties')->where('tenant_id', $f['tenant']->id)->count());
+        $this->assertSame(1, DB::table('domain_outbox')->where('tenant_id', $f['tenant']->id)->where('event_type', 'LEAD_INTEREST_REGISTERED')->count());
+
+        $slots = [['start' => CarbonImmutable::now()->addDays(3)->setTime(10, 0)->toIso8601String(),
+            'end' => CarbonImmutable::now()->addDays(3)->setTime(11, 0)->toIso8601String(), 'timezone' => 'America/Argentina/Jujuy']];
+        $this->assertSame('NOT_FOUND', $gateway->execute($context, 'solicitar_visita', ['unit_code' => 'Z-900', 'preferred_slots' => $slots])['error']['code']);
+        $visit = $gateway->execute($context, 'solicitar_visita', ['unit_code' => 'L-101', 'preferred_slots' => $slots]);
+        $this->assertTrue($visit['ok'], json_encode($visit));
+        $this->assertTrue($gateway->execute($context, 'solicitar_visita', ['property_id' => $f['priced'], 'preferred_slots' => $slots])['meta']['replayed']);
+
+        // Sold after the request: a retry by code still replays what was stored instead of saying "not available".
+        DB::table('properties')->where('public_id', $f['priced'])->update(['status' => 'SOLD']);
+        $retry = $gateway->execute($context, 'registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234']);
+        $this->assertTrue($retry['ok'] && $retry['meta']['replayed'], json_encode($retry));
+        $this->assertSame('NOT_FOUND', $gateway->execute($context, 'consultar_propiedad', ['unit_code' => 'L-101'])['error']['code'], 'still never shown once sold');
+    }
+
+    public function test_one_turn_registers_interest_by_unit_code(): void
+    {
+        $f = $this->fixture();
+        // One tool round per turn: the model names the unit by the code the visitor said, no search first.
+        $this->llm([
+            ScriptedLlm::tool('registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234']),
+            ScriptedLlm::text('Listo, anoté tu interés en el L-101. Un asesor te va a contactar.'),
+        ]);
+        $this->visitorSays($f, 'Anotame en el L-101, mi cel es 388 555-1234');
+
+        $this->assertSame(1, DB::table('lead_properties')->where('tenant_id', $f['tenant']->id)->count());
+        $this->assertContains('Listo, anoté tu interés en el L-101. Un asesor te va a contactar.', $this->visible($f));
+    }
+
     public function test_visit_is_only_requested_and_validated(): void
     {
         $f = $this->fixture();

@@ -17,6 +17,18 @@ final class PublicInventory
 {
     public const PAGE_MAX = 10;
 
+    /**
+     * How property tools name a property: the id from buscar_propiedades or the exact code the visitor
+     * said. The gateway resolves the code (one tool round per turn leaves the model without ids).
+     */
+    public const PROPERTY_REF = [
+        'property_id' => ['type' => 'string', 'format' => 'uuid'],
+        'unit_code' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 80],
+    ];
+
+    public const PROPERTY_REF_HINT = ' Identificá la propiedad con property_id (de buscar_propiedades) o con unit_code, el código exacto '
+        .'que dijo el visitante (por ejemplo 12A); uno solo, nunca los dos.';
+
     public function query(int $tenantId): Builder
     {
         return DB::table('properties as p')
@@ -31,6 +43,18 @@ final class PublicInventory
     public function find(int $tenantId, string $publicId): ?object
     {
         return $this->query($tenantId)->where('p.public_id', $publicId)->first($this->columns());
+    }
+
+    /**
+     * Public id of the tenant's property with this unit code (unique per tenant, same collation), visible or not:
+     * it only names the request, so a replay still finds its stored result after the unit is sold. Visibility is
+     * enforced by the tool (find / idOrFail) with the same NOT_FOUND, so nothing tells sold from unknown.
+     */
+    public function publicIdForCode(int $tenantId, string $code): ?string
+    {
+        $id = DB::table('properties')->where('tenant_id', $tenantId)->where('code', trim($code))->value('public_id');
+
+        return $id === null ? null : (string) $id;
     }
 
     /** Internal id of a visible property, or NOT_FOUND (deleted, withdrawn, other tenant, unknown). */

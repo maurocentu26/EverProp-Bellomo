@@ -13,14 +13,14 @@ final class ConsultarPropiedad implements AgentTool
 
     public function description(): string
     {
-        return 'Devuelve el detalle vigente de una propiedad por su id (obtenido de buscar_propiedades). Si no está disponible responde NOT_FOUND.';
+        return 'Devuelve el detalle vigente de una propiedad. Si no está disponible responde NOT_FOUND.'.PublicInventory::PROPERTY_REF_HINT;
     }
 
     public function schema(): array
     {
         return [
-            'type' => 'object', 'additionalProperties' => false, 'required' => ['property_id'],
-            'properties' => ['property_id' => ['type' => 'string', 'format' => 'uuid']],
+            'type' => 'object', 'additionalProperties' => false, 'required' => [],
+            'properties' => PublicInventory::PROPERTY_REF,
         ];
     }
 

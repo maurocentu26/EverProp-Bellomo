@@ -72,9 +72,8 @@ final class ModelEvalTest extends TestCase
         // WhatsApp cases get the contact's number, so registering interest works without asking for it (CRM-007).
         $whatsapp = ['channel' => 'whatsapp', 'turns' => [['role' => 'user', 'text' => 'anotame en el 12A']],
             'expected' => ['behavior' => 'answer', 'tools' => ['registrar_interes'], 'persisted' => ['lead_properties.count' => 1]]] + $case;
-        // The id is read from the fixture: one tool round per turn cannot search and register (see implementation-status, F2 blocker).
         $this->app->instance(LlmClient::class, new ScriptedLlm([
-            ScriptedLlm::tool('registrar_interes', fn (): array => ['property_id' => DB::table('properties')->where('code', '12A')->orderByDesc('id')->value('public_id'), 'interest_level' => 'HIGH']),
+            ScriptedLlm::tool('registrar_interes', ['unit_code' => '12A', 'interest_level' => 'HIGH']),
             ScriptedLlm::text('Listo, un asesor te contacta por el 12A.')]));
         $registered = $this->play($whatsapp);
         $this->assertSame('PASS', $registered['result'], implode('; ', $registered['failures']));
