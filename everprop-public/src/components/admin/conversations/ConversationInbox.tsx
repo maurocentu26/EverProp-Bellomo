@@ -94,6 +94,46 @@ function useVisiblePolling(run: () => void, ms: number) {
 }
 
 /** Saved replies live on this device, per user: they are templates, never client data. */
+const SPLIT_VIEW = "(min-width: 1024px)";
+
+/**
+ * Phone/tablet with a conversation open: full screen like WhatsApp. The chat follows the visual viewport, which
+ * is what shrinks when the iOS keyboard opens (100dvh does not), and the system Back closes the chat instead of
+ * leaving the page. Desktop keeps the split view untouched.
+ */
+function useFullscreenChat(open: boolean, onSystemBack: () => void) {
+  const back = useRef(onSystemBack);
+  useEffect(() => { back.current = onSystemBack; });
+  useEffect(() => {
+    if (!open || window.matchMedia(SPLIT_VIEW).matches) return;
+    const root = document.documentElement;
+    const viewport = window.visualViewport;
+    const fit = () => {
+      const height = viewport?.height ?? window.innerHeight;
+      root.style.setProperty("--wa-chat-height", `${height}px`);
+      root.style.setProperty("--wa-chat-top", `${viewport?.offsetTop ?? 0}px`);
+      root.classList.toggle("wa-keyboard", window.innerHeight - height > 120);
+    };
+    fit();
+    root.classList.add("wa-chat-open");
+    viewport?.addEventListener("resize", fit);
+    viewport?.addEventListener("scroll", fit);
+    window.history.pushState({ waChat: true }, "");
+    const onPop = () => back.current();
+    window.addEventListener("popstate", onPop);
+    return () => {
+      viewport?.removeEventListener("resize", fit);
+      viewport?.removeEventListener("scroll", fit);
+      window.removeEventListener("popstate", onPop);
+      root.classList.remove("wa-chat-open", "wa-keyboard");
+      root.style.removeProperty("--wa-chat-height");
+      root.style.removeProperty("--wa-chat-top");
+      // Closed from the app's own arrow: drop the history entry pushed on open.
+      if ((window.history.state as { waChat?: boolean } | null)?.waChat) window.history.back();
+    };
+  }, [open]);
+}
+
 function useQuickReplies(userId: string | undefined) {
   const storageKey = `everprop:quick-replies:${userId ?? "anon"}`;
   const [replies, setReplies] = useState<string[]>(DEFAULT_QUICK_REPLIES);
@@ -149,6 +189,8 @@ export function ConversationInbox() {
   const [busy, setBusy] = useState<string | null>(null);
   const [resumeReason, setResumeReason] = useState("");
   const [note, setNote] = useState("");
+  // One composer, two modes: reply to the client or a note only the team sees.
+  const [noteMode, setNoteMode] = useState(false);
   // Same rule as replies: the key belongs to the exact text it was created for.
   const noteKey = useRef({ key: newKey(), text: "" });
   const threadHeading = useRef<HTMLHeadingElement>(null);
@@ -255,6 +297,7 @@ export function ConversationInbox() {
     setDraft(drafts.current.get(id) ?? "");
     draftKey.current = { key: newKey(), text: "" };
     setNote("");
+    setNoteMode(false);
     noteKey.current = { key: newKey(), text: "" };
     window.setTimeout(() => threadHeading.current?.focus(), 0);
   }
@@ -266,6 +309,8 @@ export function ConversationInbox() {
     setSelected(null);
     window.setTimeout(() => document.getElementById(`conversation-${id}`)?.focus(), 0);
   }
+
+  useFullscreenChat(selected !== null, () => backToList());
 
   async function run(action: string, fn: () => Promise<unknown>, success?: string) {
     if (busy) return;
@@ -321,6 +366,10 @@ export function ConversationInbox() {
     }, "Nota guardada. Solo la ve el equipo.");
   }
 
+  function focusComposer() {
+    window.setTimeout(() => document.getElementById("reply")?.focus(), 0);
+  }
+
   function insertQuickReply(text: string) {
     setDraft((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text));
     setShowQuick(false);
@@ -337,13 +386,13 @@ export function ConversationInbox() {
       <header className={`${selected ? "hidden lg:flex" : "flex"} flex-wrap items-end justify-between gap-3`}>
         <div>
           <h1 className="text-2xl font-bold">Conversaciones</h1>
-          <p className="mt-1 text-sm text-muted-foreground">WhatsApp y chat web en una sola bandeja. La IA se detiene cuando tomás el control.</p>
+          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">WhatsApp y chat web en una sola bandeja. La IA se detiene cuando tomás el control.</p>
         </div>
         <button type="button" disabled={refreshing} onClick={() => void refreshNow()} aria-describedby="inbox-refresh-status"
           className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold disabled:opacity-70">
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden /> {refreshing ? "Actualizando…" : "Actualizar"}
         </button>
-        <p id="inbox-refresh-status" role="status" className="w-full text-right text-xs text-muted-foreground sm:w-auto">
+        <p id="inbox-refresh-status" role="status" className="sr-only sm:not-sr-only sm:w-auto sm:text-right sm:text-xs sm:text-muted-foreground">
           {refreshedAt ? `Actualizado ${clockTime(refreshedAt)} · se actualiza solo` : "Se actualiza solo cada pocos segundos"}
         </p>
       </header>
@@ -407,7 +456,7 @@ export function ConversationInbox() {
           </ul>
         </aside>
 
-        <div className={`${selected ? "flex h-[calc(100dvh-6.5rem)] lg:h-auto" : "hidden lg:flex"} relative min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card`}>
+        <div className={`${selected ? "wa-fullscreen flex lg:h-auto" : "hidden lg:flex"} relative min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card`}>
           {!selected ? (
             <div className="m-auto flex max-w-sm flex-col items-center gap-3 p-8 text-center text-muted-foreground">
               <MessageSquare className="h-8 w-8" aria-hidden />
@@ -433,16 +482,6 @@ export function ConversationInbox() {
                   </p>
                 </div>
                 {state && <span className={`hidden shrink-0 rounded-full px-3 py-1 text-xs font-semibold sm:inline ${STATE_STYLES[state]}`}>{STATE_LABELS[state]}</span>}
-                {!readOnly && state && !["HUMAN_ACTIVE", "CLOSED"].includes(state) && (
-                  <button type="button" disabled={busy !== null} onClick={() => void run("takeover", async () => {
-                    await takeOver(selected);
-                    // The button disappears once in control: keep keyboard focus in the thread.
-                    window.setTimeout(() => (document.getElementById("reply") ?? threadHeading.current)?.focus(), 300);
-                  }, "Tomaste el control. La IA dejó de responder.")}
-                    className="wa-accent inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-60">
-                    <Hand className="h-4 w-4" aria-hidden /> Tomar control
-                  </button>
-                )}
                 {!readOnly && humanInControl && (
                   <button type="button" disabled={busy !== null} onClick={() => void run("close", () => closeConversation(selected), "Conversación cerrada.")}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-60">
@@ -524,9 +563,9 @@ export function ConversationInbox() {
                 </button>
               )}
 
-              {!readOnly && humanInControl && (
+              {!readOnly && (
                 <div className="border-t border-border">
-                  {showQuick && (
+                  {showQuick && !noteMode && (
                     <div className="max-h-56 overflow-y-auto border-b border-border p-2" role="group" aria-label="Respuestas rápidas">
                       <ul className="space-y-1">
                         {replies.map((reply, index) => (
@@ -547,41 +586,58 @@ export function ConversationInbox() {
                     </div>
                   )}
                   {/* The open window is shown in the header; here only the blocking case. */}
-                  <p role="status" className={windowClosed ? "wa-bar px-4 pt-3 text-xs font-semibold text-amber-800 dark:text-amber-300" : "sr-only"}>
-                    {windowClosed ? "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp no permite escribirle hasta que vuelva a escribir (o con una plantilla aprobada)." : ""}
+                  <p role="status" className={windowClosed && humanInControl && !noteMode ? "wa-bar px-4 pt-3 text-xs font-semibold text-amber-800 dark:text-amber-300" : "sr-only"}>
+                    {windowClosed && humanInControl ? "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp no permite escribirle hasta que vuelva a escribir (o con una plantilla aprobada)." : ""}
                   </p>
-                  <form onSubmit={(event) => { event.preventDefault(); void sendDraft(); }} className="wa-bar flex items-end gap-2 px-2 py-2 sm:px-3">
-                    <button type="button" aria-expanded={showQuick} aria-label="Respuestas rápidas" onClick={() => { if (!showQuick) loadReplies(); setShowQuick(!showQuick); }}
-                      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${showQuick ? "bg-muted" : ""}`}>
-                      <MessageSquareText className="h-5 w-5" aria-hidden />
-                    </button>
-                    <label htmlFor="reply" className="sr-only">Respuesta al cliente</label>
-                    <textarea id="reply" value={draft} maxLength={4096} rows={1} enterKeyHint="enter"
-                      onChange={(event) => { setDraft(event.target.value); }}
-                      // On a phone keyboard Enter is a line break; there the Send button sends.
-                      onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !isTouch()) { event.preventDefault(); void sendDraft(); } }}
-                      className="wa-input field-sizing-content max-h-36 min-h-11 flex-1 resize-none rounded-3xl px-4 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-accent)] sm:text-sm" placeholder="Escribí un mensaje" />
-                    <button type="submit" disabled={busy !== null || draft.trim() === "" || windowClosed} aria-label="Enviar respuesta"
-                      className="wa-accent inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50">
-                      <Send className="h-5 w-5" aria-hidden />
-                    </button>
-                  </form>
+                  {!humanInControl && !noteMode ? (
+                    // Not in control: where the composer goes, the one action that makes it appear.
+                    <div className="wa-bar flex items-center gap-2 px-2 py-2 sm:px-3">
+                      <button type="button" aria-label="Escribir una nota interna" onClick={() => { setNoteMode(true); focusComposer(); }}
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
+                        <StickyNote className="h-5 w-5" aria-hidden />
+                      </button>
+                      {state && state !== "CLOSED" ? (
+                        <button type="button" disabled={busy !== null || state === "TRANSITION_PENDING"} onClick={() => void run("takeover", async () => {
+                          await takeOver(selected);
+                          window.setTimeout(focusComposer, 300);
+                        }, "Tomaste el control. La IA dejó de responder.")}
+                          className="wa-accent inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-60">
+                          <Hand className="h-4 w-4" aria-hidden /> Tomar control para responder
+                        </button>
+                      ) : (
+                        <p className="flex-1 text-center text-sm text-muted-foreground">{state === "CLOSED" ? "Conversación cerrada." : "Cargando…"}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <form onSubmit={(event) => { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); }} className="wa-bar flex items-end gap-1.5 px-2 py-2 sm:px-3">
+                      {!noteMode && (
+                        <button type="button" aria-expanded={showQuick} aria-label="Respuestas rápidas" onClick={() => { if (!showQuick) loadReplies(); setShowQuick(!showQuick); }}
+                          className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${showQuick ? "bg-muted" : ""}`}>
+                          <MessageSquareText className="h-5 w-5" aria-hidden />
+                        </button>
+                      )}
+                      <button type="button" aria-pressed={noteMode} aria-label={noteMode ? "Volver a responder al cliente" : "Escribir una nota interna"}
+                        onClick={() => { setNoteMode(!noteMode); setShowQuick(false); focusComposer(); }}
+                        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-muted ${noteMode ? "wa-note-mode" : "text-muted-foreground"}`}>
+                        <StickyNote className="h-5 w-5" aria-hidden />
+                      </button>
+                      <label htmlFor="reply" className="sr-only">{noteMode ? "Nota interna para el equipo" : "Respuesta al cliente"}</label>
+                      <textarea id="reply" value={noteMode ? note : draft} maxLength={4096} rows={1} enterKeyHint="enter"
+                        onChange={(event) => { if (noteMode) setNote(event.target.value); else setDraft(event.target.value); }}
+                        // The keyboard shrinks the chat: keep the latest message in view, as WhatsApp does.
+                        onFocus={() => { if (atBottom.current) window.setTimeout(() => thread.current?.scrollTo({ top: thread.current.scrollHeight }), 250); }}
+                        // On a phone keyboard Enter is a line break; there the Send button sends.
+                        onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !isTouch()) { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); } }}
+                        className={`${noteMode ? "wa-note-mode" : "wa-input"} field-sizing-content max-h-36 min-h-11 min-w-0 flex-1 resize-none rounded-3xl px-4 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-accent)] sm:text-sm`}
+                        placeholder={noteMode ? "Nota interna: solo la ve el equipo" : "Escribí un mensaje"} />
+                      <button type="submit" disabled={busy !== null || (noteMode ? note.trim() === "" : draft.trim() === "" || windowClosed)}
+                        aria-label={noteMode ? "Guardar nota" : "Enviar respuesta"}
+                        className="wa-accent inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50">
+                        {noteMode ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
+                      </button>
+                    </form>
+                  )}
                 </div>
-              )}
-              {!readOnly && (
-                <details className="border-t border-border px-3 py-2 text-sm">
-                  <summary className="cursor-pointer font-semibold text-muted-foreground">Agregar nota interna (el cliente no la ve)</summary>
-                  <form onSubmit={(event) => { event.preventDefault(); void saveNote(); }} className="mt-2 flex flex-wrap items-end gap-2">
-                    <label className="flex min-w-60 flex-1 flex-col gap-1 text-xs font-semibold">Nota para el equipo
-                      <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={4096} rows={2}
-                        className="min-h-10 resize-none rounded-lg border border-border bg-background px-3 py-2 text-base font-normal sm:text-sm" />
-                    </label>
-                    <button type="submit" disabled={busy !== null || note.trim() === ""}
-                      className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-amber-400 px-3 font-semibold disabled:opacity-60">
-                      <StickyNote className="h-4 w-4" aria-hidden /> Guardar nota
-                    </button>
-                  </form>
-                </details>
               )}
               {!readOnly && humanInControl && aiEnabled && (
                 <details className="border-t border-border px-3 py-2 text-sm">

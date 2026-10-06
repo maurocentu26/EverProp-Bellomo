@@ -299,3 +299,20 @@ html[data-panel-text-size="grande"] .admin-workspace .lead-actions-expanded > :i
 .wa-inbox .wa-input { background-color: var(--wa-input); color: var(--wa-text); }
 .wa-inbox .wa-accent { background-color: var(--wa-accent); color: var(--wa-accent-text); }
 .wa-inbox .wa-selected { background-color: var(--wa-selected); }
+
+/* Phone/tablet: an open conversation takes the whole screen, like WhatsApp. Height and top follow the visual
+   viewport (set by ConversationInbox), so the composer sits right above the iOS keyboard instead of floating. */
+@media (max-width: 1023.98px) {
+  html.wa-chat-open, html.wa-chat-open body { overflow: hidden; overscroll-behavior: none; }
+  .wa-inbox .wa-fullscreen {
+    position: fixed; left: 0; right: 0; z-index: 60;
+    top: var(--wa-chat-top, 0px); height: var(--wa-chat-height, 100dvh);
+    border: 0; border-radius: 0;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* With the keyboard up the home indicator is hidden: no gap between composer and keyboard. */
+  html.wa-keyboard .wa-inbox .wa-fullscreen { padding-bottom: 0; }
+  .wa-inbox .wa-fullscreen .wa-bar:first-child { border-radius: 0; }
+}
+.wa-inbox .wa-note-mode { background-color: #fff7e0; color: #4a3200; }
+.dark .wa-inbox .wa-note-mode { background-color: #3a2c10; color: #f6e2b3; }
