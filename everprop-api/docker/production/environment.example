@@ -56,6 +56,7 @@ MAIL_FROM_NAME=EverProp
 
 # Eversys Conversations — see docs/eversys-conversations/go-live.md
 CONVERSATIONS_AI_ENABLED=false
+CONVERSATIONS_COPILOT_ENABLED=false
 AGENT_LLM_PROVIDER=disabled
 AGENT_LLM_MODEL=
 ANTHROPIC_API_KEY=REPLACE_WITH_SECRET

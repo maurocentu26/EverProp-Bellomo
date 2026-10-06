@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Bot, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bot, Sparkles, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import {
@@ -23,6 +23,7 @@ import {
   resolveUnknownSends,
   resumeAi,
   sendReply,
+  suggestReply,
   takeOver,
   threadCursor,
   type ConversationFilter,
@@ -174,6 +175,9 @@ export function ConversationInbox() {
   const [openedSummary, setOpenedSummary] = useState<ConversationSummary | null>(null);
   const [state, setState] = useState<ConversationState | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [copilotEnabled, setCopilotEnabled] = useState(false);
+  // The copilot draft currently in the composer (to report whether it was sent as is or edited).
+  const [suggestion, setSuggestion] = useState<{ id: string; text: string } | null>(null);
   // WhatsApp only: when the 24 h service window closes (null closes_at = already closed).
   const [replyWindow, setReplyWindow] = useState<{ closes_at: string | null } | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -236,6 +240,7 @@ export function ConversationInbox() {
       setMessages(merged);
       setState(response.conversation.state);
       setAiEnabled(response.conversation.ai_enabled);
+      setCopilotEnabled(response.conversation.copilot_enabled === true);
       setReplyWindow(response.conversation.reply_window ?? null);
       setThreadError("");
     } catch {
@@ -296,6 +301,7 @@ export function ConversationInbox() {
     setShowQuick(false);
     setDraft(drafts.current.get(id) ?? "");
     draftKey.current = { key: newKey(), text: "" };
+    setSuggestion(null);
     setNote("");
     setNoteMode(false);
     noteKey.current = { key: newKey(), text: "" };
@@ -342,13 +348,30 @@ export function ConversationInbox() {
     if (!conversation || !text || windowClosed) return;
     if (draftKey.current.text !== text) draftKey.current = { key: newKey(), text };
     atBottom.current = true;
+    const fromDraft = suggestion?.id;
     await run("reply", async () => {
-      await sendReply(conversation, text, draftKey.current.key);
+      await sendReply(conversation, text, draftKey.current.key, fromDraft);
       drafts.current.delete(conversation);
       if (selectedRef.current === conversation) {
         setDraft("");
         draftKey.current = { key: newKey(), text: "" };
+        setSuggestion(null);
       }
+    });
+  }
+
+  /** Copilot: fills the composer with a draft; the advisor reviews, edits and sends it. Nothing goes out on its own. */
+  async function suggestDraft() {
+    const conversation = selected;
+    if (!conversation) return;
+    const previous = draft;
+    await run("suggest", async () => {
+      const { data } = await suggestReply(conversation);
+      if (selectedRef.current !== conversation) return;
+      setSuggestion({ id: data.suggestion_id, text: data.text });
+      setDraft(data.text);
+      focusComposer();
+      if (previous.trim()) toast("Reemplacé lo que habías escrito por la sugerencia.", { action: { label: "Deshacer", onClick: () => { setSuggestion(null); setDraft(previous); } } });
     });
   }
 
@@ -609,6 +632,12 @@ export function ConversationInbox() {
                       )}
                     </div>
                   ) : (
+                    <>
+                    {!noteMode && suggestion && draft.trim() !== "" && (
+                      <p role="status" className="wa-bar flex items-center gap-1 px-4 pt-2 text-xs font-semibold text-violet-700 dark:text-violet-300">
+                        <Sparkles className="h-3 w-3" aria-hidden /> Borrador de la IA: revisalo antes de enviar. No sale nada hasta que lo envíes.
+                      </p>
+                    )}
                     <form onSubmit={(event) => { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); }} className="wa-bar flex items-end gap-1.5 px-2 py-2 sm:px-3">
                       {!noteMode && (
                         <button type="button" aria-expanded={showQuick} aria-label="Respuestas rápidas" onClick={() => { if (!showQuick) loadReplies(); setShowQuick(!showQuick); }}
@@ -621,6 +650,13 @@ export function ConversationInbox() {
                         className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-muted ${noteMode ? "wa-note-mode" : "text-muted-foreground"}`}>
                         <StickyNote className="h-5 w-5" aria-hidden />
                       </button>
+                      {!noteMode && copilotEnabled && (
+                        <button type="button" disabled={busy !== null} onClick={() => void suggestDraft()}
+                          aria-label={busy === "suggest" ? "Pidiendo una sugerencia a la IA" : "Sugerir respuesta con IA"}
+                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-violet-700 hover:bg-muted disabled:opacity-50 dark:text-violet-300">
+                          <Sparkles className={`h-5 w-5 ${busy === "suggest" ? "animate-pulse motion-reduce:animate-none" : ""}`} aria-hidden />
+                        </button>
+                      )}
                       <label htmlFor="reply" className="sr-only">{noteMode ? "Nota interna para el equipo" : "Respuesta al cliente"}</label>
                       <textarea id="reply" value={noteMode ? note : draft} maxLength={4096} rows={1} enterKeyHint="enter"
                         onChange={(event) => { if (noteMode) setNote(event.target.value); else setDraft(event.target.value); }}
@@ -636,6 +672,7 @@ export function ConversationInbox() {
                         {noteMode ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
                       </button>
                     </form>
+                    </>
                   )}
                 </div>
               )}

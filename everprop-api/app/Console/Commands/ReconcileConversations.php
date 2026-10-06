@@ -59,14 +59,20 @@ final class ReconcileConversations extends Command
         // Assistant turns that died mid-way (worker crash): fail them and hand the conversation to a human,
         // so a visitor is never left in AI_ACTIVE without an answer.
         $stuck = DB::table('chatbot_runs')->where('status', 'STARTED')->where('started_at', '<', now()->subMinutes(5))
-            ->whereNotNull('conversation_id')->limit(200)->get(['id', 'tenant_id', 'conversation_id', 'control_epoch']);
+            ->whereNotNull('conversation_id')->limit(200)->get(['id', 'tenant_id', 'conversation_id', 'control_epoch', 'provider_run_id']);
         foreach ($stuck as $run) {
+            $copilot = str_starts_with((string) $run->provider_run_id, 'suggest:');
             $fail = fn () => DB::table('chatbot_runs')->where('tenant_id', $run->tenant_id)->where('id', $run->id)->where('status', 'STARTED')
-                ->update(['status' => 'FAILED', 'decision' => 'HANDOFF', 'error_code' => 'RUN_TIMEOUT', 'completed_at' => now()]);
+                ->update(['status' => 'FAILED', 'decision' => $copilot ? 'IGNORE' : 'HANDOFF', 'error_code' => 'RUN_TIMEOUT', 'completed_at' => now()]);
             try {
                 // Reservations of a dead run may have reached the provider: keep them as UNKNOWN (never silently freed).
                 DB::table('usage_ledger')->where('tenant_id', $run->tenant_id)->where('operation_key', 'like', 'llm:'.$run->id.':%')
                     ->where('status', 'RESERVED')->update(['status' => 'UNKNOWN']);
+                if ($copilot) {
+                    $fail(); // a draft nobody received: the advisor already has the conversation
+
+                    continue;
+                }
                 $result = app(ConversationControl::class)->requestHuman((int) $run->tenant_id, (int) $run->conversation_id, (int) $run->control_epoch,
                     'TOOL_FAILURE: turno del asistente vencido', app(PromptBuilder::class)->unavailableNotice(), 'run:'.$run->id);
                 // Marked FAILED only after the handoff: if it errors, the next sweep retries it.

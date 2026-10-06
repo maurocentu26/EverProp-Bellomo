@@ -31,7 +31,7 @@ final class OutputGuard
      * @param  list<string>  $knowledge  approved knowledge excerpts shown to the model this turn
      * @return list<string> violation codes (empty = ok)
      */
-    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false): array
+    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false): array
     {
         $allowed = [];
         foreach ($prices as $price) {
@@ -59,6 +59,10 @@ final class OutputGuard
         }
         if ($this->claimsConfirmation($text)) {
             $violations[] = 'CONFIRMATION_CLAIM';
+        }
+        // A copilot draft cannot act, so it must not say it registered, requested or handed anything off.
+        if ($draft && preg_match('/\b(registr|anot|ped|solicit|deriv|pas)(é|e|amos)\b[^.!?\n]{0,50}(inter[eé]s|visita|asesor|datos|contacto|tel[eé]fono)/iu', $text) === 1) {
+            $violations[] = 'ACTION_CLAIM';
         }
         if ($visitRequested && ! in_array('CONFIRMATION_CLAIM', $violations, true)
             && preg_match('/asesor[^.!?\n]{0,60}confirm|confirm[^.!?\n]{0,60}asesor/iu', $text) !== 1) {

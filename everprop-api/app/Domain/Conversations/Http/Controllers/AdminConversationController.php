@@ -2,6 +2,8 @@
 
 namespace App\Domain\Conversations\Http\Controllers;
 
+use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
+use App\Domain\AgentRuntime\Coordinator\CopilotFailure;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
 use App\Domain\Conversations\Services\ChannelPolicy;
 use App\Domain\Conversations\Services\ConversationControl;
@@ -116,6 +118,7 @@ final class AdminConversationController extends Controller
         return response()->json([
             'conversation' => ['id' => $row->public_id, 'state' => $row->control_state, 'epoch' => (int) $row->control_epoch,
                 'ai_enabled' => InboundMessageService::aiEnabled(),
+                'copilot_enabled' => (bool) config('conversations.copilot_enabled') && config('agent.llm_provider') !== 'disabled',
                 'reply_window' => $isWhatsApp ? ['closes_at' => app(ChannelPolicy::class)
                     ->windowClosesAt((int) $row->tenant_id, (int) $row->id, (int) $row->channel_account_id)?->toISOString()] : null],
             'data' => $messages->map(fn ($m) => [
@@ -150,13 +153,63 @@ final class AdminConversationController extends Controller
     {
         $user = $this->writer($request);
         $row = $this->find($user, $conversation);
-        $data = $request->validate(['text' => 'required|string|max:4096', 'idempotency_key' => 'required|string|min:16|max:120']);
+        $data = $request->validate(['text' => 'required|string|max:4096', 'idempotency_key' => 'required|string|min:16|max:120',
+            'suggestion_id' => 'nullable|uuid']);
         $result = $this->control->humanReply((int) $row->tenant_id, (int) $row->id, $user, $data['text'], $data['idempotency_key']);
         if (! $result['replayed']) {
             DispatchOutboundJob::dispatch((int) $row->tenant_id, $result['job_id']);
         }
+        if (isset($data['suggestion_id'])) {
+            $this->recordCopilotAcceptance($row, $data['suggestion_id'], $data['text'], $result['sequence']);
+        }
 
         return response()->json(['data' => ['sequence' => $result['sequence'], 'replayed' => $result['replayed']]], $result['replayed'] ? 200 : 202);
+    }
+
+    /** Copilot draft for the advisor in control: nothing is sent; the advisor edits it and replies as usual. */
+    public function suggest(Request $request, string $conversation): JsonResponse
+    {
+        $user = $this->writer($request);
+        $row = $this->find($user, $conversation);
+        // Any role: only whoever can answer may spend the tenant's budget on a draft.
+        if ($row->control_state !== 'HUMAN_ACTIVE' || (int) $row->controlled_by_user_id !== (int) $user->id) {
+            return response()->json(['error' => ['code' => 'NOT_IN_CONTROL', 'message' => 'Tomá el control de la conversación para pedir una sugerencia.']], 409);
+        }
+        try {
+            return response()->json(['data' => app(AgentCoordinator::class)->suggest((int) $row->tenant_id, (int) $row->id)]);
+        } catch (CopilotFailure $e) {
+            $action = ['registrar_interes' => 'registrar el interés', 'solicitar_visita' => 'pedir la visita', 'derivar_a_asesor' => 'derivar la conversación'][$e->action ?? ''] ?? 'hacer esa acción';
+            [$status, $message] = match ($e->errorCode) {
+                'ACTION_NEEDED' => [422, "La IA sugiere {$action}: hacelo vos desde la conversación y respondé al cliente."],
+                'TOO_MANY_DRAFTS' => [429, 'Ya pediste varias sugerencias para este mensaje. Escribí la respuesta vos.'],
+                'COPILOT_DISABLED' => [409, 'El copiloto está apagado.'],
+                'NOT_IN_CONTROL' => [409, 'Tomá el control de la conversación para pedir una sugerencia.'],
+                'NOTHING_TO_ANSWER' => [422, 'El cliente todavía no escribió nada para responder.'],
+                'UNSAFE_DRAFT' => [422, 'No pude sugerir una respuesta con datos verificados. Escribila vos.'],
+                'QUOTA_EXCEEDED' => [429, 'Se alcanzó el tope de gasto de la IA. Escribí la respuesta vos.'],
+                default => [503, 'La IA no está disponible ahora. Escribí la respuesta vos.'],
+            };
+
+            return response()->json(['error' => ['code' => $e->errorCode, 'message' => $message] + ($e->action ? ['action' => $e->action] : [])], $status);
+        }
+    }
+
+    /**
+     * Copilot acceptance, judged by the server (sent text vs the stored draft): the measure for letting the
+     * assistant answer on its own, so it never trusts a flag from the client. Only valid drafts of this
+     * conversation, once.
+     */
+    private function recordCopilotAcceptance(object $row, string $suggestionId, string $text, int $sequence): void
+    {
+        $runs = fn () => DB::table('chatbot_runs')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)
+            ->where('provider_run_id', 'suggest:'.$suggestionId)->where('status', 'SUCCEEDED')->where('decision', 'REPLY')->whereNull('output_message_id');
+        $draftHash = json_decode((string) $runs()->value('trace_json'), true)['draft_sha256'] ?? null;
+        if ($draftHash === null) {
+            return;
+        }
+        $outcome = hash_equals($draftHash, hash('sha256', trim($text))) ? 'SENT_AS_IS' : 'SENT_EDITED';
+        $messageId = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)->where('sequence', $sequence)->value('id');
+        $runs()->update(['output_message_id' => $messageId, 'trace_json' => DB::raw("JSON_SET(trace_json, '$.advisor', '".$outcome."')")]);
     }
 
     /** Internal note for the team: never sent to the customer nor shown to the assistant. */

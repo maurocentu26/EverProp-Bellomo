@@ -110,7 +110,23 @@ final class ConversationKpis extends Command
             'tenant_id' => $tenantId, 'from' => $from->toDateString(), 'to_exclusive' => $to->toDateString(), 'timezone' => 'UTC',
             'by_channel' => $byChannel,
             'duplicates' => ['contacts_with_several_leads' => $leads->filter(fn ($l) => $l->count() > 1)->count(), 'advisor_messages_sent_twice' => (int) $duplicateSends],
+            'copilot' => $this->copilot($tenantId, $from, $to),
         ];
+    }
+
+    /**
+     * Copilot drafts and what advisors did with them: the share sent as is decides when the assistant may answer alone.
+     *
+     * @return array{drafts: int, blocked: int, sent_as_is: int, sent_edited: int}
+     */
+    private function copilot(int $tenantId, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $runs = DB::table('chatbot_runs')->where('tenant_id', $tenantId)->where('provider_run_id', 'like', 'suggest:%')
+            ->where('started_at', '>=', $from)->where('started_at', '<', $to)->where('status', 'SUCCEEDED')->get(['decision', 'trace_json']);
+        $advisor = $runs->countBy(fn ($r) => json_decode((string) $r->trace_json, true)['advisor'] ?? 'NOT_SENT');
+
+        return ['drafts' => $runs->where('decision', 'REPLY')->count(), 'blocked' => $runs->where('decision', 'BLOCK')->count(),
+            'sent_as_is' => $advisor['SENT_AS_IS'] ?? 0, 'sent_edited' => $advisor['SENT_EDITED'] ?? 0];
     }
 
     /** @param list<float> $sorted */

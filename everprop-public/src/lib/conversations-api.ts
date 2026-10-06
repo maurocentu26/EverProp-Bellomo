@@ -138,7 +138,7 @@ export function mergeMessages(current: ConversationMessage[], incoming: Conversa
 }
 
 export async function getConversationMessages(id: string, after = 0) {
-  return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean; reply_window: { closes_at: string | null } | null }; data: ConversationMessage[] }>(
+  return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean; copilot_enabled?: boolean; reply_window: { closes_at: string | null } | null }; data: ConversationMessage[] }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages${after > 0 ? `?after=${after}` : ""}`,
   );
 }
@@ -177,9 +177,18 @@ export async function resolveUnknownSends(id: string) {
 }
 
 /** The idempotency key belongs to the draft: a retry of the same text reuses it. */
-export async function sendReply(id: string, text: string, idempotencyKey: string) {
+/** `suggestionId`: the copilot draft this reply came from (the server decides whether it was edited). */
+export async function sendReply(id: string, text: string, idempotencyKey: string, suggestionId?: string) {
   return apiFetch<{ data: { sequence: number; replayed: boolean } }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages`,
-    { method: "POST", body: JSON.stringify({ text, idempotency_key: idempotencyKey }) },
+    { method: "POST", body: JSON.stringify({ text, idempotency_key: idempotencyKey,
+      ...(suggestionId ? { suggestion_id: suggestionId } : {}) }) },
+  );
+}
+
+/** Copilot: a draft for the advisor in control. Nothing is sent until the advisor sends it. */
+export async function suggestReply(id: string) {
+  return apiFetch<{ data: { text: string; suggestion_id: string } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/suggestion`, { method: "POST" },
   );
 }

@@ -31,6 +31,9 @@ final class AgentCoordinator
 {
     public const AGENT_NAME = 'Asistente Eversys';
 
+    /** Copilot drafts only read: registering interest, visits and handoffs stay with the advisor. */
+    public const COPILOT_TOOLS = ['buscar_propiedades', 'consultar_propiedad'];
+
     public function __construct(
         private readonly LlmClient $llm,
         private readonly ToolGateway $tools,
@@ -104,10 +107,87 @@ final class AgentCoordinator
     }
 
     /**
+     * Copilot: a draft for the advisor who controls the conversation. Same prompt, knowledge, output guard and
+     * budget as a turn, but read-only tools; nothing is sent, queued or changed in the conversation. Only the run
+     * is stored (cost and audit); the advisor edits the text and sends it as an ordinary reply.
+     *
+     * @return array{text: string, suggestion_id: string}
+     *
+     * @throws CopilotFailure
+     */
+    public function suggest(int $tenantId, int $conversationId): array
+    {
+        if (! config('conversations.copilot_enabled') || config('agent.llm_provider') === 'disabled') {
+            throw new CopilotFailure('COPILOT_DISABLED');
+        }
+        $conversation = DB::table('conversations as c')
+            ->join('channel_accounts as ca', fn ($j) => $j->on('ca.id', '=', 'c.channel_account_id')->on('ca.tenant_id', '=', 'c.tenant_id'))
+            ->where('c.tenant_id', $tenantId)->where('c.id', $conversationId)
+            ->first(['c.contact_id', 'c.channel_account_id', 'c.control_state', 'c.control_epoch', 'ca.channel_type']);
+        if ($conversation?->control_state !== 'HUMAN_ACTIVE') {
+            throw new CopilotFailure('NOT_IN_CONTROL');
+        }
+        $thread = fn () => DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId);
+        if (! $thread()->where('direction', 'INBOUND')->exists()) {
+            throw new CopilotFailure('NOTHING_TO_ANSWER');
+        }
+        // The draft answers the customer's latest message: the history must end on their turn (and notes never reach the model).
+        $inputSequence = (int) $thread()->where('direction', 'INBOUND')->max('sequence');
+        $drafts = fn () => DB::table('chatbot_runs')->where('tenant_id', $tenantId)->where('provider_run_id', 'like', 'suggest:%');
+        if ($drafts()->where('conversation_id', $conversationId)->where('input_sequence', $inputSequence)->count() >= (int) config('conversations.copilot_drafts_per_message')) {
+            throw new CopilotFailure('TOO_MANY_DRAFTS');
+        }
+        // Own monthly ceiling, so drafts can never starve the assistant's turns of the shared budget (D14).
+        if ((float) $drafts()->where('started_at', '>=', CarbonImmutable::now('UTC')->startOfMonth())->sum('estimated_cost')
+            >= (float) config('conversations.copilot_monthly_usd')) {
+            throw new CopilotFailure('QUOTA_EXCEEDED');
+        }
+
+        $suggestionId = (string) Str::uuid();
+        $runId = $this->startRun($tenantId, $conversationId, (int) $conversation->control_epoch, $inputSequence, 'suggest:'.$suggestionId)
+            ?? throw new CopilotFailure('INTERNAL_ERROR');
+        $context = new ToolContext($tenantId, $conversationId, (int) $conversation->contact_id, (int) $conversation->channel_account_id,
+            (string) $conversation->channel_type, $runId, (int) $conversation->control_epoch, $inputSequence, (string) Str::uuid());
+        $trace = ['mode' => 'COPILOT', 'calls' => 0, 'tools' => [], 'sources' => [], 'guard' => []];
+        $usage = ['input' => 0, 'output' => 0, 'micros' => 0];
+
+        try {
+            $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage, copilot: true);
+            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], draft: true);
+            if ($text === '' || $violations !== []) {
+                $trace['guard'] = $violations === [] ? ['EMPTY_REPLY'] : $violations;
+                $this->finish($context, 'BLOCK', 'SUCCEEDED', 'UNSAFE_DRAFT', $trace, $usage);
+
+                throw new CopilotFailure('UNSAFE_DRAFT');
+            }
+            // Only a hash: the acceptance check compares the sent text with it; the draft itself stays out of the trace.
+            $this->finish($context, 'REPLY', 'SUCCEEDED', null, $trace + ['draft_sha256' => hash('sha256', trim($text))], $usage);
+
+            return ['text' => $text, 'suggestion_id' => $suggestionId];
+        } catch (CopilotFailure $e) {
+            if ($e->errorCode === 'ACTION_NEEDED') {
+                $this->finish($context, 'IGNORE', 'SUCCEEDED', 'ACTION_NEEDED', $trace, $usage);
+            }
+
+            throw $e;
+        } catch (QuotaExceeded|LlmFailure $e) {
+            $code = $e instanceof QuotaExceeded ? 'QUOTA_EXCEEDED' : $e->errorCode;
+            $this->finish($context, 'IGNORE', 'FAILED', $code, $trace, $usage);
+
+            throw new CopilotFailure($code === 'QUOTA_EXCEEDED' ? $code : 'MODEL_UNAVAILABLE');
+        } catch (Throwable $e) {
+            report($e);
+            $this->finish($context, 'IGNORE', 'FAILED', 'INTERNAL_ERROR', $trace, $usage);
+
+            throw new CopilotFailure('INTERNAL_ERROR');
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $trace
      * @param  array{input: int, output: int, micros: int}  $usage
      */
-    private function converse(ToolContext $context, string $channelType, array &$trace, array &$usage): string
+    private function converse(ToolContext $context, string $channelType, array &$trace, array &$usage, bool $copilot = false): string
     {
         $maxIn = (int) config('agent.max_input_tokens');
         $maxOut = (int) config('agent.max_output_tokens');
@@ -119,8 +199,11 @@ final class AgentCoordinator
         $trace['prices'] = [];
 
         $tenantName = (string) DB::table('tenants')->where('id', $context->tenantId)->value('name');
-        $system = $this->prompts->system($tenantName, $channelType, CarbonImmutable::now('America/Argentina/Buenos_Aires')->toDateString(), $sources);
+        $system = $this->prompts->system($tenantName, $channelType, CarbonImmutable::now('America/Argentina/Buenos_Aires')->toDateString(), $sources, $copilot);
         $definitions = $this->tools->definitions();
+        if ($copilot) {
+            $definitions = array_values(array_filter($definitions, fn (array $d): bool => in_array($d['name'], self::COPILOT_TOOLS, true)));
+        }
         $messages = $this->fit($system, $definitions, $history, $maxIn);
 
         $response = $this->call($context, $system, $messages, $definitions, $maxOut, true, $trace, $usage);
@@ -131,9 +214,13 @@ final class AgentCoordinator
 
         $results = [];
         foreach ($toolUses as $i => $use) {
-            $envelope = $i < (int) config('agent.max_tool_calls')
-                ? $this->tools->execute($context, $use['name'], $use['input'])
-                : ['ok' => false, 'error' => ['code' => 'VALIDATION_ERROR', 'message' => 'Límite de herramientas por turno.', 'retryable' => false]];
+            $envelope = match (true) {
+                // Enforced here too: the model may name a tool it was not offered.
+                $copilot && ! in_array($use['name'], self::COPILOT_TOOLS, true) => ['ok' => false, 'error' => ['code' => 'FORBIDDEN',
+                    'message' => 'En modo borrador solo podés consultar; esa acción la hace el asesor.', 'retryable' => false]],
+                $i < (int) config('agent.max_tool_calls') => $this->tools->execute($context, $use['name'], $use['input']),
+                default => ['ok' => false, 'error' => ['code' => 'VALIDATION_ERROR', 'message' => 'Límite de herramientas por turno.', 'retryable' => false]],
+            };
             $trace['tools'][] = ['name' => mb_substr($use['name'], 0, 64), 'ok' => $envelope['ok'], 'code' => $envelope['error']['code'] ?? null,
                 'replayed' => $envelope['meta']['replayed'] ?? false];
             $json = json_encode($envelope, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -142,6 +229,12 @@ final class AgentCoordinator
                 $trace['visit_requested'] = true;
             }
             $results[] = ['type' => 'tool_result', 'tool_use_id' => $use['id'], 'content' => $json, 'is_error' => ! $envelope['ok']];
+        }
+        $refused = array_values(array_filter($trace['tools'], fn (array $t): bool => $t['code'] === 'FORBIDDEN'));
+        if ($copilot && $refused !== []) {
+            // The model wanted to act: say which action the advisor should take instead of paying for a second
+            // call that could pretend it was done.
+            throw new CopilotFailure('ACTION_NEEDED', $refused[0]['name']);
         }
         if ($context->handoff !== null && $response->text() === '') {
             // No need for a second call just to say goodbye.
@@ -279,7 +372,7 @@ final class AgentCoordinator
     }
 
     /** Idempotent per (conversation, inbound sequence): a redelivered job does not answer twice. */
-    private function startRun(int $tenantId, int $conversationId, int $epoch, int $inputSequence): ?int
+    private function startRun(int $tenantId, int $conversationId, int $epoch, int $inputSequence, ?string $runRef = null): ?int
     {
         DB::table('chatbot_agents')->insertOrIgnore([
             'tenant_id' => $tenantId, 'public_id' => (string) Str::uuid(), 'name' => self::AGENT_NAME, 'mode' => 'AI', 'status' => 'ACTIVE',
@@ -287,12 +380,20 @@ final class AgentCoordinator
         ]);
         $agentId = (int) DB::table('chatbot_agents')->where('tenant_id', $tenantId)->where('name', self::AGENT_NAME)->value('id');
         $now = CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v');
-        DB::table('chatbot_sessions')->insertOrIgnore([
-            'tenant_id' => $tenantId, 'chatbot_agent_id' => $agentId, 'conversation_id' => $conversationId, 'status' => 'ACTIVE',
-            'started_at' => $now, 'last_activity_at' => $now,
-        ]);
-        $sessionId = (int) DB::table('chatbot_sessions')->where('tenant_id', $tenantId)->where('chatbot_agent_id', $agentId)
-            ->where('conversation_id', $conversationId)->where('status', 'ACTIVE')->value('id');
+        $sessions = fn () => DB::table('chatbot_sessions')->where('tenant_id', $tenantId)->where('chatbot_agent_id', $agentId)->where('conversation_id', $conversationId);
+        if (str_starts_with((string) $runRef, 'suggest:')) {
+            // A draft never puts the bot back in the conversation: reuse its last session, or a closed one.
+            $sessionId = (int) ($sessions()->max('id') ?? DB::table('chatbot_sessions')->insertGetId([
+                'tenant_id' => $tenantId, 'chatbot_agent_id' => $agentId, 'conversation_id' => $conversationId, 'status' => 'COMPLETED',
+                'started_at' => $now, 'last_activity_at' => $now, 'ended_at' => $now,
+            ]));
+        } else {
+            DB::table('chatbot_sessions')->insertOrIgnore([
+                'tenant_id' => $tenantId, 'chatbot_agent_id' => $agentId, 'conversation_id' => $conversationId, 'status' => 'ACTIVE',
+                'started_at' => $now, 'last_activity_at' => $now,
+            ]);
+            $sessionId = (int) $sessions()->where('status', 'ACTIVE')->value('id');
+        }
         $inputMessageId = DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
             ->where('sequence', $inputSequence)->value('id');
 
@@ -300,7 +401,7 @@ final class AgentCoordinator
             return (int) DB::table('chatbot_runs')->insertGetId([
                 'tenant_id' => $tenantId, 'session_id' => $sessionId, 'conversation_id' => $conversationId, 'control_epoch' => $epoch,
                 'input_sequence' => $inputSequence, 'input_message_id' => $inputMessageId,
-                'provider_run_id' => 'turn:'.$conversationId.':'.$inputSequence, 'model_provider' => $this->llm->provider(),
+                'provider_run_id' => $runRef ?? 'turn:'.$conversationId.':'.$inputSequence, 'model_provider' => $this->llm->provider(),
                 'model_name' => $this->llm->model(), 'prompt_version' => config('agent.prompt_version'), 'decision' => 'REPLY',
                 'status' => 'STARTED', 'started_at' => $now,
             ]);
