@@ -141,6 +141,17 @@ EverSys no tiene pantalla de plantillas y **no se construye una para el video**.
 
 No se publican CUIT, domicilio ni plazos de retención hasta tener los datos confirmados.
 
+## 4b. Lo que suma la guía "Become a Tech Provider" (revisada el 2026-10-06)
+
+Confirma lo de la sección 3: dos videos (un mensaje enviado y recibido en WhatsApp; una plantilla creada), con las alternativas oficiales de cURL de API Setup y WhatsApp Manager. Suma cuatro puntos que cambian el plan:
+
+1. **La verificación del negocio va primero y pide datos que todavía no tenemos:** nombre legal, dirección, teléfono, email y **sitio web** de EverSys, más documentos si Meta no encuentra el negocio. Sin verificación no se puede ni empezar el App Review. Bloqueante: identidad legal y páginas legales en `eversyssolutions.com.ar` (sección 4).
+2. **Sin acceso avanzado solo funcionan las cuentas propias.** Las llamadas sobre WABAs que no son del negocio de la app devuelven error `200`. Por eso el App Review hace falta para atender **clientes** (el SaaS), no para que un negocio use su propia cuenta. Opción para el piloto, a decidir: que Bellomo use la Cloud API con su propia app y su propia WABA, sin esperar a que EverSys sea Tech Provider. Hay que validar el costo de ese camino (cómo se carga el token de Bellomo sin Embedded Signup) antes de elegirlo.
+3. **Clientes que ya usan la app WhatsApp Business:** Embedded Signup puede sumarlos conservando su número y su app ("Onboard WhatsApp Business app users"). Es clave para que los asesores no pierdan WhatsApp. Pendiente: confirmar en la documentación de esa página qué funciones de la app se mantienen y qué cambia en nuestra bandeja (mensajes enviados desde el celular).
+4. **Facturación:** cada cliente sumado tiene que cargar una tarjeta en su cuenta de WhatsApp Business Platform. Va en el guion de alta de Bellomo y en la oferta comercial del SaaS.
+
+También permite hacerlo con un **Solution Partner** (un BSP que ya es proveedor), con su app ID. Es la salida si la verificación o el App Review se demoran.
+
 ## 5. Qué falta para autorizar la prueba real y cómo apagarla
 
 ### Requisitos para pedir la autorización X04 (solo staging)
