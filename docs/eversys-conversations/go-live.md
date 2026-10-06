@@ -104,7 +104,7 @@ Con IA apagada el chat ya sirve: toda conversación entra a la bandeja y un ases
 | 2 | Worker: servicio Railway con `railway-worker.json`; `QUEUE_CONNECTION=database` (o redis) en API **y** worker, `DB_QUEUE_RETRY_AFTER`/`REDIS_QUEUE_RETRY_AFTER` ≥ 240 | `production-check` OK en "Assistant: asynchronous queue" y una respuesta de prueba pasa a "Enviado" |
 | 3 | Cargar en `/admin/conocimiento`: FAQs, financiación y promociones vigentes; aprobarlas | `/admin/conocimiento` muestra "Aprobada" |
 | 4 | Variables: `AGENT_LLM_PROVIDER=anthropic`, `AGENT_LLM_MODEL=<modelo aprobado>`, `ANTHROPIC_API_KEY` (secreto) | `production-check` OK en "Assistant: LLM provider configured" |
-| 5 | Correr los 23 casos de `evals/` contra el modelo real en staging; todos los críticos en verde | reporte de evals |
+| 5 | Correr los casos de modelo de `evals/` contra el modelo real con el runner (`EVAL_LLM=configured`, ver `evals/README.md`), en una base aislada; todos los críticos en verde y calificación humana de los `needs_human` | reporte `storage/app/evals/report-*.json` |
 | 6 | `CONVERSATIONS_AI_ENABLED=true` en horario con asesores disponibles; monitorear `chatbot_runs` (FAILED/HANDOFF) y `usage_ledger` las primeras 48 h | derivaciones < umbral acordado; gasto dentro del tope |
 
 **Rollback de la IA (no probado en Railway todavía):** poner `CONVERSATIONS_AI_ENABLED=false` en API, worker **y scheduler**. La configuración se cachea al arrancar (`config:cache` en el entrypoint), así que el cambio aplica recién cuando Railway redeploya/reinicia **cada** servicio; un worker que no se reinicia sigue con el valor viejo. Una vez aplicado:

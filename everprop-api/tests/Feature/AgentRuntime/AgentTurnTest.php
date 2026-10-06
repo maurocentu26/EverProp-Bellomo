@@ -39,18 +39,7 @@ final class AgentTurnTest extends TestCase
 
     protected function tearDown(): void
     {
-        if ($this->tenants !== []) {
-            $tables = DB::table('information_schema.COLUMNS')->where('COLUMNS.TABLE_SCHEMA', DB::getDatabaseName())
-                ->where('COLUMNS.COLUMN_NAME', 'tenant_id')->join('information_schema.TABLES as t', fn ($j) => $j
-                ->on('t.TABLE_NAME', '=', 'COLUMNS.TABLE_NAME')->on('t.TABLE_SCHEMA', '=', 'COLUMNS.TABLE_SCHEMA'))
-                ->where('t.TABLE_TYPE', 'BASE TABLE')->pluck('COLUMNS.TABLE_NAME');
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            foreach ($tables as $table) {
-                DB::table($table)->whereIn('tenant_id', $this->tenants)->delete();
-            }
-            DB::table('tenants')->whereIn('id', $this->tenants)->delete();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-        }
+        $this->deleteSyntheticTenants($this->tenants);
         parent::tearDown();
     }
 

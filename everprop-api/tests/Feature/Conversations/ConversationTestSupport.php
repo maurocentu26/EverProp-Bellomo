@@ -15,6 +15,28 @@ trait ConversationTestSupport
 {
     protected const APP_SECRET = 'test-app-secret';
 
+    /**
+     * Removes every row of tests that COMMIT (stored procedures and FULLTEXT need committed rows).
+     *
+     * @param  list<int>  $tenantIds
+     */
+    protected function deleteSyntheticTenants(array $tenantIds): void
+    {
+        if ($tenantIds === []) {
+            return;
+        }
+        $tables = DB::table('information_schema.COLUMNS')->where('COLUMNS.TABLE_SCHEMA', DB::getDatabaseName())
+            ->where('COLUMNS.COLUMN_NAME', 'tenant_id')->join('information_schema.TABLES as t', fn ($j) => $j
+            ->on('t.TABLE_NAME', '=', 'COLUMNS.TABLE_NAME')->on('t.TABLE_SCHEMA', '=', 'COLUMNS.TABLE_SCHEMA'))
+            ->where('t.TABLE_TYPE', 'BASE TABLE')->pluck('COLUMNS.TABLE_NAME');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        foreach ($tables as $table) {
+            DB::table($table)->whereIn('tenant_id', $tenantIds)->delete();
+        }
+        DB::table('tenants')->whereIn('id', $tenantIds)->delete();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+    }
+
     /** @return array{tenant: Tenant, integration: int} */
     protected function tenantWithIntegration(string $provider = 'META'): array
     {
