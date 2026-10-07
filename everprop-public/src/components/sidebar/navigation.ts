@@ -40,7 +40,19 @@ type NavigationAccess = {
   isMockMode: boolean;
   isAdvisor?: boolean;
   isTenantAdmin?: boolean;
+  isRotator?: boolean;
 };
+
+export const rotatorNavigationGroups: NavGroup[] = [
+  {
+    label: "Asignación",
+    items: [
+      { title: "Conversaciones", href: "/admin/conversaciones", icon: MessagesSquare, matchPath: "/admin/conversaciones" },
+      { title: "Solicitudes de visita", href: "/admin/solicitudes-visita", icon: CalendarCheck, matchPath: "/admin/solicitudes-visita" },
+      { title: "Leads", href: "/admin/leads", icon: Users, matchPath: "/admin/leads" },
+    ]
+  }
+];
 
 export const advisorNavigationGroups: NavGroup[] = [
   {
@@ -122,7 +134,12 @@ export function getAvailableNavigationGroups({
   isEngineer,
   isAdvisor,
   isTenantAdmin,
+  isRotator,
 }: NavigationAccess): NavGroup[] {
+  if (isRotator) {
+    return rotatorNavigationGroups.map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))}));
+  }
+
   if (isAdvisor) {
     return advisorNavigationGroups.map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))}));
   }

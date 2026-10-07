@@ -147,6 +147,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
 function mapRole(role: string): UserRole {
   if (role === "INVENTORY_MANAGER") return "ENGINEER";
   if (role === "SUPER_ADMIN" || role === "TENANT_ADMIN" || role === "SALES_MANAGER") return "ADMIN";
+  if (role === "LEAD_ROTATOR") return "ROTATOR";
   return "ADVISOR";
 }
 
