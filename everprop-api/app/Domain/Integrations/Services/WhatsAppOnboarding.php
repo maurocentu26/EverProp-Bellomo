@@ -34,16 +34,32 @@ final class WhatsAppOnboarding
             throw new OnboardingFailed('ONBOARDING_DISABLED', 'La conexión con WhatsApp no está habilitada en este entorno.', 503);
         }
 
-        return $this->withWabaLock($signup['waba_id'], fn () => $this->connectLocked($tenantId, $actor, $signup));
+        return $this->withWabaLock($signup['waba_id'], fn () => $this->connectLocked($tenantId, $actor, $signup, $this->exchange($signup['code'])));
+    }
+
+    /**
+     * Pilot shortcut (no Tech Provider review): a business uses its OWN Meta app and WABA, so an admin loads that
+     * business's system-user token by hand. Same checks and storage as Embedded Signup: the number must belong to
+     * the WABA, a number of another tenant is refused, webhooks are subscribed and the token is stored encrypted.
+     *
+     * @return array{integration_id: string, channel_id: string, display_phone_number: string, state: 'ACTIVE'|'REGISTRATION_PENDING'}
+     */
+    public function connectOwnAccount(int $tenantId, User $actor, string $wabaId, string $phoneNumberId, #[SensitiveParameter] string $token): array
+    {
+        if (! config('services.meta.app_secret')) {
+            throw new OnboardingFailed('ONBOARDING_DISABLED', 'Falta el secreto de la app de Meta para validar los webhooks.', 503);
+        }
+        $signup = ['code' => '', 'waba_id' => $wabaId, 'phone_number_id' => $phoneNumberId, 'business_id' => null];
+
+        return $this->withWabaLock($wabaId, fn () => $this->connectLocked($tenantId, $actor, $signup, $token));
     }
 
     /**
      * @param  array{code: string, waba_id: string, phone_number_id: string, business_id: string|null}  $signup
      * @return array{integration_id: string, channel_id: string, display_phone_number: string, state: 'ACTIVE'|'REGISTRATION_PENDING'}
      */
-    private function connectLocked(int $tenantId, User $actor, #[SensitiveParameter] array $signup): array
+    private function connectLocked(int $tenantId, User $actor, #[SensitiveParameter] array $signup, #[SensitiveParameter] string $token): array
     {
-        $token = $this->exchange($signup['code']);
         $phone = $this->phoneInWaba($signup['waba_id'], $signup['phone_number_id'], $token);
 
         // whatsapp_phone_number_id is unique platform-wide: another tenant's number is a hard stop.

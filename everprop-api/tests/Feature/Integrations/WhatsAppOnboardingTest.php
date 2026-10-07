@@ -374,4 +374,41 @@ final class WhatsAppOnboardingTest extends TestCase
         $this->connect($tenant, $admin)->assertCreated();
         $this->actingAs($admin)->postJson("/api/v1/admin/integrations/whatsapp/$id/disconnect")->assertOk();
     }
+
+    public function test_a_business_connects_its_own_number_by_console_without_embedded_signup(): void
+    {
+        $this->meta();
+        config(['services.meta.onboarding_enabled' => false]); // the shortcut does not need Tech Provider onboarding
+        [$tenant, $admin] = $this->admin();
+
+        $this->artisan('everprop:whatsapp:connect-own', ['--tenant' => $tenant->slug, '--waba' => '1001', '--phone' => '2002', '--admin' => $admin->email])
+            ->expectsQuestion('Token del usuario del sistema de Meta (no se muestra)', self::TOKEN)
+            ->expectsOutputToContain('Conectado +54 388 400-0000 · estado ACTIVE')->assertSuccessful();
+
+        $integration = DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('provider', 'META')->sole();
+        $this->assertSame(self::TOKEN, app(IntegrationTokens::class)->forSending($tenant->id, (int) $integration->id));
+        $this->assertStringNotContainsString(self::TOKEN, (string) $integration->access_token_ciphertext);
+        $this->assertDatabaseHas('channel_accounts', ['tenant_id' => $tenant->id, 'provider_account_id' => '2002', 'status' => 'ACTIVE']);
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'oauth/access_token'));
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/1001/subscribed_apps') && $r->hasHeader('Authorization', 'Bearer '.self::TOKEN));
+    }
+
+    public function test_the_console_shortcut_refuses_non_admins_bad_ids_and_numbers_of_other_tenants(): void
+    {
+        $this->meta();
+        [$tenant, $admin] = $this->admin();
+        [, $manager] = [$tenant, $this->user($tenant, RoleCode::SALES_MANAGER)];
+        $run = fn (array $options) => $this->artisan('everprop:whatsapp:connect-own', $options + ['--tenant' => $tenant->slug, '--waba' => '1001', '--phone' => '2002', '--admin' => $admin->email]);
+
+        $run(['--admin' => $manager->email])->assertFailed();
+        $run(['--waba' => '1001; drop'])->assertFailed();
+        $run(['--phone' => '9999'])->expectsQuestion('Token del usuario del sistema de Meta (no se muestra)', self::TOKEN)->assertFailed(); // not in the WABA
+
+        [$other, $otherAdmin] = $this->admin();
+        $this->artisan('everprop:whatsapp:connect-own', ['--tenant' => $other->slug, '--waba' => '1001', '--phone' => '2002', '--admin' => $otherAdmin->email])
+            ->expectsQuestion('Token del usuario del sistema de Meta (no se muestra)', self::TOKEN)->assertSuccessful();
+        $run([])->expectsQuestion('Token del usuario del sistema de Meta (no se muestra)', self::TOKEN)
+            ->expectsOutputToContain('Ese número ya está conectado a otra cuenta')->assertFailed();
+        $this->assertSame(0, DB::table('channel_accounts')->where('tenant_id', $tenant->id)->where('channel_type', 'WHATSAPP')->count());
+    }
 }
