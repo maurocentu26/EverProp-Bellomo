@@ -52,6 +52,10 @@ final class ConversationAttachments
             return null;
         }
         [$kind, $extension] = self::KINDS[$mime];
+        if ($mime === 'image/jpeg') {
+            $contents = self::withoutExif($contents); // phones put the GPS location there
+            $size = strlen($contents);
+        }
         $sha = hash('sha256', $contents);
         $path = sprintf('tenants/%d/conversations/%d/%s.%s', $tenantId, $conversationId, $sha, $extension);
         $disk = (string) config('filesystems.private', 'local');
@@ -113,6 +117,37 @@ final class ConversationAttachments
             'Content-Security-Policy' => "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
             'Cache-Control' => 'no-store',
         ], $media['kind'] === 'IMAGE' ? 'inline' : 'attachment');
+    }
+
+    /**
+     * JPEG without its EXIF block (APP1 "Exif"), where phones store the GPS position and device data. Lossless:
+     * segments are copied as they are; anything unexpected returns the original bytes untouched.
+     */
+    public static function withoutExif(string $jpeg): string
+    {
+        if (! str_starts_with($jpeg, "\xFF\xD8")) {
+            return $jpeg;
+        }
+        $out = "\xFF\xD8";
+        $offset = 2;
+        $length = strlen($jpeg);
+        while ($offset + 4 <= $length && $jpeg[$offset] === "\xFF") {
+            $marker = ord($jpeg[$offset + 1]);
+            if ($marker === 0xDA) { // start of scan: the image data follows, copy the rest as is
+                return $out.substr($jpeg, $offset);
+            }
+            $size = unpack('n', substr($jpeg, $offset + 2, 2))[1];
+            if ($size < 2 || $offset + 2 + $size > $length) {
+                return $jpeg;
+            }
+            $segment = substr($jpeg, $offset, 2 + $size);
+            if (! ($marker === 0xE1 && str_starts_with(substr($segment, 4), "Exif\x00"))) {
+                $out .= $segment;
+            }
+            $offset += 2 + $size;
+        }
+
+        return $jpeg;
     }
 
     /**
