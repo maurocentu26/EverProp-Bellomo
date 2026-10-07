@@ -25,7 +25,7 @@ final class ConnectOwnWhatsApp extends Command
         $tenant = Tenant::query()->active()->where('slug', (string) $this->option('tenant'))->first();
         $admin = $tenant === null ? null : User::query()->where('tenant_id', $tenant->id)->where('email', (string) $this->option('admin'))->first();
         $ids = [(string) $this->option('waba'), (string) $this->option('phone')];
-        if ($tenant === null || $admin === null || $admin->role() !== RoleCode::TENANT_ADMIN || preg_grep('/\A\d{1,30}\z/', $ids) !== $ids) {
+        if ($tenant === null || $admin === null || $admin->role() !== RoleCode::TENANT_ADMIN || ! $admin->isActive() || preg_grep('/\A\d{1,30}\z/', $ids) !== $ids) {
             $this->error('Revisá --tenant, --admin (TENANT_ADMIN activo del cliente), --waba y --phone (ids numéricos de Meta).');
 
             return self::FAILURE;

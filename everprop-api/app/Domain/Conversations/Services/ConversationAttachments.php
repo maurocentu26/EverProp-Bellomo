@@ -54,6 +54,9 @@ final class ConversationAttachments
         [$kind, $extension] = self::KINDS[$mime];
         if ($mime === 'image/jpeg') {
             $contents = self::withoutExif($contents); // phones put the GPS location there
+            if ($contents === null) {
+                return null; // cannot be cleaned: never stored with its location
+            }
             $size = strlen($contents);
         }
         $sha = hash('sha256', $contents);
@@ -121,12 +124,12 @@ final class ConversationAttachments
 
     /**
      * JPEG without its EXIF block (APP1 "Exif"), where phones store the GPS position and device data. Lossless:
-     * segments are copied as they are; anything unexpected returns the original bytes untouched.
+     * segments are copied as they are. XMP goes too (it can hold GPS). Null when it cannot be parsed: fail closed.
      */
-    public static function withoutExif(string $jpeg): string
+    public static function withoutExif(string $jpeg): ?string
     {
         if (! str_starts_with($jpeg, "\xFF\xD8")) {
-            return $jpeg;
+            return null;
         }
         $out = "\xFF\xD8";
         $offset = 2;
@@ -138,16 +141,17 @@ final class ConversationAttachments
             }
             $size = unpack('n', substr($jpeg, $offset + 2, 2))[1];
             if ($size < 2 || $offset + 2 + $size > $length) {
-                return $jpeg;
+                return null;
             }
             $segment = substr($jpeg, $offset, 2 + $size);
-            if (! ($marker === 0xE1 && str_starts_with(substr($segment, 4), "Exif\x00"))) {
+            $metadata = $marker === 0xE1 && (str_starts_with(substr($segment, 4), "Exif\x00") || str_starts_with(substr($segment, 4), 'http://ns.adobe.com/xap/'));
+            if (! $metadata) {
                 $out .= $segment;
             }
             $offset += 2 + $size;
         }
 
-        return $jpeg;
+        return null;
     }
 
     /**

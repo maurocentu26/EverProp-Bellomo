@@ -26,7 +26,7 @@ final class WhatsAppMediaFetcher
     {
         $integration = DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $channelAccountId)->where('channel_type', 'WHATSAPP')->value('integration_id');
         $token = $integration === null ? null : $this->tokens->forSending($tenantId, (int) $integration);
-        if ($token === null || ! preg_match('/\A[0-9A-Za-z_-]{1,64}\z/', (string) $media['provider_media_id'])) {
+        if ($token === null || isset($media['unavailable']) || ! preg_match('/\A[0-9A-Za-z_-]{1,64}\z/', (string) $media['provider_media_id'])) {
             return null;
         }
         try {
@@ -35,6 +35,11 @@ final class WhatsAppMediaFetcher
             // Only Meta's own CDN: a tampered answer must not make us fetch an arbitrary host with the token.
             if (! $info->successful() || ! is_string($url) || ! preg_match('#\Ahttps://[a-z0-9.-]+\.(fbsbx|facebook|whatsapp)\.(com|net)/#i', $url)) {
                 return null;
+            }
+            // Known before downloading: too big or not a photo/PDF is never pulled into memory, now or later.
+            if ((int) $info->json('file_size', 0) > ConversationAttachments::MAX_BYTES
+                || ! in_array($info->json('mime_type'), ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], true)) {
+                return $this->unavailable($tenantId, $messageId, $media);
             }
             $file = Http::withToken($token)->timeout(30)->withOptions(['allow_redirects' => false])->get($url);
         } catch (ConnectionException) {
@@ -47,11 +52,22 @@ final class WhatsAppMediaFetcher
         }
         $stored = $this->attachments->storeBytes($tenantId, $conversationId, $file->body(), (string) ($media['name'] ?? ($media['kind'] === 'IMAGE' ? 'foto' : 'documento')));
         if ($stored === null) {
-            return null; // video, audio, sticker or a disallowed type: shown as "not available"
+            return $this->unavailable($tenantId, $messageId, $media); // not what it claimed, or cannot be cleaned
         }
         $stored['provider_media_id'] = $media['provider_media_id'];
         DB::table('messages')->where('tenant_id', $tenantId)->where('id', $messageId)->update(['media_json' => json_encode($stored, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)]);
 
         return $stored;
+    }
+
+    /**
+     * @param  array<string, mixed>  $media
+     */
+    private function unavailable(int $tenantId, int $messageId, array $media): null
+    {
+        DB::table('messages')->where('tenant_id', $tenantId)->where('id', $messageId)
+            ->update(['media_json' => json_encode($media + ['unavailable' => true], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)]);
+
+        return null;
     }
 }

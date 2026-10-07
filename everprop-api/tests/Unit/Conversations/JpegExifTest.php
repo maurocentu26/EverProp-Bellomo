@@ -22,14 +22,14 @@ final class JpegExifTest extends TestCase
 
         $clean = ConversationAttachments::withoutExif("\xFF\xD8".$jfif.$exif.$xmp.$scan);
 
-        $this->assertSame("\xFF\xD8".$jfif.$xmp.$scan, $clean);
+        $this->assertSame("\xFF\xD8".$jfif.$scan, $clean, 'EXIF and XMP go, the rest stays byte for byte');
         $this->assertStringNotContainsString('-24.1858', $clean);
     }
 
-    public function test_anything_that_is_not_a_well_formed_jpeg_is_returned_untouched(): void
+    public function test_a_jpeg_that_cannot_be_parsed_is_refused_instead_of_kept_with_its_metadata(): void
     {
         foreach (['not a jpeg', "\xFF\xD8\xFF\xE1\x00", "\xFF\xD8\xFF\xE1\xFF\xFFExif"] as $bytes) {
-            $this->assertSame($bytes, ConversationAttachments::withoutExif($bytes));
+            $this->assertNull(ConversationAttachments::withoutExif($bytes));
         }
     }
 }

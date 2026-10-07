@@ -91,4 +91,25 @@ final class WhatsAppMediaSendTest extends TestCase
         $view(2)->assertNotFound();
         Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'evil.example'));
     }
+
+    public function test_another_tenant_and_oversized_files_never_reach_meta(): void
+    {
+        config(['services.meta.app_secret' => self::APP_SECRET, 'conversations.ai_enabled' => false]);
+        $channel = $this->channel();
+        $tenant = Tenant::query()->findOrFail($channel['tenant_id']);
+        Http::fake(['*/v24.0/BIG-1' => Http::response(['url' => 'https://lookaside.fbsbx.com/x', 'mime_type' => 'video/mp4', 'file_size' => 90_000_000])]);
+        $this->postWebhook($this->waPayload('2002', [['from' => '5493881111111', 'id' => 'wamid.V', 'timestamp' => (string) time(), 'type' => 'document',
+            'document' => ['id' => 'BIG-1', 'mime_type' => 'video/mp4', 'filename' => 'recorrida.mp4']]]))->assertOk();
+        $conversation = DB::table('conversations')->where('tenant_id', $tenant->id)->value('public_id');
+
+        ['tenant' => $other] = $this->tenantWithIntegration();
+        $this->actingAs($this->user($other, RoleCode::TENANT_ADMIN))->withHeaders($this->tenantHeaders($other))
+            ->get("/api/v1/admin/conversations/$conversation/media/1")->assertNotFound();
+        Http::assertNothingSent();
+
+        $view = fn () => $this->actingAs($this->user($tenant, RoleCode::TENANT_ADMIN))->withHeaders($this->tenantHeaders($tenant))->get("/api/v1/admin/conversations/$conversation/media/1");
+        $view()->assertNotFound();
+        $view()->assertNotFound();
+        Http::assertSentCount(1); // only the size/type lookup, once: the file is never downloaded and not asked again
+    }
 }
