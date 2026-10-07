@@ -31,6 +31,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
     Route::prefix('admin')->name('admin.')->middleware(RotatorRoleBoundary::class)->group(function (): void {
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::post('/users', [AdminUserController::class, 'store']);
+        Route::patch('/users/{user}/role', [AdminUserController::class, 'changeRole'])->whereUuid('user');
         Route::post('/users/{user}/activation', [AdminUserController::class, 'renew']);
         Route::get('/payment-agreements', [CollectionsController::class, 'agreements']);
         Route::post('/payment-agreements', [CollectionsController::class, 'store']);

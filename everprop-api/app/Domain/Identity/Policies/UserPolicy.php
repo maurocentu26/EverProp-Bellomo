@@ -35,6 +35,13 @@ final class UserPolicy
         return $this->authorization->allows($actor, Capability::MANAGE_USERS, $target);
     }
 
+    public function changeRole(User $actor, User $target): bool
+    {
+        return ! $actor->is($target)
+            && $target->role() !== RoleCode::SUPER_ADMIN
+            && $this->update($actor, $target);
+    }
+
     public function delete(User $actor, User $target): bool
     {
         return ! $actor->is($target)

@@ -55,6 +55,30 @@ final class AdminUserController
         return response()->json(['data' => ['id' => $user->public_id, 'activationToken' => $token, 'expiresInHours' => 24]], 201)->header('Cache-Control', 'no-store');
     }
 
+    public function changeRole(Request $request, TenantContext $tenant, UserPolicy $policy, string $user): JsonResponse
+    {
+        return DB::transaction(function () use ($request, $tenant, $policy, $user) {
+            $target = User::query()->where('tenant_id', $tenant->id())->where('public_id', $user)->lockForUpdate()->firstOrFail();
+            abort_unless($policy->changeRole($request->user(), $target), 403);
+            $data = $request->validate([
+                'role' => ['required', Rule::in(['SALES_ADVISOR', 'ROTATOR', 'TENANT_ADMIN'])],
+                'tenant_id' => 'prohibited',
+            ]);
+            if ($target->role()->value !== $data['role']) {
+                $target->role_code = $data['role'];
+                $target->save();
+                DB::table('user_inventory_settings')->updateOrInsert(
+                    ['tenant_id' => $tenant->id(), 'user_id' => $target->id],
+                    ['visibility_mode' => 'ALL', 'can_view_prices' => true,
+                        'can_manage_inventory' => $data['role'] === 'TENANT_ADMIN',
+                        'can_manage_prices' => $data['role'] === 'TENANT_ADMIN'],
+                );
+            }
+
+            return response()->json(['data' => $target->only(['public_id', 'display_name', 'email', 'phone_e164', 'role_code', 'status'])]);
+        });
+    }
+
     public function activate(Request $request, TenantContext $tenant): JsonResponse
     {
         $data = $request->validate(['token' => 'required|string|size:64', 'password' => ['required', 'confirmed', Password::min(12)->letters()->numbers()], 'tenant_id' => 'prohibited']);

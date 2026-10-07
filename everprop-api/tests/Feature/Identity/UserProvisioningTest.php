@@ -103,4 +103,33 @@ final class UserProvisioningTest extends TestCase
             $this->postJson('/api/v1/admin/users', array_replace($this->payload(), ['role' => 'TENANT_ADMIN']))->assertForbidden();
         }
     }
+
+    public function test_role_changes_are_admin_only_tenant_bound_and_update_inventory_permissions(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $admin = User::factory()->for($tenant)->create(['role_code' => RoleCode::TENANT_ADMIN]);
+        $target = User::factory()->for($tenant)->create(['role_code' => RoleCode::SALES_ADVISOR]);
+        $url = '/api/v1/admin/users/'.$target->public_id.'/role';
+        $this->actingAs($admin)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
+        foreach (['TENANT_ADMIN', 'ROTATOR', 'SALES_ADVISOR'] as $role) {
+            $this->patchJson($url, ['role' => $role])->assertOk()->assertJsonPath('data.role_code', $role);
+            $this->assertDatabaseHas('user_inventory_settings', ['tenant_id' => $tenant->id, 'user_id' => $target->id,
+                'can_manage_inventory' => $role === 'TENANT_ADMIN', 'can_manage_prices' => $role === 'TENANT_ADMIN']);
+        }
+        self::assertSame('ACTIVE', $target->fresh()->statusCode()->value);
+        $this->patchJson($url, ['role' => 'SUPER_ADMIN'])->assertUnprocessable();
+        $this->patchJson($url, ['role' => 'ROTATOR', 'tenant_id' => $tenant->id])->assertUnprocessable();
+        $this->patchJson('/api/v1/admin/users/'.$admin->public_id.'/role', ['role' => 'ROTATOR'])->assertForbidden();
+        $super = User::factory()->for($tenant)->create(['role_code' => RoleCode::SUPER_ADMIN]);
+        $this->patchJson('/api/v1/admin/users/'.$super->public_id.'/role', ['role' => 'ROTATOR'])->assertForbidden();
+        $other = User::factory()->for(Tenant::factory()->create())->create();
+        $this->patchJson('/api/v1/admin/users/'.$other->public_id.'/role', ['role' => 'ROTATOR'])->assertNotFound();
+        foreach ([RoleCode::SALES_ADVISOR, RoleCode::ROTATOR, RoleCode::SALES_MANAGER, RoleCode::READ_ONLY] as $role) {
+            $actor = User::factory()->for($tenant)->create(['role_code' => $role]);
+            $this->actingAs($actor)->patchJson($url, ['role' => 'TENANT_ADMIN'])->assertForbidden();
+        }
+        self::assertSame(RoleCode::SALES_ADVISOR, $target->fresh()->role());
+        $this->actingAs($admin)->patchJson($url, ['role' => 'ROTATOR'])->assertOk();
+        $this->actingAs($target->fresh())->getJson('/api/v1/admin/users')->assertForbidden();
+    }
 }
