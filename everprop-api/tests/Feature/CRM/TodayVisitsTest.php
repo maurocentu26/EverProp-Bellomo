@@ -93,7 +93,7 @@ final class TodayVisitsTest extends TestCase
         }
         $this->actingAs($admin)->withHeaders($headers)->getJson('/api/v1/admin/visits/today')
             ->assertOk()->assertJsonPath('meta.total', 13)->assertJsonCount(10, 'data');
-        $inventory = User::factory()->for($tenant)->create(['role_code' => RoleCode::INVENTORY_MANAGER->value]);
+        $inventory = User::factory()->for($tenant)->create(['role_code' => RoleCode::ROTATOR->value]);
         $this->actingAs($inventory)->withHeaders($headers)->getJson('/api/v1/admin/visits/today')->assertForbidden();
         $this->travelBack();
     }

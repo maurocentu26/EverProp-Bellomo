@@ -2268,7 +2268,7 @@
                                     "role": {
                                         "enum": [
                                             "SALES_ADVISOR",
-                                            "INVENTORY_MANAGER"
+                                            "ROTATOR"
                                         ],
                                         "type": "string"
                                     },
@@ -2729,7 +2729,7 @@
                             "SALES_ADVISOR",
                             "BOT_OPERATOR",
                             "READ_ONLY",
-                            "INVENTORY_MANAGER"
+                            "ROTATOR"
                         ]
                     },
                     "status": {

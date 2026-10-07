@@ -34,6 +34,8 @@ export function AdminNavigationMenu({
     [isEngineer, isAdvisor],
   );
 
+  if (user?.role === "ROTATOR") return <nav aria-label="Navegación del rotador" className="p-3"><Link href="/admin/leads" onClick={onNavigate}>Asignar leads</Link></nav>;
+
   return (
     <div className={cn(fullscreen ? "space-y-7 px-4 py-5 sm:px-6 sm:py-7" : "space-y-4 px-2 pb-3")}>
       {fullscreen && (

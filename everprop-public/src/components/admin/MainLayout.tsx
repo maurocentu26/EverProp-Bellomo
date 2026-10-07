@@ -37,6 +37,10 @@ export default function MainLayout({ children }: Props) {
     }, [currentUser, invalidateSession, isLoaded, router]);
 
     useEffect(() => {
+        if (currentUser?.role === "ROTATOR" && pathname !== "/admin/leads") router.replace("/admin/leads");
+    }, [currentUser, pathname, router]);
+
+    useEffect(() => {
         if (!currentUserId) return;
 
         try {
@@ -133,7 +137,7 @@ export default function MainLayout({ children }: Props) {
                                     </div>
                                 )}
 
-                                {children}
+                                {currentUser.role === "ROTATOR" && pathname !== "/admin/leads" ? <p>Abriendo asignación de leads…</p> : children}
                             </div>
                         </main>
                     </div>

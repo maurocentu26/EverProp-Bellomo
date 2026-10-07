@@ -30,9 +30,8 @@ export function isMaterialAdministrator(role: string) {
 export function canReadMaterial(asset: MaterialAsset, project: MaterialProject | undefined, access: MaterialAccess) {
   if (access.tenant !== "bellomo") return false;
   if (isMaterialAdministrator(access.role)) return true;
-  if (!["SALES_MANAGER", "SALES_ADVISOR", "INVENTORY_MANAGER", "READ_ONLY"].includes(access.role)) return false;
+  if (!["SALES_MANAGER", "SALES_ADVISOR", "READ_ONLY"].includes(access.role)) return false;
   if (!project || !access.projectNames.some(name => matchesMaterialProject(project, name))) return false;
   if (asset.status === "pending" || asset.kind === "brand") return false;
-  if (access.role === "INVENTORY_MANAGER" && asset.kind === "commercial") return false;
   return true;
 }

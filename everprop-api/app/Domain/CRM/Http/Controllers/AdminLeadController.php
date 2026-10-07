@@ -485,7 +485,11 @@ final class AdminLeadController extends Controller
                 $actor = $request->user();
                 abort_unless($actor && (new LeadAccessPolicy)->update($actor, $tenantId, $lead), 403);
                 if (array_key_exists('agent_id', $validated)) {
-                    abort_unless(in_array($actor->role(), [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER], true), 403);
+                    abort_unless((new LeadAccessPolicy)->assign($actor, $tenantId), 403);
+                }
+                if ($actor->role() === RoleCode::ROTATOR) {
+                    $request->validate(['agent_id' => 'present|nullable|string']);
+                    abort_unless(array_diff(array_keys($request->all()), ['agent_id']) === [], 403);
                 }
                 $stageCode = strtoupper($validated['stage'] ?? '');
                 if (in_array($stageCode, ['CONTACTED', 'QUALIFIED', 'VISIT_SCHEDULED', 'NEGOTIATION'], true)) {

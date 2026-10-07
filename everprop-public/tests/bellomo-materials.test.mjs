@@ -20,7 +20,7 @@ test('tenant boundary applies even to administrators', () => {
     assert.equal(canReadMaterial(photo, project, { ...access, role, tenant: 'another-company' }), false);
 });
 test('advisors and managers can only read catalog projects authorized by the API', () => {
-  for (const role of ['SALES_ADVISOR', 'SALES_MANAGER', 'READ_ONLY', 'INVENTORY_MANAGER']) {
+  for (const role of ['SALES_ADVISOR', 'SALES_MANAGER', 'READ_ONLY']) {
     assert.equal(canReadMaterial(photo, project, { ...access, role }), true);
     assert.equal(canReadMaterial(photo, project, { ...access, role, projectNames: ['Valle Verde Loteo'] }), false);
   }
@@ -33,9 +33,9 @@ test('institutional originals and review-only material stay out of advisor acces
   assert.equal(canReadMaterial(photo, undefined, access), false);
   assert.equal(canReadMaterial(photo, undefined, { ...access, role: 'TENANT_ADMIN' }), true);
 });
-test('inventory profile can read plans but not commercial documents', () => {
-  const inventory = { ...access, role: 'INVENTORY_MANAGER' };
-  assert.equal(canReadMaterial({ ...photo, kind: 'technical' }, project, inventory), true);
+test('rotator cannot access inventory materials', () => {
+  const inventory = { ...access, role: 'ROTATOR' };
+  assert.equal(canReadMaterial({ ...photo, kind: 'technical' }, project, inventory), false);
   assert.equal(canReadMaterial({ ...photo, kind: 'commercial' }, project, inventory), false);
 });
 test('matching handles accents and whitespace without mixing development phases', () => {

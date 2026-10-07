@@ -173,7 +173,7 @@ final class HandoffAndDispatchTest extends TestCase
     {
         [$tenant, $conversation, , $publicId] = $this->conversation();
         $advisor = $this->user($tenant, RoleCode::SALES_ADVISOR);
-        $inventory = $this->user($tenant, RoleCode::INVENTORY_MANAGER);
+        $inventory = $this->user($tenant, RoleCode::ROTATOR);
         app(ConversationControl::class)->requestHuman($tenant->id, $conversation, 1, 'Pide asesor');
         $headers = $this->tenantHeaders($tenant);
 

@@ -145,7 +145,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
 }
 
 function mapRole(role: string): UserRole {
-  if (role === "INVENTORY_MANAGER") return "ENGINEER";
+  if (role === "ROTATOR") return "ROTATOR";
   if (role === "SUPER_ADMIN" || role === "TENANT_ADMIN" || role === "SALES_MANAGER") return "ADMIN";
   return "ADVISOR";
 }
@@ -166,7 +166,7 @@ function mapUser(user: ApiUser): UserProfile {
     apiRole: user.role,
     name,
     avatar: avatar || "EP",
-    title: user.tenant?.name || "Usuario EverProp",
+    title: user.role === "ROTATOR" ? "Rotador" : user.tenant?.name || "Usuario EverProp",
     permissions: user.capabilities,
     source: "api",
   };
