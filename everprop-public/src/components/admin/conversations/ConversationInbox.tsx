@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Bot, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bot, FileText, Paperclip, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -26,6 +26,11 @@ import {
   sendReply,
   suggestReply,
   openConversationLead,
+  sendAttachment,
+  ATTACHMENT_TYPES,
+  ATTACHMENT_MAX_BYTES,
+  fileSize,
+  type MessageMedia,
   takeOver,
   threadCursor,
   type ConversationFilter,
@@ -392,6 +397,26 @@ export function ConversationInbox() {
     }, "Nota guardada. Solo la ve el equipo.");
   }
 
+  /** Photo or PDF: sent right away with what is typed as its caption (like WhatsApp's caption). */
+  async function sendFile(file: File) {
+    const conversation = selected;
+    if (!conversation) return;
+    if (file.size > ATTACHMENT_MAX_BYTES) {
+      toast.error("El archivo pesa más de 10 MB.");
+      return;
+    }
+    const caption = draft.trim();
+    const key = newKey();
+    atBottom.current = true;
+    await run("attach", async () => {
+      await sendAttachment(conversation, file, caption, key);
+      if (selectedRef.current === conversation) {
+        setDraft("");
+        setSuggestion(null);
+      }
+    }, file.type === "application/pdf" ? "PDF enviado." : "Foto enviada.");
+  }
+
   function focusComposer() {
     window.setTimeout(() => document.getElementById("reply")?.focus(), 0);
   }
@@ -583,7 +608,10 @@ export function ConversationInbox() {
                           {message.sender === "BOT" && first && (
                             <p className="mb-0.5 flex items-center gap-1 text-[11px] font-semibold text-violet-700 dark:text-violet-300"><Bot className="h-3 w-3" aria-hidden /> IA</p>
                           )}
-                          <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{message.text ?? "[contenido no textual]"}</p>
+                          {message.media && <MediaPreview media={message.media} />}
+                          {(message.text || !message.media) && (
+                            <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{message.text ?? "[contenido no textual]"}</p>
+                          )}
                           <p className="wa-meta -mb-0.5 mt-0.5 flex items-center justify-end gap-1 text-[11px]">
                             <time dateTime={message.at}>{clockTime(message.at)}</time>
                             {mine && <DeliveryMark status={message.status} />}
@@ -665,6 +693,14 @@ export function ConversationInbox() {
                         className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-muted ${noteMode ? "wa-note-mode" : "text-muted-foreground"}`}>
                         <StickyNote className="h-5 w-5" aria-hidden />
                       </button>
+                      {!noteMode && current?.channel === "WEB_CHAT" && (
+                        <label className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${busy !== null ? "pointer-events-none opacity-50" : ""}`}>
+                          <span className="sr-only">{busy === "attach" ? "Enviando archivo" : "Adjuntar foto o PDF"}</span>
+                          <Paperclip className={`h-5 w-5 ${busy === "attach" ? "animate-pulse motion-reduce:animate-none" : ""}`} aria-hidden />
+                          <input type="file" accept={ATTACHMENT_TYPES} className="sr-only" disabled={busy !== null}
+                            onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void sendFile(file); }} />
+                        </label>
+                      )}
                       {!noteMode && copilotEnabled && (
                         <button type="button" disabled={busy !== null} onClick={() => void suggestDraft()}
                           aria-label={busy === "suggest" ? "Pidiendo una sugerencia a la IA" : "Sugerir respuesta con IA"}
@@ -712,5 +748,26 @@ export function ConversationInbox() {
         </div>
       </div>
     </section>
+  );
+}
+
+/** Photo inline (opens full size) or a PDF card; files come from authorized endpoints with the session cookie. */
+function MediaPreview({ media }: { media: MessageMedia }) {
+  if (media.kind === "IMAGE") {
+    return (
+      <a href={media.url} target="_blank" rel="noopener noreferrer" className="mb-1 block overflow-hidden rounded-md" aria-label={`Ver foto ${media.name}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- authorized API file, not a static asset */}
+        <img src={media.url} alt={media.name} loading="lazy" className="max-h-72 w-full max-w-72 object-cover" />
+      </a>
+    );
+  }
+  return (
+    <a href={media.url} target="_blank" rel="noopener noreferrer" className="mb-1 flex min-h-12 items-center gap-2 rounded-md bg-black/5 px-3 py-2 hover:bg-black/10 dark:bg-white/10">
+      <FileText className="h-6 w-6 shrink-0" aria-hidden />
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold">{media.name}</span>
+        <span className="block text-[11px] opacity-75">PDF · {fileSize(media.size)}</span>
+      </span>
+    </a>
   );
 }

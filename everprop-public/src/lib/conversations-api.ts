@@ -17,7 +17,7 @@ export type ConversationSummary = {
   unread: number;
   assigned_user: { id: string; name: string } | null;
   last_activity_at: string;
-  last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string } | null;
+  last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string; type?: string | null } | null;
 };
 
 export type ConversationMessage = {
@@ -29,7 +29,19 @@ export type ConversationMessage = {
   at: string;
   /** Internal notes only: who wrote it. */
   author?: string | null;
+  /** Photo or PDF; `url` is an authorized endpoint (never a storage path). */
+  media?: MessageMedia | null;
 };
+
+export type MessageMedia = { kind: "IMAGE" | "DOCUMENT" | string; name: string; mime: string; size: number; url: string };
+
+/** Accepted by the API (sniffed again from the bytes there). */
+export const ATTACHMENT_TYPES = "image/jpeg,image/png,image/webp,application/pdf";
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+export function fileSize(bytes: number): string {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
+}
 
 export type ConversationFilter = "all" | "waiting" | "mine" | "unread";
 
@@ -112,7 +124,10 @@ export function previewText(item: Pick<ConversationSummary, "last_message">): st
   const last = item.last_message;
   if (!last) return "";
   const who: Record<string, string> = { USER: "Asesor: ", BOT: "IA: " };
-  return `${who[last.sender] ?? ""}${last.text?.replace(/\s+/g, " ").trim() || "[contenido no textual]"}`;
+  const media: Record<string, string> = { IMAGE: "📷 Foto", DOCUMENT: "📄 PDF" };
+  const text = last.text?.replace(/\s+/g, " ").trim();
+  const label = media[last.type ?? ""];
+  return `${who[last.sender] ?? ""}${label ? (text ? `${label}: ${text}` : label) : text || "[contenido no textual]"}`;
 }
 
 /** The API pages 200 messages per call, oldest first. */
@@ -183,6 +198,17 @@ export async function sendReply(id: string, text: string, idempotencyKey: string
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages`,
     { method: "POST", body: JSON.stringify({ text, idempotency_key: idempotencyKey,
       ...(suggestionId ? { suggestion_id: suggestionId } : {}) }) },
+  );
+}
+
+/** Photo or PDF to the client, with an optional caption (web chat). */
+export async function sendAttachment(id: string, file: File, caption: string, idempotencyKey: string) {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("idempotency_key", idempotencyKey);
+  if (caption) body.append("caption", caption);
+  return apiFetch<{ data: { sequence: number; replayed: boolean } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/attachments`, { method: "POST", body },
   );
 }
 

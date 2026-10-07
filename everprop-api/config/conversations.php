@@ -6,6 +6,8 @@ return [
     // Copilot: the advisor in control asks for a draft; nothing reaches the client unless the advisor sends it.
     // Independent of ai_enabled, so it can run (and be measured) before the assistant answers on its own.
     'copilot_enabled' => (bool) env('CONVERSATIONS_COPILOT_ENABLED', false),
+    // Photos and PDFs advisors send: bytes per tenant and day.
+    'attachments_daily_mb' => (int) env('CONVERSATIONS_ATTACHMENTS_DAILY_MB', 500),
     // Abuse bounds for drafts (D14): per advisor, per customer message and an own monthly ceiling inside the global cap.
     'copilot_per_minute' => (int) env('CONVERSATIONS_COPILOT_PER_MINUTE', 10),
     'copilot_per_day' => (int) env('CONVERSATIONS_COPILOT_PER_DAY', 100),

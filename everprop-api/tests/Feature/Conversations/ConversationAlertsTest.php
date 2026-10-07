@@ -153,7 +153,7 @@ final class ConversationAlertsTest extends TestCase
 
         $response = $this->actingAs($manager)->withHeaders($this->tenantHeaders($tenant))->getJson('/api/v1/admin/conversations')->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.last_message', ['text' => 'Me interesa el lote 12B', 'sender' => 'CONTACT']);
+            ->assertJsonPath('data.0.last_message', ['text' => 'Me interesa el lote 12B', 'sender' => 'CONTACT', 'type' => 'TEXT']);
         $this->assertStringNotContainsString('otro tenant', $response->getContent());
     }
 

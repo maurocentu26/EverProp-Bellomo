@@ -151,11 +151,12 @@ final class ConversationControl
     /**
      * Human reply: only the controlling advisor, and only under human control.
      *
+     * @param  array<string, mixed>|null  $media  stored attachment (ConversationAttachments::store); $text is then its caption
      * @return array{message_id: int, job_id: int, sequence: int, replayed: bool}
      */
-    public function humanReply(int $tenantId, int $conversationId, User $user, string $text, string $idempotencyKey): array
+    public function humanReply(int $tenantId, int $conversationId, User $user, string $text, string $idempotencyKey, ?array $media = null): array
     {
-        return DB::transaction(function () use ($tenantId, $conversationId, $user, $text, $idempotencyKey): array {
+        return DB::transaction(function () use ($tenantId, $conversationId, $user, $text, $idempotencyKey, $media): array {
             $conversation = $this->lock($tenantId, $conversationId);
             if ($conversation->control_state !== 'HUMAN_ACTIVE' || (int) $conversation->controlled_by_user_id !== (int) $user->id) {
                 throw new ConversationConflict('NOT_IN_CONTROL', 'Tomá el control de la conversación antes de responder.');
@@ -173,7 +174,7 @@ final class ConversationControl
                 throw new ConversationConflict($blocked, 'Este canal no está disponible para enviar mensajes.');
             }
 
-            return $this->queueOutbound($conversation, $text, 'USER', $user->id, null, $key);
+            return $this->queueOutbound($conversation, $text, 'USER', $user->id, null, $key, media: $media);
         }, 3);
     }
 
@@ -239,14 +240,19 @@ final class ConversationControl
         }
     }
 
-    /** @return array{message_id: int, job_id: int, sequence: int, replayed: bool} */
-    private function queueOutbound(object $conversation, string $text, string $sender, ?int $userId, ?int $epoch, string $key, bool $handoffNotice = false): array
+    /**
+     * @param  array<string, mixed>|null  $media
+     * @return array{message_id: int, job_id: int, sequence: int, replayed: bool}
+     */
+    private function queueOutbound(object $conversation, string $text, string $sender, ?int $userId, ?int $epoch, string $key, bool $handoffNotice = false, ?array $media = null): array
     {
         $tenantId = (int) $conversation->tenant_id;
+        // The idempotency hash covers the attachment too: same key with another file is a conflict.
+        $contentHash = hash('sha256', $text.($media === null ? '' : "\0".$media['sha256']));
         $existing = DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('idempotency_key', $key)->first(['id', 'message_id', 'payload_json']);
         if ($existing !== null) {
             $payload = json_decode((string) $existing->payload_json, true, 512, JSON_THROW_ON_ERROR);
-            if (($payload['text_sha256'] ?? null) !== hash('sha256', $text)) {
+            if (($payload['text_sha256'] ?? null) !== $contentHash) {
                 throw new ConversationConflict('IDEMPOTENCY_CONFLICT', 'La clave ya se usó con otro contenido.');
             }
 
@@ -259,12 +265,13 @@ final class ConversationControl
         $messageId = (int) DB::table('messages')->insertGetId([
             'tenant_id' => $tenantId, 'conversation_id' => $conversation->id, 'channel_account_id' => $conversation->channel_account_id,
             'sequence' => $sequence, 'control_epoch' => $epoch, 'direction' => 'OUTBOUND', 'sender_type' => $sender,
-            'message_type' => 'TEXT', 'text_body' => $text, 'delivery_status' => 'QUEUED', 'occurred_at' => $now,
+            'message_type' => $media['kind'] ?? 'TEXT', 'text_body' => $media !== null && $text === '' ? null : $text,
+            'media_json' => $media === null ? null : json_encode($media, JSON_THROW_ON_ERROR), 'delivery_status' => 'QUEUED', 'occurred_at' => $now,
         ]);
         $jobId = (int) DB::table('outbound_jobs')->insertGetId([
             'tenant_id' => $tenantId, 'channel_account_id' => $conversation->channel_account_id, 'conversation_id' => $conversation->id,
             'message_id' => $messageId, 'control_epoch' => $epoch, 'requested_by_user_id' => $userId, 'idempotency_key' => $key,
-            'job_type' => 'SEND_MESSAGE', 'payload_json' => json_encode(['text_sha256' => hash('sha256', $text)] + ($handoffNotice ? ['handoff_notice' => true] : []), JSON_THROW_ON_ERROR),
+            'job_type' => 'SEND_MESSAGE', 'payload_json' => json_encode(['text_sha256' => $contentHash] + ($handoffNotice ? ['handoff_notice' => true] : []), JSON_THROW_ON_ERROR),
             'status' => 'PENDING', 'scheduled_at' => $now,
         ]);
         DB::table('conversations')->where('tenant_id', $tenantId)->where('id', $conversation->id)->update([

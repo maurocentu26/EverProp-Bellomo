@@ -101,7 +101,8 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
     headers.set("X-Everprop-Tenant", TENANT);
   }
 
-  if (init.body) headers.set("Content-Type", "application/json");
+  // FormData (attachments) sets its own multipart boundary.
+  if (init.body && !(typeof FormData !== "undefined" && init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (init.method && !["GET", "HEAD"].includes(init.method.toUpperCase())) {
     const token = xsrfToken();
     if (token) headers.set("X-XSRF-TOKEN", token);

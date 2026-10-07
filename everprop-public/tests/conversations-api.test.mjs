@@ -87,4 +87,7 @@ test('incremental reads pass the cursor and the list preview names who spoke', a
   assert.equal(api.previewText({ last_message: { sender: 'BOT', text: 'Hola\n  ¿en qué\tte ayudo?' } }), 'IA: Hola ¿en qué te ayudo?');
   assert.equal(api.previewText({ last_message: { sender: 'CONTACT', text: null } }), '[contenido no textual]');
   assert.equal(api.previewText({ last_message: null }), '');
+  assert.equal(api.previewText({ last_message: { sender: 'USER', text: null, type: 'IMAGE' } }), 'Asesor: 📷 Foto');
+  assert.equal(api.previewText({ last_message: { sender: 'USER', text: 'Plano', type: 'DOCUMENT' } }), 'Asesor: 📄 PDF: Plano');
+  assert.equal(api.fileSize(2621440), '2,5 MB');
 });

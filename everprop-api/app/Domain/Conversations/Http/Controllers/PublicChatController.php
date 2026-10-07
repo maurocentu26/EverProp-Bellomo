@@ -3,6 +3,7 @@
 namespace App\Domain\Conversations\Http\Controllers;
 
 use App\Domain\Conversations\Data\InboundMessage;
+use App\Domain\Conversations\Services\ConversationAttachments;
 use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\CRM\Services\ContactIdentityResolver;
 use App\Domain\Tenancy\TenantContext;
@@ -12,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Anonymous web chat (S05). The tenant is the one resolved by the trusted host middleware; the
@@ -94,7 +96,7 @@ final class PublicChatController extends Controller
             ->where('sequence', '>', $after)
             ->where(fn ($q) => $q->where('direction', 'INBOUND')
                 ->orWhere(fn ($o) => $o->where('direction', 'OUTBOUND')->whereIn('delivery_status', ['SENT', 'DELIVERED', 'READ'])))
-            ->orderBy('sequence')->limit(100)->get(['sequence', 'direction', 'sender_type', 'text_body', 'occurred_at']);
+            ->orderBy('sequence')->limit(100)->get(['sequence', 'direction', 'sender_type', 'text_body', 'occurred_at', 'media_json']);
 
         // Hold the cursor behind the first reply that may still become visible (queued / in flight),
         // otherwise a later visitor message would move the cursor past it and it would never show.
@@ -108,7 +110,19 @@ final class PublicChatController extends Controller
             'from' => $m->direction === 'INBOUND' ? 'visitor' : ($m->sender_type === 'USER' ? 'advisor' : 'assistant'),
             'text' => $m->text_body,
             'at' => CarbonImmutable::parse($m->occurred_at, 'UTC')->toISOString(),
+            'media' => ConversationAttachments::present($m->media_json, '/api/v1/public/chat/media/'.$m->sequence),
         ])->all()]);
+    }
+
+    /** A file the visitor was sent in their own conversation (the bearer token decides which one). */
+    public function media(Request $request, int $sequence, ConversationAttachments $attachments): StreamedResponse
+    {
+        $session = $this->session($request);
+        $media = DB::table('messages')->where('tenant_id', $session->tenant_id)->where('conversation_id', $session->conversation_id)
+            ->where('sequence', $sequence)->where('direction', 'OUTBOUND')->whereIn('delivery_status', ['SENT', 'DELIVERED', 'READ'])->value('media_json');
+        abort_if($media === null, 404);
+
+        return $attachments->stream((int) $session->tenant_id, (int) $session->conversation_id, (array) json_decode((string) $media, true));
     }
 
     /** Widgets only work from origins the tenant configured (channel metadata allowed_origins). */

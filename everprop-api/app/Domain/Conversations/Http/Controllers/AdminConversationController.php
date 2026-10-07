@@ -6,6 +6,7 @@ use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
 use App\Domain\AgentRuntime\Coordinator\CopilotFailure;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
 use App\Domain\Conversations\Services\ChannelPolicy;
+use App\Domain\Conversations\Services\ConversationAttachments;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Conversations\Services\OutboundDispatcher;
@@ -19,7 +20,9 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Shared inbox API (S04 backend) and handoff actions (S07).
@@ -59,6 +62,7 @@ final class AdminConversationController extends Controller
             // Last message preview: one row per conversation through uq_messages_sequence.
             ->selectSub($this->lastMessage('LEFT(m.text_body, 140)'), 'preview_text')
             ->selectSub($this->lastMessage('m.sender_type'), 'preview_sender')
+            ->selectSub($this->lastMessage('m.message_type'), 'preview_type')
             ->simplePaginate(50);
 
         return response()->json([
@@ -68,7 +72,7 @@ final class AdminConversationController extends Controller
                 'channel' => $c->channel_type, 'contact_name' => $c->display_name, 'unread' => (int) $c->unread_count,
                 'assigned_user' => $c->assigned_user_id ? ['id' => $c->assigned_user_id, 'name' => $c->assigned_user_name] : null,
                 'last_activity_at' => CarbonImmutable::parse($c->last_activity_at, 'UTC')->toISOString(),
-                'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender],
+                'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender, 'type' => $c->preview_type],
             ])->all(),
         ]);
     }
@@ -108,7 +112,7 @@ final class AdminConversationController extends Controller
         $after = max(0, (int) $request->query('after', 0));
         $messages = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)
             ->where('sequence', '>', $after)->orderBy('sequence')->limit(200)
-            ->get(['sequence', 'direction', 'sender_type', 'text_body', 'delivery_status', 'occurred_at', 'metadata_json']);
+            ->get(['sequence', 'direction', 'sender_type', 'text_body', 'delivery_status', 'occurred_at', 'metadata_json', 'media_json']);
         $noteAuthor = fn ($m): ?int => $m->direction === 'INTERNAL' ? (json_decode((string) $m->metadata_json, true)['author_user_id'] ?? null) : null;
         $authors = DB::table('users')->where('tenant_id', $row->tenant_id)->whereIn('id', $messages->map($noteAuthor)->filter()->unique()->all())->pluck('display_name', 'id');
         if ($user->role() !== RoleCode::READ_ONLY && (int) $row->assigned_user_id === (int) $user->id) {
@@ -127,6 +131,7 @@ final class AdminConversationController extends Controller
                 'sequence' => (int) $m->sequence, 'direction' => $m->direction, 'sender' => $m->sender_type,
                 'text' => $m->text_body, 'status' => $m->delivery_status,
                 'at' => CarbonImmutable::parse($m->occurred_at, 'UTC')->toISOString(),
+                'media' => ConversationAttachments::present($m->media_json, "/api/v1/admin/conversations/{$row->public_id}/media/{$m->sequence}"),
             ] + ($m->direction === 'INTERNAL' ? ['author' => $authors[$noteAuthor($m)] ?? null] : []))->all(),
         ]);
     }
@@ -250,6 +255,60 @@ final class AdminConversationController extends Controller
         }
 
         return response()->json(['data' => ['lead_id' => (string) $lead['public_id'], 'created' => $lead['created']]], $lead['created'] ? 201 : 200);
+    }
+
+    /**
+     * Photo or PDF from the advisor in control (Fase 4), with an optional caption. Web chat only for now:
+     * WhatsApp needs Meta's media upload, which cannot be exercised while sending to Meta is off.
+     */
+    public function attach(Request $request, string $conversation, ConversationAttachments $attachments): JsonResponse
+    {
+        $user = $this->writer($request);
+        $row = $this->find($user, $conversation);
+        $data = $request->validate(['file' => 'required|file|max:'.(ConversationAttachments::MAX_BYTES / 1024),
+            'caption' => 'nullable|string|max:1024', 'idempotency_key' => 'required|string|min:16|max:120']);
+        // Checked again under lock by humanReply; here so nothing is stored for a send that cannot happen.
+        if ($row->control_state !== 'HUMAN_ACTIVE' || (int) $row->controlled_by_user_id !== (int) $user->id) {
+            return response()->json(['error' => ['code' => 'NOT_IN_CONTROL', 'message' => 'Tomá el control de la conversación antes de responder.']], 409);
+        }
+        if (DB::table('channel_accounts')->where('tenant_id', $row->tenant_id)->where('id', $row->channel_account_id)->value('channel_type') !== 'WEB_CHAT') {
+            return response()->json(['error' => ['code' => 'MEDIA_NOT_SUPPORTED_ON_CHANNEL',
+                'message' => 'Por ahora fotos y PDF solo se envían por el chat web. Por WhatsApp, mandá el texto.']], 409);
+        }
+        // Storage quota per tenant and day (D14 spirit: no single tenant or advisor can fill the disk).
+        $quotaKey = 'attachments:'.$row->tenant_id.':'.now()->toDateString();
+        if ((int) Cache::get($quotaKey, 0) + (int) $data['file']->getSize() > (int) config('conversations.attachments_daily_mb') * 1024 * 1024) {
+            return response()->json(['error' => ['code' => 'ATTACHMENT_QUOTA', 'message' => 'Se alcanzó el límite diario de archivos. Probá mañana o mandá un link.']], 429);
+        }
+        $media = $attachments->store((int) $row->tenant_id, (int) $row->id, $data['file'])
+            ?? abort(response()->json(['error' => ['code' => 'MEDIA_NOT_ALLOWED', 'message' => 'Solo fotos JPG, PNG o WebP y PDF de hasta 10 MB.']], 422));
+        try {
+            $result = $this->control->humanReply((int) $row->tenant_id, (int) $row->id, $user, trim((string) ($data['caption'] ?? '')), $data['idempotency_key'], $media);
+        } catch (\Throwable $e) {
+            $attachments->discardIfUnused((int) $row->tenant_id, $media); // never an orphan file
+
+            throw $e;
+        }
+        if (! $result['replayed']) {
+            Cache::add($quotaKey, 0, now()->addDay());
+            Cache::increment($quotaKey, $media['size']);
+        }
+        if (! $result['replayed']) {
+            DispatchOutboundJob::dispatch((int) $row->tenant_id, $result['job_id']);
+        }
+
+        return response()->json(['data' => ['sequence' => $result['sequence'], 'replayed' => $result['replayed']]], $result['replayed'] ? 200 : 202);
+    }
+
+    /** The file of a message, for whoever can see the conversation. */
+    public function media(Request $request, string $conversation, int $sequence, ConversationAttachments $attachments): StreamedResponse
+    {
+        $row = $this->find($this->viewer($request), $conversation);
+        $media = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)
+            ->where('sequence', $sequence)->whereIn('direction', ['INBOUND', 'OUTBOUND'])->value('media_json');
+        abort_if($media === null, 404);
+
+        return $attachments->stream((int) $row->tenant_id, (int) $row->id, (array) json_decode((string) $media, true));
     }
 
     /** Internal note for the team: never sent to the customer nor shown to the assistant. */
