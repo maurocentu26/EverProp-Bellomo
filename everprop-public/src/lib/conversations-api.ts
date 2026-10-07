@@ -186,6 +186,13 @@ export async function sendReply(id: string, text: string, idempotencyKey: string
   );
 }
 
+/** The conversation's open lead (created if missing, one per contact), to qualify it and book the visit. */
+export async function openConversationLead(id: string) {
+  return apiFetch<{ data: { lead_id: string; created: boolean } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/lead`, { method: "POST" },
+  );
+}
+
 /** Copilot: a draft for the advisor in control. Nothing is sent until the advisor sends it. */
 export async function suggestReply(id: string) {
   return apiFetch<{ data: { text: string; suggestion_id: string } }>(

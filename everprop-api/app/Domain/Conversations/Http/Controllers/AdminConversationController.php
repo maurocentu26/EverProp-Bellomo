@@ -9,12 +9,14 @@ use App\Domain\Conversations\Services\ChannelPolicy;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Conversations\Services\OutboundDispatcher;
+use App\Domain\CRM\Services\CreateOrGetOpenLeadProcedure;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -180,7 +182,7 @@ final class AdminConversationController extends Controller
         } catch (CopilotFailure $e) {
             $action = ['registrar_interes' => 'registrar el interés', 'solicitar_visita' => 'pedir la visita', 'derivar_a_asesor' => 'derivar la conversación'][$e->action ?? ''] ?? 'hacer esa acción';
             [$status, $message] = match ($e->errorCode) {
-                'ACTION_NEEDED' => [422, "La IA sugiere {$action}: hacelo vos desde la conversación y respondé al cliente."],
+                'ACTION_NEEDED' => [422, "La IA sugiere {$action}: hacelo vos con «Lead y visita» y respondé al cliente."],
                 'TOO_MANY_DRAFTS' => [429, 'Ya pediste varias sugerencias para este mensaje. Escribí la respuesta vos.'],
                 'COPILOT_DISABLED' => [409, 'El copiloto está apagado.'],
                 'NOT_IN_CONTROL' => [409, 'Tomá el control de la conversación para pedir una sugerencia.'],
@@ -210,6 +212,44 @@ final class AdminConversationController extends Controller
         $outcome = hash_equals($draftHash, hash('sha256', trim($text))) ? 'SENT_AS_IS' : 'SENT_EDITED';
         $messageId = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)->where('sequence', $sequence)->value('id');
         $runs()->update(['output_message_id' => $messageId, 'trace_json' => DB::raw("JSON_SET(trace_json, '$.advisor', '".$outcome."')")]);
+    }
+
+    /**
+     * The conversation's open lead, created if missing with the same idempotent procedure the assistant uses
+     * (one open lead per contact, no duplicates). The advisor qualifies it and books the visit from the lead page.
+     * Advisors: only from a conversation of theirs; an unassigned lead becomes theirs, and one held by another
+     * advisor is never taken (they are told who should follow it instead of getting a page they cannot open).
+     */
+    public function lead(Request $request, string $conversation): JsonResponse
+    {
+        $user = $this->writer($request);
+        $row = $this->find($user, $conversation);
+        $advisor = $user->role() === RoleCode::SALES_ADVISOR;
+        if ($advisor && (int) $row->assigned_user_id !== (int) $user->id && (int) $row->controlled_by_user_id !== (int) $user->id) {
+            return response()->json(['error' => ['code' => 'NOT_IN_CONTROL', 'message' => 'Tomá la conversación primero.']], 409);
+        }
+        $channel = (string) DB::table('channel_accounts')->where('tenant_id', $row->tenant_id)->where('id', $row->channel_account_id)->value('channel_type');
+        $contactId = (int) DB::table('conversations')->where('tenant_id', $row->tenant_id)->where('id', $row->id)->value('contact_id');
+        try {
+            $lead = app(CreateOrGetOpenLeadProcedure::class)->execute((int) $row->tenant_id, $contactId, $channel, 'CONVERSATION',
+                'Consulta por conversación', 'NORMAL', CarbonImmutable::now('UTC'));
+        } catch (QueryException $e) {
+            // The procedure refuses inactive or merged contacts with SIGNAL 45000.
+            abort_unless($e->getCode() === '45000', 500);
+
+            return response()->json(['error' => ['code' => 'CONTACT_UNAVAILABLE', 'message' => 'Este contacto no está activo: revisalo en Leads.']], 409);
+        }
+        $leads = fn () => DB::table('leads')->where('tenant_id', $row->tenant_id)->where('id', $lead['lead_id']);
+        if ($advisor && $lead['assigned_user_id'] === null) {
+            $leads()->whereNull('assigned_user_id')->update(['assigned_user_id' => $user->id]);
+        }
+        $lead = (array) $leads()->first(['public_id', 'assigned_user_id']) + $lead; // the current owner wins
+        if ($advisor && (int) $lead['assigned_user_id'] !== (int) $user->id) {
+            return response()->json(['error' => ['code' => 'LEAD_OF_ANOTHER_ADVISOR',
+                'message' => 'El lead de este cliente lo sigue otro asesor. Avisale a tu gerente.']], 409);
+        }
+
+        return response()->json(['data' => ['lead_id' => (string) $lead['public_id'], 'created' => $lead['created']]], $lead['created'] ? 201 : 200);
     }
 
     /** Internal note for the team: never sent to the customer nor shown to the assistant. */

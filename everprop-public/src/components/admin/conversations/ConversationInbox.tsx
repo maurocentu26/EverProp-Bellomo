@@ -1,8 +1,9 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Bot, Sparkles, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bot, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import {
   CHANNEL_LABELS,
@@ -24,6 +25,7 @@ import {
   resumeAi,
   sendReply,
   suggestReply,
+  openConversationLead,
   takeOver,
   threadCursor,
   type ConversationFilter,
@@ -157,6 +159,7 @@ const isTouch = () => window.matchMedia("(pointer: coarse)").matches;
 
 export function ConversationInbox() {
   const { user } = useCurrentSession();
+  const router = useRouter();
   const readOnly = user?.apiRole === "READ_ONLY";
   const [filter, setFilter] = useState<ConversationFilter>("waiting");
   // What the user types, and the term actually sent once they pause typing.
@@ -505,6 +508,18 @@ export function ConversationInbox() {
                   </p>
                 </div>
                 {state && <span className={`hidden shrink-0 rounded-full px-3 py-1 text-xs font-semibold sm:inline ${STATE_STYLES[state]}`}>{STATE_LABELS[state]}</span>}
+                {!readOnly && (
+                  // Lead and visit live on the lead page: this opens (or creates) the conversation's one open lead.
+                  <button type="button" disabled={busy !== null} aria-label="Lead y visita de este cliente"
+                    onClick={() => void run("lead", async () => {
+                      const { data } = await openConversationLead(selected);
+                      toast.success(data.created ? "Lead creado. Cargá la propiedad y agendá la visita." : "Abriendo el lead del cliente.");
+                      router.push(`/admin/leads/${data.lead_id}`);
+                    })}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold disabled:opacity-60">
+                    <UserPlus className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Lead y visita</span>
+                  </button>
+                )}
                 {!readOnly && humanInControl && (
                   <button type="button" disabled={busy !== null} onClick={() => void run("close", () => closeConversation(selected), "Conversación cerrada.")}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-60">
