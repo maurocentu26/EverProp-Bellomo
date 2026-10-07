@@ -22,7 +22,6 @@ export function useCurrentSession() {
       isAdmin: currentUser?.role === "ADMIN",
       isAdvisor: currentUser?.role === "ADVISOR",
       isEngineer: currentUser?.role === "ENGINEER",
-      isRotator: currentUser?.role === "ROTATOR",
       isReady: isLoaded,
     };
   }, [currentUser, isLoaded]);

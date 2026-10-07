@@ -11,7 +11,6 @@ enum RoleCode: string
     case BOT_OPERATOR = 'BOT_OPERATOR';
     case READ_ONLY = 'READ_ONLY';
     case INVENTORY_MANAGER = 'INVENTORY_MANAGER';
-    case LEAD_ROTATOR = 'LEAD_ROTATOR';
 
     /** @return list<Capability> */
     public function capabilities(): array
@@ -32,12 +31,6 @@ enum RoleCode: string
                 Capability::VIEW,
                 Capability::CREATE,
                 Capability::UPDATE,
-            ],
-            self::LEAD_ROTATOR => [
-                Capability::VIEW_ANY,
-                Capability::VIEW,
-                Capability::UPDATE,
-                Capability::ASSIGN,
             ],
             self::BOT_OPERATOR => [
                 Capability::VIEW_ANY,

@@ -9,13 +9,13 @@ final class LeadAccessPolicy
 {
     public function assign(User $user, int $tenantId): bool
     {
-        return $this->viewAny($user, $tenantId) && in_array($user->role(), [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::LEAD_ROTATOR], true);
+        return $this->viewAny($user, $tenantId) && in_array($user->role(), [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER], true);
     }
 
     public function viewAny(User $user, int $tenantId): bool
     {
         return $user->isActive() && (int) $user->tenant_id === $tenantId
-            && in_array($user->role(), [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY, RoleCode::LEAD_ROTATOR], true);
+            && in_array($user->role(), [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY], true);
     }
 
     public function view(User $user, int $tenantId, object $lead): bool
