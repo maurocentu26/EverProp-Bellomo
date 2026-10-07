@@ -32,7 +32,21 @@ final class ConversationAttachments
         if (! $file->isValid() || ! is_int($size) || $size < 1 || $size > self::MAX_BYTES) {
             return null;
         }
-        $contents = $file->getContent();
+
+        return $this->storeBytes($tenantId, $conversationId, $file->getContent(), $file->getClientOriginalName());
+    }
+
+    /**
+     * Same rules for bytes from anywhere (an upload, or a file the client sent by WhatsApp).
+     *
+     * @return array{kind: string, disk: string, path: string, mime: string, size: int, sha256: string, name: string}|null
+     */
+    public function storeBytes(int $tenantId, int $conversationId, string $contents, string $originalName): ?array
+    {
+        $size = strlen($contents);
+        if ($size < 1 || $size > self::MAX_BYTES) {
+            return null;
+        }
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($contents);
         if (! is_string($mime) || ! isset(self::KINDS[$mime])) {
             return null;
@@ -46,7 +60,7 @@ final class ConversationAttachments
         }
         // Display name only: control characters and path separators removed, bounded, and always the detected
         // extension (a PDF never downloads as .html; a name without ASCII still has a valid header fallback).
-        $base = pathinfo((string) preg_replace('/[\x00-\x1F\x7F\/\\\\]+/u', ' ', $file->getClientOriginalName()), PATHINFO_FILENAME);
+        $base = pathinfo((string) preg_replace('/[\x00-\x1F\x7F\/\\\\]+/u', ' ', $originalName), PATHINFO_FILENAME);
         $base = mb_substr(trim($base), 0, 100);
 
         return ['kind' => $kind, 'disk' => $disk, 'path' => $path, 'mime' => $mime, 'size' => $size, 'sha256' => $sha,
@@ -65,6 +79,21 @@ final class ConversationAttachments
         if (! $used) {
             $this->disk((string) config('filesystems.private', 'local'))->delete((string) $media['path']);
         }
+    }
+
+    /**
+     * Bytes of a stored attachment, same path checks as stream() (for uploading it to a provider).
+     *
+     * @param  array<string, mixed>  $media
+     */
+    public function contents(int $tenantId, int $conversationId, array $media): string
+    {
+        $path = (string) ($media['path'] ?? '');
+        if (! str_starts_with($path, sprintf('tenants/%d/conversations/%d/', $tenantId, $conversationId)) || str_contains($path, '..')) {
+            throw new \RuntimeException('Attachment path outside its conversation.');
+        }
+
+        return (string) $this->disk((string) config('filesystems.private', 'local'))->get($path);
     }
 
     /** @param array<string, mixed> $media media_json of a message of this tenant and conversation */

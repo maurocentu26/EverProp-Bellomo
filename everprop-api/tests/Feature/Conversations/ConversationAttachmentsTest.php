@@ -125,8 +125,8 @@ final class ConversationAttachmentsTest extends TestCase
         $this->attach($this->user($f['tenant'], RoleCode::SALES_MANAGER), $f['tenant'], $f['conversation'], $this->file('foto.png', $png))
             ->assertStatus(409)->assertJsonPath('error.code', 'NOT_IN_CONTROL');
         $this->attach($this->user($f['tenant'], RoleCode::READ_ONLY), $f['tenant'], $f['conversation'], $this->file('foto.png', $png))->assertForbidden();
-        DB::table('channel_accounts')->where('tenant_id', $f['tenant']->id)->update(['channel_type' => 'WHATSAPP']);
-        $this->attach($f['advisor'], $f['tenant'], $f['conversation'], $this->file('foto.png', $png))->assertStatus(409)->assertJsonPath('error.code', 'MEDIA_NOT_SUPPORTED_ON_CHANNEL');
+        DB::table('channel_accounts')->where('tenant_id', $f['tenant']->id)->update(['status' => 'PAUSED']);
+        $this->attach($f['advisor'], $f['tenant'], $f['conversation'], $this->file('foto.png', $png))->assertStatus(409)->assertJsonPath('error.code', 'CHANNEL_INACTIVE'); // a paused channel keeps no file
 
         $this->assertSame([], Storage::disk('local')->allFiles(), 'nothing is stored for a send that cannot happen');
         $this->assertSame(0, DB::table('messages')->where('conversation_id', $f['id'])->where('direction', 'OUTBOUND')->count());

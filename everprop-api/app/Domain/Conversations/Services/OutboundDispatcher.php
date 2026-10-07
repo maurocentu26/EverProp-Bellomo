@@ -35,7 +35,7 @@ final class OutboundDispatcher
 
         try {
             $result = $this->transports->for($claim['channel']['channel_type'])
-                ->send($claim['channel'], $claim['recipient'], $claim['text'], $claim['nonce']);
+                ->send($claim['channel'], $claim['recipient'], $claim['text'], $claim['nonce'], $claim['media']);
             $status = $result->accepted ? 'SENT' : ($result->retryable && $claim['attempt'] < $claim['max_attempts'] ? 'RETRY' : 'FAILED');
             $this->settle($tenantId, $claim, $status, $result->providerMessageId, $result->errorCode);
         } catch (DeliveryAmbiguous) {
@@ -111,8 +111,25 @@ final class OutboundDispatcher
             'status' => 'PROCESSING', 'job_id' => $jobId, 'nonce' => $nonce, 'conversation_id' => (int) $job->conversation_id,
             'message_id' => (int) $job->message_id, 'channel' => $channel, 'recipient' => $recipient,
             'text' => (string) DB::table('messages')->where('tenant_id', $tenantId)->where('id', $job->message_id)->value('text_body'),
+            'media' => $this->media($tenantId, (int) $job->conversation_id, (int) $job->message_id),
             'attempt' => (int) $job->attempt_count + 1, 'max_attempts' => (int) $job->max_attempts,
         ];
+    }
+
+    /**
+     * The attachment of the message, with its bytes, for transports that upload it (WhatsApp).
+     *
+     * @return array{kind: string, mime: string, name: string, contents: string}|null
+     */
+    private function media(int $tenantId, int $conversationId, int $messageId): ?array
+    {
+        $media = json_decode((string) DB::table('messages')->where('tenant_id', $tenantId)->where('id', $messageId)->value('media_json'), true);
+        if (! is_array($media)) {
+            return null;
+        }
+        $contents = app(ConversationAttachments::class)->contents($tenantId, $conversationId, $media);
+
+        return ['kind' => (string) $media['kind'], 'mime' => (string) $media['mime'], 'name' => (string) $media['name'], 'contents' => $contents];
     }
 
     /** @param array<string, mixed> $claim */

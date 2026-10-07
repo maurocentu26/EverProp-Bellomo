@@ -93,7 +93,13 @@ final class MetaWebhookProcessor
                 threadId: 'wa:'.$from,
                 providerMessageId: mb_substr($id, 0, 191),
                 type: $this->messageType($type),
-                text: $type === 'text' && is_string($body) ? mb_substr($body, 0, 4096) : null,
+                text: $type === 'text' && is_string($body) ? mb_substr($body, 0, 4096)
+                    : (in_array($type, ['image', 'document'], true) && is_string($message[$type]['caption'] ?? null) ? mb_substr($message[$type]['caption'], 0, 4096) : null),
+                media: in_array($type, ['image', 'document'], true) && is_scalar($message[$type]['id'] ?? null) ? array_filter([
+                    'kind' => $type === 'image' ? 'IMAGE' : 'DOCUMENT', 'provider_media_id' => mb_substr((string) $message[$type]['id'], 0, 64),
+                    'mime' => is_string($message[$type]['mime_type'] ?? null) ? mb_substr($message[$type]['mime_type'], 0, 100) : null,
+                    'name' => is_string($message[$type]['filename'] ?? null) ? mb_substr($message[$type]['filename'], 0, 120) : null,
+                ]) : null,
                 occurredAt: $this->timestamp($message['timestamp'] ?? null),
                 senderDisplayName: is_string($names[$from] ?? null) ? mb_substr($names[$from], 0, 200) : null,
                 senderPhoneE164: '+'.$from,

@@ -10,6 +10,7 @@ use App\Domain\Conversations\Services\ConversationAttachments;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Conversations\Services\OutboundDispatcher;
+use App\Domain\Conversations\Services\WhatsAppMediaFetcher;
 use App\Domain\CRM\Services\CreateOrGetOpenLeadProcedure;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
@@ -271,9 +272,8 @@ final class AdminConversationController extends Controller
         if ($row->control_state !== 'HUMAN_ACTIVE' || (int) $row->controlled_by_user_id !== (int) $user->id) {
             return response()->json(['error' => ['code' => 'NOT_IN_CONTROL', 'message' => 'Tomá el control de la conversación antes de responder.']], 409);
         }
-        if (DB::table('channel_accounts')->where('tenant_id', $row->tenant_id)->where('id', $row->channel_account_id)->value('channel_type') !== 'WEB_CHAT') {
-            return response()->json(['error' => ['code' => 'MEDIA_NOT_SUPPORTED_ON_CHANNEL',
-                'message' => 'Por ahora fotos y PDF solo se envían por el chat web. Por WhatsApp, mandá el texto.']], 409);
+        if (! in_array(DB::table('channel_accounts')->where('tenant_id', $row->tenant_id)->where('id', $row->channel_account_id)->value('channel_type'), ['WEB_CHAT', 'WHATSAPP'], true)) {
+            return response()->json(['error' => ['code' => 'MEDIA_NOT_SUPPORTED_ON_CHANNEL', 'message' => 'Este canal no acepta archivos.']], 409);
         }
         // Storage quota per tenant and day (D14 spirit: no single tenant or advisor can fill the disk).
         $quotaKey = 'attachments:'.$row->tenant_id.':'.now()->toDateString();
@@ -304,11 +304,16 @@ final class AdminConversationController extends Controller
     public function media(Request $request, string $conversation, int $sequence, ConversationAttachments $attachments): StreamedResponse
     {
         $row = $this->find($this->viewer($request), $conversation);
-        $media = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)
-            ->where('sequence', $sequence)->whereIn('direction', ['INBOUND', 'OUTBOUND'])->value('media_json');
-        abort_if($media === null, 404);
+        $message = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)
+            ->where('sequence', $sequence)->whereIn('direction', ['INBOUND', 'OUTBOUND'])->first(['id', 'direction', 'media_json']);
+        abort_if($message?->media_json === null, 404);
+        $media = (array) json_decode((string) $message->media_json, true);
+        if (! isset($media['path']) && $message->direction === 'INBOUND' && isset($media['provider_media_id'])) {
+            $media = app(WhatsAppMediaFetcher::class)->fetch((int) $row->tenant_id, (int) $row->id, (int) $row->channel_account_id, (int) $message->id, $media)
+                ?? abort(404);
+        }
 
-        return $attachments->stream((int) $row->tenant_id, (int) $row->id, (array) json_decode((string) $media, true));
+        return $attachments->stream((int) $row->tenant_id, (int) $row->id, $media);
     }
 
     /** Internal note for the team: never sent to the customer nor shown to the assistant. */

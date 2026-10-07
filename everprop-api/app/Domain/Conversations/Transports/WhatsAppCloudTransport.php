@@ -21,7 +21,7 @@ final class WhatsAppCloudTransport implements ChannelTransport
 {
     public function __construct(private readonly IntegrationTokens $tokens) {}
 
-    public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce): SendResult
+    public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null): SendResult
     {
         if (! config('services.meta.send_enabled')) {
             return SendResult::rejected('CHANNEL_SEND_DISABLED', false);
@@ -37,16 +37,32 @@ final class WhatsAppCloudTransport implements ChannelTransport
             return SendResult::rejected('CHANNEL_NOT_CONFIGURED', false);
         }
 
-        $url = sprintf('https://graph.facebook.com/%s/%s/messages', config('services.meta.graph_version'), rawurlencode((string) $channel['provider_account_id']));
+        $base = sprintf('https://graph.facebook.com/%s/%s', config('services.meta.graph_version'), rawurlencode((string) $channel['provider_account_id']));
+        $content = ['type' => 'text', 'text' => ['preview_url' => false, 'body' => $text]];
+        if ($media !== null) {
+            // Photos and PDFs go up to Meta first; nothing reached the client yet, so any failure here is safely retryable.
+            try {
+                $upload = Http::withToken($token)->timeout((int) config('services.meta.send_timeout_seconds', 10) * 3)
+                    ->attach('file', $media['contents'], $media['name'], ['Content-Type' => $media['mime']])
+                    ->post($base.'/media', ['messaging_product' => 'whatsapp', 'type' => $media['mime']]);
+            } catch (ConnectionException) {
+                return SendResult::rejected('META_MEDIA_UPLOAD_FAILED', true);
+            }
+            $mediaId = $upload->json('id');
+            if (! $upload->successful() || ! is_string($mediaId) || $mediaId === '') {
+                return SendResult::rejected('META_MEDIA_UPLOAD_'.$upload->status(), $upload->status() >= 500 || $upload->status() === 429);
+            }
+            $type = $media['kind'] === 'IMAGE' ? 'image' : 'document';
+            $content = ['type' => $type, $type => array_filter(['id' => $mediaId, 'caption' => $text !== '' ? mb_substr($text, 0, 1024) : null,
+                'filename' => $type === 'document' ? $media['name'] : null])];
+        }
 
         try {
-            $response = Http::withToken($token)->timeout((int) config('services.meta.send_timeout_seconds', 10))->post($url, [
+            $response = Http::withToken($token)->timeout((int) config('services.meta.send_timeout_seconds', 10))->post($base.'/messages', [
                 'messaging_product' => 'whatsapp',
                 'recipient_type' => 'individual',
                 'to' => $recipientProviderId,
-                'type' => 'text',
-                'text' => ['preview_url' => false, 'body' => $text],
-            ]);
+            ] + $content);
         } catch (ConnectionException $e) {
             // The request may have reached Meta before the connection dropped.
             throw new DeliveryAmbiguous('WhatsApp send outcome unknown.', 0, $e);

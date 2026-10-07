@@ -12,6 +12,7 @@ interface ChannelTransport
      * dispatcher then marks UNKNOWN and never retries blindly.
      *
      * @param  array<string, mixed>  $channel  channel_accounts row (provider ids, metadata)
+     * @param  array{kind: string, mime: string, name: string, contents: string}|null  $media  attachment; $text is then its caption
      */
-    public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce): SendResult;
+    public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null): SendResult;
 }

@@ -693,7 +693,7 @@ export function ConversationInbox() {
                         className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-muted ${noteMode ? "wa-note-mode" : "text-muted-foreground"}`}>
                         <StickyNote className="h-5 w-5" aria-hidden />
                       </button>
-                      {!noteMode && current?.channel === "WEB_CHAT" && (
+                      {!noteMode && (current?.channel === "WEB_CHAT" || current?.channel === "WHATSAPP") && (
                         <label className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${busy !== null ? "pointer-events-none opacity-50" : ""}`}>
                           <span className="sr-only">{busy === "attach" ? "Enviando archivo" : "Adjuntar foto o PDF"}</span>
                           <Paperclip className={`h-5 w-5 ${busy === "attach" ? "animate-pulse motion-reduce:animate-none" : ""}`} aria-hidden />
