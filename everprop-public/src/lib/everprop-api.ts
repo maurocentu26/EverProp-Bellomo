@@ -628,7 +628,7 @@ export async function createEverpropLead(data: {
       phone: data.phone || null,
       stage: data.stage || "NEW",
       priority: (data.priority || "NORMAL").toUpperCase(),
-      budget: data.budget || null,
+      budget: data.budget ?? null,
       currency: data.currency || "USD",
       notes: data.notes || null,
       agent_id: data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null,

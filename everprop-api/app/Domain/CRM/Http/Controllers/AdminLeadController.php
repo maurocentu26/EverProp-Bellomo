@@ -193,6 +193,15 @@ final class AdminLeadController extends Controller
                 'property_id' => 'nullable|string',
             ]);
 
+            if ($user->role() === RoleCode::ROTATOR) {
+                if (strtoupper($validated['stage'] ?? 'NEW') !== 'NEW') {
+                    throw ValidationException::withMessages(['stage' => 'El rotador sólo puede crear leads en etapa Nuevo.']);
+                }
+                if (! empty($validated['property_id'])) {
+                    throw ValidationException::withMessages(['property_id' => 'El rotador no puede vincular propiedades.']);
+                }
+            }
+
             if ($user->role() === RoleCode::SALES_ADVISOR) {
                 $validated['agent_id'] = $user->public_id;
             }

@@ -37,7 +37,7 @@ export default function MainLayout({ children }: Props) {
     }, [currentUser, invalidateSession, isLoaded, router]);
 
     useEffect(() => {
-        if (currentUser?.role === "ROTATOR" && pathname !== "/admin/leads") router.replace("/admin/leads");
+        if (currentUser?.role === "ROTATOR" && !["/admin/leads", "/admin/leads/new"].includes(pathname)) router.replace("/admin/leads");
     }, [currentUser, pathname, router]);
 
     useEffect(() => {
@@ -137,7 +137,7 @@ export default function MainLayout({ children }: Props) {
                                     </div>
                                 )}
 
-                                {currentUser.role === "ROTATOR" && pathname !== "/admin/leads" ? <p>Abriendo asignación de leads…</p> : children}
+                                {currentUser.role === "ROTATOR" && !["/admin/leads", "/admin/leads/new"].includes(pathname) ? <p>Abriendo asignación de leads…</p> : children}
                             </div>
                         </main>
                     </div>

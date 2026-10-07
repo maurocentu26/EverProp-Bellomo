@@ -111,6 +111,9 @@ const formSchema = z
     stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing", "discarded"]),
     notes: z.string().trim().max(5000, "Las notas no pueden superar 5000 caracteres.").optional().or(z.literal("")),
     agentId: z.string().optional(),
+    priority: z.enum(["NORMAL", "LOW", "HIGH", "URGENT"]).optional(),
+    budget: z.string().optional().refine(value => !value || (Number.isFinite(Number(value)) && Number(value) >= 0), "Ingresá un presupuesto válido."),
+    currency: z.enum(["USD", "ARS"]).optional(),
   })
   .refine(
     (data) => Boolean(data.email?.trim() || data.phone?.trim()),
@@ -132,6 +135,7 @@ type Props = {
 export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing = false }: Props) {
   const router = useRouter();
   const { user, isAdvisor } = useCurrentSession();
+  const isRotator = user?.role === "ROTATOR";
   const [loadError, setLoadError] = useState("");
   const [activeLead, setActiveLead] = useState<Lead | null>(initialLead ?? null);
   const [isLoadingLead, setIsLoadingLead] = useState(Boolean(leadId && !initialLead));
@@ -178,6 +182,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
   useEffect(() => {
     let active = true;
+    if (isRotator) return;
     async function loadData() {
       if (!isMockDataMode) {
         try {
@@ -199,7 +204,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     return () => {
       active = false;
     };
-  }, [companyId]);
+  }, [companyId, isRotator]);
 
   useEffect(() => {
     let active = true;
@@ -232,6 +237,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       email: "",
       phone: "",
       stage: "new",
+      priority: "NORMAL",
+      budget: "",
+      currency: "USD",
       notes: "",
       agentId: isAdvisor ? user?.id : "",
     },
@@ -367,6 +375,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       email: "",
       phone: "",
       stage: "new",
+      priority: "NORMAL",
+      budget: "",
+      currency: "USD",
       notes: "",
       agentId: isAdvisor ? user?.id : "",
     });
@@ -506,10 +517,11 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           origin: nextLead.origin,
           email: nextLead.email,
           phone: nextLead.phone,
-          stage: stageApiMap[nextLead.stage] || "NEW",
+          stage: isRotator ? "NEW" : stageApiMap[nextLead.stage] || "NEW",
+          ...(isRotator ? { priority: data.priority, budget: data.budget ? Number(data.budget) : undefined, currency: data.currency } : {}),
           notes: nextLead.notes,
           agentId: nextLead.agentId,
-          propertyId: selectedAsset?.id || null,
+          propertyId: isRotator ? null : selectedAsset?.id || null,
         });
         nextLead.id = created.id;
       } catch (e: any) {
@@ -583,7 +595,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               <CardDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {isEditing
                   ? "Actualizá los datos de contacto, requerimientos comerciales y activos de interés del prospecto."
-                  : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
+                  : isRotator ? "Registrá sus datos de contacto y asigná un asesor si corresponde." : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
               </CardDescription>
             </div>
           </div>
@@ -742,6 +754,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                         <select
                           {...field}
                           id="lead-stage"
+                          disabled={isRotator}
                           className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                         >
                           <option value="new">Nuevo</option>
@@ -756,6 +769,24 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     )}
                   />
                 </div>
+
+                {isRotator && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field>
+                    <FieldLabel htmlFor="lead-priority">Prioridad</FieldLabel>
+                    <select id="lead-priority" {...form.register("priority")} className="h-10 rounded-lg border bg-background px-3">
+                      <option value="LOW">Baja</option><option value="NORMAL">Normal</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option>
+                    </select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="lead-budget">Presupuesto</FieldLabel>
+                    <Input id="lead-budget" type="number" min="0" step="0.01" {...form.register("budget")} aria-invalid={Boolean(form.formState.errors.budget)} />
+                    {form.formState.errors.budget && <FieldError errors={[form.formState.errors.budget]} />}
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="lead-currency">Moneda</FieldLabel>
+                    <select id="lead-currency" {...form.register("currency")} className="h-10 rounded-lg border bg-background px-3"><option value="USD">USD</option><option value="ARS">ARS</option></select>
+                  </Field>
+                </div>}
 
                 <Controller
                   name="notes"
@@ -804,6 +835,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               </section>
 
               {/* ── Seccion 2: Interes inmobiliario (Opcional) ── */}
+              {!isRotator && (
               <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-interest-data">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
@@ -946,6 +978,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   </div>
                 </Field>
               </section>
+              )}
             </div>
           </CardContent>
 

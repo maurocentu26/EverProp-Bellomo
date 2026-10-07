@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Lead } from "@/data/admin-sample";
 import { loadEverpropLeads, updateEverpropLead } from "@/lib/everprop-api";
@@ -26,7 +27,7 @@ export function RotatorLeadQueue() {
   }, []);
   const visible = leads.filter(lead => (!unassigned || !lead.agentId) && `${lead.name} ${lead.email ?? ""} ${lead.phone ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   return <section className="space-y-4">
-    <h1 className="text-2xl font-bold">Asignación de leads</h1>
+    <div className="flex items-center justify-between gap-4"><h1 className="text-2xl font-bold">Asignación de leads</h1><Link href="/admin/leads/new" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">Nuevo lead</Link></div>
     <p className="text-muted-foreground">Asigná o reasigná cada lead a un asesor comercial activo.</p>
     <div className="flex flex-wrap items-center gap-4">
       <input aria-label="Buscar leads" placeholder="Buscar por nombre, correo o teléfono" value={search} onChange={e => setSearch(e.target.value)} className="rounded-lg border p-2" />
