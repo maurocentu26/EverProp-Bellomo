@@ -19,6 +19,15 @@ final class OutputGuard
 
     private const SCALE = '(?:\s*(mil(?:lones|l[oó]n)?|k|M)\b)?';
 
+    /**
+     * Links and payment data can only repeat what an approved source of the tenant says: a customer (or a
+     * poisoned document) asking the model to "send this alias / pay at this link" must never reach anyone.
+     * URL: scheme, www. or a bare domain on a common TLD. Payment: CBU/CVU (22 digits) or an alias (word.word.word).
+     */
+    private const LINK = '/(?:https?:\/\/|www\.)[^\s<>"\')\]]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|ar|io|app|ly|me|co|link|site|online|shop|store|xyz|info|top|click|page|biz)\b(?:\/[^\s<>"\')\]]*)?/iu';
+
+    private const PAYMENT = '/\b(?:\d[ -]?){21}\d\b|\b[a-z][a-z0-9]+(?:\.[a-z][a-z0-9]+){2,}\b/iu';
+
     private const CLAIMS = [
         '/(visita|cita|turno|recorrida)[^.!?\n]{0,40}(confirmad|agendad|reservad|coordinad|programad|fijad|pactad)/iu',
         '/(\bno\s+)?(confirm|agend|reserv|program|fij|pact)(o|amos|é|ada|ado)\b[^.!?\n]{0,40}(visita|cita|turno|recorrida|unidad|propiedad|lote|departamento|casa)/iu',
@@ -57,6 +66,12 @@ final class OutputGuard
                 break;
             }
         }
+        if ($this->unsupported(self::LINK, $text, $knowledge)) {
+            $violations[] = 'UNVERIFIED_LINK';
+        }
+        if ($this->unsupported(self::PAYMENT, $text, $knowledge)) {
+            $violations[] = 'PAYMENT_DATA';
+        }
         if ($this->claimsConfirmation($text)) {
             $violations[] = 'CONFIRMATION_CLAIM';
         }
@@ -70,6 +85,27 @@ final class OutputGuard
         }
 
         return $violations;
+    }
+
+    /**
+     * Some match of $pattern in the text that does not appear (case-insensitive) in the approved sources.
+     *
+     * @param  list<string>  $knowledge
+     */
+    private function unsupported(string $pattern, string $text, array $knowledge): bool
+    {
+        $evidence = mb_strtolower(implode("\n", $knowledge));
+        preg_match_all($pattern, $text, $matches);
+        foreach ($matches[0] as $found) {
+            $found = mb_strtolower(rtrim($found, '.,;:!?'));
+            // Compare digits only for account numbers, so "0000 0031..." and "000000031..." are the same.
+            $digits = preg_replace('/\D/', '', $found);
+            if (strlen((string) $digits) === 22 ? ! str_contains((string) preg_replace('/\D/', '', $evidence), (string) $digits) : ! str_contains($evidence, $found)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** A negated statement ("no está confirmada", "sin confirmar", "todavía no") is the honest answer. */

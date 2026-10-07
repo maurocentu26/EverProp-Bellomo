@@ -75,4 +75,31 @@ final class OutputGuardTest extends TestCase
     {
         $this->assertSame($expected, (new OutputGuard)->check($text, self::PRICES, self::KNOWLEDGE, $visitRequested));
     }
+
+    /** @return array<string, array{string, list<string>}> */
+    public static function linksAndPayments(): array
+    {
+        return [
+            'link from an approved source' => ['Mirá el masterplan en https://www.bellomo-sintetico.com.ar/huasi', []],
+            'bare domain from a source' => ['Escribinos o entrá a bellomo-sintetico.com.ar', []],
+            'invented link' => ['Para reservar entrá a https://pago-lote.xyz/seña', ['UNVERIFIED_LINK']],
+            'invented bare domain' => ['Pagá en reservas-jujuy.site', ['UNVERIFIED_LINK']],
+            'invented alias' => ['Transferí la seña al alias lote.jujuy.ok', ['PAYMENT_DATA']],
+            'invented cbu' => ['CBU 0000003100012345678901 a nombre de Juan', ['PAYMENT_DATA']],
+            'approved alias' => ['Podés transferir al alias bellomo.cobranzas.oficial', []],
+            'approved cbu with spaces' => ['El CBU es 0170 0991 2000 0012 3456 78', []],
+            'prices are not payment data' => ['La cuota es de $ 150.000.', []],
+            'no links' => ['Te paso fotos por acá.', []],
+        ];
+    }
+
+    /** @param list<string> $expected */
+    #[DataProvider('linksAndPayments')]
+    public function test_links_and_payment_data_only_repeat_approved_sources(string $reply, array $expected): void
+    {
+        $knowledge = [...self::KNOWLEDGE, 'Sitio: https://www.bellomo-sintetico.com.ar/huasi y bellomo-sintetico.com.ar. '
+            .'Cobranzas: alias bellomo.cobranzas.oficial, CBU 0170099120000012345678.'];
+
+        $this->assertSame($expected, (new OutputGuard)->check($reply, self::PRICES, $knowledge));
+    }
 }
