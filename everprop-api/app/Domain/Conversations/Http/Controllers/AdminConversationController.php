@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class AdminConversationController extends Controller
 {
-    private const VIEW_ROLES = [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY];
+    private const VIEW_ROLES = [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY, RoleCode::LEAD_ROTATOR];
 
     public function __construct(private readonly ConversationControl $control) {}
 
