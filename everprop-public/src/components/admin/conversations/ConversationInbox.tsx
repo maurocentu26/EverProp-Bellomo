@@ -27,6 +27,10 @@ import {
   suggestReply,
   openConversationLead,
   sendAttachment,
+  listTemplates,
+  sendTemplate,
+  renderTemplate,
+  type WhatsAppTemplate,
   ATTACHMENT_TYPES,
   ATTACHMENT_MAX_BYTES,
   fileSize,
@@ -203,6 +207,10 @@ export function ConversationInbox() {
   const [note, setNote] = useState("");
   // One composer, two modes: reply to the client or a note only the team sees.
   const [noteMode, setNoteMode] = useState(false);
+  // Outside WhatsApp's 24 h window: approved templates, the one picked and its variables.
+  const [templates, setTemplates] = useState<WhatsAppTemplate[] | null>(null);
+  const [template, setTemplate] = useState<WhatsAppTemplate | null>(null);
+  const [templateParams, setTemplateParams] = useState<string[]>([]);
   // Same rule as replies: the key belongs to the exact text it was created for.
   const noteKey = useRef({ key: newKey(), text: "" });
   const threadHeading = useRef<HTMLHeadingElement>(null);
@@ -312,6 +320,8 @@ export function ConversationInbox() {
     setSuggestion(null);
     setNote("");
     setNoteMode(false);
+    setTemplates(null);
+    setTemplate(null);
     noteKey.current = { key: newKey(), text: "" };
     window.setTimeout(() => threadHeading.current?.focus(), 0);
   }
@@ -415,6 +425,27 @@ export function ConversationInbox() {
         setSuggestion(null);
       }
     }, file.type === "application/pdf" ? "PDF enviado." : "Foto enviada.");
+  }
+
+  async function openTemplates() {
+    const conversation = selected;
+    if (!conversation) return;
+    await run("templates", async () => {
+      const { data } = await listTemplates(conversation);
+      if (selectedRef.current === conversation) setTemplates(data);
+    });
+  }
+
+  async function sendPickedTemplate() {
+    const conversation = selected;
+    if (!conversation || !template) return;
+    await run("template", async () => {
+      await sendTemplate(conversation, template, templateParams.map((p) => p.trim()), newKey());
+      if (selectedRef.current === conversation) {
+        setTemplate(null);
+        setTemplates(null);
+      }
+    }, "Plantilla enviada. Si el cliente responde, se reabre la conversación.");
   }
 
   function focusComposer() {
@@ -653,8 +684,47 @@ export function ConversationInbox() {
                   )}
                   {/* The open window is shown in the header; here only the blocking case. */}
                   <p role="status" className={windowClosed && humanInControl && !noteMode ? "wa-bar px-4 pt-3 text-xs font-semibold text-amber-800 dark:text-amber-300" : "sr-only"}>
-                    {windowClosed && humanInControl ? "Pasaron más de 24 horas desde el último mensaje del cliente. WhatsApp no permite escribirle hasta que vuelva a escribir (o con una plantilla aprobada)." : ""}
+                    {windowClosed && humanInControl ? "Pasaron más de 24 horas desde el último mensaje del cliente. Solo podés escribirle con una plantilla aprobada." : ""}
                   </p>
+                  {windowClosed && humanInControl && !noteMode && (
+                    <div className="wa-bar space-y-2 px-3 pt-2">
+                      {templates === null ? (
+                        <button type="button" disabled={busy !== null} onClick={() => void openTemplates()}
+                          className="wa-accent inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-60">
+                          <MessageSquareText className="h-4 w-4" aria-hidden /> {busy === "templates" ? "Buscando plantillas…" : "Escribir con plantilla"}
+                        </button>
+                      ) : templates.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No hay plantillas aprobadas para este número. Se crean en WhatsApp Manager y Meta las revisa.</p>
+                      ) : !template ? (
+                        <ul className="max-h-56 space-y-1 overflow-y-auto" aria-label="Plantillas aprobadas">
+                          {templates.map((t) => (
+                            <li key={`${t.name}-${t.language}`}>
+                              <button type="button" onClick={() => { setTemplate(t); setTemplateParams(Array.from({ length: t.params }, () => "")); }}
+                                className="w-full rounded-lg bg-background px-3 py-2 text-left text-sm hover:bg-muted">
+                                <span className="block font-semibold">{t.name.replaceAll("_", " ")}</span>
+                                <span className="line-clamp-2 text-xs text-muted-foreground">{t.body}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <form onSubmit={(event) => { event.preventDefault(); void sendPickedTemplate(); }} className="space-y-2">
+                          <p className="whitespace-pre-wrap rounded-lg bg-background px-3 py-2 text-sm" aria-live="polite">{renderTemplate(template.body, templateParams)}</p>
+                          {templateParams.map((value, index) => (
+                            <label key={index} className="flex flex-col gap-1 text-xs font-semibold">Dato {`{{${index + 1}}}`}
+                              <input value={value} maxLength={200} required onChange={(event) => setTemplateParams((all) => all.map((v, i) => (i === index ? event.target.value : v)))}
+                                className="wa-input min-h-11 rounded-lg px-3 text-base font-normal sm:text-sm" />
+                            </label>
+                          ))}
+                          <div className="flex gap-2 pb-2">
+                            <button type="button" onClick={() => setTemplate(null)} className="min-h-11 flex-1 rounded-full border border-border px-4 text-sm font-semibold">Otra plantilla</button>
+                            <button type="submit" disabled={busy !== null || templateParams.some((p) => p.trim() === "")}
+                              className="wa-accent min-h-11 flex-1 rounded-full px-4 text-sm font-semibold disabled:opacity-50">Enviar plantilla</button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+                  )}
                   {!humanInControl && !noteMode ? (
                     // Not in control: where the composer goes, the one action that makes it appear.
                     <div className="wa-bar flex items-center gap-2 px-2 py-2 sm:px-3">

@@ -13,6 +13,7 @@ interface ChannelTransport
      *
      * @param  array<string, mixed>  $channel  channel_accounts row (provider ids, metadata)
      * @param  array{kind: string, mime: string, name: string, contents: string}|null  $media  attachment; $text is then its caption
+     * @param  array{name: string, language: string, params: list<string>}|null  $template  approved template; $text is its rendered body
      */
-    public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null): SendResult;
+    public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null, ?array $template = null): SendResult;
 }

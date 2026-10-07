@@ -11,6 +11,7 @@ use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Conversations\Services\OutboundDispatcher;
 use App\Domain\Conversations\Services\WhatsAppMediaFetcher;
+use App\Domain\Conversations\Services\WhatsAppTemplates;
 use App\Domain\CRM\Services\CreateOrGetOpenLeadProcedure;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
@@ -293,6 +294,36 @@ final class AdminConversationController extends Controller
             Cache::add($quotaKey, 0, now()->addDay());
             Cache::increment($quotaKey, $media['size']);
         }
+        if (! $result['replayed']) {
+            DispatchOutboundJob::dispatch((int) $row->tenant_id, $result['job_id']);
+        }
+
+        return response()->json(['data' => ['sequence' => $result['sequence'], 'replayed' => $result['replayed']]], $result['replayed'] ? 200 : 202);
+    }
+
+    /** Approved templates of the conversation's WhatsApp number (synced from Meta when stale). */
+    public function templates(Request $request, string $conversation, WhatsAppTemplates $templates): JsonResponse
+    {
+        $row = $this->find($this->viewer($request), $conversation);
+
+        return response()->json(['data' => $templates->forChannel((int) $row->tenant_id, (int) $row->channel_account_id)]);
+    }
+
+    /** Send an approved template (writes again after the 24 h window), with its body variables. */
+    public function sendTemplate(Request $request, string $conversation, WhatsAppTemplates $templates): JsonResponse
+    {
+        $user = $this->writer($request);
+        $row = $this->find($user, $conversation);
+        $data = $request->validate(['name' => 'required|string|max:512', 'language' => 'required|string|max:15',
+            'params' => 'present|array|max:10', 'params.*' => 'required|string|min:1|max:200', 'idempotency_key' => 'required|string|min:16|max:120']);
+        $template = collect($templates->forChannel((int) $row->tenant_id, (int) $row->channel_account_id))
+            ->first(fn (array $t): bool => $t['name'] === $data['name'] && $t['language'] === $data['language']);
+        if ($template === null || count($data['params']) !== $template['params']) {
+            return response()->json(['error' => ['code' => 'TEMPLATE_NOT_APPROVED', 'message' => 'Esa plantilla no está aprobada o le faltan datos.']], 422);
+        }
+        // Variables are plain text for the client: no line breaks or tabs (Meta rejects them in parameters).
+        $params = array_map(fn (string $p): string => trim((string) preg_replace('/\s+/u', ' ', $p)), array_values($data['params']));
+        $result = $this->control->humanTemplate((int) $row->tenant_id, (int) $row->id, $user, $template, $params, $data['idempotency_key']);
         if (! $result['replayed']) {
             DispatchOutboundJob::dispatch((int) $row->tenant_id, $result['job_id']);
         }

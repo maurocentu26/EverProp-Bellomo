@@ -35,7 +35,7 @@ final class OutboundDispatcher
 
         try {
             $result = $this->transports->for($claim['channel']['channel_type'])
-                ->send($claim['channel'], $claim['recipient'], $claim['text'], $claim['nonce'], $claim['media']);
+                ->send($claim['channel'], $claim['recipient'], $claim['text'], $claim['nonce'], $claim['media'], $claim['template']);
             $status = $result->accepted ? 'SENT' : ($result->retryable && $claim['attempt'] < $claim['max_attempts'] ? 'RETRY' : 'FAILED');
             $this->settle($tenantId, $claim, $status, $result->providerMessageId, $result->errorCode);
         } catch (DeliveryAmbiguous) {
@@ -84,7 +84,8 @@ final class OutboundDispatcher
         // Channel rules at send time (Plan W2): a job queued inside the WhatsApp window may outlive it.
         // Checked before PROCESSING, so an error here leaves the job retryable instead of UNKNOWN.
         $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $job->channel_account_id)->first();
-        $blocked = $this->policy->check($tenantId, (int) $job->conversation_id, $channel);
+        $template = json_decode((string) $job->payload_json, true)['template'] ?? null;
+        $blocked = $this->policy->check($tenantId, (int) $job->conversation_id, $channel, is_array($template) ? (string) $template['name'] : null);
         if ($blocked !== null) {
             $now = CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v');
             DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('id', $jobId)->update(['status' => 'FAILED', 'last_error_code' => $blocked]);
@@ -112,6 +113,8 @@ final class OutboundDispatcher
             'message_id' => (int) $job->message_id, 'channel' => $channel, 'recipient' => $recipient,
             'text' => (string) DB::table('messages')->where('tenant_id', $tenantId)->where('id', $job->message_id)->value('text_body'),
             'media' => $this->media($tenantId, (int) $job->conversation_id, (int) $job->message_id),
+            'template' => is_array($template) ? ['name' => (string) $template['name'], 'language' => (string) $template['language'],
+                'params' => array_values(array_map('strval', (array) ($template['params'] ?? [])))] : null,
             'attempt' => (int) $job->attempt_count + 1, 'max_attempts' => (int) $job->max_attempts,
         ];
     }

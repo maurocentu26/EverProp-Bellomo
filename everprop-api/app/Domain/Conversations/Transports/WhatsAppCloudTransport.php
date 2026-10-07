@@ -21,7 +21,7 @@ final class WhatsAppCloudTransport implements ChannelTransport
 {
     public function __construct(private readonly IntegrationTokens $tokens) {}
 
-    public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null): SendResult
+    public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null, ?array $template = null): SendResult
     {
         if (! config('services.meta.send_enabled')) {
             return SendResult::rejected('CHANNEL_SEND_DISABLED', false);
@@ -39,6 +39,12 @@ final class WhatsAppCloudTransport implements ChannelTransport
 
         $base = sprintf('https://graph.facebook.com/%s/%s', config('services.meta.graph_version'), rawurlencode((string) $channel['provider_account_id']));
         $content = ['type' => 'text', 'text' => ['preview_url' => false, 'body' => $text]];
+        if ($template !== null) {
+            // Outside the 24 h window only an approved template may go (ChannelPolicy checked it before and at claim time).
+            $content = ['type' => 'template', 'template' => ['name' => $template['name'], 'language' => ['code' => $template['language']],
+                'components' => $template['params'] === [] ? [] : [['type' => 'body',
+                    'parameters' => array_map(fn (string $p): array => ['type' => 'text', 'text' => $p], $template['params'])]]]];
+        }
         if ($media !== null) {
             // Photos and PDFs go up to Meta first; nothing reached the client yet, so any failure here is safely retryable.
             try {

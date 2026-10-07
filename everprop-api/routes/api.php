@@ -81,6 +81,8 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::post('/conversations/{conversation}/resume', [AdminConversationController::class, 'resume'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/messages', [AdminConversationController::class, 'reply'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/notes', [AdminConversationController::class, 'note'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::get('/conversations/{conversation}/templates', [AdminConversationController::class, 'templates'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::post('/conversations/{conversation}/template', [AdminConversationController::class, 'sendTemplate'])->whereUuid('conversation')->middleware('throttle:30,1');
         Route::post('/conversations/{conversation}/attachments', [AdminConversationController::class, 'attach'])->whereUuid('conversation')->middleware('throttle:30,1');
         Route::get('/conversations/{conversation}/media/{sequence}', [AdminConversationController::class, 'media'])->whereUuid('conversation')->whereNumber('sequence');
         Route::post('/conversations/{conversation}/lead', [AdminConversationController::class, 'lead'])->whereUuid('conversation')->middleware('throttle:30,1');

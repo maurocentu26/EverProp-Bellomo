@@ -209,7 +209,7 @@ final class HandoffAndDispatchTest extends TestCase
 
             public function __construct(private readonly Closure $send) {}
 
-            public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null): SendResult
+            public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null, ?array $template = null): SendResult
             {
                 return ($this->send)($recipientProviderId);
             }
@@ -261,7 +261,7 @@ final class HandoffAndDispatchTest extends TestCase
         {
             public function __construct(private readonly Closure $send) {}
 
-            public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null): SendResult
+            public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null, ?array $template = null): SendResult
             {
                 return ($this->send)();
             }

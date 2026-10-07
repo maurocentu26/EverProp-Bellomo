@@ -201,6 +201,25 @@ export async function sendReply(id: string, text: string, idempotencyKey: string
   );
 }
 
+export type WhatsAppTemplate = { name: string; language: string; category: string; body: string; params: number };
+
+/** Approved templates of the conversation's WhatsApp number: the only way to write after the 24 h window. */
+export async function listTemplates(id: string) {
+  return apiFetch<{ data: WhatsAppTemplate[] }>(`/api/v1/admin/conversations/${encodeURIComponent(id)}/templates`);
+}
+
+export async function sendTemplate(id: string, template: WhatsAppTemplate, params: string[], idempotencyKey: string) {
+  return apiFetch<{ data: { sequence: number; replayed: boolean } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/template`,
+    { method: "POST", body: JSON.stringify({ name: template.name, language: template.language, params, idempotency_key: idempotencyKey }) },
+  );
+}
+
+/** Body with {{n}} replaced by what the advisor typed (empty ones stay visible as {{n}}). */
+export function renderTemplate(body: string, params: string[]): string {
+  return body.replace(/\{\{(\d+)\}\}/g, (all, n: string) => params[Number(n) - 1]?.trim() || all);
+}
+
 /** Photo or PDF to the client, with an optional caption (web chat). */
 export async function sendAttachment(id: string, file: File, caption: string, idempotencyKey: string) {
   const body = new FormData();

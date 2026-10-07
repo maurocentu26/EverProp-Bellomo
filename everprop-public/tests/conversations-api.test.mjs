@@ -90,4 +90,5 @@ test('incremental reads pass the cursor and the list preview names who spoke', a
   assert.equal(api.previewText({ last_message: { sender: 'USER', text: null, type: 'IMAGE' } }), 'Asesor: 📷 Foto');
   assert.equal(api.previewText({ last_message: { sender: 'USER', text: 'Plano', type: 'DOCUMENT' } }), 'Asesor: 📄 PDF: Plano');
   assert.equal(api.fileSize(2621440), '2,5 MB');
+  assert.equal(api.renderTemplate('Hola {{1}}, el lote {{2}}', ['Ana ', '']), 'Hola Ana, el lote {{2}}');
 });
