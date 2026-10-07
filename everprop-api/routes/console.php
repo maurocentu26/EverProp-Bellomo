@@ -8,8 +8,6 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('everprop:collections:notify')
     ->hourly()->withoutOverlapping();
 
-Schedule::command('everprop:conversations:reconcile')->everyMinute()->withoutOverlapping();
-
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

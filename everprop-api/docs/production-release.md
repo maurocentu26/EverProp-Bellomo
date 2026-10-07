@@ -2,7 +2,6 @@
 
 The workbook import and source schema require the explicit [production inventory workflow](inventory-production-import.md). Merging main automatically deploys code through Railway/Vercel; it does not import data or apply SQL.
 
-> Eversys Conversations (bandeja, chat web, asistente): seguir [docs/eversys-conversations/go-live.md](../../docs/eversys-conversations/go-live.md). Los forward `2026-09-29.002`, `2026-09-29.003`, `2026-09-30.001` y `2026-09-30.002` deben aplicarse antes del merge a `main`.
 
 ## Deployment order
 

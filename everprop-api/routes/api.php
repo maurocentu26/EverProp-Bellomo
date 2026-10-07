@@ -1,11 +1,6 @@
 <?php
 
-use App\Domain\AgentRuntime\Knowledge\Http\AdminKnowledgeController;
-use App\Domain\AgentRuntime\VisitRequests\AdminVisitRequestController;
 use App\Domain\Collections\CollectionsController;
-use App\Domain\Conversations\Http\Controllers\AdminConversationController;
-use App\Domain\Conversations\Http\Controllers\MetaWhatsAppWebhookController;
-use App\Domain\Conversations\Http\Controllers\PublicChatController;
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
 use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
 use App\Domain\CRM\Http\Controllers\AdminVisitController;
@@ -74,23 +69,6 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'index'])->name('leads.follow-ups.index');
         Route::post('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'store'])->name('leads.follow-ups.store');
 
-        Route::get('/conversations', [AdminConversationController::class, 'index']);
-        Route::get('/conversations/{conversation}/messages', [AdminConversationController::class, 'messages'])->whereUuid('conversation');
-        Route::post('/conversations/{conversation}/takeover', [AdminConversationController::class, 'takeover'])->whereUuid('conversation');
-        Route::post('/conversations/{conversation}/resume', [AdminConversationController::class, 'resume'])->whereUuid('conversation');
-        Route::post('/conversations/{conversation}/messages', [AdminConversationController::class, 'reply'])->whereUuid('conversation');
-        Route::post('/conversations/{conversation}/close', [AdminConversationController::class, 'close'])->whereUuid('conversation');
-        Route::post('/conversations/{conversation}/resolve-unknown', [AdminConversationController::class, 'resolveUnknown'])->whereUuid('conversation');
-
-        Route::get('/knowledge', [AdminKnowledgeController::class, 'index']);
-        Route::post('/knowledge', [AdminKnowledgeController::class, 'store']);
-        Route::post('/knowledge/{document}/approve', [AdminKnowledgeController::class, 'approve'])->whereUuid('document');
-        Route::post('/knowledge/{document}/revoke', [AdminKnowledgeController::class, 'revoke'])->whereUuid('document');
-
-        Route::get('/visit-requests', [AdminVisitRequestController::class, 'index']);
-        Route::post('/visit-requests/{visitRequest}/confirm', [AdminVisitRequestController::class, 'confirm'])->whereUuid('visitRequest');
-        Route::post('/visit-requests/{visitRequest}/decline', [AdminVisitRequestController::class, 'decline'])->whereUuid('visitRequest');
-
         Route::get('/push/config', [WebPushController::class, 'config']);
         Route::post('/push/subscriptions', [WebPushController::class, 'store'])->middleware('throttle:30,1');
         Route::delete('/push/subscriptions', [WebPushController::class, 'destroy']);
@@ -108,12 +86,6 @@ Route::middleware('tenant')->group(function (): void {
     Route::get('/public/properties', [PublicPropertyController::class, 'index'])->name('public.properties.index');
     Route::get('/public/properties/{property}', [PublicPropertyController::class, 'show'])->name('public.properties.show');
 
-    Route::middleware('throttle:public-chat')->group(function (): void {
-        Route::post('/public/chat/sessions', [PublicChatController::class, 'start']);
-        Route::post('/public/chat/messages', [PublicChatController::class, 'send']);
-    });
-    Route::get('/public/chat/messages', [PublicChatController::class, 'messages'])->middleware('throttle:public-chat-read');
-
     Route::post('/public/leads', PublicLeadController::class)
         ->middleware('throttle:public-leads')
         ->name('public.leads.store');
@@ -122,13 +94,6 @@ Route::middleware('tenant')->group(function (): void {
         ->whereUuid('integrationPublicId')
         ->middleware('throttle:webhooks')
         ->name('webhooks.receive');
-});
-
-// Meta app-level webhook (every tenant). No tenant middleware: the tenant is derived from the
-// signed payload's phone_number_id mapping inside the controller.
-Route::middleware('throttle:meta-webhooks')->group(function (): void {
-    Route::get('/webhooks/meta/whatsapp', [MetaWhatsAppWebhookController::class, 'verify']);
-    Route::post('/webhooks/meta/whatsapp', [MetaWhatsAppWebhookController::class, 'receive']);
 });
 
 Route::fallback(static fn () => response()->json([
