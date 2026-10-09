@@ -148,7 +148,9 @@ final class CollectionEmailTest extends TestCase
         $this->provision($tenant);
         $mailer = Mockery::mock();
         Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
-        $mailer->shouldReceive('raw')->once()->andReturnUsing(function ($body, $callback) {
+        /** @var \Mockery\Expectation $raw */
+        $raw = $mailer->shouldReceive('raw');
+        $raw->once()->andReturnUsing(function ($body, $callback) {
             $message = new Email;
             $callback(new Message($message));
             self::assertSame('client@example.test', $message->getTo()[0]->getAddress());
@@ -169,7 +171,9 @@ final class CollectionEmailTest extends TestCase
         $this->provision($tenant);
         $mailer = Mockery::mock();
         Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
-        $mailer->shouldReceive('raw')->once()->andThrow(new \RuntimeException('Timeout'));
+        /** @var \Mockery\Expectation $raw */
+        $raw = $mailer->shouldReceive('raw');
+        $raw->once()->andThrow(new \RuntimeException('Timeout'));
         $args = ['tenant' => $tenant->slug, 'installment' => $id, '--send' => true];
         $this->artisan('everprop:collections:email', $args)->assertFailed();
         $this->artisan('everprop:collections:email', $args)->assertSuccessful();
