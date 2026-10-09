@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ['everprop-public/**', '.github/workflows/web.yml']
   push:
-    branches: [main, develop, chore/agentic-setup]
+    branches: [main, develop]
     paths: ['everprop-public/**', '.github/workflows/web.yml']
 
 permissions:

@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ['.claude/hooks/**', '.github/workflows/guard.yml']
   push:
-    branches: [main, develop, chore/agentic-setup]
+    branches: [main, develop]
     paths: ['.claude/hooks/**', '.github/workflows/guard.yml']
 
 permissions:

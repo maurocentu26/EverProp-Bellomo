@@ -14,7 +14,7 @@ Objetivo: probar en `bellomito-staging`, con navegador y servicios reales, que u
 
 | # | Qué | Cómo se comprueba |
 |---|---|---|
-| P1 | Los cuatro servicios (api, worker, scheduler, panel) corren el mismo commit de `chore/agentic-setup` (al 2026-10-05: `8c52031`) | Railway muestra ese commit en cada servicio |
+| P1 | Los cuatro servicios (api, worker, scheduler, panel) corren el mismo commit de `develop` | Railway muestra ese commit en cada servicio |
 | P2 | API sana | `/readyz` 200; `everprop:production-check --connections` todo OK en api y worker |
 | P3 | Cola limpia | En el chequeo anterior, pendientes y fallidos en 0 |
 | P4 | Usuario de prueba con rol admin o asesor del tenant `bellomito-staging` | Login en el panel de staging |

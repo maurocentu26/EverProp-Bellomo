@@ -10,7 +10,7 @@ Objetivo: poner en producción el chat web con asistente en el sitio de Bellomo 
 |---|---|---|
 | Railway | Proyecto independiente, cuenta de Mauro | Proyecto actual |
 | Base | MySQL 8.4, volumen nuevo, solo datos sintéticos | `bellomo_crm` real |
-| Código | Rama `chore/agentic-setup` | `main` |
+| Código | Rama `develop` | `main` |
 | Credenciales | Propias; nunca copiadas de producción | Las actuales |
 | Estado | **En curso** (abajo) | **Sin tocar.** Merge a `main`, backup/restore y SQL de producción **no autorizados** |
 
@@ -28,7 +28,7 @@ Antes de subir los cambios de Tech Provider a la rama que Railway despliega auto
 
 | # | Paso | Verificación |
 |---|---|---|
-| S1 | `api` y `worker` desplegan desde `chore/agentic-setup` (no `main`); worker con `railway-worker.json` y la **misma** `QUEUE_CONNECTION` que la API | `/readyz` 200; `everprop:production-check --connections` todo OK |
+| S1 | `api` y `worker` desplegan desde `develop` (no `main`); worker con `railway-worker.json` y la **misma** `QUEUE_CONNECTION` que la API | `/readyz` 200; `everprop:production-check --connections` todo OK |
 | S2 | Tenant sintético en la base de staging y `TENANT_HOST_MAP_JSON` con el hostname de la API de staging → ese tenant; usuarios de prueba con dominio `@e2e.invalid` o similar, nunca personas reales | login en el panel de staging |
 | S3 | Panel apuntando a staging: preview de Vercel de la rama con `NEXT_PUBLIC_EVERPROP_API_URL` **y** `NEXT_PUBLIC_API_URL` = API de staging, definidas para esa rama (las de Preview se comparten entre previews). **No usar el preview hasta verificar.** La pestaña Red no alcanza: las `rewrites` de `next.config.ts` (`/api/v1/*`, `/healthz`) se resuelven en el servidor de Next y `src/lib/server/bellomo-materials.ts` llama desde el servidor, con **la URL de producción como valor por defecto** si falta la variable | (a) variables del deployment en Vercel con el host de staging y ninguna de producción; (b) login en el panel con un usuario que **solo existe en staging** (en producción daría 401); (c) los logs de la API de staging muestran esas requests y los de producción no; (d) la página que usa `bellomo-materials` responde con datos sintéticos de staging |
 | S4 | `SANCTUM_STATEFUL_DOMAINS` y `CORS_ALLOWED_ORIGINS` de la API de staging = host del panel de staging | login y bandeja sin errores CORS |

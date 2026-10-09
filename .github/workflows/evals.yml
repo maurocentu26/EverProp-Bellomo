@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ['evals/**', '.github/workflows/evals.yml']
   push:
-    branches: [main, develop, chore/agentic-setup]
+    branches: [main, develop]
     paths: ['evals/**', '.github/workflows/evals.yml']
 
 permissions:

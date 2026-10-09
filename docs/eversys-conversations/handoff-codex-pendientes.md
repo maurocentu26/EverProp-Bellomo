@@ -1,6 +1,6 @@
 # Handoff para Codex: pendientes de EverSys (2026-10-07)
 
-Rama `chore/agentic-setup` (PR #7, borrador). Último commit de Claude: `b179f39`. **Nada en `main` ni en producción de Bellomo.**
+Rama `develop` (antes `chore/agentic-setup`, PR #7). Último commit de Claude: `b179f39`. **Nada en `main` ni en producción de Bellomo.**
 
 ## Decisión del dueño (vale para todo lo que sigue)
 
@@ -38,7 +38,7 @@ Verificación al cierre: backend 319 tests verdes (1 omitido: eval con modelo re
 ## Paso 0: verificar el estado (15 min)
 
 ```bash
-git fetch origin && git status && git log --oneline origin/chore/agentic-setup..HEAD
+git fetch origin && git status && git log --oneline origin/develop..HEAD
 ```
 Si hay commits sin pushear, pedirle al dueño el push (el guard local lo bloquea para agentes). Después, con el stack local (`everprop-api/compose.yaml`):
 

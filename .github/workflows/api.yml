@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ['everprop-api/**', '.github/workflows/api.yml', 'everprop-public/src/app/admin/conversaciones/**', 'everprop-public/src/app/widget/**', 'everprop-public/src/components/admin/conversations/**', 'everprop-public/src/components/public/ChatWidget.tsx', 'everprop-public/src/lib/conversations-api.ts', 'everprop-public/src/lib/everprop-api.ts', 'everprop-public/public/eversys-widget.js', 'everprop-public/next.config.ts', 'everprop-public/package-lock.json']
   push:
-    branches: [main, develop, chore/agentic-setup]
+    branches: [main, develop]
     paths: ['everprop-api/**', '.github/workflows/api.yml', 'everprop-public/src/app/admin/conversaciones/**', 'everprop-public/src/app/widget/**', 'everprop-public/src/components/admin/conversations/**', 'everprop-public/src/components/public/ChatWidget.tsx', 'everprop-public/src/lib/conversations-api.ts', 'everprop-public/src/lib/everprop-api.ts', 'everprop-public/public/eversys-widget.js', 'everprop-public/next.config.ts', 'everprop-public/package-lock.json']
 
 permissions:

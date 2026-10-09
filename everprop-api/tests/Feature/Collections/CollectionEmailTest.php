@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Mockery;
+use Mockery\Expectation;
 use Symfony\Component\Mime\Email;
 use Tests\TestCase;
 
@@ -148,7 +149,7 @@ final class CollectionEmailTest extends TestCase
         $this->provision($tenant);
         $mailer = Mockery::mock();
         Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
-        /** @var \Mockery\Expectation $raw */
+        /** @var Expectation $raw */
         $raw = $mailer->shouldReceive('raw');
         $raw->once()->andReturnUsing(function ($body, $callback) {
             $message = new Email;
@@ -171,7 +172,7 @@ final class CollectionEmailTest extends TestCase
         $this->provision($tenant);
         $mailer = Mockery::mock();
         Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
-        /** @var \Mockery\Expectation $raw */
+        /** @var Expectation $raw */
         $raw = $mailer->shouldReceive('raw');
         $raw->once()->andThrow(new \RuntimeException('Timeout'));
         $args = ['tenant' => $tenant->slug, 'installment' => $id, '--send' => true];

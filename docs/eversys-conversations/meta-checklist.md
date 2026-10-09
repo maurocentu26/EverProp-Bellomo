@@ -1,6 +1,6 @@
 # Checklist Meta / staging (2026-10-07)
 
-Alcance: rama de staging `chore/agentic-setup`. **El módulo de IA y conversaciones vive solo en esta rama: no va a `main` ni a producción** (decisión del dueño; `main` lo retiró en `debb84f`). Sin secretos en este archivo.
+Alcance: rama `develop`, desde la que despliega staging (antes `chore/agentic-setup`). **El módulo de IA y conversaciones vive solo en `develop`: no va a `main` ni a producción** (decisión del dueño; `main` lo retiró en `debb84f`). Sin secretos en este archivo.
 
 Estados: **Impl** implementado · **Sim** probado con Meta simulado · **Real** probado con Meta real · **Pub** publicado · **Pres** presentado a Meta · **Apr** aprobado.
 
@@ -9,7 +9,7 @@ Estados: **Impl** implementado · **Sim** probado con Meta simulado · **Real** 
 | Ítem | Estado | Evidencia | Responsable |
 |---|---|---|---|
 | CI del PR #7 | No corre | El PR tiene conflictos con `main` (`debb84f` retiró el módulo de IA de `main`); GitHub no ejecuta `pull_request` con conflictos. Última corrida verde: `d708c8e` | — |
-| CI en la rama de staging | Impl | Los cuatro workflows (API, web, evals, guard) ahora corren también en `push` a `chore/agentic-setup`. Se confirma en el próximo push | Dueño: push |
+| CI en la rama de staging | Impl | Los cuatro workflows (API, web, evals, guard) corren en `push` a `main` y `develop` | — |
 | No resolver el conflicto del PR | Decisión | Mezclar `main` borraría el módulo. El PR queda como referencia, sin merge | Dueño + Mauro |
 | Verificación local al cierre (`b179f39`) | Impl | Backend 319 tests, PHPStan y Pint limpios, panel 69/69, tsc y lint | Claude |
 
