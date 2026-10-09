@@ -299,7 +299,7 @@ export async function logoutEverprop() {
   }
 }
 
-async function loadCatalogPages<T>(path: string): Promise<T[]> {
+async function loadCatalogPages<T>(path: string, maxPages?: number): Promise<T[]> {
   const rows: T[] = [];
   let page = 1;
   let lastPage = 1;
@@ -309,14 +309,15 @@ async function loadCatalogPages<T>(path: string): Promise<T[]> {
     rows.push(...response.data);
     lastPage = response.meta?.last_page ?? 1;
     page += 1;
+    if (maxPages && page > maxPages) break;
   } while (page <= lastPage);
   return rows;
 }
 
 async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   const [projects, properties] = await Promise.all([
-    loadCatalogPages<ApiProject>(`${prefix}/projects`),
-    loadCatalogPages<ApiProperty>(`${prefix}/properties`),
+    loadCatalogPages<ApiProject>(`${prefix}/projects`), // Fetch all projects (few items)
+    loadCatalogPages<ApiProperty>(`${prefix}/properties`, 1), // Only page 1 of properties!
   ]);
   return {
     projects: projects.map(mapProject),
