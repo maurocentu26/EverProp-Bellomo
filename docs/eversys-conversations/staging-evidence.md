@@ -1,5 +1,25 @@
 # Bellomito staging — evidencia 2026-10-02
 
+## Auditoría de despliegue y PWA — 2026-10-07, 22:49 ART
+
+### Ampliación de la auditoría (misma fecha, posterior a las 22:49 ART)
+
+- `everprop:production-check --connections --webpush` en API: salida OK y código de salida 0. En worker y scheduler: 27 comprobaciones OK y 0 FAIL en cada servicio. Solo diagnóstico; no se ejecutaron jobs ni se reiniciaron servicios.
+- Configuración efectiva en API, worker y scheduler: `conversations.ai_enabled=false`, `conversations.copilot_enabled=false`, `agent.llm_provider=disabled`, `services.meta.send_enabled=false`, `services.meta.onboarding_enabled=false`. Una primera consulta del proveedor usó una clave de configuración incorrecta y devolvió null; se corrigió la consulta, no la configuración.
+- Consulta de lectura en API: `jobs=0`, `failed_jobs=0`. No se leyeron ni imprimieron mensajes, credenciales o endpoints de suscripción.
+- `/icon/512` y `/icon/maskable`: 200. `/admin`: shell 200 y CSP `frame-ancestors 'none'`; widget canónico: 200 con `frame-ancestors 'self' https://panel-staging-staging-62ec.up.railway.app`. Endpoints privados `/api/v1/auth/me` y `/api/v1/admin/conversations`: 401 sin sesión.
+- Webhook WhatsApp: GET sin challenge/token devuelve 403; confirma rechazo de una solicitud no autenticada, NO confirma configuración en Meta, challenge correcto ni entrega.
+- Navegador del panel redirige `/admin/conversaciones` a `/login`: sin sesión disponible. No se inició un recorrido S6 ni se envió un mensaje; S6 sigue NO verificado. No se sustituyó el aislamiento de visitante y asesor por dos pestañas con almacenamiento compartido.
+- No se comprobaron restore de backup, persistencia de adjuntos tras redeploy, entrega push física ni recuperación del worker con envío en cola. No se declara todo staging validado por tener checks de configuración verdes.
+
+- Solo proyecto `bellomito-staging`, entorno `staging`, IDs indicados abajo. No se creó otro staging ni se cambió el dominio del panel.
+- Git local y remoto `origin/chore/agentic-setup`: `16d75b670f5cdbc5373d3b86c3c2e6d4805a23a6`. Sin commits pendientes de publicar al iniciar esta auditoría; `.claude/launch.json` sin seguimiento se preservó.
+- Railway: panel, API, worker y scheduler muestran el mismo commit completo y rama `chore/agentic-setup`, despliegues exitosos y activos, iniciados el 2026-10-07 a las 17:50 ART. Panel deployment `f037c14a-a01f-48d0-9b52-f15f811fed90`; API `833d993a-371c-4abd-9b50-b747a779fb63`; worker `1b2cad7e-1821-484b-9d40-87eaf10034ca`. El SHA se comprobó en el enlace GitHub de Details de cada servicio, no se dedujo solo de la salud HTTP.
+- PWA canónica: `https://panel-staging-staging-62ec.up.railway.app`. Manifest 200, `id=/admin`, `start_url=/admin/conversaciones`, `scope=/`, `display=standalone`. Service worker `/notifications-sw.js`, ícono `/icon/192` y `/healthz`: 200. API `/readyz`: 200, `status=ready`.
+- CI: API, web, guard y evals exitosos para `078f1fd9504ca4cb0e31de4272cbb17cc8113dd0`; evals exitosos para `16d75b6` (último commit, cambios de dataset). No se afirma que las cuatro suites se hayan vuelto a ejecutar para ese SHA.
+- No se ejecutaron los recorridos S6, consultas SQL, entrega push física, ni comprobaciones de conexiones dentro de contenedores en esta tanda. S6 sigue sin verificarse. La comprobación del manifest no verifica qué versión está cacheada en el iPhone.
+- Sin cambios en producción, `main`, Vercel, variables de IA/Meta, base o servicios. No se inició Docker ni se ejecutó un nuevo deploy. Este registro documental no equivale a activar WhatsApp ni presentar App Review.
+
 Producción Bellomo y `main` están fuera de alcance. No se modificaron. No se cambiaron proyectos ni variables de Vercel.
 
 ## Destino independiente
@@ -120,3 +140,15 @@ Después de la preparación anterior, el usuario autorizó expresamente recupera
 - P5 continúa bloqueado: el inventario de navegadores conectados solo contiene IAB y MCP Apps; no hay Chrome ni ventana de incógnito controlable. No se sustituyó el requisito del guion por una pestaña con almacenamiento compartido.
 - A1–A7, B1–B6, C1–C5 y las tres consultas finales siguen NO EJECUTADOS. No se enviaron mensajes ni se detuvo el worker. S6 NO verificado; falta P5 para iniciar el recorrido. Los chequeos preparatorios registrados antes no constituyen una nueva comprobación de salud en este intento.
 - Producción, `main`, Vercel y variables IA/Meta sin cambios. Se utilizó la skill computer-use como guía de interacción; no se usó automatización nativa de Windows ni se intentó eludir el aislamiento del navegador.
+
+### Transición a develop y esquema Rotador — 2026-10-09
+
+- Alcance autorizado: únicamente Railway `bellomito-staging`, proyecto `5a26e066-0417-49cf-a1cb-9ed8b8c81f58`, entorno `63966360-15fe-4056-8282-a4c3b905d10b`. Los cuatro servicios cambiaron su rama de origen a `develop`, sin cambios de variables IA/Meta ni de producción.
+- Revisión independiente obligatoria: `review_staging_rotator`; se reutilizó el forward existente `2026-10-07.001_rotator_role.sql`, sin modificar baseline ni código. El fallo de arranque provenía del CHECK antiguo de MySQL, no de ausencia de implementación en develop.
+- Preflight: cuatro usuarios (dos TENANT_ADMIN y dos SALES_ADVISOR), cero INVENTORY_MANAGER y cero discrepancias entre tenant de usuario y configuración de inventario. No se crearon usuarios ni asignaron nuevos roles.
+- Respaldo lógico privado y persistente: `/var/lib/mysql/eversys-staging-pre-rotator-20261009.sql`; SHA-256 `dd49b2cec7d1ab2d9f2c9d88e8e1f5d54d79e149946ef957042e7377a981ba70`. Se restauró y ensayó el forward en `eversys_rotator_rehearsal_20261009` antes de aplicarlo a la base de staging. Respaldo y copia conservados para recuperación; el backup administrado de Railway requería otro plan y no se contrató.
+- Aplicación verificada: CHECK admite ROTATOR y ya no INVENTORY_MANAGER; permanecen los cuatro usuarios y sus roles. El forward no es idempotente: NO volver a ejecutarlo.
+- Los cuatro deployments corresponden a `ee6092beb6dd919d00e454d8bbe63668d323338b`: API `1c49cbe7-9d98-4a81-824f-16443c3afb00` Active tras redeploy; worker `6acdcda8-63b4-4fe8-aafa-8e486322aca7`; scheduler `8d6624dd-0e62-4fc0-bacc-c233a5b629b6`; panel `4d8b6f5e-3b82-4681-a063-08699113004a` Active. Worker y scheduler superaron los controles de esquema; scheduler ejecuta el reconciliador por minuto. El primer intento API `f8ed7191-16e2-4957-88f7-26fd481f256c` quedó Failed antes de corregir el esquema.
+- Salud posterior: API `/readyz` HTTP 200, cuerpo `{"status":"ready"}`; panel `/login` HTTP 200. Ready no reemplaza la comprobación SQL del CHECK. API quality, Web quality, Eval dataset y Agent guard completados con success para ese commit.
+- Evidencia histórica preservada en commit documental separado `b7c182c`; stash S02 parte 2 conservado sin aplicar. Documentación en rama separada para no provocar otro deployment de develop mientras se verifica el SHA solicitado.
+- Límites: no se ejecutó un login funcional como ROTATOR ni se repitió la suite local; no se inició Docker. S6 y S8 siguen pendientes, sin declararlos verificados. Se detectó ausencia de `collection_email_attempts`; no se aplicó ningún forward adicional ni se activó correo de cobranzas. Esta verificación no acredita integración real con Meta ni aprobación Tech Provider.
