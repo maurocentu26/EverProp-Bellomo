@@ -6,7 +6,7 @@ Monorepo: `everprop-api/` (Laravel 13, PHP 8.4, MySQL 8.4, Redis) y `everprop-pu
 
 ## Ramas
 
-- `develop`: lo más actualizado en desarrollo, incluido el módulo de IA y conversaciones. Staging (`bellomito-staging`) despliega desde acá. El trabajo nuevo sale de `develop`.
+- `develop`: lo más actualizado en desarrollo, incluido el módulo de IA y conversaciones. Staging (`bellomito-staging`) despliega desde acá. El trabajo nuevo sale de `develop`, un ticket por rama, según `TICKETS.md`. Nunca push a `develop` ni a `main`.
 - `main`: lo que ve el cliente en producción. **El módulo de IA y conversaciones nunca va a `main`** (`debb84f`).
 - Lo que va a producción entra a `main` por PR. Después de cada merge a `main`, mergear `main` en `develop`: `develop` siempre contiene todo `main`.
 

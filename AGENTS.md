@@ -43,6 +43,10 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 (Yes, this file also applies to agents working on the ponytail repo itself. Especially to them.)
 
+## Trabajo por tickets
+
+Todo el desarrollo va por tickets: leer y seguir `TICKETS.md` (una rama por ticket desde `develop`, informe en `docs/tickets/`, nunca push a `main` ni a `develop`, y preguntar si el ticket anterior ya fue revisado antes de empezar otro).
+
 ## Docker local bajo demanda
 
 - Usar un solo stack local de EverProp a la vez; revisar contenedores existentes antes de iniciar otro.
