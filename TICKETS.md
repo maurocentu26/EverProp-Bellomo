@@ -1,11 +1,28 @@
 # Trabajo por tickets — reglas para agentes
 
-Aplica a todo agente que trabaje en este repo (Claude, Codex u otro), desde el 2026-10-09. Complementa `AGENTS.md` y `CLAUDE.md`; ante un conflicto sobre ramas, push o tickets, prevalece este archivo.
+Aplica a todo agente que trabaje en este repo (Claude, Codex u otro), desde el 2026-10-09. Complementa `AGENTS.md` y `CLAUDE.md`; ante un conflicto sobre ramas, push o tickets, prevalece este archivo. El modelo completo para Producto está en `docs/proceso-de-trabajo.md`.
+
+## 0. Jira conectado
+
+Los tickets viven en Jira, proyecto **EVP** (claves `EVP-XX`). Al empezar una sesión de trabajo, antes de tomar un ticket:
+
+1. **Revisar la memoria.** Si dice que Jira está conectado (sitio y proyecto EVP), seguir con la sección 1, pero si una herramienta de Jira falla, volver al paso 2.
+2. **Comprobar el conector.** Ver si hay herramientas del conector de Atlassian (Rovo MCP server) y hacer una lectura mínima: buscar el proyecto `EVP` o un ticket conocido. Si responde, está conectado: ir al paso 4.
+3. **Si no está conectado, guiar al usuario** con los pasos de su cliente, sin pedirle tokens ni contraseñas en el chat. El servidor es `https://mcp.atlassian.com/v2/mcp` y la autenticación es OAuth en el navegador:
+   - **Claude Code:** `claude mcp add --transport http atlassian https://mcp.atlassian.com/v2/mcp`, y después `/mcp` en una sesión interactiva para autenticarse. En la app de escritorio o en claude.ai: autorizar el conector de Atlassian en la configuración de conectores.
+   - **Codex:** `codex mcp add atlassian --url https://mcp.atlassian.com/v2/mcp`, y después `codex mcp login atlassian`. En Codex Desktop: Plugins/Connectors → Atlassian Rovo.
+   - **Antigravity u otros:** la sección 9 de `docs/proceso-de-trabajo.md`.
+
+   Si el login dice que la herramienta no está permitida, el administrador de Atlassian tiene que habilitarla en Atlassian Administration → Rovo → Rovo MCP server. Después de conectar, repetir el paso 2.
+4. **Guardar en memoria** que Jira está conectado: cliente, sitio de Atlassian, proyecto EVP y fecha. Nunca guardar tokens ni credenciales. Un agente sin memoria persistente repite el paso 2 en cada sesión.
+
+**Sin Jira conectado no se crean ni se mueven tickets.** Se puede trabajar en un ticket que el usuario dicte por chat, y el informe registra que Jira no se actualizó.
 
 ## 1. Un ticket, una rama
 
-- Todo trabajo arranca con un ticket: un ID y un objetivo concretos. Sin ticket, preguntar cuál es antes de escribir código.
-- Rama nueva desde `develop` actualizado: `ticket/<ID>-<descripcion-corta>`, por ejemplo `ticket/EVP-12-recordatorios-email`.
+- Todo trabajo arranca con un ticket de Jira `EVP-XX` con un objetivo concreto. Sin ticket, preguntar cuál es antes de escribir código.
+- Rama nueva desde `develop` actualizado: `ticket/EVP-XX-<descripcion-corta>`, por ejemplo `ticket/EVP-14-recordatorios-email`. La clave en el nombre vincula la rama, los commits y el PR con el ticket en Jira.
+- Con Jira conectado: al crear la rama, pasar el ticket a **En curso**; al abrir el PR con el informe, pasarlo a **En revisión** y enlazar el informe. Los estados siguientes los mueven las personas.
 - Un ticket por rama. Si aparece trabajo que no es del ticket, anotarlo como pendiente en el informe; no mezclarlo.
 - Si el ticket es un ítem del backlog de Conversations (S01–S17, Q01–Q03), seguir además la skill `backlog-item`.
 
@@ -27,14 +44,14 @@ El ticket anterior es el del último informe en `docs/tickets/`.
 
 ## 4. Informe por ticket
 
-Cada ticket terminado deja un informe en `docs/tickets/<ID>-<descripcion-corta>.md`, commiteado en la misma rama del ticket. Está escrito para que alguien que no vio la sesión lo revise y decida el merge.
+Cada ticket terminado deja un informe en `docs/tickets/EVP-XX-<descripcion-corta>.md`, commiteado en la misma rama del ticket. Está escrito para que alguien que no vio la sesión lo revise y decida el merge.
 
 Plantilla:
 
 ```markdown
-# <ID> — <título del ticket>
+# EVP-XX — <título del ticket>
 
-Rama `ticket/<ID>-<descripcion-corta>` · commits `<sha>`… · fecha AAAA-MM-DD · autor (agente y persona)
+Rama `ticket/EVP-XX-<descripcion-corta>` · commits `<sha>`… · fecha AAAA-MM-DD · autor (agente y persona)
 
 ## 1. Qué pedía el ticket
 El objetivo en palabras del negocio y los criterios de aceptación. Qué quedaba fuera de alcance.
@@ -65,7 +82,7 @@ Reglas del informe:
 
 ## 5. Checklist de cierre
 
-- [ ] Rama `ticket/<ID>-…` creada desde `develop`.
+- [ ] Rama `ticket/EVP-XX-…` creada desde `develop`.
 - [ ] Código, tests y revisiones obligatorias según `CLAUDE.md` (Definition of Done).
 - [ ] Informe en `docs/tickets/` con las cinco secciones.
 - [ ] Commits en la rama del ticket; nada en `main` ni en `develop`.
