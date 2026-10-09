@@ -9,6 +9,9 @@ import {
   HardHat,
   Map,
   ReceiptText,
+  MessagesSquare,
+  CalendarCheck,
+  BookOpenCheck,
   type LucideIcon 
 } from "lucide-react";
 
@@ -44,6 +47,8 @@ export const advisorNavigationGroups: NavGroup[] = [
     label: "Mi Gestión",
     items: [
       { title: "Mi Día", href: "/admin", icon: Home, matchPath: "/admin" },
+      { title: "Conversaciones", href: "/admin/conversaciones", icon: MessagesSquare, matchPath: "/admin/conversaciones" },
+      { title: "Solicitudes de visita", href: "/admin/solicitudes-visita", icon: CalendarCheck, matchPath: "/admin/solicitudes-visita" },
       { 
         title: "Mis Leads", 
         href: "/admin/leads", 
@@ -82,6 +87,9 @@ export const navigationGroups: NavGroup[] = [
   {
     label: "Comercializadora",
     items: [
+      { title: "Conversaciones", href: "/admin/conversaciones", icon: MessagesSquare, matchPath: "/admin/conversaciones" },
+      { title: "Solicitudes de visita", href: "/admin/solicitudes-visita", icon: CalendarCheck, matchPath: "/admin/solicitudes-visita" },
+      { title: "Conocimiento IA", href: "/admin/conocimiento", icon: BookOpenCheck, matchPath: "/admin/conocimiento" },
       { 
         title: "Activos", 
         href: "/admin/properties", 

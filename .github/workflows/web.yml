@@ -27,8 +27,7 @@ jobs:
           cache-dependency-path: everprop-public/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npm run test:materials
-      - run: npm run test:collections
+      - run: npm run test:conversations
       - run: npm run build
         env:
           NEXT_PUBLIC_DATA_MODE: api
