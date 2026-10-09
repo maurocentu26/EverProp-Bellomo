@@ -1,0 +1,1818 @@
+[
+  {
+    "file": "everprop-public/eslint.config.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/next.config.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/postcss.config.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/public/notifications-sw.js",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/App.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/activar/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/agenda/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/asesores/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/cobranzas/layout.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/cobranzas/page.tsx",
+    "errors": 0,
+    "warnings": 5,
+    "messages": [
+      {
+        "line": 36,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'DollarSign' is defined but never used."
+      },
+      {
+        "line": 46,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'User' is defined but never used."
+      },
+      {
+        "line": 47,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Building2' is defined but never used."
+      },
+      {
+        "line": 56,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'router' is assigned a value but never used."
+      },
+      {
+        "line": 96,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'setNewAgrNotes' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/admin/comercial/page.tsx",
+    "errors": 0,
+    "warnings": 2,
+    "messages": [
+      {
+        "line": 11,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'deferEffectUpdate' is defined but never used."
+      },
+      {
+        "line": 33,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'e' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/admin/desarrollos/[id]/page.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 184,
+        "rule": "@next/next/no-img-element",
+        "message": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element"
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/admin/desarrollos/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/inventory-matrix/page.tsx",
+    "errors": 0,
+    "warnings": 2,
+    "messages": [
+      {
+        "line": 9,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'deferEffectUpdate' is defined but never used."
+      },
+      {
+        "line": 37,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'e' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/admin/layout.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/leads/[id]/edit/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/leads/[id]/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/leads/new/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/leads/page.tsx",
+    "errors": 0,
+    "warnings": 2,
+    "messages": [
+      {
+        "line": 49,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'FOLLOW_UP_FILTERS' is assigned a value but never used."
+      },
+      {
+        "line": 217,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'prevLeads' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/admin/materiales/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/notifications/page.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 23,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/admin/page.tsx",
+    "errors": 0,
+    "warnings": 4,
+    "messages": [
+      {
+        "line": 13,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'ArrowRight' is defined but never used."
+      },
+      {
+        "line": 13,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'ShieldCheck' is defined but never used."
+      },
+      {
+        "line": 18,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'ApiIntegrationStatus' is defined but never used."
+      },
+      {
+        "line": 27,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'isAdvisor' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/admin/properties/[id]/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/properties/new/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/properties/page.tsx",
+    "errors": 0,
+    "warnings": 3,
+    "messages": [
+      {
+        "line": 6,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Download' is defined but never used."
+      },
+      {
+        "line": 6,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Database' is defined but never used."
+      },
+      {
+        "line": 6,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'FlaskConical' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/admin/settings/layout.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/admin/settings/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/api/bellomo/assets/[id]/route.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/api/bellomo/materials/route.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/api/notifications/route.ts",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 45,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'error' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/app/api/notifications/stream/route.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/layout.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/login/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/manifest.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/app/page.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminFullscreenMenu.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminMenuAccount.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminMenuBrand.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminNavbar.tsx",
+    "errors": 0,
+    "warnings": 5,
+    "messages": [
+      {
+        "line": 30,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'companyName' is assigned a value but never used."
+      },
+      {
+        "line": 32,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'isAdmin' is assigned a value but never used."
+      },
+      {
+        "line": 42,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      },
+      {
+        "line": 46,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'latestIdRef' is assigned a value but never used."
+      },
+      {
+        "line": 47,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'intervalRef' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminNavigationMenu.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdvisorFollowUpPriority.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/AgendaView.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/ApiIntegrationStatus.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/BellomoResources.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/CalendarAgenda.tsx",
+    "errors": 0,
+    "warnings": 3,
+    "messages": [
+      {
+        "line": 19,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'MOCK_USERS' is defined but never used."
+      },
+      {
+        "line": 91,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'loadError' is assigned a value but never used."
+      },
+      {
+        "line": 92,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'isLoading' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/CardLead.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 8,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'MOCK_USERS' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/CollectionsLoading.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/DashboardStats.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/EditPropertyModal.tsx",
+    "errors": 0,
+    "warnings": 5,
+    "messages": [
+      {
+        "line": 93,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 148,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 161,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 217,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 240,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/EnterpriseDashboard.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 8,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'deferEffectUpdate' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/ExportLocalCollections.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/FinancingCalculator.tsx",
+    "errors": 0,
+    "warnings": 9,
+    "messages": [
+      {
+        "line": 8,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Percent' is defined but never used."
+      },
+      {
+        "line": 9,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Calendar' is defined but never used."
+      },
+      {
+        "line": 10,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Building2' is defined but never used."
+      },
+      {
+        "line": 11,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'CheckCircle2' is defined but never used."
+      },
+      {
+        "line": 13,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'HelpCircle' is defined but never used."
+      },
+      {
+        "line": 86,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      },
+      {
+        "line": 115,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      },
+      {
+        "line": 143,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      },
+      {
+        "line": 262,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/GenerateLotsModal.tsx",
+    "errors": 0,
+    "warnings": 2,
+    "messages": [
+      {
+        "line": 82,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'setDescription' is assigned a value but never used."
+      },
+      {
+        "line": 238,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/InstallmentPaymentHistory.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/InventoryMatrix.tsx",
+    "errors": 0,
+    "warnings": 3,
+    "messages": [
+      {
+        "line": 16,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'DollarSign' is defined but never used."
+      },
+      {
+        "line": 16,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'UserPlus' is defined but never used."
+      },
+      {
+        "line": 25,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'isEngineer' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadAdvisorEditor.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadDetailView.tsx",
+    "errors": 0,
+    "warnings": 8,
+    "messages": [
+      {
+        "line": 20,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'MOCK_USERS' is defined but never used."
+      },
+      {
+        "line": 29,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'updateLeadAgent' is defined but never used."
+      },
+      {
+        "line": 55,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'deferEffectUpdate' is defined but never used."
+      },
+      {
+        "line": 194,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 225,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 252,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 317,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'nextLeads' is assigned a value but never used."
+      },
+      {
+        "line": 325,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadFinancingAgreements.tsx",
+    "errors": 0,
+    "warnings": 3,
+    "messages": [
+      {
+        "line": 30,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Clock' is defined but never used."
+      },
+      {
+        "line": 36,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Check' is defined but never used."
+      },
+      {
+        "line": 78,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'setNotes' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadFollowUpEditor.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadFollowUpStatus.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadFollowUpTimeline.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadInterestEditor.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadKanban.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadProfileEditor.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 4,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'X' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadStageUpdateModal.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadTable.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/MainLayout.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 8,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'ShieldAlert' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/MetricCard.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 3,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'size' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/MonthlyAgendaSummary.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/NewLeadDrawer.tsx",
+    "errors": 0,
+    "warnings": 8,
+    "messages": [
+      {
+        "line": 36,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'FieldDescription' is defined but never used."
+      },
+      {
+        "line": 47,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'MOCK_USERS' is defined but never used."
+      },
+      {
+        "line": 50,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'deferEffectUpdate' is defined but never used."
+      },
+      {
+        "line": 152,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      },
+      {
+        "line": 189,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      },
+      {
+        "line": 201,
+        "rule": "react-hooks/exhaustive-deps",
+        "message": "React Hook useEffect has missing dependencies: 'currentUser.id', 'currentUser?.role', 'form', and 'handleReset'. Either include them or remove the dependency array."
+      },
+      {
+        "line": 359,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 416,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/NewLeadForm.tsx",
+    "errors": 0,
+    "warnings": 8,
+    "messages": [
+      {
+        "line": 31,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'CardHeader' is defined but never used."
+      },
+      {
+        "line": 31,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'CardTitle' is defined but never used."
+      },
+      {
+        "line": 32,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'FieldDescription' is defined but never used."
+      },
+      {
+        "line": 46,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'MOCK_USERS' is defined but never used."
+      },
+      {
+        "line": 272,
+        "rule": "react-hooks/incompatible-library",
+        "message": "Compilation Skipped: Use of incompatible library"
+      },
+      {
+        "line": 360,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 442,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 500,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/NewPropertyForm.tsx",
+    "errors": 0,
+    "warnings": 10,
+    "messages": [
+      {
+        "line": 7,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'z' is defined but never used."
+      },
+      {
+        "line": 9,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'CardFooter' is defined but never used."
+      },
+      {
+        "line": 9,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'CardHeader' is defined but never used."
+      },
+      {
+        "line": 9,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'CardTitle' is defined but never used."
+      },
+      {
+        "line": 10,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'FieldDescription' is defined but never used."
+      },
+      {
+        "line": 47,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      },
+      {
+        "line": 68,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      },
+      {
+        "line": 80,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'watch' is assigned a value but never used."
+      },
+      {
+        "line": 80,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'reset' is assigned a value but never used."
+      },
+      {
+        "line": 184,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/NewVisitModal.tsx",
+    "errors": 0,
+    "warnings": 2,
+    "messages": [
+      {
+        "line": 24,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'MOCK_USERS' is defined but never used."
+      },
+      {
+        "line": 57,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/NotificationPermissionPrompt.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/PropertyCard.tsx",
+    "errors": 0,
+    "warnings": 2,
+    "messages": [
+      {
+        "line": 2,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Badge' is defined but never used."
+      },
+      {
+        "line": 19,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'getOperationLabel' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/PropertyCardAdmin.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/PropertyDetailView.tsx",
+    "errors": 0,
+    "warnings": 7,
+    "messages": [
+      {
+        "line": 6,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'BedDouble' is defined but never used."
+      },
+      {
+        "line": 6,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Bath' is defined but never used."
+      },
+      {
+        "line": 6,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Car' is defined but never used."
+      },
+      {
+        "line": 7,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'ExternalLink' is defined but never used."
+      },
+      {
+        "line": 28,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'deferEffectUpdate' is defined but never used."
+      },
+      {
+        "line": 64,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'e' is defined but never used."
+      },
+      {
+        "line": 309,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/PropertyList.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 4,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'isMockDataMode' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/PushPreferences.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 13,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/QuickScheduleButtons.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/SearchLeadItem.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/SearchPropertyItem.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/SuccessModal.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/VisitManager.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/advisor/AdminMonthBalanceWidget.tsx",
+    "errors": 0,
+    "warnings": 5,
+    "messages": [
+      {
+        "line": 8,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Building2' is defined but never used."
+      },
+      {
+        "line": 9,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'CalendarCheck' is defined but never used."
+      },
+      {
+        "line": 36,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'projects' is defined but never used."
+      },
+      {
+        "line": 50,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'currentMonthPrefix' is assigned a value but never used."
+      },
+      {
+        "line": 92,
+        "rule": "react-hooks/exhaustive-deps",
+        "message": "React Hook useMemo has a missing dependency: 'now'. Either include it or remove the dependency array."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/advisor/AdvisorCockpit.tsx",
+    "errors": 0,
+    "warnings": 3,
+    "messages": [
+      {
+        "line": 22,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'MapPin' is defined but never used."
+      },
+      {
+        "line": 51,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'getLeadFollowUpState' is defined but never used."
+      },
+      {
+        "line": 68,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Badge' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/CommercialHeatmapWidget.tsx",
+    "errors": 0,
+    "warnings": 2,
+    "messages": [
+      {
+        "line": 4,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Building2' is defined but never used."
+      },
+      {
+        "line": 16,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'otrosComerciales' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/GlobalInventoryWidget.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/NextVisitCountdown.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 3,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'useMemo' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/PipelineFunnelWidget.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/ProjectsOverviewWidget.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/QuickStatsBanner.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 46,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'properties' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/kanban/KanbanCard.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/kanban/KanbanColumn.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/kanban/types.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/navbar/GlobalSearch.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 40,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/CategorySelector.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/CommercialFields.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/LoteFields.tsx",
+    "errors": 0,
+    "warnings": 3,
+    "messages": [
+      {
+        "line": 1,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Route' is defined but never used."
+      },
+      {
+        "line": 1,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Compass' is defined but never used."
+      },
+      {
+        "line": 1,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'FileText' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/TraditionalFields.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/types.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/icons/cuida-building-outline.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/icons/fa6-regular-user.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/icons/grommet-icons-group.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/icons/material-symbols-attach-money-rounded.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/icons/uil-arrow-growth.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/public/PublicLayout.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/public/layout/Footer.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/public/layout/Navbar.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 63,
+        "rule": "@next/next/no-img-element",
+        "message": "Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element"
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/Sidebar.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/navigation.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/quick-actions.ts",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 1,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Users' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/sidebar-brand.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/sidebar-nav.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/sidebar-simulations.tsx",
+    "errors": 0,
+    "warnings": 4,
+    "messages": [
+      {
+        "line": 13,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Sparkles' is defined but never used."
+      },
+      {
+        "line": 14,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'Check' is defined but never used."
+      },
+      {
+        "line": 47,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'cn' is defined but never used."
+      },
+      {
+        "line": 351,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'targetLead' is assigned a value but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/sidebar-user.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/use-sidebar-active.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/theme/PanelTextSize.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/theme/ThemeProvider.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/theme/ThemeToggle.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/avatar.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/badge.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/button.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/card.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/date-time-fields.tsx",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 18,
+        "rule": "react-hooks/set-state-in-effect",
+        "message": "Error: Calling setState synchronously within an effect can trigger cascading renders"
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/components/ui/dialog.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/dropdown-menu.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/field.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/form.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/highlighted-text.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/input-group.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/input.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/label.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/popover.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/search-form.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/separator.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/sheet.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/sidebar.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/skeleton.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/textarea.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/tooltip.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/components/ui/version-switcher.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/data/admin-sample.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/data/auth-sample.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/hooks/use-bellomo-materials.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/hooks/use-collection-action.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/hooks/use-collections.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/hooks/use-current-session.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/hooks/use-lead-advisors.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/hooks/use-mobile.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/layouts/MainLayout.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/admin-storage.ts",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 2,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'formatDueDate' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/lib/auth-context.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/bellomo-financing.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/bellomo-policy.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/collections-api.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/commercial-queue.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/dashboard-context.tsx",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/data-mode.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/deferred-effect.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/everprop-api.ts",
+    "errors": 0,
+    "warnings": 8,
+    "messages": [
+      {
+        "line": 346,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 612,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 754,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 801,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 808,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 860,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 985,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      },
+      {
+        "line": 996,
+        "rule": "@typescript-eslint/no-explicit-any",
+        "message": "Unexpected any. Specify a different type."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/lib/installment-notifications.ts",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 1,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'PaymentAgreement' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/lib/lead-follow-up.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/lead-interests.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/notification-audio.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/notifications.ts",
+    "errors": 0,
+    "warnings": 1,
+    "messages": [
+      {
+        "line": 7,
+        "rule": "@typescript-eslint/no-unused-vars",
+        "message": "'ApiNotification' is defined but never used."
+      }
+    ]
+  },
+  {
+    "file": "everprop-public/src/lib/push-registration.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/release-visibility.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/server/bellomo-materials.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/server/notification-emitter.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/text-size-preference.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/src/lib/utils.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tailwind.config.ts",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tests/bellomo-materials.test.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tests/collections-api.test.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tests/commercial-queue.test.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tests/inventory-api.test.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tests/logout.test.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tests/notifications-worker.test.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tests/push-registration.test.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  },
+  {
+    "file": "everprop-public/tests/text-size-preference.test.mjs",
+    "errors": 0,
+    "warnings": 0,
+    "messages": []
+  }
+]

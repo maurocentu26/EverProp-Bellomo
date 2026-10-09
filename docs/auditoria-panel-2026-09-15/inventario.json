@@ -1,0 +1,2474 @@
+[
+  {
+    "path": "everprop-api/routes/web.php",
+    "lines": 9,
+    "bytes": 298,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/routes/console.php",
+    "lines": 13,
+    "bytes": 352,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/routes/api.php",
+    "lines": 102,
+    "bytes": 6952,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/database.php",
+    "lines": 211,
+    "bytes": 8075,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/database-contract.php",
+    "lines": 14,
+    "bytes": 480,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/cors.php",
+    "lines": 30,
+    "bytes": 840,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/cache.php",
+    "lines": 137,
+    "bytes": 4365,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/auth.php",
+    "lines": 118,
+    "bytes": 4040,
+    "kind": "backend",
+    "symbols": "",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/config/app.php",
+    "lines": 127,
+    "bytes": 4272,
+    "kind": "backend",
+    "symbols": "",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/config/queue.php",
+    "lines": 130,
+    "bytes": 4185,
+    "kind": "backend",
+    "symbols": "",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/config/mail.php",
+    "lines": 119,
+    "bytes": 3631,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/logging.php",
+    "lines": 133,
+    "bytes": 4340,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/filesystems.php",
+    "lines": 83,
+    "bytes": 2586,
+    "kind": "backend",
+    "symbols": "",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/config/security.php",
+    "lines": 8,
+    "bytes": 276,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/sanctum.php",
+    "lines": 23,
+    "bytes": 745,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/services.php",
+    "lines": 54,
+    "bytes": 1689,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/webpush.php",
+    "lines": 8,
+    "bytes": 227,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/trustedproxy.php",
+    "lines": 6,
+    "bytes": 134,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/tenancy.php",
+    "lines": 14,
+    "bytes": 472,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/config/session.php",
+    "lines": 234,
+    "bytes": 8423,
+    "kind": "backend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/bellomo-financing.ts",
+    "lines": 125,
+    "bytes": 5510,
+    "kind": "frontend",
+    "symbols": "findFinancingPlan, financingSummary, cacPayment, fixedPayment",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/auth-context.tsx",
+    "lines": 116,
+    "bytes": 3735,
+    "kind": "frontend",
+    "symbols": "AuthContextType, AuthProvider, restoreSession, useAuth",
+    "signals": "localStorage"
+  },
+  {
+    "path": "everprop-public/src/lib/admin-storage.ts",
+    "lines": 461,
+    "bytes": 17964,
+    "kind": "frontend",
+    "symbols": "readList, loadLeadList, loadPropertyList, loadProjectList, appendLeadToStorage, appendPropertyToStorage, loadLeadFollowUpList, appendProjectToStorage, appendLeadFollowUpToStorage, updateLeadAgent, saveLeadList, savePropertyList, saveProjectList, removeVisitById, loadPaymentAgreementList, savePaymentAgreementList, appendPaymentAgreementToStorage, loadInstallmentList, saveInstallmentList, appendInstallmentsToStorage, recordInstallmentPayment, createAgreementWithInstallments, evaluateInstallmentsAndNotify",
+    "signals": "localStorage"
+  },
+  {
+    "path": "everprop-public/src/lib/deferred-effect.ts",
+    "lines": 12,
+    "bytes": 201,
+    "kind": "frontend",
+    "symbols": "deferEffectUpdate",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/data-mode.ts",
+    "lines": 7,
+    "bytes": 199,
+    "kind": "frontend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/dashboard-context.tsx",
+    "lines": 34,
+    "bytes": 1100,
+    "kind": "frontend",
+    "symbols": "DashboardModeContextType, DashboardModeProvider, useDashboardMode",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/commercial-queue.ts",
+    "lines": 41,
+    "bytes": 2276,
+    "kind": "frontend",
+    "symbols": "commercialDay, hasRecordedContact, commercialQueueItem, commercialQueueGroups",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/collections-api.ts",
+    "lines": 97,
+    "bytes": 4924,
+    "kind": "frontend",
+    "symbols": "allPages, loadPaymentAgreementList, loadInstallmentList, loadCollectionLeads, collectionsUpdated, mutationKey, createAgreementWithInstallments, recordInstallmentPayment, loadPayments, reversePayment",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/bellomo-policy.ts",
+    "lines": 39,
+    "bytes": 2049,
+    "kind": "frontend",
+    "symbols": "normalizedProjectName, matchesMaterialProject, isMaterialAdministrator, canReadMaterial",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/lead-follow-up.ts",
+    "lines": 190,
+    "bytes": 6435,
+    "kind": "frontend",
+    "symbols": "isCommercialContact, parseArgentinaDate, formatArgentinaDateTime, toArgentinaDateTimeInputValue, argentinaDateTimeInputToIso, getLeadFollowUps, getLastCommercialContactAt, getLeadFollowUpState",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/installment-notifications.ts",
+    "lines": 120,
+    "bytes": 5006,
+    "kind": "frontend",
+    "symbols": "getTodayDateString, formatInstallmentAmount, formatDueDate, evaluateInstallmentStatus, cleanPhoneNumber, buildInstallmentWhatsAppMessage, buildWhatsAppReminderUrl",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/notification-audio.ts",
+    "lines": 51,
+    "bytes": 1996,
+    "kind": "frontend",
+    "symbols": "playCorporateNotificationChime, playChime",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/lead-interests.ts",
+    "lines": 178,
+    "bytes": 6281,
+    "kind": "frontend",
+    "symbols": "optionalText, unique, findProperty, isProjectUnit, createLeadInterest, createInterestForProperty, normalizeLeadInterests, syncLeadWithInterests, getInterestAssetIds, getInterestPendingFields",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/notifications.ts",
+    "lines": 232,
+    "bytes": 7743,
+    "kind": "frontend",
+    "symbols": "isNotificationForUser, loadNotifications, saveNotifications, fetchNotifications, markAllNotificationsAsRead, markNotificationAsRead, createNotification, markAllAsRead, clearAllNotifications, requestDesktopNotificationPermission, showDesktopNotification",
+    "signals": "localStorage"
+  },
+  {
+    "path": "everprop-public/src/App.tsx",
+    "lines": 38,
+    "bytes": 984,
+    "kind": "frontend",
+    "symbols": "App",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/everprop-api.ts",
+    "lines": 1031,
+    "bytes": 34789,
+    "kind": "frontend",
+    "symbols": "resolveApiUrl, EverpropApiError, isInvalidEverpropSession, xsrfToken, apiFetch, mapRole, mapUser, cleanText, mapProject, mapProperty, loginEverprop, currentEverpropUser, finishBrowserCleanup, logoutEverprop, loadCatalogPages, catalogFrom, loadEverpropCatalog, everpropHealth, createEverpropProperty, updateEverpropPropertyStatus, createEverpropProject, mapLead, loadAllCrmPages, loadEverpropLeads, createEverpropLead, updateEverpropLead, loadEverpropLeadById, loadEverpropLeadFollowUps, notifyCrmUpdated, createEverpropLeadFollowUp, loadEverpropAllFollowUps, attachEverpropLeadProperty, updateEverpropLeadProperty, detachEverpropLeadProperty, updateEverpropProperty, generateLotsBatch, loadEverpropNotifications, markEverpropNotificationRead, markAllEverpropNotificationsRead, clearAllEverpropNotifications, updateEverpropLeadStage, updateEverpropLeadPropertyStatus, loadEverpropTodayVisits, loadEverpropVisits, createEverpropVisit, cancelEverpropVisit",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/lib/push-registration.ts",
+    "lines": 22,
+    "bytes": 761,
+    "kind": "frontend",
+    "symbols": "registerNotificationWorker",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/utils.ts",
+    "lines": 7,
+    "bytes": 172,
+    "kind": "frontend",
+    "symbols": "cn",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/text-size-preference.ts",
+    "lines": 31,
+    "bytes": 1221,
+    "kind": "frontend",
+    "symbols": "createTextSizePreferences",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/layouts/MainLayout.tsx",
+    "lines": 20,
+    "bytes": 554,
+    "kind": "frontend",
+    "symbols": "MainLayout",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/release-visibility.ts",
+    "lines": 7,
+    "bytes": 290,
+    "kind": "frontend",
+    "symbols": "isReleaseRouteVisible",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/docs/everprop-mvp-script.md",
+    "lines": 157,
+    "bytes": 7745,
+    "kind": "frontend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/hooks/use-bellomo-materials.ts",
+    "lines": 27,
+    "bytes": 1441,
+    "kind": "frontend",
+    "symbols": "useBellomoMaterials",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/server/bellomo-materials.ts",
+    "lines": 59,
+    "bytes": 3780,
+    "kind": "frontend",
+    "symbols": "MaterialError, materialSession, read, visibleMaterials, materialFailure",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/lib/server/notification-emitter.ts",
+    "lines": 18,
+    "bytes": 627,
+    "kind": "frontend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/hooks/use-collection-action.ts",
+    "lines": 18,
+    "bytes": 575,
+    "kind": "frontend",
+    "symbols": "useCollectionAction, run",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/hooks/use-mobile.ts",
+    "lines": 23,
+    "bytes": 617,
+    "kind": "frontend",
+    "symbols": "subscribe, getSnapshot, getServerSnapshot, useIsMobile",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/hooks/use-lead-advisors.ts",
+    "lines": 19,
+    "bytes": 902,
+    "kind": "frontend",
+    "symbols": "useLeadAdvisors",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/hooks/use-current-session.ts",
+    "lines": 31,
+    "bytes": 910,
+    "kind": "frontend",
+    "symbols": "useCurrentSession",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/hooks/use-collections.ts",
+    "lines": 68,
+    "bytes": 3094,
+    "kind": "frontend",
+    "symbols": "useCollections",
+    "signals": "polling"
+  },
+  {
+    "path": "everprop-public/src/data/admin-sample.ts",
+    "lines": 2243,
+    "bytes": 64830,
+    "kind": "frontend",
+    "symbols": "inferLeadInterestCategory, getRelativeDateStr",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/data/auth-sample.ts",
+    "lines": 130,
+    "bytes": 4005,
+    "kind": "frontend",
+    "symbols": "getAdvisor, getAdvisorName",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/panel-text-size.css",
+    "lines": 149,
+    "bytes": 12264,
+    "kind": "estilos",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/page.tsx",
+    "lines": 6,
+    "bytes": 103,
+    "kind": "frontend",
+    "symbols": "Home",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/manifest.ts",
+    "lines": 5,
+    "bytes": 361,
+    "kind": "frontend",
+    "symbols": "manifest",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/app/login/page.tsx",
+    "lines": 233,
+    "bytes": 11459,
+    "kind": "frontend",
+    "symbols": "LoginPage",
+    "signals": "localStorage; revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/app/layout.tsx",
+    "lines": 54,
+    "bytes": 2039,
+    "kind": "frontend",
+    "symbols": "RootLayout",
+    "signals": "localStorage; HTML directo"
+  },
+  {
+    "path": "everprop-public/src/app/globals.css",
+    "lines": 325,
+    "bytes": 11050,
+    "kind": "estilos",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/date-time-fields.tsx",
+    "lines": 34,
+    "bytes": 1342,
+    "kind": "frontend",
+    "symbols": "DateTimeFields",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/card.tsx",
+    "lines": 104,
+    "bytes": 2733,
+    "kind": "frontend",
+    "symbols": "Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/ui/button.tsx",
+    "lines": 59,
+    "bytes": 3298,
+    "kind": "frontend",
+    "symbols": "Button",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/badge.tsx",
+    "lines": 21,
+    "bytes": 663,
+    "kind": "frontend",
+    "symbols": "Badge",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/avatar.tsx",
+    "lines": 110,
+    "bytes": 3147,
+    "kind": "frontend",
+    "symbols": "Avatar, AvatarImage, AvatarFallback, AvatarBadge, AvatarGroup, AvatarGroupCount",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/fonts/AvenirNextLTPro-Regular.otf",
+    "lines": 0,
+    "bytes": 67572,
+    "kind": "recurso binario",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/input.tsx",
+    "lines": 21,
+    "bytes": 1060,
+    "kind": "frontend",
+    "symbols": "Input",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/fonts/AvenirNextLTPro-Bold.otf",
+    "lines": 0,
+    "bytes": 70208,
+    "kind": "recurso binario",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/input-group.tsx",
+    "lines": 159,
+    "bytes": 5422,
+    "kind": "frontend",
+    "symbols": "InputGroup, InputGroupAddon, InputGroupButton, InputGroupText, InputGroupInput, InputGroupTextarea",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/highlighted-text.tsx",
+    "lines": 29,
+    "bytes": 729,
+    "kind": "frontend",
+    "symbols": "Props, HighlightedText",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/form.tsx",
+    "lines": 29,
+    "bytes": 1203,
+    "kind": "frontend",
+    "symbols": "Form, FormField, FormLabel, FormControl, FormDescription, FormMessage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/favicon.ico",
+    "lines": 0,
+    "bytes": 25931,
+    "kind": "recurso binario",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/field.tsx",
+    "lines": 239,
+    "bytes": 6255,
+    "kind": "frontend",
+    "symbols": "FieldSet, FieldLegend, FieldGroup, Field, FieldContent, FieldLabel, FieldTitle, FieldDescription, FieldSeparator, FieldError",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/dropdown-menu.tsx",
+    "lines": 269,
+    "bytes": 9004,
+    "kind": "frontend",
+    "symbols": "DropdownMenu, DropdownMenuPortal, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuCheckboxItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/ui/dialog.tsx",
+    "lines": 169,
+    "bytes": 4855,
+    "kind": "frontend",
+    "symbols": "Dialog, DialogTrigger, DialogPortal, DialogClose, DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/ui/search-form.tsx",
+    "lines": 29,
+    "bytes": 829,
+    "kind": "frontend",
+    "symbols": "SearchForm",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/popover.tsx",
+    "lines": 39,
+    "bytes": 1206,
+    "kind": "frontend",
+    "symbols": "Popover, PopoverTrigger, PopoverContent",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/label.tsx",
+    "lines": 21,
+    "bytes": 538,
+    "kind": "frontend",
+    "symbols": "Label",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/sheet.tsx",
+    "lines": 139,
+    "bytes": 4572,
+    "kind": "frontend",
+    "symbols": "Sheet, SheetTrigger, SheetClose, SheetPortal, SheetOverlay, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/separator.tsx",
+    "lines": 26,
+    "bytes": 570,
+    "kind": "frontend",
+    "symbols": "Separator",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/sidebar.tsx",
+    "lines": 764,
+    "bytes": 23894,
+    "kind": "frontend",
+    "symbols": "useSidebar, SidebarProvider, Sidebar, SidebarTrigger, SidebarRail, SidebarInset, SidebarInput, SidebarHeader, SidebarFooter, SidebarSeparator, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupAction, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarMenuBadge, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/ui/skeleton.tsx",
+    "lines": 14,
+    "bytes": 288,
+    "kind": "frontend",
+    "symbols": "Skeleton",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/version-switcher.tsx",
+    "lines": 65,
+    "bytes": 2042,
+    "kind": "frontend",
+    "symbols": "VersionSwitcher",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/tooltip.tsx",
+    "lines": 67,
+    "bytes": 2912,
+    "kind": "frontend",
+    "symbols": "TooltipProvider, Tooltip, TooltipTrigger, TooltipContent",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/ui/textarea.tsx",
+    "lines": 19,
+    "bytes": 860,
+    "kind": "frontend",
+    "symbols": "Textarea",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin-design.css",
+    "lines": 277,
+    "bytes": 14697,
+    "kind": "estilos",
+    "symbols": "",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/theme/ThemeToggle.tsx",
+    "lines": 37,
+    "bytes": 1296,
+    "kind": "frontend",
+    "symbols": "ThemeToggle",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/theme/ThemeProvider.tsx",
+    "lines": 73,
+    "bytes": 2342,
+    "kind": "frontend",
+    "symbols": "getThemeSnapshot, getServerThemeSnapshot, applyTheme, subscribeToTheme, ThemeProvider, useTheme",
+    "signals": "localStorage"
+  },
+  {
+    "path": "everprop-public/src/components/theme/PanelTextSize.tsx",
+    "lines": 76,
+    "bytes": 4308,
+    "kind": "frontend",
+    "symbols": "PanelTextSizeProvider, PanelTextSizeControl",
+    "signals": "localStorage"
+  },
+  {
+    "path": "everprop-public/src/components/icons/uil-arrow-growth.tsx",
+    "lines": 32,
+    "bytes": 843,
+    "kind": "frontend",
+    "symbols": "ArrowGrowthIcon",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/icons/material-symbols-attach-money-rounded.tsx",
+    "lines": 32,
+    "bytes": 1198,
+    "kind": "frontend",
+    "symbols": "AttachMoneyRoundedIcon",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/icons/grommet-icons-group.tsx",
+    "lines": 32,
+    "bytes": 877,
+    "kind": "frontend",
+    "symbols": "GroupIcon",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/icons/fa6-regular-user.tsx",
+    "lines": 32,
+    "bytes": 913,
+    "kind": "frontend",
+    "symbols": "UserIcon",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/icons/cuida-building-outline.tsx",
+    "lines": 32,
+    "bytes": 1225,
+    "kind": "frontend",
+    "symbols": "BuildingOutlineIcon",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/sidebar/use-sidebar-active.ts",
+    "lines": 47,
+    "bytes": 1329,
+    "kind": "frontend",
+    "symbols": "useSidebarActive",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/api/notifications/stream/route.ts",
+    "lines": 78,
+    "bytes": 2398,
+    "kind": "frontend",
+    "symbols": "GET",
+    "signals": "polling"
+  },
+  {
+    "path": "everprop-public/src/components/sidebar/Sidebar.tsx",
+    "lines": 32,
+    "bytes": 715,
+    "kind": "frontend",
+    "symbols": "AppSidebar",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/sidebar/sidebar-user.tsx",
+    "lines": 11,
+    "bytes": 304,
+    "kind": "frontend",
+    "symbols": "SidebarUser",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/api/notifications/route.ts",
+    "lines": 68,
+    "bytes": 2586,
+    "kind": "frontend",
+    "symbols": "GET, POST, PATCH, DELETE",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/sidebar/sidebar-simulations.tsx",
+    "lines": 609,
+    "bytes": 23917,
+    "kind": "frontend",
+    "symbols": "SidebarSimulations",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/sidebar/sidebar-nav.tsx",
+    "lines": 15,
+    "bytes": 387,
+    "kind": "frontend",
+    "symbols": "SidebarNav",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/sidebar/sidebar-brand.tsx",
+    "lines": 15,
+    "bytes": 418,
+    "kind": "frontend",
+    "symbols": "SidebarBrand",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/sidebar/quick-actions.ts",
+    "lines": 82,
+    "bytes": 1581,
+    "kind": "frontend",
+    "symbols": "QuickAction, getAvailableQuickActions",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/sidebar/navigation.ts",
+    "lines": 138,
+    "bytes": 4369,
+    "kind": "frontend",
+    "symbols": "NavChild, NavItem, NavGroup, getAvailableNavigationGroups",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/settings/page.tsx",
+    "lines": 24,
+    "bytes": 2027,
+    "kind": "frontend",
+    "symbols": "SettingsPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/public/PublicLayout.tsx",
+    "lines": 14,
+    "bytes": 404,
+    "kind": "frontend",
+    "symbols": "PublicLayout",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/settings/layout.tsx",
+    "lines": 8,
+    "bytes": 270,
+    "kind": "frontend",
+    "symbols": "SettingsLayout",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/api/bellomo/materials/route.ts",
+    "lines": 8,
+    "bytes": 388,
+    "kind": "frontend",
+    "symbols": "GET",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/public/layout/Navbar.tsx",
+    "lines": 191,
+    "bytes": 8604,
+    "kind": "frontend",
+    "symbols": "Navbar",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/public/layout/Footer.tsx",
+    "lines": 128,
+    "bytes": 4658,
+    "kind": "frontend",
+    "symbols": "Footer",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/desarrollos/[id]/page.tsx",
+    "lines": 217,
+    "bytes": 10540,
+    "kind": "frontend",
+    "symbols": "ProjectDetailView, fetchProject",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/app/api/bellomo/assets/[id]/route.ts",
+    "lines": 25,
+    "bytes": 1636,
+    "kind": "frontend",
+    "symbols": "GET",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/desarrollos/page.tsx",
+    "lines": 214,
+    "bytes": 9371,
+    "kind": "frontend",
+    "symbols": "ProjectCard, DesarrollosPage, loadData",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/app/admin/properties/[id]/page.tsx",
+    "lines": 12,
+    "bytes": 291,
+    "kind": "frontend",
+    "symbols": "PropertyDetailPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/properties/page.tsx",
+    "lines": 394,
+    "bytes": 19488,
+    "kind": "frontend",
+    "symbols": "AllPropertiesPage, handleClickOutside, loadData",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/comercial/page.tsx",
+    "lines": 228,
+    "bytes": 14119,
+    "kind": "frontend",
+    "symbols": "CommercialAssetsPage, loadData",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/app/admin/properties/new/page.tsx",
+    "lines": 62,
+    "bytes": 2339,
+    "kind": "frontend",
+    "symbols": "NewPropertyPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/page.tsx",
+    "lines": 178,
+    "bytes": 7127,
+    "kind": "frontend",
+    "symbols": "AdminPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/agenda/page.tsx",
+    "lines": 26,
+    "bytes": 795,
+    "kind": "frontend",
+    "symbols": "AgendaPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/VisitManager.tsx",
+    "lines": 502,
+    "bytes": 24795,
+    "kind": "frontend",
+    "symbols": "formatVisitDate, VisitManager, handleClickOutside, handleSelectLead, handleClearLeadSelection, handleSubmit",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/SuccessModal.tsx",
+    "lines": 48,
+    "bytes": 1558,
+    "kind": "frontend",
+    "symbols": "SuccessModal",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/SearchPropertyItem.tsx",
+    "lines": 37,
+    "bytes": 1772,
+    "kind": "frontend",
+    "symbols": "Props, SearchPropertyItem",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/SearchLeadItem.tsx",
+    "lines": 43,
+    "bytes": 1944,
+    "kind": "frontend",
+    "symbols": "Props, SearchLeadItem",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/QuickScheduleButtons.tsx",
+    "lines": 110,
+    "bytes": 4058,
+    "kind": "frontend",
+    "symbols": "QuickScheduleButtonsProps, QuickOption, QuickScheduleButtons",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/PushPreferences.tsx",
+    "lines": 61,
+    "bytes": 4141,
+    "kind": "frontend",
+    "symbols": "PushPreferences, load, toggle",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/PropertyList.tsx",
+    "lines": 70,
+    "bytes": 3807,
+    "kind": "frontend",
+    "symbols": "PropertyList",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/PropertyDetailView.tsx",
+    "lines": 406,
+    "bytes": 20180,
+    "kind": "frontend",
+    "symbols": "PropertyDetailView, loadData, handleScheduleVisit, handleDeleteVisit",
+    "signals": "localStorage; revisar recorte visual; tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/components/admin/PropertyCardAdmin.tsx",
+    "lines": 162,
+    "bytes": 8844,
+    "kind": "frontend",
+    "symbols": "Props, PropertyCardAdmin",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/PropertyCard.tsx",
+    "lines": 117,
+    "bytes": 5248,
+    "kind": "frontend",
+    "symbols": "formatPropertyPrice, getOperationLabel, PropertyCard",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/app/admin/cobranzas/page.tsx",
+    "lines": 1277,
+    "bytes": 64354,
+    "kind": "frontend",
+    "symbols": "CobranzasPage",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/app/admin/cobranzas/layout.tsx",
+    "lines": 8,
+    "bytes": 273,
+    "kind": "frontend",
+    "symbols": "CollectionsLayout",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/notifications/page.tsx",
+    "lines": 55,
+    "bytes": 4495,
+    "kind": "frontend",
+    "symbols": "NotificationsPage, update",
+    "signals": "polling"
+  },
+  {
+    "path": "everprop-public/src/app/activar/page.tsx",
+    "lines": 23,
+    "bytes": 1906,
+    "kind": "frontend",
+    "symbols": "ActivatePage, submit",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/layout.tsx",
+    "lines": 11,
+    "bytes": 351,
+    "kind": "frontend",
+    "symbols": "AdminRootLayout",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/asesores/page.tsx",
+    "lines": 57,
+    "bytes": 5524,
+    "kind": "frontend",
+    "symbols": "AdvisorsPage, submit",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/materiales/page.tsx",
+    "lines": 7,
+    "bytes": 208,
+    "kind": "frontend",
+    "symbols": "MaterialesRedirect",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/InventoryMatrix.tsx",
+    "lines": 231,
+    "bytes": 12875,
+    "kind": "frontend",
+    "symbols": "InventoryMatrix",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/InstallmentPaymentHistory.tsx",
+    "lines": 55,
+    "bytes": 3607,
+    "kind": "frontend",
+    "symbols": "InstallmentPaymentHistory, refresh",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/GenerateLotsModal.tsx",
+    "lines": 552,
+    "bytes": 22516,
+    "kind": "frontend",
+    "symbols": "GenerateLotsModalProps, GenerateLotsModal, loadProjects",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/components/admin/FinancingCalculator.tsx",
+    "lines": 840,
+    "bytes": 38612,
+    "kind": "frontend",
+    "symbols": "fmt, FinancingCalculator",
+    "signals": "revisar recorte visual; tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/components/admin/ExportLocalCollections.tsx",
+    "lines": 19,
+    "bytes": 1136,
+    "kind": "frontend",
+    "symbols": "ExportLocalCollections, download",
+    "signals": "localStorage"
+  },
+  {
+    "path": "everprop-public/src/components/admin/EnterpriseDashboard.tsx",
+    "lines": 87,
+    "bytes": 3282,
+    "kind": "frontend",
+    "symbols": "EnterpriseDashboard, loadData",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/EditPropertyModal.tsx",
+    "lines": 293,
+    "bytes": 14752,
+    "kind": "frontend",
+    "symbols": "EditPropertyModalProps, EditPropertyModal",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/components/admin/DashboardStats.tsx",
+    "lines": 96,
+    "bytes": 3601,
+    "kind": "frontend",
+    "symbols": "DashboardStats",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/inventory-matrix/page.tsx",
+    "lines": 150,
+    "bytes": 6444,
+    "kind": "frontend",
+    "symbols": "GlobalInventoryMatrixPage, loadData",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/property-form/types.ts",
+    "lines": 51,
+    "bytes": 2017,
+    "kind": "frontend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/property-form/TraditionalFields.tsx",
+    "lines": 35,
+    "bytes": 1655,
+    "kind": "frontend",
+    "symbols": "TraditionalFields",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/property-form/LoteFields.tsx",
+    "lines": 88,
+    "bytes": 5521,
+    "kind": "frontend",
+    "symbols": "LoteFields",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/property-form/CommercialFields.tsx",
+    "lines": 29,
+    "bytes": 1225,
+    "kind": "frontend",
+    "symbols": "CommercialFields",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/property-form/CategorySelector.tsx",
+    "lines": 44,
+    "bytes": 2803,
+    "kind": "frontend",
+    "symbols": "CategorySelector",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/NotificationPermissionPrompt.tsx",
+    "lines": 38,
+    "bytes": 1853,
+    "kind": "frontend",
+    "symbols": "NotificationPermissionPrompt, dismiss",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/NewVisitModal.tsx",
+    "lines": 359,
+    "bytes": 16112,
+    "kind": "frontend",
+    "symbols": "NewVisitModalProps, NewVisitModal",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/NewPropertyForm.tsx",
+    "lines": 368,
+    "bytes": 19482,
+    "kind": "frontend",
+    "symbols": "NewPropertyForm",
+    "signals": "revisar recorte visual; tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/components/admin/NewLeadForm.tsx",
+    "lines": 973,
+    "bytes": 46331,
+    "kind": "frontend",
+    "symbols": "AssetCategoryOption, NewLeadForm, fetchLead, loadData",
+    "signals": "revisar recorte visual; tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/components/admin/NewLeadDrawer.tsx",
+    "lines": 864,
+    "bytes": 40452,
+    "kind": "frontend",
+    "symbols": "AssetCategoryOption, NewLeadDrawerProps, NewLeadDrawer, handleReset",
+    "signals": "revisar recorte visual; tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/app/admin/leads/new/page.tsx",
+    "lines": 64,
+    "bytes": 2310,
+    "kind": "frontend",
+    "symbols": "NewLeadPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/leads/[id]/page.tsx",
+    "lines": 12,
+    "bytes": 271,
+    "kind": "frontend",
+    "symbols": "LeadDetailPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/app/admin/leads/page.tsx",
+    "lines": 477,
+    "bytes": 21555,
+    "kind": "frontend",
+    "symbols": "AllLeadsPage, fetchLeads, handleStageChange, handleConfirmFollowUp, handleConfirmStageUpdate",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/AdvisorFollowUpPriority.tsx",
+    "lines": 77,
+    "bytes": 3653,
+    "kind": "frontend",
+    "symbols": "AdvisorFollowUpPriority",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/dashboard-widgets/QuickStatsBanner.tsx",
+    "lines": 139,
+    "bytes": 5192,
+    "kind": "frontend",
+    "symbols": "AnimatedNumber, QuickStatsBanner",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/dashboard-widgets/ProjectsOverviewWidget.tsx",
+    "lines": 56,
+    "bytes": 2624,
+    "kind": "frontend",
+    "symbols": "ProjectsOverviewWidget",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/dashboard-widgets/PipelineFunnelWidget.tsx",
+    "lines": 121,
+    "bytes": 5303,
+    "kind": "frontend",
+    "symbols": "PipelineFunnelWidget",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/dashboard-widgets/NextVisitCountdown.tsx",
+    "lines": 198,
+    "bytes": 8031,
+    "kind": "frontend",
+    "symbols": "useCountdown, TimeUnit, NextVisitCountdown",
+    "signals": "polling; revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/dashboard-widgets/GlobalInventoryWidget.tsx",
+    "lines": 88,
+    "bytes": 5065,
+    "kind": "frontend",
+    "symbols": "GlobalInventoryWidget",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/dashboard-widgets/CommercialHeatmapWidget.tsx",
+    "lines": 293,
+    "bytes": 15940,
+    "kind": "frontend",
+    "symbols": "CommercialHeatmapWidget",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/CollectionsLoading.tsx",
+    "lines": 11,
+    "bytes": 574,
+    "kind": "frontend",
+    "symbols": "CollectionsLoading",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/CardLead.tsx",
+    "lines": 193,
+    "bytes": 8500,
+    "kind": "frontend",
+    "symbols": "getInitials, formatPrice, CardLead",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/CalendarAgenda.tsx",
+    "lines": 783,
+    "bytes": 41296,
+    "kind": "frontend",
+    "symbols": "getMonthGrid, toKey, StatusBadge, PropertyTypeIcon, CalendarAgenda",
+    "signals": "polling; revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/BellomoResources.tsx",
+    "lines": 80,
+    "bytes": 8350,
+    "kind": "frontend",
+    "symbols": "ResourceGrid, MaterialErrorNotice, ProjectMaterials",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/ApiIntegrationStatus.tsx",
+    "lines": 107,
+    "bytes": 4143,
+    "kind": "frontend",
+    "symbols": "ApiIntegrationStatus, inspectIntegration",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/AgendaView.tsx",
+    "lines": 8,
+    "bytes": 157,
+    "kind": "frontend",
+    "symbols": "AgendaView",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadInterestEditor.tsx",
+    "lines": 353,
+    "bytes": 17383,
+    "kind": "frontend",
+    "symbols": "LeadInterestEditor, handleSubmit",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadFollowUpTimeline.tsx",
+    "lines": 362,
+    "bytes": 16616,
+    "kind": "frontend",
+    "symbols": "LeadFollowUpTimeline",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadFollowUpStatus.tsx",
+    "lines": 224,
+    "bytes": 10290,
+    "kind": "frontend",
+    "symbols": "LeadFollowUpStatus",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadFollowUpEditor.tsx",
+    "lines": 308,
+    "bytes": 13020,
+    "kind": "frontend",
+    "symbols": "LeadFollowUpEditor, handleSubmit",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadFinancingAgreements.tsx",
+    "lines": 656,
+    "bytes": 31732,
+    "kind": "frontend",
+    "symbols": "LeadFinancingAgreementsProps, LeadFinancingAgreements",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadDetailView.tsx",
+    "lines": 768,
+    "bytes": 41056,
+    "kind": "frontend",
+    "symbols": "LeadDetailView, loadData, updateLeadData, handleSaveProfile, handleSaveInterest, handleDeleteInterest, handleScheduleVisit, handleReassignAgentConfirmed, handleSaveFollowUp, handleConfirmStageUpdate",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadAdvisorEditor.tsx",
+    "lines": 106,
+    "bytes": 4916,
+    "kind": "frontend",
+    "symbols": "LeadAdvisorEditor",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/app/admin/leads/[id]/edit/page.tsx",
+    "lines": 19,
+    "bytes": 545,
+    "kind": "frontend",
+    "symbols": "LeadEditPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadTable.tsx",
+    "lines": 324,
+    "bytes": 17224,
+    "kind": "frontend",
+    "symbols": "LeadActions, LeadTable",
+    "signals": "ventana externa; revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadStageUpdateModal.tsx",
+    "lines": 210,
+    "bytes": 8104,
+    "kind": "frontend",
+    "symbols": "StageOption, LeadStageUpdateModalProps, LeadStageUpdateModal",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadProfileEditor.tsx",
+    "lines": 161,
+    "bytes": 6425,
+    "kind": "frontend",
+    "symbols": "LeadProfileEditor",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/LeadKanban.tsx",
+    "lines": 308,
+    "bytes": 11999,
+    "kind": "frontend",
+    "symbols": "LeadKanban, loadData",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-public/src/components/admin/MetricCard.tsx",
+    "lines": 35,
+    "bytes": 1119,
+    "kind": "frontend",
+    "symbols": "MetricCard",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/MainLayout.tsx",
+    "lines": 140,
+    "bytes": 5635,
+    "kind": "frontend",
+    "symbols": "MainLayout",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/MonthlyAgendaSummary.tsx",
+    "lines": 380,
+    "bytes": 17082,
+    "kind": "frontend",
+    "symbols": "AnimatedCount, MonthlyAgendaSummary",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/AdminMenuBrand.tsx",
+    "lines": 39,
+    "bytes": 1025,
+    "kind": "frontend",
+    "symbols": "AdminMenuBrand",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/AdminMenuAccount.tsx",
+    "lines": 76,
+    "bytes": 2705,
+    "kind": "frontend",
+    "symbols": "AdminMenuAccount",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/AdminFullscreenMenu.tsx",
+    "lines": 67,
+    "bytes": 2824,
+    "kind": "frontend",
+    "symbols": "AdminFullscreenMenu",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/AdminNavbar.tsx",
+    "lines": 433,
+    "bytes": 21701,
+    "kind": "frontend",
+    "symbols": "AdminNavbar",
+    "signals": "localStorage; polling; revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/AdminNavigationMenu.tsx",
+    "lines": 168,
+    "bytes": 7887,
+    "kind": "frontend",
+    "symbols": "AdminNavigationMenu",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/navbar/GlobalSearch.tsx",
+    "lines": 238,
+    "bytes": 13737,
+    "kind": "frontend",
+    "symbols": "GlobalSearch",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/advisor/AdminMonthBalanceWidget.tsx",
+    "lines": 427,
+    "bytes": 20358,
+    "kind": "frontend",
+    "symbols": "AdminMonthBalanceWidgetProps, AdminMonthBalanceWidget",
+    "signals": "revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/advisor/AdvisorCockpit.tsx",
+    "lines": 1104,
+    "bytes": 60089,
+    "kind": "frontend",
+    "symbols": "AdvisorCockpit, loadData, handleStageChange, handleConfirmFollowUp, handleConfirmStageUpdate",
+    "signals": "polling; revisar recorte visual"
+  },
+  {
+    "path": "everprop-public/src/components/admin/kanban/types.ts",
+    "lines": 13,
+    "bytes": 424,
+    "kind": "frontend",
+    "symbols": "",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/kanban/KanbanColumn.tsx",
+    "lines": 64,
+    "bytes": 2554,
+    "kind": "frontend",
+    "symbols": "KanbanColumn",
+    "signals": ""
+  },
+  {
+    "path": "everprop-public/src/components/admin/kanban/KanbanCard.tsx",
+    "lines": 49,
+    "bytes": 1784,
+    "kind": "frontend",
+    "symbols": "KanbanCard",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Support/ProductionDependencies.php",
+    "lines": 34,
+    "bytes": 1415,
+    "kind": "backend",
+    "symbols": "ProductionDependencies, check",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Jobs/SendWebPush.php",
+    "lines": 39,
+    "bytes": 2264,
+    "kind": "backend",
+    "symbols": "SendWebPush, __construct, handle",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Providers/AppServiceProvider.php",
+    "lines": 83,
+    "bytes": 3845,
+    "kind": "backend",
+    "symbols": "AppServiceProvider, register, boot",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Models/User.php",
+    "lines": 125,
+    "bytes": 3083,
+    "kind": "backend",
+    "symbols": "User, casts, getRouteKeyName, tenant, scopeForTenant, scopeActive, role, statusCode, isActive, capabilities, hasCapability",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Http/Controllers/Controller.php",
+    "lines": 9,
+    "bytes": 77,
+    "kind": "backend",
+    "symbols": "Controller",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Console/Commands/VerifySchemaCommand.php",
+    "lines": 54,
+    "bytes": 1398,
+    "kind": "backend",
+    "symbols": "VerifySchemaCommand, handle, display",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Console/Commands/SetupSimulationDatabaseCommand.php",
+    "lines": 165,
+    "bytes": 6801,
+    "kind": "backend",
+    "symbols": "SetupSimulationDatabaseCommand, handle",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Console/Commands/SeedLocalDemo.php",
+    "lines": 67,
+    "bytes": 2658,
+    "kind": "backend",
+    "symbols": "SeedLocalDemo, handle",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Console/Commands/ProductionCheck.php",
+    "lines": 90,
+    "bytes": 5384,
+    "kind": "backend",
+    "symbols": "ProductionCheck, handle",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Console/Commands/NotifyCollections.php",
+    "lines": 62,
+    "bytes": 3467,
+    "kind": "backend",
+    "symbols": "NotifyCollections, handle",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Console/Commands/ImportCollections.php",
+    "lines": 134,
+    "bytes": 7707,
+    "kind": "backend",
+    "symbols": "ImportCollections, handle",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/TenantContext.php",
+    "lines": 51,
+    "bytes": 1078,
+    "kind": "backend",
+    "symbols": "TenantContext, __construct, forTenant, forPlatform, id, tenant, isPlatform, reason",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Resolvers/TrustedTenantResolver.php",
+    "lines": 103,
+    "bytes": 2960,
+    "kind": "backend",
+    "symbols": "TrustedTenantResolver, resolve, resolveFromTrustedHost, resolveFromLocalOverride, resolveFromAuthenticatedUser, findActiveTenant",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/PlatformAccess.php",
+    "lines": 54,
+    "bytes": 1843,
+    "kind": "backend",
+    "symbols": "PlatformAccess, __construct, run",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Models/Tenant.php",
+    "lines": 69,
+    "bytes": 1572,
+    "kind": "backend",
+    "symbols": "Tenant, casts, getRouteKeyName, users, scopeActive, isActive, statusCode, newFactory",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Http/Middleware/ResolveTenant.php",
+    "lines": 34,
+    "bytes": 965,
+    "kind": "backend",
+    "symbols": "ResolveTenant, __construct, handle",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Exceptions/TenantNotResolved.php",
+    "lines": 14,
+    "bytes": 286,
+    "kind": "backend",
+    "symbols": "TenantNotResolved, forRequest",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Exceptions/TenantContextMissing.php",
+    "lines": 14,
+    "bytes": 273,
+    "kind": "backend",
+    "symbols": "TenantContextMissing, forTenantOperation",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Exceptions/CrossTenantOperation.php",
+    "lines": 14,
+    "bytes": 252,
+    "kind": "backend",
+    "symbols": "CrossTenantOperation, detected",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Enums/TenantStatus.php",
+    "lines": 11,
+    "bytes": 168,
+    "kind": "backend",
+    "symbols": "TenantStatus",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Database/Scopes/TenantScope.php",
+    "lines": 29,
+    "bytes": 742,
+    "kind": "backend",
+    "symbols": "TenantScope, apply",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Contracts/TenantResolver.php",
+    "lines": 12,
+    "bytes": 200,
+    "kind": "backend",
+    "symbols": "TenantResolver, resolve",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Tenancy/Concerns/BelongsToTenant.php",
+    "lines": 88,
+    "bytes": 2502,
+    "kind": "backend",
+    "symbols": "initializeBelongsToTenant, bootBelongsToTenant, scopeForCurrentTenant, tenantId, resolveRouteBindingQuery",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Shared/Infrastructure/Database/SchemaContractVerifier.php",
+    "lines": 99,
+    "bytes": 3980,
+    "kind": "backend",
+    "symbols": "SchemaContractVerifier, __construct, verify, scalar, check",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Shared/Http/Controllers/ReadinessController.php",
+    "lines": 27,
+    "bytes": 647,
+    "kind": "backend",
+    "symbols": "ReadinessController, __invoke",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Shared/Http/Controllers/HealthController.php",
+    "lines": 14,
+    "bytes": 232,
+    "kind": "backend",
+    "symbols": "HealthController, __invoke",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Collections/FixedSchedule.php",
+    "lines": 45,
+    "bytes": 1706,
+    "kind": "backend",
+    "symbols": "FixedSchedule, cents, decimal, make",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Collections/CollectionsPolicy.php",
+    "lines": 29,
+    "bytes": 1053,
+    "kind": "backend",
+    "symbols": "CollectionsPolicy, view, write, reverse",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Collections/CollectionsController.php",
+    "lines": 374,
+    "bytes": 21898,
+    "kind": "backend",
+    "symbols": "CollectionsController, __construct, leads, scope, lead, agreementData, agreements, show, installmentQuery, today, installmentData, installments, summary, hash, store, paymentTarget, payments, pay, reverse",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Services/AuthorizationService.php",
+    "lines": 49,
+    "bytes": 1433,
+    "kind": "backend",
+    "symbols": "AuthorizationService, __construct, allows, authorize",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Policies/WebPushPolicy.php",
+    "lines": 9,
+    "bytes": 247,
+    "kind": "backend",
+    "symbols": "WebPushPolicy, manage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Policies/UserPolicy.php",
+    "lines": 45,
+    "bytes": 1313,
+    "kind": "backend",
+    "symbols": "UserPolicy, __construct, viewAny, view, create, update, delete",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Policies/AbstractTenantPolicy.php",
+    "lines": 49,
+    "bytes": 1389,
+    "kind": "backend",
+    "symbols": "AbstractTenantPolicy, __construct, viewAny, view, create, update, delete, publish, assign",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/InventoryRoleBoundary.php",
+    "lines": 20,
+    "bytes": 478,
+    "kind": "backend",
+    "symbols": "InventoryRoleBoundary, handle",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Services/TenantMediaService.php",
+    "lines": 187,
+    "bytes": 5850,
+    "kind": "backend",
+    "symbols": "TenantMediaService, __construct, store, temporaryUrl, delete, assertPropertyTenant, assertSafePath, storedPath, storedDisk, diskName, disk, isExternalUrl",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Services/InventoryFilters.php",
+    "lines": 91,
+    "bytes": 5078,
+    "kind": "backend",
+    "symbols": "InventoryFilters, projects, properties",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Services/InventoryAccess.php",
+    "lines": 272,
+    "bytes": 10016,
+    "kind": "backend",
+    "symbols": "InventoryAccess, __construct, canViewAny, canView, canCreate, canUpdate, canDelete, canPublish, canViewPrices, mayViewPriceFields, canManagePrices, canSetInitialPrices, scopeProjects, scopeProperties, baseAllows, canManageInventory, canAccessProject, canAccessProperty, propertyScopeExists, visibilityMode, isTenantAdministrator, setting",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Services/WebhookReceiver.php",
+    "lines": 175,
+    "bytes": 6203,
+    "kind": "backend",
+    "symbols": "WebhookReceiver, __construct, receive, findReceipt, acceptExisting, dispatchReceipt, packedIp, boundedScalar, isDuplicateKey",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Services/ConfigWebhookSecretResolver.php",
+    "lines": 20,
+    "bytes": 416,
+    "kind": "backend",
+    "symbols": "ConfigWebhookSecretResolver, resolve",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Policies/PropertyPolicy.php",
+    "lines": 53,
+    "bytes": 1307,
+    "kind": "backend",
+    "symbols": "PropertyPolicy, __construct, viewAny, view, create, update, delete, publish, managePrices, setInitialPrices",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Policies/PropertyMediaPolicy.php",
+    "lines": 39,
+    "bytes": 1031,
+    "kind": "backend",
+    "symbols": "PropertyMediaPolicy, __construct, view, viewAny, create, update, delete",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Policies/PropertyFeaturePolicy.php",
+    "lines": 39,
+    "bytes": 1053,
+    "kind": "backend",
+    "symbols": "PropertyFeaturePolicy, __construct, view, viewAny, create, update, delete",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Policies/ProjectPolicy.php",
+    "lines": 43,
+    "bytes": 1018,
+    "kind": "backend",
+    "symbols": "ProjectPolicy, __construct, viewAny, view, create, update, delete, publish",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Http/Resources/UserResource.php",
+    "lines": 39,
+    "bytes": 1239,
+    "kind": "backend",
+    "symbols": "UserResource, toArray",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Security/WebhookSignatureVerifier.php",
+    "lines": 53,
+    "bytes": 1613,
+    "kind": "backend",
+    "symbols": "WebhookSignatureVerifier, verify, invalidSignature",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Models/UserInventorySetting.php",
+    "lines": 56,
+    "bytes": 1338,
+    "kind": "backend",
+    "symbols": "UserInventorySetting, casts, user",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Models/UserInventoryScope.php",
+    "lines": 25,
+    "bytes": 513,
+    "kind": "backend",
+    "symbols": "UserInventoryScope, casts",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Models/PropertyMedia.php",
+    "lines": 57,
+    "bytes": 1369,
+    "kind": "backend",
+    "symbols": "PropertyMedia, casts, property",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Models/PropertyFeature.php",
+    "lines": 55,
+    "bytes": 1326,
+    "kind": "backend",
+    "symbols": "PropertyFeature, casts, property",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Models/Property.php",
+    "lines": 144,
+    "bytes": 4355,
+    "kind": "backend",
+    "symbols": "Property, casts, scopePubliclyVisible, project, features, media, inventoryScopes",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Models/Project.php",
+    "lines": 87,
+    "bytes": 2303,
+    "kind": "backend",
+    "symbols": "Project, casts, scopePubliclyVisible, properties, inventoryScopes",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Http/Resources/WebhookReceiptResource.php",
+    "lines": 22,
+    "bytes": 551,
+    "kind": "backend",
+    "symbols": "WebhookReceiptResource, toArray",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Http/Requests/LoginRequest.php",
+    "lines": 97,
+    "bytes": 3079,
+    "kind": "backend",
+    "symbols": "LoginRequest, authorize, rules, authenticate, ensureIsNotRateLimited, throttleKey",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Jobs/ProcessWebhookReceipt.php",
+    "lines": 232,
+    "bytes": 9150,
+    "kind": "backend",
+    "symbols": "ProcessWebhookReceipt, __construct, uniqueId, backoff, handle, failed, decodePayload, sameJson, canonicalJson, sortRecursively, occurredAt, boundedScalar",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Http/Requests/ReceiveWebhookRequest.php",
+    "lines": 91,
+    "bytes": 2796,
+    "kind": "backend",
+    "symbols": "ReceiveWebhookRequest, authorize, rules, validationData, timestamp, signature, idempotencyKey, requestId, decodedPayload, persistedHeaders",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Resources/PropertyResource.php",
+    "lines": 59,
+    "bytes": 2534,
+    "kind": "backend",
+    "symbols": "PropertyResource, toArray",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Resources/PropertyMediaResource.php",
+    "lines": 28,
+    "bytes": 895,
+    "kind": "backend",
+    "symbols": "PropertyMediaResource, toArray",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Resources/PropertyFeatureResource.php",
+    "lines": 27,
+    "bytes": 816,
+    "kind": "backend",
+    "symbols": "PropertyFeatureResource, toArray",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Resources/ProjectResource.php",
+    "lines": 38,
+    "bytes": 1464,
+    "kind": "backend",
+    "symbols": "ProjectResource, toArray",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Http/Controllers/WebPushController.php",
+    "lines": 47,
+    "bytes": 3346,
+    "kind": "backend",
+    "symbols": "WebPushController, __construct, owner, config, store, destroy",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Http/Controllers/AuthController.php",
+    "lines": 51,
+    "bytes": 1559,
+    "kind": "backend",
+    "symbols": "AuthController, login, me, logout, authenticatedUser",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Http/Controllers/AdminUserController.php",
+    "lines": 89,
+    "bytes": 4630,
+    "kind": "backend",
+    "symbols": "AdminUserController, index, store, activate, renew",
+    "signals": "SQL directo; tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Http/Controllers/AdminNotificationController.php",
+    "lines": 115,
+    "bytes": 3758,
+    "kind": "backend",
+    "symbols": "AdminNotificationController, index, count, markAsRead, markAllAsRead, destroyAll",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Exceptions/InvalidMedia.php",
+    "lines": 8,
+    "bytes": 127,
+    "kind": "backend",
+    "symbols": "InvalidMedia",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Http/Controllers/ReceiveWebhookController.php",
+    "lines": 47,
+    "bytes": 1661,
+    "kind": "backend",
+    "symbols": "ReceiveWebhookController, __invoke",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/InventoryRequest.php",
+    "lines": 34,
+    "bytes": 831,
+    "kind": "backend",
+    "symbols": "InventoryRequest, authorize, tenantId, serverOwnedRules",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/ProjectIndexRequest.php",
+    "lines": 32,
+    "bytes": 1087,
+    "kind": "backend",
+    "symbols": "ProjectIndexRequest, rules, perPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/PropertyIndexRequest.php",
+    "lines": 41,
+    "bytes": 1700,
+    "kind": "backend",
+    "symbols": "PropertyIndexRequest, rules, perPage",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/PublishProjectRequest.php",
+    "lines": 18,
+    "bytes": 418,
+    "kind": "backend",
+    "symbols": "PublishProjectRequest, rules",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/PublishPropertyRequest.php",
+    "lines": 19,
+    "bytes": 484,
+    "kind": "backend",
+    "symbols": "PublishPropertyRequest, rules",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/StoreProjectRequest.php",
+    "lines": 35,
+    "bytes": 1345,
+    "kind": "backend",
+    "symbols": "StoreProjectRequest, rules",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/StorePropertyFeatureRequest.php",
+    "lines": 43,
+    "bytes": 1636,
+    "kind": "backend",
+    "symbols": "StorePropertyFeatureRequest, rules",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/UpdatePropertyRequest.php",
+    "lines": 75,
+    "bytes": 3608,
+    "kind": "backend",
+    "symbols": "UpdatePropertyRequest, rules, after",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Enums/UserStatus.php",
+    "lines": 11,
+    "bytes": 161,
+    "kind": "backend",
+    "symbols": "UserStatus",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/UpdatePropertyMediaRequest.php",
+    "lines": 48,
+    "bytes": 1969,
+    "kind": "backend",
+    "symbols": "UpdatePropertyMediaRequest, rules, after",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Enums/RoleCode.php",
+    "lines": 58,
+    "bytes": 1732,
+    "kind": "backend",
+    "symbols": "RoleCode, capabilities, allows, isPlatformAdministrator",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/UpdatePropertyFeatureRequest.php",
+    "lines": 45,
+    "bytes": 1763,
+    "kind": "backend",
+    "symbols": "UpdatePropertyFeatureRequest, rules",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Identity/Enums/Capability.php",
+    "lines": 17,
+    "bytes": 362,
+    "kind": "backend",
+    "symbols": "Capability",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/UpdateProjectRequest.php",
+    "lines": 39,
+    "bytes": 1554,
+    "kind": "backend",
+    "symbols": "UpdateProjectRequest, rules",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/StorePropertyRequest.php",
+    "lines": 70,
+    "bytes": 3081,
+    "kind": "backend",
+    "symbols": "StorePropertyRequest, rules, after",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Requests/StorePropertyMediaRequest.php",
+    "lines": 47,
+    "bytes": 1919,
+    "kind": "backend",
+    "symbols": "StorePropertyMediaRequest, rules, after",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Controllers/AdminProjectController.php",
+    "lines": 98,
+    "bytes": 3515,
+    "kind": "backend",
+    "symbols": "AdminProjectController, __construct, index, store, show, update, publish, destroy",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Controllers/PublicPropertyController.php",
+    "lines": 56,
+    "bytes": 1810,
+    "kind": "backend",
+    "symbols": "PublicPropertyController, __construct, index, show",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Controllers/PublicProjectController.php",
+    "lines": 52,
+    "bytes": 1664,
+    "kind": "backend",
+    "symbols": "PublicProjectController, __construct, index, show",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Controllers/InventoryController.php",
+    "lines": 72,
+    "bytes": 2093,
+    "kind": "backend",
+    "symbols": "InventoryController, __construct, user, authorizeAction, findProject, findProperty, findFeature, findMedia",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Controllers/AdminPropertyMediaController.php",
+    "lines": 178,
+    "bytes": 6720,
+    "kind": "backend",
+    "symbols": "AdminPropertyMediaController, __construct, index, store, show, update, destroy, clearPrimary, deleteStoredPayload",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Controllers/AdminPropertyFeatureController.php",
+    "lines": 74,
+    "bytes": 2879,
+    "kind": "backend",
+    "symbols": "AdminPropertyFeatureController, __construct, index, store, show, update, destroy",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Http/Controllers/AdminPropertyController.php",
+    "lines": 257,
+    "bytes": 10937,
+    "kind": "backend",
+    "symbols": "AdminPropertyController, __construct, index, store, batchGenerate, show, update, publish, destroy, updateLocked, exposePriceVisibility",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Enums/ProjectType.php",
+    "lines": 11,
+    "bytes": 191,
+    "kind": "backend",
+    "symbols": "ProjectType",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Enums/ProjectStatus.php",
+    "lines": 22,
+    "bytes": 465,
+    "kind": "backend",
+    "symbols": "ProjectStatus, publicValues",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Enums/PropertyCategory.php",
+    "lines": 14,
+    "bytes": 254,
+    "kind": "backend",
+    "symbols": "PropertyCategory",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Enums/PropertyStatus.php",
+    "lines": 12,
+    "bytes": 196,
+    "kind": "backend",
+    "symbols": "PropertyStatus",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Enums/PropertyOperation.php",
+    "lines": 11,
+    "bytes": 163,
+    "kind": "backend",
+    "symbols": "PropertyOperation",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Enums/PropertyMediaType.php",
+    "lines": 13,
+    "bytes": 239,
+    "kind": "backend",
+    "symbols": "PropertyMediaType",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Enums/PropertyFeatureGroup.php",
+    "lines": 13,
+    "bytes": 242,
+    "kind": "backend",
+    "symbols": "PropertyFeatureGroup",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/LeadAccessPolicy.php",
+    "lines": 32,
+    "bytes": 1122,
+    "kind": "backend",
+    "symbols": "LeadAccessPolicy, assign, viewAny, view, update",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/VisitPolicy.php",
+    "lines": 16,
+    "bytes": 413,
+    "kind": "backend",
+    "symbols": "VisitPolicy, viewAny",
+    "signals": "tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Exceptions/WebhookRejected.php",
+    "lines": 17,
+    "bytes": 338,
+    "kind": "backend",
+    "symbols": "WebhookRejected, __construct",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Integrations/Data/WebhookReceiptAcceptance.php",
+    "lines": 13,
+    "bytes": 233,
+    "kind": "backend",
+    "symbols": "WebhookReceiptAcceptance, __construct",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/Inventory/Concerns/HasPublicId.php",
+    "lines": 24,
+    "bytes": 511,
+    "kind": "backend",
+    "symbols": "bootHasPublicId, getRouteKeyName",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Exceptions/PublicLeadRejected.php",
+    "lines": 8,
+    "bytes": 127,
+    "kind": "backend",
+    "symbols": "PublicLeadRejected",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Exceptions/IdempotencyConflict.php",
+    "lines": 14,
+    "bytes": 270,
+    "kind": "backend",
+    "symbols": "IdempotencyConflict, __construct",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Support/PayloadFingerprint.php",
+    "lines": 38,
+    "bytes": 843,
+    "kind": "backend",
+    "symbols": "PayloadFingerprint, make, sortRecursively",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Notifications/LeadAssignedNotification.php",
+    "lines": 48,
+    "bytes": 1219,
+    "kind": "backend",
+    "symbols": "LeadAssignedNotification, __construct, via, toArray",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Http/Controllers/AdminLeadFollowUpController.php",
+    "lines": 335,
+    "bytes": 15239,
+    "kind": "backend",
+    "symbols": "AdminLeadFollowUpController, __construct, indexAll, index, store, resolveUserId, ensureTableExists",
+    "signals": "SQL directo; tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Http/Controllers/AdminLeadController.php",
+    "lines": 863,
+    "bytes": 41329,
+    "kind": "backend",
+    "symbols": "AdminLeadController, __construct, advisors, index, store, show, update, attachProperty, updateProperty, detachProperty, resolveUserId",
+    "signals": "SQL directo; tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Http/Controllers/AdminVisitController.php",
+    "lines": 142,
+    "bytes": 8186,
+    "kind": "backend",
+    "symbols": "AdminVisitController, today, query, index, store, cancel",
+    "signals": "SQL directo; tipado a revisar"
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Http/Controllers/PublicLeadController.php",
+    "lines": 47,
+    "bytes": 1530,
+    "kind": "backend",
+    "symbols": "PublicLeadController, __invoke",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Data/PublicLeadSubmission.php",
+    "lines": 15,
+    "bytes": 297,
+    "kind": "backend",
+    "symbols": "PublicLeadSubmission, __construct",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Http/Resources/PublicLeadResource.php",
+    "lines": 24,
+    "bytes": 645,
+    "kind": "backend",
+    "symbols": "PublicLeadResource, toArray",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Http/Requests/PublicLeadRequest.php",
+    "lines": 124,
+    "bytes": 5548,
+    "kind": "backend",
+    "symbols": "PublicLeadRequest, authorize, rules, validationData, withValidator, payload, idempotencyKey",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Services/PublicLeadService.php",
+    "lines": 256,
+    "bytes": 10720,
+    "kind": "backend",
+    "symbols": "PublicLeadService, __construct, submit, existingSubmission, resolveProperty, isDuplicateKey",
+    "signals": "SQL directo"
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Services/CreateOrGetOpenLeadProcedure.php",
+    "lines": 68,
+    "bytes": 2044,
+    "kind": "backend",
+    "symbols": "CreateOrGetOpenLeadProcedure, execute",
+    "signals": ""
+  },
+  {
+    "path": "everprop-api/app/Domain/CRM/Services/ContactIdentityResolver.php",
+    "lines": 196,
+    "bytes": 7215,
+    "kind": "backend",
+    "symbols": "ContactIdentityResolver, resolve, resolveInTransaction, activeContact, canonicalProviderId, databaseTimestamp, isDuplicateKey",
+    "signals": "SQL directo"
+  }
+]
