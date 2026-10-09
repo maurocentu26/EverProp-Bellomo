@@ -83,6 +83,10 @@ Ejemplo:
 
 Están escritas en `TICKETS.md` en el repo, y los agentes las leen solos.
 
+**Sin ticket no hay cambios.** Nadie, persona o agente, cambia el repo sin un ticket `EVP-XX` que exista en Jira y esté **En curso**, asignado a quien lo hace. Si llega un pedido sin ticket, el agente no lo implementa: ofrece redactar el ticket para que Producto lo cree. Lo que aparezca fuera del alcance de un ticket se propone como ticket nuevo. Sin ticket solo se investiga, se revisa o se redacta.
+
+**Para Producto:** un pedido entra al desarrollo cuando tiene su ticket En curso. Si no está en Jira, no se trabaja.
+
 1. Una rama por ticket, desde `develop`: `ticket/EVP-XX-descripcion-corta`.
 2. **Nadie hace push a `main` ni a `develop`.** Todo entra por PR revisado por una persona.
 3. Antes de empezar un ticket nuevo, el agente pregunta si el anterior ya fue revisado.
