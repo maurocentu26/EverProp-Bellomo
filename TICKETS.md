@@ -2,6 +2,16 @@
 
 Aplica a todo agente que trabaje en este repo (Claude, Codex u otro), desde el 2026-10-09. Complementa `AGENTS.md` y `CLAUDE.md`; ante un conflicto sobre ramas, push o tickets, prevalece este archivo. El modelo completo para Producto está en `docs/proceso-de-trabajo.md`.
 
+## Regla principal: sin ticket no hay cambios
+
+Ningún cambio al repo (código, tests, documentación, configuración, CI o esquema) sin un ticket `EVP-XX` que **exista en Jira** y esté **En curso**, asignado a quien lo hace.
+
+- **Si no hay ticket, no se empieza**, aunque el pedido sea chico o urgente, o aunque digan "hacelo igual". El agente ofrece redactar el ticket (objetivo, criterios de aceptación, fuera de alcance, riesgo) para que Producto lo cree, y espera la clave.
+- **El ticket tiene que existir de verdad.** Con Jira conectado, el agente lo busca antes de crear la rama. Sin Jira conectado, el usuario confirma que existe en Jira; no se inventan claves.
+- **Lo que está fuera del alcance del ticket no se implementa**, aunque sea una línea. Se propone como ticket nuevo.
+- **Sin ticket solo se permite trabajo que no cambia el repo:** investigar, responder preguntas, revisar código o PRs, diagnosticar y redactar tickets.
+- **Única excepción:** el dueño del repo (Ramiro) puede autorizar por escrito un cambio con ID provisorio (por ejemplo, `EVP-0.1`). El informe del ticket registra la excepción.
+
 ## 0. Jira conectado
 
 Los tickets viven en Jira, proyecto **EVP** (claves `EVP-XX`). Al empezar una sesión de trabajo, antes de tomar un ticket:
@@ -16,14 +26,14 @@ Los tickets viven en Jira, proyecto **EVP** (claves `EVP-XX`). Al empezar una se
    Si el login dice que la herramienta no está permitida, el administrador de Atlassian tiene que habilitarla en Atlassian Administration → Rovo → Rovo MCP server. Después de conectar, repetir el paso 2.
 4. **Guardar en memoria** que Jira está conectado: cliente, sitio de Atlassian, proyecto EVP y fecha. Nunca guardar tokens ni credenciales. Un agente sin memoria persistente repite el paso 2 en cada sesión.
 
-**Sin Jira conectado no se crean ni se mueven tickets.** Se puede trabajar en un ticket que el usuario dicte por chat, y el informe registra que Jira no se actualizó.
+**Sin Jira conectado no se crean ni se mueven tickets.** Se puede trabajar en un ticket que ya existe en Jira, si el usuario da su clave y confirma que existe y está En curso. El informe registra que el agente no pudo verificarlo ni actualizar su estado.
 
 ## 1. Un ticket, una rama
 
-- Todo trabajo arranca con un ticket de Jira `EVP-XX` con un objetivo concreto. Sin ticket, preguntar cuál es antes de escribir código.
+- Todo trabajo arranca con un ticket de Jira `EVP-XX` que existe y tiene un objetivo concreto (ver la regla principal).
 - Rama nueva desde `develop` actualizado: `ticket/EVP-XX-<descripcion-corta>`, por ejemplo `ticket/EVP-14-recordatorios-email`. La clave en el nombre vincula la rama, los commits y el PR con el ticket en Jira.
 - Con Jira conectado: al crear la rama, pasar el ticket a **En curso**; al abrir el PR con el informe, pasarlo a **En revisión** y enlazar el informe. Los estados siguientes los mueven las personas.
-- Un ticket por rama. Si aparece trabajo que no es del ticket, anotarlo como pendiente en el informe; no mezclarlo.
+- Un ticket por rama. Si aparece trabajo que no es del ticket, no se hace: se anota como pendiente en el informe y se propone como ticket nuevo.
 - Si el ticket es un ítem del backlog de Conversations (S01–S17, Q01–Q03), seguir además la skill `backlog-item`.
 
 ## 2. Antes de empezar un ticket nuevo
