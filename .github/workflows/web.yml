@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ['everprop-public/**', '.github/workflows/web.yml']
   push:
-    branches: [main, chore/agentic-setup] # staging branch: the AI module lives here, never on main
+    branches: [main, develop, chore/agentic-setup]
     paths: ['everprop-public/**', '.github/workflows/web.yml']
 
 permissions:

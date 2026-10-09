@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ['evals/**', '.github/workflows/evals.yml']
   push:
-    branches: [main, chore/agentic-setup] # staging branch: the AI module lives here, never on main
+    branches: [main, develop, chore/agentic-setup]
     paths: ['evals/**', '.github/workflows/evals.yml']
 
 permissions:

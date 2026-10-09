@@ -29,7 +29,7 @@ final class CollectionSchemaTest extends TestCase
         $after = $verifier->verify();
         self::assertSame(2, $after['inventory_foreign_keys']['expected']);
         self::assertSame($after['inventory_foreign_keys']['actual'] === 2, $after['inventory_foreign_keys']['passed']);
-        self::assertSame(115, $after['foreign_keys']['expected']);
+        self::assertSame(config('database-contract.foreign_keys') + 2, $after['foreign_keys']['expected']);
         config(['database-contract.baseline_sha256' => str_repeat('0', 64)]);
         self::assertFalse($verifier->verify()['baseline_sha256']['passed']);
     }
