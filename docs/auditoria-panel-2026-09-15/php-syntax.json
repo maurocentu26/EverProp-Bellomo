@@ -1,0 +1,682 @@
+[
+    {
+        "file": "app/Console/Commands/ImportCollections.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Console/Commands/NotifyCollections.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Console/Commands/ProductionCheck.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Console/Commands/SeedLocalDemo.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Console/Commands/SetupSimulationDatabaseCommand.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Console/Commands/VerifySchemaCommand.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Collections/CollectionsController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Collections/CollectionsPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Collections/FixedSchedule.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Data/PublicLeadSubmission.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Exceptions/IdempotencyConflict.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Exceptions/PublicLeadRejected.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Http/Controllers/AdminLeadController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Http/Controllers/AdminLeadFollowUpController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Http/Controllers/AdminVisitController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Http/Controllers/PublicLeadController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Http/Requests/PublicLeadRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Http/Resources/PublicLeadResource.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/LeadAccessPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Notifications/LeadAssignedNotification.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Services/ContactIdentityResolver.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Services/CreateOrGetOpenLeadProcedure.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Services/PublicLeadService.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/Support/PayloadFingerprint.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/CRM/VisitPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Enums/Capability.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Enums/RoleCode.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Enums/UserStatus.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Http/Controllers/AdminNotificationController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Http/Controllers/AdminUserController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Http/Controllers/AuthController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Http/Controllers/WebPushController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Http/Requests/LoginRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Http/Resources/UserResource.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/InventoryRoleBoundary.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Policies/AbstractTenantPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Policies/UserPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Policies/WebPushPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Identity/Services/AuthorizationService.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Data/WebhookReceiptAcceptance.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Exceptions/WebhookRejected.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Http/Controllers/ReceiveWebhookController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Http/Requests/ReceiveWebhookRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Http/Resources/WebhookReceiptResource.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Jobs/ProcessWebhookReceipt.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Security/WebhookSignatureVerifier.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Services/ConfigWebhookSecretResolver.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Integrations/Services/WebhookReceiver.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Concerns/HasPublicId.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Enums/ProjectStatus.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Enums/ProjectType.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Enums/PropertyCategory.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Enums/PropertyFeatureGroup.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Enums/PropertyMediaType.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Enums/PropertyOperation.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Enums/PropertyStatus.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Exceptions/InvalidMedia.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Controllers/AdminProjectController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Controllers/AdminPropertyController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Controllers/AdminPropertyFeatureController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Controllers/AdminPropertyMediaController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Controllers/InventoryController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Controllers/PublicProjectController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Controllers/PublicPropertyController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/InventoryRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/ProjectIndexRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/PropertyIndexRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/PublishProjectRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/PublishPropertyRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/StoreProjectRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/StorePropertyFeatureRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/StorePropertyMediaRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/StorePropertyRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/UpdateProjectRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/UpdatePropertyFeatureRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/UpdatePropertyMediaRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Requests/UpdatePropertyRequest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Resources/ProjectResource.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Resources/PropertyFeatureResource.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Resources/PropertyMediaResource.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Http/Resources/PropertyResource.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Models/Project.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Models/Property.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Models/PropertyFeature.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Models/PropertyMedia.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Models/UserInventoryScope.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Models/UserInventorySetting.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Policies/ProjectPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Policies/PropertyFeaturePolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Policies/PropertyMediaPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Policies/PropertyPolicy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Services/InventoryAccess.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Services/InventoryFilters.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Inventory/Services/TenantMediaService.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Shared/Http/Controllers/HealthController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Shared/Http/Controllers/ReadinessController.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Shared/Infrastructure/Database/SchemaContractVerifier.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Concerns/BelongsToTenant.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Contracts/TenantResolver.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Database/Scopes/TenantScope.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Enums/TenantStatus.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Exceptions/CrossTenantOperation.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Exceptions/TenantContextMissing.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Exceptions/TenantNotResolved.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Http/Middleware/ResolveTenant.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Models/Tenant.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/PlatformAccess.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/Resolvers/TrustedTenantResolver.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Domain/Tenancy/TenantContext.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Http/Controllers/Controller.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Jobs/SendWebPush.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Models/User.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Providers/AppServiceProvider.php",
+        "syntaxError": null
+    },
+    {
+        "file": "app/Support/ProductionDependencies.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/app.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/auth.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/cache.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/cors.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/database-contract.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/database.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/filesystems.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/logging.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/mail.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/queue.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/sanctum.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/security.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/services.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/session.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/tenancy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/trustedproxy.php",
+        "syntaxError": null
+    },
+    {
+        "file": "config/webpush.php",
+        "syntaxError": null
+    },
+    {
+        "file": "routes/api.php",
+        "syntaxError": null
+    },
+    {
+        "file": "routes/console.php",
+        "syntaxError": null
+    },
+    {
+        "file": "routes/web.php",
+        "syntaxError": null
+    },
+    {
+        "file": "bootstrap/app.php",
+        "syntaxError": null
+    },
+    {
+        "file": "bootstrap/providers.php",
+        "syntaxError": null
+    },
+    {
+        "file": "scripts/apply-visit-extension.php",
+        "syntaxError": null
+    },
+    {
+        "file": "scripts/apply-web-push.php",
+        "syntaxError": null
+    },
+    {
+        "file": "scripts/cleanup-local-qa-property.php",
+        "syntaxError": null
+    },
+    {
+        "file": "scripts/cleanup-local-qa.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/Collections/CollectionsTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/CRM/LeadAdvisorsTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/CRM/NotificationWorkflowTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/CRM/PublicLeadEndpointTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/CRM/ReleaseSchemaTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/CRM/TodayVisitsTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/CRM/WebPushTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/ExampleTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/Identity/AuthenticationTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/Identity/UserProvisioningTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/Integrations/WebhookEndpointTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/Inventory/PublicInventoryTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/Inventory/TenantIsolationAndRbacTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Feature/ProductionEnvironmentTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/TestCase.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Collections/FixedScheduleTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/CRM/PayloadFingerprintTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/CRM/PublicLeadServiceMySqlTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/ExampleTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Identity/AuthorizationServiceTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Identity/RoleCodeTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Identity/UserAuthContractTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Integrations/WebhookReceiverMySqlTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Integrations/WebhookSignatureVerifierTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Inventory/InventoryContractTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Inventory/TenantMediaServiceTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "tests/Unit/Tenancy/TenantContextTest.php",
+        "syntaxError": null
+    },
+    {
+        "file": "database/factories/TenantFactory.php",
+        "syntaxError": null
+    },
+    {
+        "file": "database/factories/UserFactory.php",
+        "syntaxError": null
+    },
+    {
+        "file": "database/seeders/DatabaseSeeder.php",
+        "syntaxError": null
+    }
+]
