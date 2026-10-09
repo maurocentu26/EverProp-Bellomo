@@ -34,7 +34,7 @@ export function getAvailableQuickActions({
   if (isEngineer) {
     return [
       {
-        title: "Nueva Propiedad",
+        title: "Nuevo Activo",
         href: "/admin/properties/new",
         icon: Plus,
         tone: "primary",
@@ -56,7 +56,7 @@ export function getAvailableQuickActions({
       tone: "primary",
     },
     { 
-      title: "Nueva Propiedad", 
+      title: "Nuevo Activo", 
       href: "/admin/properties/new", 
       icon: Plus, 
       tone: "secondary",
@@ -72,7 +72,7 @@ export const quickActionsConfig: QuickAction[] = [
     tone: "primary",
   },
   { 
-    title: "Nueva Propiedad", 
+    title: "Nuevo Activo", 
     href: "/admin/properties/new", 
     icon: Plus, 
     tone: "secondary",

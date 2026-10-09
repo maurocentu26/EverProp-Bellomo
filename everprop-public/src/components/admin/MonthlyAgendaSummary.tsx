@@ -131,7 +131,14 @@ export default function MonthlyAgendaSummary() {
     }
 
     items.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-      setVisits(items);
+      const now = new Date();
+    now.setHours(0,0,0,0);
+    setVisits(items.map(v => {
+      if (v.status === 'scheduled' && new Date(v.scheduledAt) < now) {
+        return { ...v, status: 'cancelled' };
+      }
+      return v;
+    }));
     });
   }, [isAdvisor, isAdmin, user, globalSelectedAgentId]);
 
@@ -283,9 +290,10 @@ export default function MonthlyAgendaSummary() {
                   day: "numeric",
                   month: "short",
                 });
-                const cleanPhone = v.phone ? v.phone.replace(/[^0-9]/g, "") : "";
+                let cleanPhone = v.phone ? v.phone.replace(/[^0-9]/g, "") : "";
+                if (cleanPhone && !cleanPhone.startsWith("54")) cleanPhone = "549" + cleanPhone;
                 const whatsappUrl = cleanPhone
-                  ? `https://wa.me/${cleanPhone}?text=Hola%20${encodeURIComponent(v.leadName)},%20te%20recordamos%20tu%20visita%20agendada%20para%20${encodeURIComponent(v.propertyTitle || "la propiedad")}.`
+                  ? `https://wa.me/${cleanPhone}?text=Hola%20${encodeURIComponent(v.leadName)},%20te%20recordamos%20tu%20visita%20agendada%20para%20${encodeURIComponent(v.propertyTitle || "el activo")}.`
                   : null;
 
                 return (
@@ -335,7 +343,7 @@ export default function MonthlyAgendaSummary() {
                           <div className="flex items-center gap-1.5 mt-1.5">
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-xs font-semibold text-slate-700 border border-slate-200">
                               {getAssetIcon(v.propertyType)}
-                              <span className="truncate max-w-[200px]">{v.propertyTitle || "Sin propiedad de interés"}</span>
+                              <span className="truncate max-w-[200px]">{v.propertyTitle || "Sin activo de interés"}</span>
                             </span>
                           </div>
                         </div>

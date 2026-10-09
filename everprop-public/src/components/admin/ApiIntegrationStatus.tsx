@@ -99,7 +99,7 @@ export default function ApiIntegrationStatus() {
       <div className="flex items-center gap-3 text-xs font-semibold text-emerald-900">
         <Database className="h-4 w-4" aria-hidden="true" />
         <span>{state.projects} proyectos</span>
-        <span>{state.properties} propiedades</span>
+        <span>{state.properties} activos</span>
       </div>
     </div>
   );

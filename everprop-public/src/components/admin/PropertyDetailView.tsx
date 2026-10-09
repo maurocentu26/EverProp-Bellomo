@@ -10,7 +10,7 @@ import type { Lead, Property, Visit } from "@/data/admin-sample";
 import { leads as sampleLeads, properties as sampleProperties } from "@/data/admin-sample";
 import { loadLeadList, loadPropertyList, saveLeadList, savePropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog, loadEverpropLeads, loadEverpropVisits, createEverpropVisit, cancelEverpropVisit, updateEverpropPropertyStatus } from "@/lib/everprop-api";
+import { loadEverpropCatalog, loadEverpropLeads, loadEverpropVisits, createEverpropVisit, cancelEverpropVisit, updateEverpropPropertyStatus, loadEverpropPropertyById } from "@/lib/everprop-api";
 import {
   createInterestForProperty,
   getInterestAssetIds,
@@ -48,16 +48,17 @@ export default function PropertyDetailView({ propertyId }: Props) {
     async function loadData() {
       if (!isMockDataMode) {
         try {
-          const [catalog, apiLeads, visits] = await Promise.all([
+          const [catalog, apiLeads, visits, loadedProperty] = await Promise.all([
             loadEverpropCatalog(),
             isEngineer ? Promise.resolve([]) : loadEverpropLeads(),
             isEngineer ? Promise.resolve([]) : loadEverpropVisits(),
+            loadEverpropPropertyById(propertyId).catch(() => null),
           ]);
           if (!active) return;
           setAllProperties(catalog.properties);
           setAllLeads(apiLeads);
 
-          const found = catalog.properties.find((item) => item.id === propertyId);
+          const found = loadedProperty;
           setProperty(found ? { ...found, visits: visits.filter((visit) => visit.propertyId === propertyId) } : null);
           setLoading(false);
           return;
@@ -108,7 +109,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
       agentId: visit.agentId ?? targetLead?.agentId,
     };
 
-    // 3. Actualizamos la PROPIEDAD actual y la lista global de propiedades
+    // 3. Actualizamos la PROPIEDAD actual y la lista global de activos
     const updatedProperty: Property = { 
       ...property, 
       visits: [...(property.visits ?? []), nextVisit] 
@@ -156,7 +157,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
       return;
     }
 
-    // Eliminar de propiedades
+    // Eliminar de activos
     const updatedProperty = {
         ...property,
         visits: (property.visits ?? []).filter(v => v.id !== visitId)
@@ -180,8 +181,8 @@ export default function PropertyDetailView({ propertyId }: Props) {
   }
 
   if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4">{loadError}</p>;
-  if (loading) return <p role="status">Cargando propiedad…</p>;
-  if (!property) return <div className="p-8 text-center text-slate-500 font-medium">Propiedad no encontrada.</div>;
+  if (loading) return <p role="status">Cargando activo…</p>;
+  if (!property) return <div className="p-8 text-center text-slate-500 font-medium">Activo no encontrada.</div>;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20 animate-in fade-in duration-500">
@@ -406,3 +407,4 @@ export default function PropertyDetailView({ propertyId }: Props) {
     </div>
   );
 }
+

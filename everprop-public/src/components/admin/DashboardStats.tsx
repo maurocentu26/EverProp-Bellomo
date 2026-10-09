@@ -66,7 +66,7 @@ export default function DashboardStats({ companyId = "c1" }: Props) {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <MetricCard
-        title="Propiedades activas"
+        title="Activos activas"
         value={counts.properties}
         delta="+12"
         Icon={Building2}

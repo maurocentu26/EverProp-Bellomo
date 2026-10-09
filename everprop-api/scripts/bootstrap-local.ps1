@@ -26,14 +26,23 @@ $composeEnvironment = [ordered]@{
 }
 $previousEnvironment = @{}
 
+function New-RandomBytes([int] $count = 32) {
+    $buffer = New-Object byte[] $count
+    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($buffer)
+    return $buffer
+}
+
 function New-HexSecret([int] $bytes = 32) {
-    return [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes($bytes)).ToLowerInvariant()
+    $raw = New-RandomBytes $bytes
+    return (-join ($raw | ForEach-Object { $_.ToString('x2') }))
 }
 
 function New-LaravelKey {
-    $raw = [Security.Cryptography.RandomNumberGenerator]::GetBytes(32)
+    $raw = New-RandomBytes 32
     return 'base64:' + [Convert]::ToBase64String($raw)
 }
+
 
 function Set-EnvironmentValue([string] $content, [string] $name, [string] $value) {
     $pattern = '(?m)^' + [Regex]::Escape($name) + '=.*$'

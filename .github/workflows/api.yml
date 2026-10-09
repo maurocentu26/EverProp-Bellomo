@@ -2,11 +2,19 @@ name: API quality
 
 on:
   pull_request:
+    paths: ['everprop-api/**', '.github/workflows/api.yml']
   push:
     branches: [main]
+    paths: ['everprop-api/**', '.github/workflows/api.yml']
 
 permissions:
   contents: read
+
+# Monorepo: GitHub only reads workflows from the repository root, so this job
+# runs from everprop-api/ explicitly (it was previously inert under everprop-api/.github).
+defaults:
+  run:
+    working-directory: everprop-api
 
 jobs:
   verify:
@@ -104,7 +112,7 @@ jobs:
           docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T -e COMPOSER_HOME=/tmp/composer -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/var/www/html everprop-api-php composer validate --strict
           docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T -e COMPOSER_HOME=/tmp/composer -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/var/www/html everprop-api-php composer audit --locked --no-interaction
           docker compose --project-name "$COMPOSE_PROJECT_NAME" run --rm --no-deps --user "$(id -u):$(id -g)" everprop-api-php vendor/bin/pint --test
-          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php vendor/bin/phpstan analyse --no-progress
+          docker compose --project-name "$COMPOSE_PROJECT_NAME" exec -T everprop-api-php vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
       - name: Validate OpenAPI and routes
         run: |

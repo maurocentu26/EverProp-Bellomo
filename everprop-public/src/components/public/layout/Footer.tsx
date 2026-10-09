@@ -27,7 +27,7 @@ const defaultColumns: FooterColumn[] = [
   {
     title: "Producto",
     links: [
-      { label: "Publicar propiedad", href: "#publicar" },
+      { label: "Publicar activo", href: "#publicar" },
       { label: "Captación de leads", href: "#leads" },
       { label: "Automatización", href: "#automatizacion" },
     ],

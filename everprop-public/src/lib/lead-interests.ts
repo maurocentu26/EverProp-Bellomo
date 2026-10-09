@@ -169,7 +169,7 @@ export function getInterestPendingFields(interest: LeadInterest) {
   return [
     !interest.category ? "Categoría" : null,
     !interest.projectId ? "Proyecto" : null,
-    !interest.propertyId ? "Propiedad" : null,
+    !interest.propertyId ? "Activo" : null,
     !interest.unitId ? "Unidad" : null,
     !interest.preferences ? "Preferencias" : null,
     !interest.notes ? "Notas" : null,

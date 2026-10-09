@@ -14,7 +14,7 @@ try {
 if ($hash -ne '2A948926FE16F51057C1577A30A815523AB6C5A35DD106394F1295A512BD40CC') {
     throw 'Collections migration checksum does not match the reviewed version.'
 }
-$mysqlCommand = 'MYSQL_PWD="$(cat /run/secrets/mysql_root_password)" mysql -uroot --default-character-set=utf8mb4 ' + $Database
+$mysqlCommand = 'MYSQL_PWD=$(cat /run/secrets/mysql_root_password) mysql -uroot --default-character-set=utf8mb4 ' + $Database
 Push-Location (Join-Path $PSScriptRoot '..')
 try {
     $sql | docker compose --project-name $ProjectName exec -T everprop-api-mysql sh -lc $mysqlCommand

@@ -44,6 +44,9 @@ interface LeadFinancingAgreementsProps {
   leadPhone?: string;
   companyId?: string;
   advisorId?: string;
+  leadProjects?: { id: string; title: string }[];
+  leadAssets?: { id: string; title: string; projectId?: string }[];
+  onScrollToInterests?: () => void;
 }
 
 export function LeadFinancingAgreements({
@@ -52,6 +55,9 @@ export function LeadFinancingAgreements({
   leadPhone,
   companyId = "c1",
   advisorId = "usr-sales",
+  leadProjects = [],
+  leadAssets = [],
+  onScrollToInterests,
 }: LeadFinancingAgreementsProps) {
   const { agreements, installments, setInstallments, loading, error, refresh, canWrite } = useCollections(leadId, companyId);
   const { run, saving } = useCollectionAction();
@@ -136,12 +142,20 @@ export function LeadFinancingAgreements({
       const allAgreements = agreements;
       const allInstallments = installments;
 
+      const finalProject = leadProjects.length === 1 ? leadProjects[0].title : projectName;
+      const finalProperty = leadAssets.length === 1 ? leadAssets[0].title : propertyTitle;
+
+      if (!finalProject) {
+        toast.error("Debes seleccionar o tener asignado un proyecto para generar el plan.");
+        return;
+      }
+
       const result = await createAgreementWithInstallments(
         {
           leadId,
           advisorId,
-          projectName,
-          propertyTitle: propertyTitle || undefined,
+          projectName: finalProject,
+          propertyTitle: finalProperty || undefined,
           currency,
           modality,
           totalPrice,
@@ -185,7 +199,7 @@ export function LeadFinancingAgreements({
             Financiación & Seguimiento de Cuotas
           </h2>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Planes de pago asociados al cliente, independientes de las propiedades consultadas.
+            Planes de pago asociados al cliente, independientes de las activos consultadas.
           </p>
         </div>
 
@@ -207,6 +221,16 @@ export function LeadFinancingAgreements({
           </Button>
         </div>
       </div>
+
+      {leadProjects.length === 0 && (
+        <div className="mt-4 rounded-lg bg-amber-50 p-3 text-amber-800 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50 flex items-start gap-2 text-xs">
+          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Falta información requerida</p>
+            <p>El cliente no tiene asociado ningún proyecto ni activo. Para generar un plan de pago o cronograma, deberías asociar primero un interés en la ficha del lead.</p>
+          </div>
+        </div>
+      )}
 
       {loading && <p role="status">Cargando cobranzas…</p>}
       {error && <div role="alert" className="rounded-lg border border-red-300 p-3 text-red-700">{error} <button onClick={() => void refresh()}>Reintentar</button></div>}
@@ -503,27 +527,57 @@ export function LeadFinancingAgreements({
               <p className="text-xs text-slate-500">La primera cuota vence el mes siguiente a la fecha de inicio. Los días 29–31 se ajustan al último día del mes cuando corresponda.</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-700 dark:text-slate-300">
-                    Proyecto
+                  <label className="font-semibold flex items-center justify-between text-slate-700 dark:text-slate-300">
+                    <span>Proyecto</span>
+                    {leadProjects.length === 0 && onScrollToInterests && (
+                      <button type="button" onClick={() => { setIsNewPlanModalOpen(false); onScrollToInterests(); }} className="text-[10px] text-blue-600 hover:underline font-normal bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                        Asociar proyecto &rarr;
+                      </button>
+                    )}
                   </label>
-                  <input
-                    type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
+                  {leadProjects.length > 1 ? (
+                    <select
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                    >
+                      <option value="" disabled>Seleccioná un proyecto</option>
+                      {leadProjects.map(p => <option key={p.id} value={p.title}>{p.title}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={leadProjects.length === 1 ? leadProjects[0].title : ""}
+                      disabled
+                      placeholder="Sin proyecto asociado aún"
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 cursor-not-allowed"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="font-semibold text-slate-700 dark:text-slate-300">
                     Lote / Inmueble
                   </label>
-                  <input
-                    type="text"
-                    placeholder="ej. Lote 14 Mz B"
-                    value={propertyTitle}
-                    onChange={(e) => setPropertyTitle(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
+                  {leadAssets.length > 1 || leadProjects.length > 1 ? (
+                    <select
+                      value={propertyTitle}
+                      onChange={(e) => setPropertyTitle(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                    >
+                      <option value="" disabled>Seleccioná un activo</option>
+                      {leadAssets
+                        .filter(a => leadProjects.length <= 1 || !projectName || projectName === leadProjects.find(p => p.id === a.projectId)?.title)
+                        .map(a => <option key={a.id} value={a.title}>{a.title}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={leadAssets.length === 1 ? leadAssets[0].title : ""}
+                      disabled
+                      placeholder="Sin activo asociado aún"
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 cursor-not-allowed"
+                    />
+                  )}
                 </div>
               </div>
 

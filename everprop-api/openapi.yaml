@@ -568,7 +568,7 @@
                             },
                             "example": {
                                 "contact": {
-                                    "display_name": "Ana Pérez",
+                                    "display_name": "Ana P\u00e9rez",
                                     "email": "ana@example.test",
                                     "locale": "es-AR"
                                 },
@@ -2323,7 +2323,7 @@
                                     "role": {
                                         "enum": [
                                             "SALES_ADVISOR",
-                                            "INVENTORY_MANAGER"
+                                            "ROTATOR"
                                         ],
                                         "type": "string"
                                     },
@@ -2431,6 +2431,59 @@
                     },
                     "422": {
                         "description": "Already activated"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users/{user}/role": {
+            "patch": {
+                "summary": "Change user role (administrators only; no self or Super Admin changes)",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "role"
+                                ],
+                                "properties": {
+                                    "role": {
+                                        "type": "string",
+                                        "enum": [
+                                            "SALES_ADVISOR",
+                                            "ROTATOR",
+                                            "TENANT_ADMIN"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated user"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "User not found in tenant"
+                    },
+                    "422": {
+                        "description": "Invalid role"
                     }
                 }
             }
@@ -2784,7 +2837,7 @@
                             "SALES_ADVISOR",
                             "BOT_OPERATOR",
                             "READ_ONLY",
-                            "INVENTORY_MANAGER"
+                            "ROTATOR"
                         ]
                     },
                     "status": {

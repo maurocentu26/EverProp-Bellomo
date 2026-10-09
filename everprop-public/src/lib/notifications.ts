@@ -198,16 +198,7 @@ export async function clearAllNotifications(currentUser?: UserIdentifier): Promi
   }
 }
 
-// ── Desktop Notification Permissions ──
-
-export async function requestDesktopNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
-  if (typeof window === 'undefined' || !('Notification' in window)) {
-    return 'unsupported';
-  }
-  if (Notification.permission === 'granted') return 'granted';
-  if (Notification.permission === 'denied') return 'denied';
-  return Notification.requestPermission();
-}
+// ── Desktop notifications while the panel is open (device alerts with it closed: PushPreferences) ──
 
 export function showDesktopNotification(title: string, options?: NotificationOptions): void {
   if (typeof window === 'undefined' || !('Notification' in window)) return;

@@ -127,6 +127,10 @@ final class CollectionsTest extends TestCase
         DB::table('notifications')->where('notifiable_id', $admin->id)->delete();
         $this->artisan('everprop:collections:notify', ['tenant' => $tenant->slug])->assertSuccessful();
         self::assertSame(0, DB::table('notifications')->where('notifiable_id', $admin->id)->count());
+        // Without argument the scheduler covers every active tenant (no hardcoded slug) and stays idempotent.
+        $this->artisan('everprop:collections:notify')->assertSuccessful();
+        self::assertSame(0, DB::table('notifications')->where('notifiable_id', $admin->id)->count());
+        $this->artisan('everprop:collections:notify', ['tenant' => 'no-such-tenant'])->assertFailed();
     }
 
     public function test_import_previews_then_commits_once_and_rejects_schedule_mismatches(): void

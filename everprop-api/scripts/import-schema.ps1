@@ -46,7 +46,7 @@ try {
     }
 
     $baseline = [IO.File]::ReadAllText($baselinePath)
-    $baseline | docker compose --project-name $ProjectName exec -T everprop-api-mysql sh -lc 'MYSQL_PWD="$(cat /run/secrets/mysql_root_password)" mysql -uroot --default-character-set=utf8mb4'
+    $baseline | docker compose --project-name $ProjectName exec -T everprop-api-mysql sh -lc 'MYSQL_PWD=$(cat /run/secrets/mysql_root_password) mysql -uroot --default-character-set=utf8mb4'
     if ($LASTEXITCODE -ne 0) {
         throw 'Fallo la importacion del baseline de desarrollo.'
     }
@@ -54,7 +54,7 @@ try {
     $testingBaseline = $baseline.
         Replace('CREATE DATABASE IF NOT EXISTS bellomo_crm', 'CREATE DATABASE IF NOT EXISTS bellomo_crm_test').
         Replace('USE bellomo_crm;', 'USE bellomo_crm_test;')
-    $testingBaseline | docker compose --project-name $ProjectName exec -T everprop-api-mysql sh -lc 'MYSQL_PWD="$(cat /run/secrets/mysql_root_password)" mysql -uroot --default-character-set=utf8mb4'
+    $testingBaseline | docker compose --project-name $ProjectName exec -T everprop-api-mysql sh -lc 'MYSQL_PWD=$(cat /run/secrets/mysql_root_password) mysql -uroot --default-character-set=utf8mb4'
     if ($LASTEXITCODE -ne 0) {
         throw 'Fallo la importacion del baseline de testing.'
     }
@@ -65,7 +65,7 @@ try {
 
     foreach ($change in $forwardChanges) {
         foreach ($database in @('bellomo_crm', 'bellomo_crm_test')) {
-            $mysqlCommand = 'MYSQL_PWD="$(cat /run/secrets/mysql_root_password)" mysql -uroot --default-character-set=utf8mb4 ' + $database
+            $mysqlCommand = 'MYSQL_PWD=$(cat /run/secrets/mysql_root_password) mysql -uroot --default-character-set=utf8mb4 ' + $database
             [IO.File]::ReadAllText($change.FullName) | docker compose --project-name $ProjectName exec -T everprop-api-mysql sh -lc $mysqlCommand
             if ($LASTEXITCODE -ne 0) {
                 throw "Fallo el cambio forward-only $($change.Name) en $database."

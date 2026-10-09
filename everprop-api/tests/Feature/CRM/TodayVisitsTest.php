@@ -26,6 +26,11 @@ final class TodayVisitsTest extends TestCase
                 'status' => 'AVAILABLE', 'price' => 100000, 'currency_code' => 'USD', 'city' => 'Salta', 'province' => 'Salta']);
             $ids[] = $uuid;
         }
+        // Linking a property now requires inventory visibility (E02).
+        DB::table('user_inventory_settings')->insert([
+            'tenant_id' => $tenant->id, 'user_id' => $advisor->id, 'workspace_mode' => 'BOTH',
+            'visibility_mode' => 'ALL', 'can_manage_inventory' => false, 'can_manage_prices' => false, 'can_view_prices' => true,
+        ]);
         $this->actingAs($advisor)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173']);
         $path = "/api/v1/admin/leads/$leadUuid/properties";
         $this->postJson($path, ['property_id' => $ids[0], 'notes' => 'Original'])->assertOk();
@@ -88,7 +93,7 @@ final class TodayVisitsTest extends TestCase
         }
         $this->actingAs($admin)->withHeaders($headers)->getJson('/api/v1/admin/visits/today')
             ->assertOk()->assertJsonPath('meta.total', 13)->assertJsonCount(10, 'data');
-        $inventory = User::factory()->for($tenant)->create(['role_code' => RoleCode::INVENTORY_MANAGER->value]);
+        $inventory = User::factory()->for($tenant)->create(['role_code' => RoleCode::ROTATOR->value]);
         $this->actingAs($inventory)->withHeaders($headers)->getJson('/api/v1/admin/visits/today')->assertForbidden();
         $this->travelBack();
     }

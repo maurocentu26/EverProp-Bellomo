@@ -4,7 +4,8 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('everprop:collections:notify', ['bellomo'])
+// Every ACTIVE tenant; no tenant is hardcoded in the scheduler (S02).
+Schedule::command('everprop:collections:notify')
     ->hourly()->withoutOverlapping();
 
 Artisan::command('inspire', function () {

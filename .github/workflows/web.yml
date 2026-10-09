@@ -1,0 +1,37 @@
+name: Web quality
+
+on:
+  pull_request:
+    paths: ['everprop-public/**', '.github/workflows/web.yml']
+  push:
+    branches: [main]
+    paths: ['everprop-public/**', '.github/workflows/web.yml']
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: everprop-public
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: everprop-public/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:materials
+      - run: npm run test:collections
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_DATA_MODE: api
+          NEXT_PUBLIC_EVERPROP_API_URL: http://127.0.0.1:18080
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:18080
+          NEXT_PUBLIC_EVERPROP_TENANT: ci-smoke

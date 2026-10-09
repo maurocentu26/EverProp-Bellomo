@@ -3,6 +3,7 @@ import { hasRecordedContact } from "@/lib/commercial-queue";
 import { isCommercialContact } from "@/lib/lead-follow-up";
 
 import { useState, useMemo, useEffect } from "react";
+import { RotatorLeadQueue } from "@/components/admin/RotatorLeadQueue";
 import LeadTable, { STAGE_LABELS } from "@/components/admin/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Plus, Filter, Search, RotateCcw, AlertTriangle } from "lucide-react";
@@ -52,7 +53,12 @@ const FOLLOW_UP_FILTERS: { id: FollowUpFilter; label: string }[] = [
   { id: "overdue", label: "Vencidos" },
 ];
 
-export default function AllLeadsPage() {
+export default function LeadsPage() {
+  const { user } = useCurrentSession();
+  return user?.role === "ROTATOR" ? <RotatorLeadQueue /> : <AllLeadsPage />;
+}
+
+function AllLeadsPage() {
   const { mode: dashboardMode } = useDashboardMode();
   const { isEngineer, isAdvisor, user } = useCurrentSession();
 

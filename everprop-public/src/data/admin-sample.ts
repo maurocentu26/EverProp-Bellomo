@@ -7,7 +7,7 @@ export type Company = {
 
 export type ProjectType = 'land_development' | 'building' | 'commercial';
 export type ProjectStatus = 'planning' | 'pre_sale' | 'under_construction' | 'completed' | 'available' | 'unknown';
-export type LeadInterestCategory = 'loteo' | 'local' | 'cochera' | 'tradicional';
+export type LeadInterestCategory = 'loteo' | 'edificio' | 'comercial';
 
 // Modelo local del panel. El contrato definitivo del backend queda pendiente
 // de confirmación; por eso los campos históricos de Lead se conservan.
@@ -217,48 +217,29 @@ export function inferLeadInterestCategory(property: Property): LeadInterestCateg
   const sector = (property.sectorName || '').toLowerCase();
   const title = (property.title || '').toLowerCase();
 
-  // 1. Cocheras / Estacionamientos
+  // 1. Comerciales (Cocheras y Locales)
   if (
-    type === 'cochera' ||
-    type === 'garage' ||
-    title.includes('cochera') ||
-    title.includes('garage') ||
-    title.includes('estacionamiento') ||
-    property.isCovered !== undefined
+    type === 'cochera' || type === 'garage' || type === 'local' ||
+    title.includes('cochera') || title.includes('garage') || title.includes('estacionamiento') ||
+    title.includes('local') || title.includes('showroom') || title.includes('comercial') || title.includes('gastronóm') || title.includes('oficina') ||
+    (type !== 'lote' && type !== 'loteo' && type !== 'terreno' && property.isCovered !== undefined && !title.includes('casa') && !title.includes('departamento') && !title.includes('depto')) ||
+    sector.includes('cochera') || sector.includes('estacionamiento')
   ) {
-    return 'cochera';
+    return 'comercial';
   }
 
-  // 2. Locales comerciales / Showrooms / Espacios gastronómicos u oficinas
+  // 2. Loteos / Terrenos en barrios privados y loteos abiertos
   if (
-    type === 'local' ||
-    title.includes('local') ||
-    title.includes('showroom') ||
-    title.includes('comercial') ||
-    title.includes('gastronóm') ||
-    title.includes('oficina')
-  ) {
-    return 'local';
-  }
-
-  // 3. Loteos / Terrenos en barrios privados y loteos abiertos
-  if (
-    type === 'lote' ||
-    type === 'loteo' ||
-    type === 'lot' ||
-    type === 'terreno' ||
-    sector.includes('manzana') ||
-    sector.includes('lote') ||
-    sector.includes('etapa') ||
-    title.includes('lote') ||
-    title.includes('terreno') ||
+    type === 'lote' || type === 'loteo' || type === 'lot' || type === 'terreno' ||
+    sector.includes('manzana') || sector.includes('lote') || sector.includes('etapa') ||
+    title.includes('lote') || title.includes('terreno') ||
     Boolean(property.sectorName && property.unitNumber && !title.includes('depto') && !title.includes('departamento') && !title.includes('casa'))
   ) {
     return 'loteo';
   }
 
-  // 4. Inmobiliaria Tradicional (Departamentos, Casas, Dúplex, etc.)
-  return 'tradicional';
+  // 3. Edificios / Departamentos / Casas / Dúplex
+  return 'edificio';
 }
 
 export const companies: Company[] = [
@@ -266,6 +247,31 @@ export const companies: Company[] = [
 ];
 
 export const projects: Project[] = [
+  {
+    id: "3e4b5c6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+    companyId: 'c1',
+    name: "Edificio Altos del Parque",
+    type: "building",
+    status: "under_construction",
+    progress: 45,
+    location: { city: "San Salvador de Jujuy", province: "Jujuy", address: "Av. Illia 123" },
+    totalUnits: 15,
+    description: "Departamentos de 1 y 2 dormitorios con excelentes amenities.",
+    coverImage: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1200"
+  },
+  {
+    id: "5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c",
+    companyId: 'c1',
+    name: "Galería Comercial Norte",
+    type: "commercial",
+    status: "completed",
+    progress: 100,
+    location: { city: "San Salvador de Jujuy", province: "Jujuy", address: "Belgrano 456" },
+    totalUnits: 8,
+    description: "Locales comerciales en la mejor zona de Jujuy.",
+    coverImage: "https://images.unsplash.com/photo-1519642918688-7e43b19245d8?q=80&w=1200"
+  },
+
   {
     id: "95b45059-b614-426e-a2c8-4f2015db24a2",
     companyId: 'c1',
@@ -1825,7 +1831,7 @@ export const leads: Lead[] = leadScenarios.map((sc, index) => {
     };
     visits.push(v);
     
-    // Sincronizar visita en la propiedad
+    // Sincronizar visita en el activo
     const prop = properties.find(p => p.id === propertyIds[0]);
     if (prop) {
       if (!prop.visits) prop.visits = [];
@@ -1855,7 +1861,7 @@ export const leads: Lead[] = leadScenarios.map((sc, index) => {
   };
 });
 
-// Fallback: Si quedaron propiedades disponibles/reservadas sin asignar por la matemática, asignarlas al primer lead
+// Fallback: Si quedaron activos disponibles/reservadas sin asignar por la matemática, asignarlas al primer lead
 if (unassignedProps.length > 0) {
   unassignedProps.forEach(p => {
     leads[0].propertyIds.push(p.id);

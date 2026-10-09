@@ -145,7 +145,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
 }
 
 function mapRole(role: string): UserRole {
-  if (role === "INVENTORY_MANAGER") return "ENGINEER";
+  if (role === "ROTATOR") return "ROTATOR";
   if (role === "SUPER_ADMIN" || role === "TENANT_ADMIN" || role === "SALES_MANAGER") return "ADMIN";
   return "ADVISOR";
 }
@@ -166,7 +166,7 @@ function mapUser(user: ApiUser): UserProfile {
     apiRole: user.role,
     name,
     avatar: avatar || "EP",
-    title: user.tenant?.name || "Usuario EverProp",
+    title: user.role === "ROTATOR" ? "Rotador" : user.tenant?.name || "Usuario EverProp",
     permissions: user.capabilities,
     source: "api",
   };
@@ -220,7 +220,7 @@ function mapProperty(property: ApiProperty): Property {
     LOCAL: "Local",
     GARAGE: "Cochera",
     HOUSE: "Casa",
-    TRADITIONAL: "Propiedad",
+    TRADITIONAL: "Activo",
     UNKNOWN: "Sin tipo",
   };
   const operation = property.operation.toUpperCase();
@@ -299,7 +299,7 @@ export async function logoutEverprop() {
   }
 }
 
-async function loadCatalogPages<T>(path: string, maxPages?: number): Promise<T[]> {
+async function loadCatalogPages<T>(path: string): Promise<T[]> {
   const rows: T[] = [];
   let page = 1;
   let lastPage = 1;
@@ -309,15 +309,14 @@ async function loadCatalogPages<T>(path: string, maxPages?: number): Promise<T[]
     rows.push(...response.data);
     lastPage = response.meta?.last_page ?? 1;
     page += 1;
-    if (maxPages && page > maxPages) break;
   } while (page <= lastPage);
   return rows;
 }
 
 async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   const [projects, properties] = await Promise.all([
-    loadCatalogPages<ApiProject>(`${prefix}/projects`), // Fetch all projects (few items)
-    loadCatalogPages<ApiProperty>(`${prefix}/properties`, 1), // Only page 1 of properties!
+    loadCatalogPages<ApiProject>(`${prefix}/projects`),
+    loadCatalogPages<ApiProperty>(`${prefix}/properties`),
   ]);
   return {
     projects: projects.map(mapProject),
@@ -399,7 +398,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     title: data.title,
     operation: (data.operation === "temporal" ? "TEMPORARY" : (data.operation || "sale").toUpperCase()),
     category: categoryMap[data.propertyType || ""] || "LOT",
-    status: "AVAILABLE",
+    // Status is decided by the API: publishers get AVAILABLE, other editors NOT_MARKETED.
     price: data.price == null ? null : Number(data.price),
     currency_code: data.price == null ? null : (data.currency || "USD"),
     city: data.city,
@@ -530,9 +529,8 @@ export function mapLead(apiLead: ApiLead): Lead {
     const rawCat = (p.category || "").toUpperCase();
     let mappedCategory: LeadInterestCategory | undefined = undefined;
     if (rawCat === "LOT" || rawCat === "LOTEO") mappedCategory = "loteo";
-    else if (rawCat === "LOCAL" || rawCat === "COMMERCIAL") mappedCategory = "local";
-    else if (rawCat === "GARAGE" || rawCat === "COCHERA") mappedCategory = "cochera";
-    else if (rawCat === "APARTMENT" || rawCat === "HOUSE" || rawCat === "TRADITIONAL") mappedCategory = "tradicional";
+    else if (rawCat === "LOCAL" || rawCat === "COMMERCIAL" || rawCat === "GARAGE" || rawCat === "COCHERA") mappedCategory = "comercial";
+    else if (rawCat === "APARTMENT" || rawCat === "HOUSE" || rawCat === "TRADITIONAL") mappedCategory = "edificio";
 
     return {
       id: p.id,
@@ -629,7 +627,7 @@ export async function createEverpropLead(data: {
       phone: data.phone || null,
       stage: data.stage || "NEW",
       priority: (data.priority || "NORMAL").toUpperCase(),
-      budget: data.budget || null,
+      budget: data.budget ?? null,
       currency: data.currency || "USD",
       notes: data.notes || null,
       agent_id: data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null,
@@ -668,6 +666,12 @@ export async function updateEverpropLead(
   return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteEverpropLead(leadPublicId: string) {
+  return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
+    method: "DELETE",
   });
 }
 
@@ -865,6 +869,11 @@ export async function detachEverpropLeadProperty(leadPublicId: string, propertyP
 }
 
 
+export async function loadEverpropPropertyById(propertyPublicId: string): Promise<Property> {
+  const response = await apiFetch<ApiEnvelope<ApiProperty>>(`/api/v1/admin/properties/${propertyPublicId}`);
+  return mapProperty(response.data);
+}
+
 export type UpdatePropertyPayload = {
   title?: string;
   operation?: Property['operation'];
@@ -965,7 +974,7 @@ export async function generateLotsBatch(payload: GenerateLotsPayload) {
       fondo_m: payload.fondo_m ? Number(payload.fondo_m) : undefined,
       ochava_m2: payload.ochava_m2 ? Number(payload.ochava_m2) : undefined,
       price: payload.price ? Number(payload.price) : null,
-      currency_code: payload.price ? (payload.currency || "USD") : null,
+      currency_code: payload.price || payload.cornerPrice ? (payload.currency || "USD") : null,
       corner_lots: payload.cornerLots || [],
       corner_price: payload.cornerPrice ? Number(payload.cornerPrice) : null,
       corner_area_m2: payload.cornerArea_m2 ? Number(payload.cornerArea_m2) : null,

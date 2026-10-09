@@ -5,6 +5,8 @@ namespace App\Domain\CRM\Http\Controllers;
 use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\VisitPolicy;
 use App\Domain\Identity\Enums\RoleCode;
+use App\Domain\Inventory\Models\Property;
+use App\Domain\Inventory\Services\InventoryAccess;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Query\Builder;
@@ -91,7 +93,7 @@ final class AdminVisitController extends Controller
         ]);
     }
 
-    public function store(Request $request, TenantContext $context, VisitPolicy $policy): JsonResponse
+    public function store(Request $request, TenantContext $context, VisitPolicy $policy, InventoryAccess $inventoryAccess): JsonResponse
     {
         $user = $request->user();
         abort_unless($user && $policy->viewAny($user, $context->id()) && $user->role() !== RoleCode::READ_ONLY, 403);
@@ -111,6 +113,7 @@ final class AdminVisitController extends Controller
         if ($user->role() !== RoleCode::SALES_ADVISOR && ! empty($data['agent_id'])) {
             $agentId = DB::table('users')->where('tenant_id', $context->id())->where('status', 'ACTIVE')
                 ->whereIn('role_code', ['TENANT_ADMIN', 'SALES_MANAGER', 'SALES_ADVISOR'])
+                ->whereNull('deleted_at')
                 ->where('public_id', $data['agent_id'])->value('id');
             abort_unless($agentId, 422, 'Asesor no disponible.');
         }
@@ -120,21 +123,41 @@ final class AdminVisitController extends Controller
         abort_if($lead && $lead->assigned_user_id && (int) $agentId !== (int) $lead->assigned_user_id, 422, 'La cita debe quedar con el responsable del lead. Reasigná primero el cliente desde su ficha.');
         $propertyId = null;
         if (! empty($data['property_id'])) {
-            $propertyId = DB::table('properties')->where('tenant_id', $context->id())
-                ->where('public_id', $data['property_id'])->value('id');
+            // Same tenant, not deleted and inside the actor's inventory scope.
+            $propertyId = $inventoryAccess->scopeProperties(Property::query(), $user)
+                ->where('properties.public_id', $data['property_id'])->value('properties.id');
             abort_unless($propertyId, 422, 'Propiedad no disponible.');
         }
-        $id = (string) Str::uuid();
-        DB::table('visits')->insert([
-            'tenant_id' => $context->id(), 'public_id' => $id, 'lead_id' => $lead?->id,
-            'property_id' => $propertyId, 'assigned_user_id' => $agentId, 'created_by_user_id' => $user->id,
-            'guest_name' => $data['guest_name'] ?? null, 'guest_phone' => $data['guest_phone'] ?? null,
-            'guest_email' => $data['guest_email'] ?? null,
-            'scheduled_at' => Carbon::parse($data['scheduled_at'])->utc(), 'notes' => $data['notes'] ?? null,
-            'status' => 'SCHEDULED', 'created_at' => now(), 'updated_at' => now(),
-        ]);
+        $scheduledAt = Carbon::parse($data['scheduled_at'])->utc();
 
-        return response()->json(['data' => ['id' => $id]], 201);
+        // A human-scheduled visit (SCHEDULED). Double submits of the same appointment are
+        // replayed instead of duplicated; bot requests will use a separate REQUESTED flow (S13).
+        [$id, $created] = DB::transaction(function () use ($context, $data, $lead, $propertyId, $agentId, $user, $scheduledAt): array {
+            DB::table('users')->where('tenant_id', $context->id())->where('id', $agentId)->lockForUpdate()->value('id');
+            $existing = DB::table('visits')->where('tenant_id', $context->id())
+                ->where('assigned_user_id', $agentId)->where('status', 'SCHEDULED')
+                ->where('scheduled_at', $scheduledAt)
+                ->where('lead_id', $lead?->id)->where('property_id', $propertyId)
+                ->when($lead === null, fn (Builder $q) => $q->where('guest_name', $data['guest_name'] ?? null)
+                    ->where('guest_phone', $data['guest_phone'] ?? null)->where('guest_email', $data['guest_email'] ?? null))
+                ->value('public_id');
+            if ($existing !== null) {
+                return [$existing, false];
+            }
+            $id = (string) Str::uuid();
+            DB::table('visits')->insert([
+                'tenant_id' => $context->id(), 'public_id' => $id, 'lead_id' => $lead?->id,
+                'property_id' => $propertyId, 'assigned_user_id' => $agentId, 'created_by_user_id' => $user->id,
+                'guest_name' => $data['guest_name'] ?? null, 'guest_phone' => $data['guest_phone'] ?? null,
+                'guest_email' => $data['guest_email'] ?? null,
+                'scheduled_at' => $scheduledAt, 'notes' => $data['notes'] ?? null,
+                'status' => 'SCHEDULED', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return [$id, true];
+        });
+
+        return response()->json(['data' => ['id' => $id, 'replayed' => ! $created]], $created ? 201 : 200);
     }
 
     public function cancel(Request $request, TenantContext $context, VisitPolicy $policy, string $visit): JsonResponse

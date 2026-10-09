@@ -151,7 +151,7 @@ export default function AllPropertiesPage() {
     }
   };
 
-  if (dataState.status === "loading") return <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" role="status" aria-label="Cargando propiedades" />;
+  if (dataState.status === "loading") return <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" role="status" aria-label="Cargando activos" />;
 
   if (dataState.status === "error") {
     return (
@@ -160,7 +160,7 @@ export default function AllPropertiesPage() {
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
           <div>
             <h1 className="text-xl font-bold text-slate-900">No se pudo cargar el inventario</h1>
-            <p className="mt-2 text-sm text-slate-600">{dataState.message} No se cargaron propiedades mock.</p>
+            <p className="mt-2 text-sm text-slate-600">{dataState.message} No se cargaron activos mock.</p>
             <Button
               type="button"
               variant="outline"
@@ -183,7 +183,7 @@ export default function AllPropertiesPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Propiedades e Inventario</h1>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Activos e Inventario</h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400 text-sm">Gestioná todos los activos, lotes y proyectos en cartera.</p>
         </div>
         
@@ -191,7 +191,7 @@ export default function AllPropertiesPage() {
           <div className="flex items-center gap-3">
             <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2" nativeButton={false} role="link" render={<Link href="/admin/properties/new" />}>
                   <Plus className="h-4 w-4" />
-                  Nueva Propiedad
+                  Nuevo Activo
               </Button>
           </div>
         )}
@@ -203,18 +203,18 @@ export default function AllPropertiesPage() {
       <div className="bg-white dark:bg-card p-4 rounded-2xl border border-slate-200 dark:border-border shadow-sm flex flex-wrap gap-2 items-center relative" ref={filterRef}>
         <div className="grid w-full grid-cols-1 gap-3 sm:hidden">
           <label className="grid gap-1.5 text-xs font-semibold text-muted-foreground">Desarrollo
-            <select aria-label="Filtrar propiedades por desarrollo" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+            <select aria-label="Filtrar activos por desarrollo" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
               <option value="all">Todos</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
           <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground">Estado
-              <select aria-label="Filtrar propiedades por estado" value={activeStatus} onChange={e => setActiveStatus(e.target.value as typeof activeStatus)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+              <select aria-label="Filtrar activos por estado" value={activeStatus} onChange={e => setActiveStatus(e.target.value as typeof activeStatus)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
                 {statusFilters.map(s => <option key={s.id} value={s.id}>{s.id === "reserved" ? "En reserva" : s.label}</option>)}
               </select>
             </label>
             <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground">Manzana
-              <select aria-label="Filtrar propiedades por manzana" value={selectedManzana} onChange={e => setSelectedManzana(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
+              <select aria-label="Filtrar activos por manzana" value={selectedManzana} onChange={e => setSelectedManzana(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
                 <option value="all">Todas</option>{availableManzanas.map(m => <option key={m} value={m}>{m.replace(/manzana\s*/i, "Mz ")}</option>)}
               </select>
             </label>
@@ -353,11 +353,11 @@ export default function AllPropertiesPage() {
       {filteredProperties.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-card px-6 py-14 text-center">
           <Building2 className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-          <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-slate-100">No hay propiedades para mostrar</h2>
+          <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-slate-100">No hay activos para mostrar</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">
             {allProperties.length === 0
               ? "La consulta fue válida y el catálogo administrativo está vacío. No se sustituyó con datos mock."
-              : "Ninguna propiedad coincide con los filtros seleccionados."}
+              : "Ninguna activo coincide con los filtros seleccionados."}
           </p>
         </div>
       ) : (
@@ -385,7 +385,7 @@ export default function AllPropertiesPage() {
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <Building2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" /> Propiedades Individuales
+                  <Building2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" /> Activos Individuales
                 </h2>
                 <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 rounded-full">
                   {groupedProperties.individual.length} unidades
@@ -402,7 +402,7 @@ export default function AllPropertiesPage() {
               disabled={isLoadingMore}
               className="w-full max-w-sm rounded-xl font-semibold border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              {isLoadingMore ? "Cargando..." : "Cargar más propiedades"}
+              {isLoadingMore ? "Cargando..." : "Cargar más activos"}
             </Button>
           </div>
         </div>

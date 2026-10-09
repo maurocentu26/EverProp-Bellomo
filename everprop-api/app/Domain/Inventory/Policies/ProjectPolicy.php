@@ -39,4 +39,9 @@ final class ProjectPolicy
     {
         return $this->access->canPublish($user, $project);
     }
+
+    public function publishNew(User $user): bool
+    {
+        return $this->access->canPublishNew($user);
+    }
 }

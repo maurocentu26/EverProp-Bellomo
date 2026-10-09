@@ -23,7 +23,7 @@ export function useSidebarActive() {
       return currentHash === item.hash || (currentHash === "" && item.hash === "#dashboard");
     }
     
-    // Caso 2: Navegación por Rutas (Leads, Propiedades, etc)
+    // Caso 2: Navegación por Rutas (Leads, Activos, etc)
     if (item.matchPath) {
       if (item.matchPath === "/admin") {
         return pathname === "/admin";

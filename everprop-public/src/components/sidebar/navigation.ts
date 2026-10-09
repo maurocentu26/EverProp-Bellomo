@@ -59,7 +59,7 @@ export const advisorNavigationGroups: NavGroup[] = [
     label: "Catálogo & Disponibilidad",
     items: [
       { 
-        title: "Propiedades & Unidades", 
+        title: "Activos & Unidades", 
         href: "/admin/properties", 
         icon: Building2, 
         matchPath: "/admin/properties",
@@ -83,7 +83,7 @@ export const navigationGroups: NavGroup[] = [
     label: "Comercializadora",
     items: [
       { 
-        title: "Propiedades", 
+        title: "Activos", 
         href: "/admin/properties", 
         icon: Building2, 
         matchPath: "/admin/properties",

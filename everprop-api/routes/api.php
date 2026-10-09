@@ -11,7 +11,7 @@ use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AdminUserController;
 use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Identity\Http\Controllers\WebPushController;
-use App\Domain\Identity\InventoryRoleBoundary;
+use App\Domain\Identity\RotatorRoleBoundary;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
 use App\Domain\Inventory\Http\Controllers\AdminProjectController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyController;
@@ -30,9 +30,10 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
-    Route::prefix('admin')->name('admin.')->middleware(InventoryRoleBoundary::class)->group(function (): void {
+    Route::prefix('admin')->name('admin.')->middleware(RotatorRoleBoundary::class)->group(function (): void {
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::post('/users', [AdminUserController::class, 'store']);
+        Route::patch('/users/{user}/role', [AdminUserController::class, 'changeRole'])->whereUuid('user');
         Route::post('/users/{user}/activation', [AdminUserController::class, 'renew']);
         Route::get('/payment-agreements', [CollectionsController::class, 'agreements']);
         Route::post('/payment-agreements', [CollectionsController::class, 'store']);

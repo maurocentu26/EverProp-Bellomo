@@ -17,7 +17,7 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
     <div className="@container min-w-0 mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-card dark:text-card-foreground">
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 dark:border-slate-800">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Inventario de Lotes y Propiedades</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Inventario de Lotes y Activos</h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Mostrando {totalProperties} de {totalProperties} activos en cartera
           </p>
@@ -38,7 +38,7 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
           <span className="mt-3 block text-sm text-blue-600 dark:text-blue-300">Ver ficha completa →</span>
         </Link>)}
       </div>
-      <div className="hidden overflow-x-auto @min-[60rem]:block">
+      <div className="hidden overflow-x-auto overflow-y-auto max-h-[70vh] relative @min-[60rem]:block">
         <table className="min-w-full table-fixed border-separate border-spacing-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6 sm:pt-4">
           <colgroup>
             <col className="w-[28%]" />
@@ -48,9 +48,9 @@ export default function PropertyList({ properties, readOnly = false }: Props) {
             <col className="w-[16%]" />
           </colgroup>
 
-          <thead>
+          <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur dark:bg-card/95">
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <th className="px-4 py-3">{lotsOnly ? "Lote / Parcela" : "Propiedad / Unidad"}</th>
+              <th className="px-4 py-3">{lotsOnly ? "Lote / Parcela" : "Activo / Unidad"}</th>
               <th className="px-4 py-3">{lotsOnly ? "Manzana" : "Sector"}</th>
               <th className="px-4 py-3">Superficie / Ochava</th>
               <th className="px-4 py-3">Precio</th>

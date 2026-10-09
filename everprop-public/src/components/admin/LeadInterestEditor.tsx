@@ -22,9 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 const CATEGORY_OPTIONS: { value: LeadInterestCategory; label: string }[] = [
   { value: "loteo", label: "Loteo" },
-  { value: "local", label: "Local" },
-  { value: "cochera", label: "Cochera" },
-  { value: "tradicional", label: "Tradicional" },
+  { value: "edificio", label: "Edificio" },
+  { value: "comercial", label: "Comercial (cochera/locales)" },
 ];
 
 type LeadInterestEditorProps = {
@@ -118,7 +117,7 @@ export function LeadInterestEditor({
 
     const targetId = draft.unitId || draft.propertyId;
     setError("");
-    if (!isMockDataMode && !targetId) { setError("Seleccioná una propiedad o unidad para guardar el interés."); return; }
+    if (!isMockDataMode && !targetId) { setError("Seleccioná una activo o unidad para guardar el interés."); return; }
     const targetProp = targetId ? properties.find((p) => p.id === targetId) : undefined;
     const targetProject = draft.projectId ? projects.find((p) => p.id === draft.projectId) : undefined;
 
@@ -163,7 +162,7 @@ export function LeadInterestEditor({
                   {isEditing ? "Editar interés" : "Agregar interés"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 whitespace-normal">
-                  Vinculá una propiedad al cliente.
+                  Vinculá una activo al cliente.
                 </DialogDescription>
               </div>
             </div>
@@ -246,7 +245,7 @@ export function LeadInterestEditor({
                 </label>
 
                 <label className="block text-xs font-bold text-slate-700">
-                  Propiedad
+                  Activo
                   <select
                     value={draft.propertyId}
                     onChange={(event) => {
@@ -262,7 +261,7 @@ export function LeadInterestEditor({
                     }}
                     className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
-                    <option value="">Seleccionar propiedad</option>
+                    <option value="">Seleccionar activo</option>
                     {filteredProperties.map((property) => (
                       <option key={property.id} value={property.id}>{property.title}</option>
                     ))}
@@ -328,7 +327,7 @@ export function LeadInterestEditor({
                 </label>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-500">
-                  La propiedad es necesaria. Las preferencias y notas son opcionales.
+                  El activo es necesaria. Las preferencias y notas son opcionales.
                 </div>
               </section>
             </div>

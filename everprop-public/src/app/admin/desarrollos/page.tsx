@@ -93,6 +93,7 @@ export default function DesarrollosPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [filterType, setFilterType] = useState<string>('all');
 
   useEffect(() => {
     let active = true;
@@ -101,7 +102,7 @@ export default function DesarrollosPage() {
       if (isMockDataMode) {
         await Promise.resolve();
         if (!active) return;
-        setProjects(loadProjectList(sampleProjects, "c1").filter((project) => project.type !== "commercial"));
+        setProjects(loadProjectList(sampleProjects, "c1"));
         setProperties(loadPropertyList(sampleProperties, "c1"));
         setDataState({ status: "ready", source: "mock" });
         return;
@@ -110,7 +111,7 @@ export default function DesarrollosPage() {
       try {
         const catalog = await loadEverpropCatalog();
         if (!active) return;
-        setProjects(catalog.projects.filter((project) => project.type !== "commercial"));
+        setProjects(catalog.projects);
         setProperties(catalog.properties);
         setDataState({ status: "ready", source: "admin-api" });
       } catch (reason) {
@@ -189,7 +190,15 @@ export default function DesarrollosPage() {
 
 
 
-      {projects.length === 0 ? (
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant={filterType === "all" ? "default" : "outline"} onClick={() => setFilterType("all")} className="rounded-full">Todos</Button>
+        <Button variant={filterType === "land_development" ? "default" : "outline"} onClick={() => setFilterType("land_development")} className="rounded-full">Loteos</Button>
+        <Button variant={filterType === "building" ? "default" : "outline"} onClick={() => setFilterType("building")} className="rounded-full">Edificios</Button>
+        <Button variant={filterType === "commercial" ? "default" : "outline"} onClick={() => setFilterType("commercial")} className="rounded-full">Comerciales</Button>
+      </div>
+
+      {projects.filter(p => filterType === "all" || p.type === filterType).length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
           <Building2 className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
           <h2 className="mt-4 text-lg font-bold text-slate-900">No hay proyectos para mostrar</h2>
@@ -199,7 +208,7 @@ export default function DesarrollosPage() {
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
-          {projects.map((project) => (
+          {projects.filter(p => filterType === "all" || p.type === filterType).map((project) => (
             <Link href={`/admin/desarrollos/${project.id}`} key={project.id}>
               <ProjectCard project={project} properties={properties} readOnly={false} material={materials?.projects.find(p=>p.operationalIds.includes(project.id))} />
             </Link>
@@ -209,3 +218,4 @@ export default function DesarrollosPage() {
     </div>
   );
 }
+

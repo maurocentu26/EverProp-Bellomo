@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { CheckCircle2 } from "lucide-react"
 
-// Definimos qué propiedades necesita recibir este modal para funcionar
+// Definimos qué activos necesita recibir este modal para funcionar
 type SuccessModalProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;

@@ -33,13 +33,18 @@ export function loadLeadList(seed: Lead[], companyId: string) {
 
 export function loadPropertyList(seed: Property[], companyId: string) {
   const stored = readList<Property>(ADMIN_STORAGE_KEYS.properties);
-  const source = stored.length > 0 ? stored : seed;
+  const storedIds = new Set(stored.map(p => p.id));
+  const missingFromSeed = seed.filter(p => !storedIds.has(p.id));
+  const source = [...stored, ...missingFromSeed];
   return source.filter((property) => property.companyId === companyId);
 }
 
 export function loadProjectList(seed: Project[], companyId: string) {
   const stored = readList<Project>(ADMIN_STORAGE_KEYS.projects);
-  const source = stored.length > 0 ? stored : seed;
+  // Merge stored and seed: keep all stored, and add any from seed that are missing
+  const storedIds = new Set(stored.map(p => p.id));
+  const missingFromSeed = seed.filter(p => !storedIds.has(p.id));
+  const source = [...stored, ...missingFromSeed];
   return source.filter((project) => project.companyId === companyId);
 }
 
@@ -63,7 +68,7 @@ export function appendLeadToStorage(nextLead: Lead, seed: Lead[], companyId: str
 
 export function appendPropertyToStorage(nextProperty: Property, seed: Property[], companyId: string) {
   if (nextProperty.companyId !== companyId) {
-    throw new Error("La propiedad no pertenece a la empresa activa.");
+    throw new Error("El activo no pertenece a la empresa activa.");
   }
 
   const stored = readList<Property>(ADMIN_STORAGE_KEYS.properties);
@@ -154,7 +159,7 @@ export function savePropertyList(list: Property[], companyId?: string) {
 
   const targetCompanyIds = new Set(companyId ? [companyId] : list.map((property) => property.companyId));
   if (companyId && list.some((property) => property.companyId !== companyId)) {
-    throw new Error("La lista contiene propiedades de otra empresa.");
+    throw new Error("La lista contiene activos de otra empresa.");
   }
 
   const stored = readList<Property>(ADMIN_STORAGE_KEYS.properties);

@@ -64,7 +64,7 @@ export function GlobalSearch() {
     return allProjects.filter((p) => p.name.toLowerCase().includes(normalizedQuery));
   }, [allProjects, normalizedQuery]);
 
-  // Algoritmo de búsqueda para Propiedades y Unidades
+  // Algoritmo de búsqueda para Activos y Unidades
   const filteredProperties = useMemo(() => {
     if (!normalizedQuery) return [];
     return allProperties.filter((p) => {
@@ -115,7 +115,7 @@ export function GlobalSearch() {
         aria-label="Abrir búsqueda global"
       >
         <Search className="h-4 w-4 sm:h-4.5 sm:w-4.5 shrink-0 text-slate-400" aria-hidden="true" />
-        <span className="truncate"><span className="sm:hidden">Buscar…</span><span className="hidden sm:inline">Buscar leads, propiedades o proyectos…</span></span>
+        <span className="truncate"><span className="sm:hidden">Buscar…</span><span className="hidden sm:inline">Buscar leads, activos o proyectos…</span></span>
       </button>
 
       <Dialog
@@ -131,7 +131,7 @@ export function GlobalSearch() {
               <div className="mx-auto w-full max-w-[min(94vw,2800px)]">
                 <DialogTitle className="pr-14 text-2xl font-bold text-slate-950 dark:text-slate-100 sm:text-3xl">Buscar en Bellomo</DialogTitle>
                 <DialogDescription className="mt-2 text-base text-slate-600 dark:text-slate-400">
-                  Encontrá leads, propiedades, unidades o proyectos desde un único lugar.
+                  Encontrá leads, activos, unidades o proyectos desde un único lugar.
                 </DialogDescription>
                 <InputGroup className="mt-5 h-14 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm sm:h-16">
                   <InputGroupAddon>
@@ -141,7 +141,7 @@ export function GlobalSearch() {
                     autoFocus
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    aria-label="Buscar leads, propiedades o proyectos"
+                    aria-label="Buscar leads, activos o proyectos"
                     placeholder="Nombre, teléfono o inmueble…"
                     className="border-none text-base focus-visible:ring-0 sm:text-lg dark:text-slate-100"
                   />
@@ -158,7 +158,7 @@ export function GlobalSearch() {
                     </div>
                     <p className="mt-5 text-xl font-bold text-slate-900 dark:text-slate-100 sm:text-2xl">¿Qué necesitás encontrar?</p>
                     <p className="mt-2 max-w-2xl text-base leading-7 text-slate-500 dark:text-slate-400">
-                      Los resultados aparecerán organizados por proyectos, propiedades e interesados.
+                      Los resultados aparecerán organizados por proyectos, activos e interesados.
                     </p>
                   </div>
                 ) : hasSearchResults ? (
@@ -189,7 +189,7 @@ export function GlobalSearch() {
                     </section>}
 
                     {filteredProperties.length > 0 && <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card p-4 shadow-sm sm:p-6">
-                      <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">Propiedades e inventario</h2>
+                      <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">Activos e inventario</h2>
                       <div className="space-y-2">
                         {filteredProperties.map((property) => (
                           <SearchPropertyItem
@@ -199,7 +199,7 @@ export function GlobalSearch() {
                             onSelect={(id) => handleSearchSelect("property", id)}
                           />
                         ))}
-                        {filteredProperties.length === 0 && <p className="py-8 text-center text-base text-slate-500 dark:text-slate-400">Sin propiedades coincidentes.</p>}
+                        {filteredProperties.length === 0 && <p className="py-8 text-center text-base text-slate-500 dark:text-slate-400">Sin activos coincidentes.</p>}
 
                       </div>
                     </section>}

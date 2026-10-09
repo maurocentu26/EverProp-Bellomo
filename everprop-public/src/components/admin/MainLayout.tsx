@@ -37,6 +37,10 @@ export default function MainLayout({ children }: Props) {
     }, [currentUser, invalidateSession, isLoaded, router]);
 
     useEffect(() => {
+        if (currentUser?.role === "ROTATOR" && !["/admin/leads", "/admin/leads/new"].includes(pathname)) router.replace("/admin/leads");
+    }, [currentUser, pathname, router]);
+
+    useEffect(() => {
         if (!currentUserId) return;
 
         try {
@@ -53,6 +57,12 @@ export default function MainLayout({ children }: Props) {
         } catch (e) {
             console.error(e);
         }
+    }, [currentUserId]);
+
+    // Installable app + offline notice: same script and scope as push, so this reuses that registration.
+    useEffect(() => {
+        if (!currentUserId || !("serviceWorker" in navigator)) return;
+        void navigator.serviceWorker.register("/notifications-sw.js").catch(() => {});
     }, [currentUserId]);
 
     useEffect(() => {
@@ -127,7 +137,7 @@ export default function MainLayout({ children }: Props) {
                                     </div>
                                 )}
 
-                                {children}
+                                {currentUser.role === "ROTATOR" && !["/admin/leads", "/admin/leads/new"].includes(pathname) ? <p>Abriendo asignación de leads…</p> : children}
                             </div>
                         </main>
                     </div>

@@ -94,7 +94,19 @@ export default function CalendarAgenda() {
     if (!isMockDataMode) {
       try {
         const visits = await loadEverpropVisits();
-        setItems(isAdmin && globalSelectedAgentId !== "all" ? visits.filter(v => v.agentId === globalSelectedAgentId) : visits);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        let filteredVisits = isAdmin && globalSelectedAgentId !== "all" ? visits.filter(v => v.agentId === globalSelectedAgentId) : visits;
+
+        filteredVisits = filteredVisits.map(v => {
+          if (v.status === 'scheduled' && new Date(v.scheduledAt) < now) {
+            return { ...v, status: 'cancelled' };
+          }
+          return v;
+        });
+
+        setItems(filteredVisits);
         setLoadError("");
       } catch {
         setLoadError("No pudimos actualizar la agenda. Reintentaremos automáticamente.");
@@ -176,7 +188,14 @@ export default function CalendarAgenda() {
       merged = merged.filter((v) => v.agentId === globalSelectedAgentId);
     }
 
-    setItems(merged);
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    setItems(merged.map(v => {
+      if (v.status === 'scheduled' && new Date(v.scheduledAt) < now) {
+        return { ...v, status: 'cancelled' };
+      }
+      return v;
+    }));
     setIsLoading(false);
   }, [isAdvisor, isAdmin, user, globalSelectedAgentId]);
 
@@ -456,7 +475,7 @@ export default function CalendarAgenda() {
                   {selectedDayItems.map((ev) => {
                     const time = new Date(ev.scheduledAt).toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
                     const wa = ev.phone
-                      ? `https://wa.me/${ev.phone.replace(/[^0-9]/g, "")}?text=Hola%20${encodeURIComponent(ev.leadName)}%2C%20recordamos%20tu%20visita%20de%20hoy.`
+                      ? `https://wa.me/${(ev.phone.replace(/[^0-9]/g, "").startsWith("54") ? ev.phone.replace(/[^0-9]/g, "") : "549" + ev.phone.replace(/[^0-9]/g, ""))}?text=Hola%20${encodeURIComponent(ev.leadName)}%2C%20recordamos%20tu%20visita%20de%20hoy.`
                       : null;
 
                     return (
@@ -663,7 +682,8 @@ export default function CalendarAgenda() {
                   hour: "2-digit",
                   minute: "2-digit",
                 });
-                const cleanPhone = ev.phone?.replace(/[^0-9]/g, "");
+                let cleanPhone = ev.phone?.replace(/[^0-9]/g, "");
+                if (cleanPhone && !cleanPhone.startsWith("54")) cleanPhone = "549" + cleanPhone;
 
                 return (
                   <div

@@ -189,7 +189,7 @@ export default function GlobalInventoryMatrixPage() {
         ) : Object.keys(groupedByProject).length > 0 ? (
           <div className="space-y-12">
             {Object.entries(groupedByProject).map(([pid, props]) => {
-              const proj = pid === "unassigned" ? { name: "Propiedades Sin Desarrollo" } : projects.find(p => p.id === pid);
+              const proj = pid === "unassigned" ? { name: "Activos Sin Desarrollo" } : projects.find(p => p.id === pid);
               if (!proj) return null;
               
               return (

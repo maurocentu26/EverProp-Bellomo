@@ -77,25 +77,18 @@ const CATEGORIES: AssetCategoryOption[] = [
     color: "text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100/70 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60",
   },
   {
-    id: "local",
-    title: "Locales",
-    subtitle: "Locales comerciales y espacios gastronómicos",
-    icon: Store,
-    color: "text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100/70 dark:text-indigo-400 dark:border-indigo-800 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60",
-  },
-  {
-    id: "cochera",
-    title: "Cocheras",
-    subtitle: "Espacios de estacionamiento por piso o número",
-    icon: Car,
-    color: "text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100/70 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-950/60",
-  },
-  {
-    id: "tradicional",
-    title: "Inmobiliaria tradicional",
-    subtitle: "Casas, departamentos, reventa y alquileres",
+    id: "edificio",
+    title: "Edificios",
+    subtitle: "Departamentos, casas y dúplex",
     icon: Home,
     color: "text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100/70 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-950/60",
+  },
+  {
+    id: "comercial",
+    title: "Comerciales (cochera/locales)",
+    subtitle: "Espacios de estacionamiento, locales y oficinas",
+    icon: Store,
+    color: "text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100/70 dark:text-indigo-400 dark:border-indigo-800 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60",
   },
 ];
 
@@ -118,6 +111,9 @@ const formSchema = z
     stage: z.enum(["new", "contacted", "visiting", "negotiation", "closing", "discarded"]),
     notes: z.string().trim().max(5000, "Las notas no pueden superar 5000 caracteres.").optional().or(z.literal("")),
     agentId: z.string().optional(),
+    priority: z.enum(["NORMAL", "LOW", "HIGH", "URGENT"]).optional(),
+    budget: z.string().optional().refine(value => !value || (Number.isFinite(Number(value)) && Number(value) >= 0), "Ingresá un presupuesto válido."),
+    currency: z.enum(["USD", "ARS"]).optional(),
   })
   .refine(
     (data) => Boolean(data.email?.trim() || data.phone?.trim()),
@@ -139,6 +135,7 @@ type Props = {
 export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing = false }: Props) {
   const router = useRouter();
   const { user, isAdvisor } = useCurrentSession();
+  const isRotator = user?.role === "ROTATOR";
   const [loadError, setLoadError] = useState("");
   const [activeLead, setActiveLead] = useState<Lead | null>(initialLead ?? null);
   const [isLoadingLead, setIsLoadingLead] = useState(Boolean(leadId && !initialLead));
@@ -185,6 +182,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
   useEffect(() => {
     let active = true;
+    if (isRotator) return;
     async function loadData() {
       if (!isMockDataMode) {
         try {
@@ -206,7 +204,30 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     return () => {
       active = false;
     };
-  }, [companyId]);
+  }, [companyId, isRotator]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadProjectProps() {
+      if (!selectedProjectId || isMockDataMode) return;
+      try {
+        const { loadEverpropPropertiesByProject } = await import("@/lib/everprop-api");
+        const props = await loadEverpropPropertiesByProject(selectedProjectId);
+        console.log("Loaded properties for project", selectedProjectId, "count:", props.length);
+        if (!active) return;
+        setAllProperties(prev => {
+          const map = new Map(prev.map(p => [p.id, p]));
+          props.forEach(p => map.set(p.id, p));
+          console.log("Updated allProperties, new size:", map.size);
+          return Array.from(map.values());
+        });
+      } catch (e) {
+        console.error("Failed to load project properties", e);
+      }
+    }
+    void loadProjectProps();
+    return () => { active = false; };
+  }, [selectedProjectId]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -216,6 +237,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       email: "",
       phone: "",
       stage: "new",
+      priority: "NORMAL",
+      budget: "",
+      currency: "USD",
       notes: "",
       agentId: isAdvisor ? user?.id : "",
     },
@@ -279,26 +303,21 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   }, [isEditing, activeLead, watchedPhone, watchedEmail]);
 
   const availableProjects = useMemo(() => {
-    const eligibleProps = allProperties.filter(
-      (p) => (!p.status || p.status === "available")
-    );
     if (!selectedCategory) {
-      return allProjects.filter((project) =>
-        eligibleProps.some((p) => p.projectId === project.id)
-      );
+      return allProjects;
     }
-    return allProjects.filter((project) =>
-      eligibleProps.some(
-        (p) => p.projectId === project.id && inferLeadInterestCategory(p) === selectedCategory
-      )
-    );
-  }, [allProjects, allProperties, selectedCategory]);
+    return allProjects.filter((project) => {
+      if (selectedCategory === "loteo") return project.type === "land_development";
+      if (selectedCategory === "edificio") return project.type === "building";
+      if (selectedCategory === "comercial") return project.type === "commercial";
+      return true;
+    });
+  }, [allProjects, selectedCategory]);
 
   const availableAssets = useMemo(() => {
     const query = assetSearchQuery.toLowerCase().trim();
 
     return allProperties
-      .filter((property) => (!property.status || property.status === "available"))
       .filter((property) => !selectedCategory || inferLeadInterestCategory(property) === selectedCategory)
       .filter((property) => !selectedProjectId || property.projectId === selectedProjectId)
       .filter((property) => {
@@ -317,11 +336,15 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     setSelectedCategory(nextCategory);
 
     if (selectedProjectId && nextCategory) {
-      const projectHasMatchingProps = allProperties.some(
-        (p) => (!p.status || p.status === "available") && p.projectId === selectedProjectId && inferLeadInterestCategory(p) === nextCategory
-      );
-      if (!projectHasMatchingProps) {
-        setSelectedProjectId("");
+      const project = allProjects.find((p) => p.id === selectedProjectId);
+      if (project) {
+        let matches = true;
+        if (nextCategory === "loteo" && project.type !== "land_development") matches = false;
+        if (nextCategory === "edificio" && project.type !== "building") matches = false;
+        if (nextCategory === "comercial" && project.type !== "commercial") matches = false;
+        if (!matches) {
+          setSelectedProjectId("");
+        }
       }
     }
 
@@ -352,6 +375,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       email: "",
       phone: "",
       stage: "new",
+      priority: "NORMAL",
+      budget: "",
+      currency: "USD",
       notes: "",
       agentId: isAdvisor ? user?.id : "",
     });
@@ -491,10 +517,11 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           origin: nextLead.origin,
           email: nextLead.email,
           phone: nextLead.phone,
-          stage: stageApiMap[nextLead.stage] || "NEW",
+          stage: isRotator ? "NEW" : stageApiMap[nextLead.stage] || "NEW",
+          ...(isRotator ? { priority: data.priority, budget: data.budget ? Number(data.budget) : undefined, currency: data.currency } : {}),
           notes: nextLead.notes,
           agentId: nextLead.agentId,
-          propertyId: selectedAsset?.id || null,
+          propertyId: isRotator ? null : selectedAsset?.id || null,
         });
         nextLead.id = created.id;
       } catch (e: any) {
@@ -567,8 +594,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               </h1>
               <CardDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {isEditing
-                  ? "Actualizá los datos de contacto, requerimientos comerciales y propiedades de interés del prospecto."
-                  : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
+                  ? "Actualizá los datos de contacto, requerimientos comerciales y activos de interés del prospecto."
+                  : isRotator ? "Registrá sus datos de contacto y asigná un asesor si corresponde." : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
               </CardDescription>
             </div>
           </div>
@@ -727,6 +754,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                         <select
                           {...field}
                           id="lead-stage"
+                          disabled={isRotator}
                           className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                         >
                           <option value="new">Nuevo</option>
@@ -741,6 +769,24 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     )}
                   />
                 </div>
+
+                {isRotator && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field>
+                    <FieldLabel htmlFor="lead-priority">Prioridad</FieldLabel>
+                    <select id="lead-priority" {...form.register("priority")} className="h-10 rounded-lg border bg-background px-3">
+                      <option value="LOW">Baja</option><option value="NORMAL">Normal</option><option value="HIGH">Alta</option><option value="URGENT">Urgente</option>
+                    </select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="lead-budget">Presupuesto</FieldLabel>
+                    <Input id="lead-budget" type="number" min="0" step="0.01" {...form.register("budget")} aria-invalid={Boolean(form.formState.errors.budget)} />
+                    {form.formState.errors.budget && <FieldError errors={[form.formState.errors.budget]} />}
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="lead-currency">Moneda</FieldLabel>
+                    <select id="lead-currency" {...form.register("currency")} className="h-10 rounded-lg border bg-background px-3"><option value="USD">USD</option><option value="ARS">ARS</option></select>
+                  </Field>
+                </div>}
 
                 <Controller
                   name="notes"
@@ -789,6 +835,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               </section>
 
               {/* ── Seccion 2: Interes inmobiliario (Opcional) ── */}
+              {!isRotator && (
               <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-interest-data">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
@@ -855,7 +902,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
                 <Field>
                   <FieldLabel htmlFor="lead-property-search" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Propiedad específica
+                    Activo específica
                   </FieldLabel>
 
                   {selectedAsset && (
@@ -875,7 +922,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                         size="icon"
                         onClick={() => setSelectedAsset(null)}
                         className="h-7 w-7 shrink-0 text-slate-500 hover:bg-muted hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                        aria-label="Quitar propiedad seleccionada"
+                        aria-label="Quitar activo seleccionada"
                       >
                         <X size={14} aria-hidden="true" />
                       </Button>
@@ -925,12 +972,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                       })
                     ) : (
                       <p className="rounded-lg border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
-                        No se encontraron propiedades con esos filtros.
+                        No se encontraron activos con esos filtros.
                       </p>
                     )}
                   </div>
                 </Field>
               </section>
+              )}
             </div>
           </CardContent>
 

@@ -23,7 +23,7 @@ export async function materialSession(request: Request) {
   const me = await read("auth/me");
   const user = me.data;
   if (user?.status !== "ACTIVE" || user?.tenant?.slug !== "bellomo") throw new MaterialError(403, "Material no disponible para esta cuenta.");
-  if (!["SUPER_ADMIN","TENANT_ADMIN","SALES_MANAGER","SALES_ADVISOR","INVENTORY_MANAGER","READ_ONLY"].includes(user.role)) throw new MaterialError(403, "Tu perfil no tiene acceso a esta biblioteca.");
+  if (!["SUPER_ADMIN","TENANT_ADMIN","SALES_MANAGER","SALES_ADVISOR","READ_ONLY"].includes(user.role)) throw new MaterialError(403, "Tu perfil no tiene acceso a esta biblioteca.");
   const projects: Array<{ public_id: string; name: string }> = [];
   for (let page = 1; page <= 100; page++) {
     const result = await read("admin/projects?per_page=100&page=" + page);

@@ -166,7 +166,7 @@ export default function NextVisitCountdown() {
                 <MapPin className="h-3.5 w-3.5 text-slate-500" />
               </span>
               <p className="text-sm font-semibold text-slate-700 leading-tight">
-                {nextVisit.propertyTitle || "Propiedad sin título"}
+                {nextVisit.propertyTitle || "Activo sin título"}
               </p>
             </div>
 

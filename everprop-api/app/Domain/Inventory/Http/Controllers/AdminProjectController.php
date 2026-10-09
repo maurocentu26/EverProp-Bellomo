@@ -2,6 +2,7 @@
 
 namespace App\Domain\Inventory\Http\Controllers;
 
+use App\Domain\Inventory\Enums\ProjectStatus;
 use App\Domain\Inventory\Http\Requests\ProjectIndexRequest;
 use App\Domain\Inventory\Http\Requests\PublishProjectRequest;
 use App\Domain\Inventory\Http\Requests\StoreProjectRequest;
@@ -43,9 +44,16 @@ final class AdminProjectController extends InventoryController
 
     public function store(StoreProjectRequest $request): JsonResponse
     {
-        $this->authorizeAction($this->policy->create($this->user($request)));
+        $user = $this->user($request);
+        $this->authorizeAction($this->policy->create($user));
+        $payload = $request->validated();
 
-        $project = Project::query()->create($request->validated());
+        // A public project status exposes its AVAILABLE units: that is publishing.
+        if (in_array($payload['status'] ?? null, ProjectStatus::publicValues(), true)) {
+            $this->authorizeAction($this->policy->publishNew($user));
+        }
+
+        $project = Project::query()->create($payload);
         $project->refresh()->loadCount('properties');
 
         return (new ProjectResource($project))->response()->setStatusCode(201);
@@ -62,9 +70,16 @@ final class AdminProjectController extends InventoryController
     public function update(UpdateProjectRequest $request, string $project): ProjectResource
     {
         $model = $this->findProject($project);
-        $this->authorizeAction($this->policy->update($this->user($request), $model));
+        $user = $this->user($request);
+        $this->authorizeAction($this->policy->update($user, $model));
+        $payload = $request->validated();
 
-        $model->fill($request->validated())->save();
+        if (in_array($payload['status'] ?? null, ProjectStatus::publicValues(), true)
+            && ! in_array($model->getRawOriginal('status'), ProjectStatus::publicValues(), true)) {
+            $this->authorizeAction($this->policy->publish($user, $model));
+        }
+
+        $model->fill($payload)->save();
 
         return new ProjectResource($model->refresh()->loadCount('properties'));
     }

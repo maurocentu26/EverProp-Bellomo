@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Building2, CircleAlert, CircleCheck, ClipboardCheck, Edit3, ExternalLink, Layers3, Plus, StickyNote, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +42,7 @@ import { isCommercialContact } from "@/lib/lead-follow-up";
 import { isMockDataMode } from "@/lib/data-mode";
 import {
   loadEverpropLeads,
+  deleteEverpropLead,
   loadEverpropLeadById,
   loadEverpropCatalog,
   updateEverpropLead,
@@ -72,9 +74,8 @@ import { LeadFinancingAgreements } from "@/components/admin/LeadFinancingAgreeme
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
   loteo: "Loteos",
-  local: "Locales",
-  cochera: "Cocheras",
-  tradicional: "Inmobiliaria tradicional",
+  edificio: "Edificios",
+  comercial: "Comerciales (cochera/locales)",
 };
 
 const STAGE_LABELS: Record<string, string> = {
@@ -98,6 +99,7 @@ type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInter
 
 export default function LeadDetailView({ leadId }: { leadId: string }) {
   const { currentUser } = useAuth();
+  const router = useRouter();
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [lead, setLead] = useState<Lead | null>(null);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
@@ -109,6 +111,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [interestEditor, setInterestEditor] = useState<InterestEditorState>(null);
   const [interestToDelete, setInterestToDelete] = useState<LeadInterest | null>(null);
+  const [leadToDelete, setLeadToDelete] = useState(false);
   const [stageUpdateModalOpen, setStageUpdateModalOpen] = useState(false);
 
   useEffect(() => {
@@ -201,6 +204,24 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     toast.success("Ficha del cliente actualizada");
   }
 
+  async function handleDeleteLead() {
+    if (!lead) return;
+    if (!isMockDataMode) {
+      try {
+        await deleteEverpropLead(lead.id);
+        toast.success("Lead eliminado con éxito.");
+        router.push("/admin/leads");
+      } catch (e: any) {
+        toast.error("Error al eliminar lead: " + (e.message || "Error desconocido"));
+      }
+      return;
+    }
+    const nextLeads = allLeads.filter((c) => c.id !== lead.id);
+    saveLeadList(nextLeads, lead.companyId);
+    toast.success("Lead eliminado.");
+    router.push("/admin/leads");
+  }
+
   async function handleSaveInterest(nextInterest: LeadInterest) {
     if (!lead || nextInterest.companyId !== lead.companyId) {
       toast.error("El interés no pertenece a la empresa activa.");
@@ -213,7 +234,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
 
     const targetPropertyId = nextInterest.unitId || nextInterest.propertyId;
     if (!isMockDataMode && !targetPropertyId) {
-      toast.error("Seleccioná una propiedad o unidad para guardar el interés.");
+      toast.error("Seleccioná una activo o unidad para guardar el interés.");
       return;
     }
     if (!isMockDataMode && targetPropertyId) {
@@ -303,7 +324,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     setAllProperties(nextProperties);
     saveLeadList(nextLeads, lead.companyId);
     savePropertyList(nextProperties, lead.companyId);
-    toast.success("Visita agendada y sincronizada con la propiedad");
+    toast.success("Visita agendada y sincronizada con el activo");
   }
 
   async function handleReassignAgentConfirmed(agentId?: string) {
@@ -464,7 +485,8 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     : undefined;
   const assignedAgent = getAdvisor(lead.agentId, lead.agentName);
 
-  const cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
+  let cleanPhone = lead.phone ? lead.phone.replace(/[^0-9]/g, "") : "";
+  if (cleanPhone && !cleanPhone.startsWith("54")) cleanPhone = "549" + cleanPhone;
 
   return (
     <div className="mx-auto w-full max-w-[120rem] space-y-5 pb-12">
@@ -520,6 +542,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             <Link href={`/admin/leads/${lead.id}/edit`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
               <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
             </Link>
+            {currentUser?.role === "ADMIN" && (
+              <Button
+                variant="outline"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border-rose-200 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                onClick={() => setLeadToDelete(true)}
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" /> Eliminar cliente
+              </Button>
+            )}
           </section>
 
           {/* Assigned Advisor Card */}
@@ -636,13 +667,23 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
 
           {/* Financing Agreements & Installment Tracking */}
-          {FINAL_DELIVERY_ENABLED && <LeadFinancingAgreements
-            leadId={lead.id}
-            leadName={lead.name}
-            leadPhone={lead.phone}
-            companyId={lead.companyId}
-            advisorId={lead.agentId}
-          />}
+          {FINAL_DELIVERY_ENABLED && (
+            <div id="financing-agreements">
+              <LeadFinancingAgreements
+                leadId={lead.id}
+                leadName={lead.name}
+                leadPhone={lead.phone}
+                companyId={lead.companyId}
+                advisorId={lead.agentId}
+                leadProjects={Array.from(new Set(interests.map(i => i.projectId).filter(Boolean))).map(id => ({ id: id as string, title: projectById.get(id as string)?.name || "Proyecto" }))}
+                leadAssets={interests.map(i => ({ id: i.propertyId || i.id, title: i.propertyTitle || propertyById.get(i.propertyId || "")?.title || "Activo", projectId: i.projectId })).filter(a => a.title)}
+                onScrollToInterests={() => {
+                  const el = document.getElementById("lead-interests-title");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+              />
+            </div>
+          )}
 
           {/* Interests Section */}
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-interests-title">
@@ -650,7 +691,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Calificación comercial</p>
                 <h2 id="lead-interests-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">Intereses independientes</h2>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Cada ficha conserva su propio proyecto, propiedad, unidad, preferencias y notas.</p>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Cada ficha conserva su propio proyecto, activo, unidad, preferencias y notas.</p>
               </div>
               <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
                 <Plus className="size-3.5" aria-hidden="true" /> Agregar interés
@@ -661,7 +702,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               <div className="mt-5 flex min-h-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-6 text-center">
                 <Layers3 className="size-8 text-slate-400" aria-hidden="true" />
                 <h3 className="mt-3 text-base font-bold text-slate-950 dark:text-slate-100">Todavía no hay intereses cargados</h3>
-                <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">Seleccioná una propiedad o unidad para registrar el interés del cliente.</p>
+                <p className="mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">Seleccioná una activo o unidad para registrar el interés del cliente.</p>
               </div>
             ) : (
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -683,7 +724,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                       </div>
                       <dl className="mt-3.5 space-y-2 text-xs">
                         <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Proyecto</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{project?.name || "Sin informar"}</dd></div>
-                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Propiedad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Activo</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
                         <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Unidad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
                       </dl>
                       <div className="mt-3.5 space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3 text-xs">
@@ -761,7 +802,21 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       <Dialog open={Boolean(interestToDelete)} onOpenChange={(open) => !open && setInterestToDelete(null)}>
         <DialogContent className="sm:max-w-md dark:border-slate-800 dark:bg-slate-900"><DialogHeader><DialogTitle className="dark:text-slate-100">Eliminar este interés</DialogTitle><DialogDescription className="dark:text-slate-400">Se quitará solamente esta ficha. El cliente y sus demás intereses no serán eliminados.</DialogDescription></DialogHeader><DialogFooter className="mt-4 gap-2"><Button variant="outline" onClick={() => setInterestToDelete(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button><Button variant="destructive" onClick={handleDeleteInterest}>Eliminar interés</Button></DialogFooter></DialogContent>
       </Dialog>
+
+      <Dialog open={leadToDelete} onOpenChange={(open) => !open && setLeadToDelete(false)}>
+        <DialogContent className="sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="dark:text-slate-100">Eliminar este cliente</DialogTitle>
+            <DialogDescription className="dark:text-slate-400">
+              ¿Estás seguro de que deseás eliminar este lead? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 gap-2">
+            <Button variant="outline" onClick={() => setLeadToDelete(false)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteLead}>Eliminar cliente</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

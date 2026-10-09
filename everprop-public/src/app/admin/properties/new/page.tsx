@@ -41,7 +41,7 @@ export default function NewPropertyPage() {
           Acceso Restringido
         </h1>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Tu rol de asesor comercial no tiene permisos para dar de alta propiedades o unidades en el inventario. Redirigiendo al Catálogo de Propiedades...
+          Tu rol de asesor comercial no tiene permisos para dar de alta activos o unidades en el inventario. Redirigiendo al Catálogo de Propiedades...
         </p>
         <div className="mt-6">
           <Button variant="outline" className="gap-2" nativeButton={false} role="link" render={<Link href="/admin/properties" />}>

@@ -12,7 +12,7 @@ import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
-import { clearAllNotifications, fetchNotifications, isNotificationForUser, markAllNotificationsAsRead, markNotificationAsRead, requestDesktopNotificationPermission, showDesktopNotification, type AppNotification } from "@/lib/notifications";
+import { clearAllNotifications, fetchNotifications, isNotificationForUser, markAllNotificationsAsRead, markNotificationAsRead, showDesktopNotification, type AppNotification } from "@/lib/notifications";
 import { apiFetch } from "@/lib/everprop-api";
 import { isMockDataMode } from "@/lib/data-mode";
 import { cn } from "@/lib/utils";
@@ -245,7 +245,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                 className="hidden items-center gap-2 xl:inline-flex"
                 onClick={() => router.push("/admin/properties/new")}
               >
-                <Plus className="h-4 w-4" /> Propiedad
+                <Plus className="h-4 w-4" /> Activo
               </Button>
             )}
             {!isEngineer && (
@@ -308,15 +308,11 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                       )}
                       <button
                         type="button"
-                        onClick={async () => {
-                          const p = await requestDesktopNotificationPermission();
-                          if (p === 'granted') toast.success("Notificaciones de escritorio activadas");
-                          else if (p === 'denied') toast.error("Notificaciones bloqueadas por el navegador");
-                        }}
+                        // One flow for device alerts (Settings): a bare browser permission is not an activation.
+                        onClick={() => { setIsNotificationsOpen(false); router.push("/admin/settings#avisos-dispositivo"); }}
                         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-muted"
-                        title="Activar notificaciones de escritorio"
                       >
-                        <Bell className="h-3.5 w-3.5" /> Activar avisos
+                        <Bell className="h-3.5 w-3.5" /> Avisos con el panel cerrado
                       </button>
                       <button type="button" aria-pressed={soundEnabled} onClick={() => {
                         const enabled = !soundEnabled;
