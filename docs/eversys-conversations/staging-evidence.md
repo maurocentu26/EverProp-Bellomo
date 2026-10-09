@@ -1,5 +1,25 @@
 # Bellomito staging — evidencia 2026-10-02
 
+## Auditoría de despliegue y PWA — 2026-10-07, 22:49 ART
+
+### Ampliación de la auditoría (misma fecha, posterior a las 22:49 ART)
+
+- `everprop:production-check --connections --webpush` en API: salida OK y código de salida 0. En worker y scheduler: 27 comprobaciones OK y 0 FAIL en cada servicio. Solo diagnóstico; no se ejecutaron jobs ni se reiniciaron servicios.
+- Configuración efectiva en API, worker y scheduler: `conversations.ai_enabled=false`, `conversations.copilot_enabled=false`, `agent.llm_provider=disabled`, `services.meta.send_enabled=false`, `services.meta.onboarding_enabled=false`. Una primera consulta del proveedor usó una clave de configuración incorrecta y devolvió null; se corrigió la consulta, no la configuración.
+- Consulta de lectura en API: `jobs=0`, `failed_jobs=0`. No se leyeron ni imprimieron mensajes, credenciales o endpoints de suscripción.
+- `/icon/512` y `/icon/maskable`: 200. `/admin`: shell 200 y CSP `frame-ancestors 'none'`; widget canónico: 200 con `frame-ancestors 'self' https://panel-staging-staging-62ec.up.railway.app`. Endpoints privados `/api/v1/auth/me` y `/api/v1/admin/conversations`: 401 sin sesión.
+- Webhook WhatsApp: GET sin challenge/token devuelve 403; confirma rechazo de una solicitud no autenticada, NO confirma configuración en Meta, challenge correcto ni entrega.
+- Navegador del panel redirige `/admin/conversaciones` a `/login`: sin sesión disponible. No se inició un recorrido S6 ni se envió un mensaje; S6 sigue NO verificado. No se sustituyó el aislamiento de visitante y asesor por dos pestañas con almacenamiento compartido.
+- No se comprobaron restore de backup, persistencia de adjuntos tras redeploy, entrega push física ni recuperación del worker con envío en cola. No se declara todo staging validado por tener checks de configuración verdes.
+
+- Solo proyecto `bellomito-staging`, entorno `staging`, IDs indicados abajo. No se creó otro staging ni se cambió el dominio del panel.
+- Git local y remoto `origin/chore/agentic-setup`: `16d75b670f5cdbc5373d3b86c3c2e6d4805a23a6`. Sin commits pendientes de publicar al iniciar esta auditoría; `.claude/launch.json` sin seguimiento se preservó.
+- Railway: panel, API, worker y scheduler muestran el mismo commit completo y rama `chore/agentic-setup`, despliegues exitosos y activos, iniciados el 2026-10-07 a las 17:50 ART. Panel deployment `f037c14a-a01f-48d0-9b52-f15f811fed90`; API `833d993a-371c-4abd-9b50-b747a779fb63`; worker `1b2cad7e-1821-484b-9d40-87eaf10034ca`. El SHA se comprobó en el enlace GitHub de Details de cada servicio, no se dedujo solo de la salud HTTP.
+- PWA canónica: `https://panel-staging-staging-62ec.up.railway.app`. Manifest 200, `id=/admin`, `start_url=/admin/conversaciones`, `scope=/`, `display=standalone`. Service worker `/notifications-sw.js`, ícono `/icon/192` y `/healthz`: 200. API `/readyz`: 200, `status=ready`.
+- CI: API, web, guard y evals exitosos para `078f1fd9504ca4cb0e31de4272cbb17cc8113dd0`; evals exitosos para `16d75b6` (último commit, cambios de dataset). No se afirma que las cuatro suites se hayan vuelto a ejecutar para ese SHA.
+- No se ejecutaron los recorridos S6, consultas SQL, entrega push física, ni comprobaciones de conexiones dentro de contenedores en esta tanda. S6 sigue sin verificarse. La comprobación del manifest no verifica qué versión está cacheada en el iPhone.
+- Sin cambios en producción, `main`, Vercel, variables de IA/Meta, base o servicios. No se inició Docker ni se ejecutó un nuevo deploy. Este registro documental no equivale a activar WhatsApp ni presentar App Review.
+
 Producción Bellomo y `main` están fuera de alcance. No se modificaron. No se cambiaron proyectos ni variables de Vercel.
 
 ## Destino independiente
