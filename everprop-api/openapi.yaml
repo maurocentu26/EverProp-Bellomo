@@ -2017,6 +2017,61 @@
                 }
             }
         },
+        "/api/v1/admin/collections/billing-export": {
+            "get": {
+                "tags": ["Collections"],
+                "operationId": "exportBillingPayments",
+                "summary": "Export payment history for reconciliation with an external billing system",
+                "description": "Tenant-scoped, admin/manager only. Includes reversals. This is not invoice issuance or proof of invoicing. One snapshot, maximum 5000 rows; narrow the period if exceeded. Response is no-store.",
+                "security": [{"cookieAuth": []}],
+                "parameters": [
+                    {"name": "paidFrom", "in": "query", "required": true, "schema": {"type": "string", "format": "date"}},
+                    {"name": "paidTo", "in": "query", "required": true, "schema": {"type": "string", "format": "date"}}
+                ],
+                "responses": {
+                    "200": {"description": "JSON data array of ledger payments, client/unit IDs and reversals; meta includes period, count, purpose and export time"},
+                    "401": {"description": "Authentication required"},
+                    "403": {"description": "Only tenant administrators and sales managers may export"},
+                    "422": {"description": "Invalid dates, tenant override or more than 5000 records"}
+                }
+            }
+        },
+        "/api/v1/admin/installments/{installment}/email-preview": {
+            "get": {
+                "tags": ["Collections"],
+                "operationId": "previewCollectionEmail",
+                "summary": "Prepare a read-only client email using the current ledger balance",
+                "description": "Never sends email. Tenant comes from authenticated context; advisors only access assigned leads. READ_ONLY cannot prepare communications. Response is no-store.",
+                "security": [{"cookieAuth": []}],
+                "parameters": [{"name": "installment", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}}],
+                "responses": {
+                    "200": {
+                        "description": "Preview including eligibility; an ineligible reminder is not deliverable",
+                        "content": {"application/json": {"schema": {
+                            "type": "object",
+                            "properties": {"data": {
+                                "type": "object",
+                                "properties": {
+                                    "eligible": {"type": "boolean"},
+                                    "reason": {"type": ["string", "null"]},
+                                    "recipient": {"type": ["string", "null"]},
+                                    "subject": {"type": "string"},
+                                    "body": {"type": "string"},
+                                    "amountRemaining": {"type": "string", "example": "60.00"},
+                                    "currency": {"type": "string", "enum": ["ARS", "USD"]},
+                                    "businessDate": {"type": "string", "format": "date"},
+                                    "sender": {"type": ["string", "null"]},
+                                    "deliveryEnabled": {"type": "boolean"}
+                                }
+                            }}
+                        }}}
+                    },
+                    "401": {"description": "Authentication required"},
+                    "403": {"description": "Role cannot prepare collection emails"},
+                    "404": {"description": "Outside tenant/advisor scope or deleted contact/lead"}
+                }
+            }
+        },
         "/api/v1/admin/installments/{installment}/payments": {
             "get": {
                 "tags": [

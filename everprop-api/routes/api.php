@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Collections\CollectionBillingController;
+use App\Domain\Collections\CollectionEmailController;
 use App\Domain\Collections\CollectionsController;
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
 use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
@@ -36,10 +38,12 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::post('/payment-agreements', [CollectionsController::class, 'store']);
         Route::get('/payment-agreements/{agreement}', [CollectionsController::class, 'show']);
         Route::get('/installments', [CollectionsController::class, 'installments']);
+        Route::get('/installments/{installment}/email-preview', [CollectionEmailController::class, 'preview']);
         Route::get('/installments/{installment}/payments', [CollectionsController::class, 'payments']);
         Route::post('/installments/{installment}/payments', [CollectionsController::class, 'pay']);
         Route::post('/payments/{payment}/reverse', [CollectionsController::class, 'reverse']);
         Route::get('/collections/summary', [CollectionsController::class, 'summary']);
+        Route::get('/collections/billing-export', [CollectionBillingController::class, 'export']);
         Route::get('/collections/leads', [CollectionsController::class, 'leads']);
         Route::apiResource('projects', AdminProjectController::class);
         Route::patch('/projects/{project}/publish', [AdminProjectController::class, 'publish'])
