@@ -83,6 +83,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PropertyFeature::class, PropertyFeaturePolicy::class);
         Gate::policy(PropertyMedia::class, PropertyMediaPolicy::class);
 
+        // Copilot drafts spend the tenant's model budget: own keys per tenant + advisor (not shared with other throttles).
+        RateLimiter::for('copilot', static fn (Request $request): array => [
+            Limit::perMinute((int) config('conversations.copilot_per_minute'))->by('copilot-min|'.$request->user()?->tenant_id.'|'.$request->user()?->id),
+            Limit::perDay((int) config('conversations.copilot_per_day'))->by('copilot-day|'.$request->user()?->tenant_id.'|'.$request->user()?->id),
+        ]);
+
         RateLimiter::for('login', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('security.login_rate_limit_per_minute', 5),
         )->by('login|'.$request->ip()));

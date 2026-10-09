@@ -18,6 +18,7 @@ use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Identity\Http\Controllers\WebPushController;
 use App\Domain\Identity\RotatorRoleBoundary;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
+use App\Domain\Integrations\Http\Controllers\WhatsAppConnectionController;
 use App\Domain\Inventory\Http\Controllers\AdminProjectController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyFeatureController;
@@ -79,11 +80,18 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'index'])->name('leads.follow-ups.index');
         Route::post('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'store'])->name('leads.follow-ups.store');
 
-        Route::get('/conversations', [AdminConversationController::class, 'index']);
+        Route::get('/conversations', [AdminConversationController::class, 'index'])->middleware('throttle:120,1');
         Route::get('/conversations/{conversation}/messages', [AdminConversationController::class, 'messages'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/takeover', [AdminConversationController::class, 'takeover'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resume', [AdminConversationController::class, 'resume'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/messages', [AdminConversationController::class, 'reply'])->whereUuid('conversation');
+        Route::post('/conversations/{conversation}/notes', [AdminConversationController::class, 'note'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::get('/conversations/{conversation}/templates', [AdminConversationController::class, 'templates'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::post('/conversations/{conversation}/template', [AdminConversationController::class, 'sendTemplate'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::post('/conversations/{conversation}/attachments', [AdminConversationController::class, 'attach'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::get('/conversations/{conversation}/media/{sequence}', [AdminConversationController::class, 'media'])->whereUuid('conversation')->whereNumber('sequence')->middleware('throttle:120,1');
+        Route::post('/conversations/{conversation}/lead', [AdminConversationController::class, 'lead'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::post('/conversations/{conversation}/suggestion', [AdminConversationController::class, 'suggest'])->whereUuid('conversation')->middleware('throttle:copilot');
         Route::post('/conversations/{conversation}/close', [AdminConversationController::class, 'close'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resolve-unknown', [AdminConversationController::class, 'resolveUnknown'])->whereUuid('conversation');
 
@@ -95,6 +103,11 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/visit-requests', [AdminVisitRequestController::class, 'index']);
         Route::post('/visit-requests/{visitRequest}/confirm', [AdminVisitRequestController::class, 'confirm'])->whereUuid('visitRequest');
         Route::post('/visit-requests/{visitRequest}/decline', [AdminVisitRequestController::class, 'decline'])->whereUuid('visitRequest');
+
+        Route::get('/integrations/whatsapp/config', [WhatsAppConnectionController::class, 'config']);
+        Route::post('/integrations/whatsapp/connect', [WhatsAppConnectionController::class, 'connect'])->middleware('throttle:6,1');
+        Route::post('/integrations/whatsapp/{integration}/disconnect', [WhatsAppConnectionController::class, 'disconnect'])
+            ->whereUuid('integration')->middleware('throttle:6,1');
 
         Route::get('/push/config', [WebPushController::class, 'config']);
         Route::post('/push/subscriptions', [WebPushController::class, 'store'])->middleware('throttle:30,1');
@@ -118,6 +131,7 @@ Route::middleware('tenant')->group(function (): void {
         Route::post('/public/chat/messages', [PublicChatController::class, 'send']);
     });
     Route::get('/public/chat/messages', [PublicChatController::class, 'messages'])->middleware('throttle:public-chat-read');
+    Route::get('/public/chat/media/{sequence}', [PublicChatController::class, 'media'])->whereNumber('sequence')->middleware('throttle:public-chat-read');
 
     Route::post('/public/leads', PublicLeadController::class)
         ->middleware('throttle:public-leads')

@@ -93,7 +93,8 @@ try {
   await item.click();
   await pp.getByText(text1).waitFor({ timeout: 15000 });
   await pp.getByRole("button", { name: /Tomar control/ }).click();
-  const reply = pp.getByPlaceholder("Escribí tu respuesta…");
+  // By its accessible label, not the placeholder (the WhatsApp-style composer changed it).
+  const reply = pp.getByLabel("Respuesta al cliente");
   await reply.waitFor({ timeout: 15000 });
   const answer = `Respuesta del asesor ${stamp}`;
   await reply.fill(answer); await pp.getByRole("button", { name: "Enviar respuesta" }).click();
@@ -122,6 +123,8 @@ try {
   check("U9", "móvil 390px: bandeja sin scroll horizontal; widget sin superponerse al botón", inboxOk && (await noOverflow(ms)) && !overlap && box.width <= 390);
 } catch (error) {
   check("UX", "el recorrido terminó sin errores", false, String(error?.message ?? error).split("\n")[0]);
+  // Every open page at the moment of failure, so a CI-only timeout shows which screen was stuck.
+  for (const [i, page] of browser.contexts().flatMap((c) => c.pages()).entries()) await Promise.resolve(shot(page, `fallo-${i}`)).catch(() => {});
 } finally {
   await browser.close();
   site.close();

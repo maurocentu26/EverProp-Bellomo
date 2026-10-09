@@ -322,3 +322,9 @@ body {
     @apply font-sans;
   }
 }
+
+/* iOS zooms in when a field under 16px gets focus, and the installed PWA keeps that zoom on the next launch
+   (the screen looked cut on both sides). Phones get 16px fields instead of disabling pinch-zoom. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: max(16px, 1em); }
+}

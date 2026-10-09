@@ -24,6 +24,12 @@ test('inbox filters map to the API query contract', () => {
   assert.equal(api.conversationQuery('unread'), '/api/v1/admin/conversations?unread=1');
 });
 
+test('search is trimmed, encoded, combined with the filter and skipped when too short', () => {
+  assert.equal(api.conversationQuery('waiting', '  lote 12B&x=1 '), '/api/v1/admin/conversations?state=WAITING_HUMAN&q=lote+12B%26x%3D1');
+  assert.equal(api.conversationQuery('all', ' a '), '/api/v1/admin/conversations');
+  assert.equal(api.conversationQuery('all', 'x'.repeat(150)), `/api/v1/admin/conversations?q=${'x'.repeat(100)}`);
+});
+
 test('an unconfirmed send is never presented as sent and inbound has no delivery label', () => {
   assert.equal(api.deliveryLabel({ direction: 'OUTBOUND', status: 'UNKNOWN' }), 'Envío sin confirmar');
   assert.equal(api.deliveryLabel({ direction: 'OUTBOUND', status: 'CANCELLED' }), 'Descartado');
@@ -36,6 +42,29 @@ test('reply reuses the draft idempotency key and ids are URL-encoded', async () 
   const call = calls.at(-1);
   assert.equal(call.path, '/api/v1/admin/conversations/abc%2F../messages');
   assert.deepEqual(JSON.parse(call.init.body), { text: 'hola', idempotency_key: 'draft-key-000000001' });
+});
+
+test('internal notes go to their own endpoint, never the reply one, and do not hold the polling cursor', async () => {
+  await api.addNote('abc/..', 'ojo con el 12B', 'note-key-000000001');
+  const call = calls.at(-1);
+  assert.equal(call.path, '/api/v1/admin/conversations/abc%2F../notes');
+  assert.deepEqual(JSON.parse(call.init.body), { text: 'ojo con el 12B', idempotency_key: 'note-key-000000001' });
+  assert.equal(api.deliveryLabel({ direction: 'INTERNAL', status: 'RECEIVED' }), null);
+  assert.equal(api.threadCursor([{ sequence: 1, direction: 'INBOUND', status: 'RECEIVED' }, { sequence: 2, direction: 'INTERNAL', status: 'RECEIVED' }]), 2);
+});
+
+test('WhatsApp-style thread helpers: day separators, bubble time and avatar letters', () => {
+  const now = new Date(2026, 9, 5, 13, 0);
+  assert.equal(api.dayLabel(new Date(2026, 9, 5, 0, 1).toISOString(), now), 'Hoy');
+  assert.equal(api.dayLabel(new Date(2026, 9, 4, 23, 59).toISOString(), now), 'Ayer');
+  assert.match(api.dayLabel(new Date(2026, 9, 1, 10).toISOString(), now), /1 de octubre/);
+  assert.match(api.dayLabel(new Date(2025, 9, 1, 10).toISOString(), now), /2025/);
+  assert.equal(api.sameDay(new Date(2026, 9, 5, 0, 1).toISOString(), new Date(2026, 9, 5, 23, 59).toISOString()), true);
+  assert.equal(api.sameDay(new Date(2026, 9, 4, 23, 59).toISOString(), new Date(2026, 9, 5, 0, 1).toISOString()), false);
+  assert.match(api.clockTime(new Date(2026, 9, 5, 9, 5).toISOString()), /^09:05$/);
+  assert.equal(api.initials('tomás  peralta gómez'), 'TP');
+  assert.equal(api.initials('Visitante'), 'V');
+  assert.equal(api.initials('   '), '?');
 });
 
 const msg = (sequence, direction, status, text = `m${sequence}`) => ({ sequence, direction, sender: direction === 'INBOUND' ? 'CONTACT' : 'USER', text, status, at: '' });
@@ -58,4 +87,8 @@ test('incremental reads pass the cursor and the list preview names who spoke', a
   assert.equal(api.previewText({ last_message: { sender: 'BOT', text: 'Hola\n  ¿en qué\tte ayudo?' } }), 'IA: Hola ¿en qué te ayudo?');
   assert.equal(api.previewText({ last_message: { sender: 'CONTACT', text: null } }), '[contenido no textual]');
   assert.equal(api.previewText({ last_message: null }), '');
+  assert.equal(api.previewText({ last_message: { sender: 'USER', text: null, type: 'IMAGE' } }), 'Asesor: 📷 Foto');
+  assert.equal(api.previewText({ last_message: { sender: 'USER', text: 'Plano', type: 'DOCUMENT' } }), 'Asesor: 📄 PDF: Plano');
+  assert.equal(api.fileSize(2621440), '2,5 MB');
+  assert.equal(api.renderTemplate('Hola {{1}}, el lote {{2}}', ['Ana ', '']), 'Hola Ana, el lote {{2}}');
 });

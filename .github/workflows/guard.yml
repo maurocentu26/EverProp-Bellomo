@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ['.claude/hooks/**', '.github/workflows/guard.yml']
   push:
-    branches: [main]
+    branches: [main, chore/agentic-setup] # staging branch: the AI module lives here, never on main
     paths: ['.claude/hooks/**', '.github/workflows/guard.yml']
 
 permissions:

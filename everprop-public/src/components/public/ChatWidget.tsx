@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { FileText, Send } from "lucide-react";
 
-type WidgetMessage = { sequence: number; from: "visitor" | "assistant" | "advisor"; text: string | null; at: string };
+type WidgetMedia = { kind: string; name: string; mime: string; size: number; url: string };
+type WidgetMessage = { sequence: number; from: "visitor" | "assistant" | "advisor"; text: string | null; at: string; media?: WidgetMedia | null };
 type Pending = { clientId: string; text: string; failed: boolean };
 
 const TENANT_HEADER = process.env.NODE_ENV === "development" ? process.env.NEXT_PUBLIC_EVERPROP_TENANT || "bellomo" : null;
@@ -137,7 +138,8 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
           <li key={m.sequence} className={`flex ${m.from === "visitor" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.from === "visitor" ? "bg-blue-600 text-white" : "bg-muted"}`}>
               {m.from !== "visitor" && <p className="mb-0.5 text-[11px] font-semibold opacity-75">{m.from === "advisor" ? "Asesor" : "Asistente virtual"}</p>}
-              <p className="whitespace-pre-wrap break-words">{m.text}</p>
+              {m.media && token && <MediaFile media={m.media} token={token} />}
+              {m.text && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
             </div>
           </li>
         ))}
@@ -164,5 +166,43 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
         </button>
       </form>
     </section>
+  );
+}
+
+/**
+ * Files need the visitor's bearer token, which never goes in a URL: fetched here and shown from a blob URL.
+ * A PDF opens in a new tab from that blob.
+ */
+function MediaFile({ media, token }: { media: WidgetMedia; token: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    let alive = true;
+    const headers = new Headers({ Authorization: `Bearer ${token}` });
+    if (TENANT_HEADER) headers.set("X-Everprop-Tenant", TENANT_HEADER);
+    fetch(media.url, { headers, credentials: "omit", cache: "no-store", signal: AbortSignal.timeout(20_000) })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
+      .then((blob) => { objectUrl = URL.createObjectURL(blob); if (alive) setUrl(objectUrl); })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [media.url, token]);
+
+  if (failed) return <p className="mb-1 text-xs opacity-75">No se pudo cargar el archivo.</p>;
+  if (media.kind === "IMAGE") {
+    return url
+      // eslint-disable-next-line @next/next/no-img-element -- blob of an authorized file
+      ? <a href={url} target="_blank" rel="noopener noreferrer" className="mb-1 block overflow-hidden rounded-lg"><img src={url} alt={media.name} className="max-h-64 w-full object-cover" /></a>
+      : <div className="mb-1 h-40 w-56 max-w-full animate-pulse rounded-lg bg-black/10 motion-reduce:animate-none" aria-label="Cargando foto" />;
+  }
+  return (
+    <a href={url ?? undefined} target="_blank" rel="noopener noreferrer" download={media.name} aria-disabled={!url}
+      className="mb-1 flex min-h-12 items-center gap-2 rounded-lg bg-black/5 px-3 py-2 dark:bg-white/10">
+      <FileText className="h-6 w-6 shrink-0" aria-hidden />
+      <span className="min-w-0">
+        <span className="block truncate font-semibold">{media.name}</span>
+        <span className="block text-[11px] opacity-75">{url ? "PDF · tocá para abrir" : "Preparando PDF…"}</span>
+      </span>
+    </a>
   );
 }

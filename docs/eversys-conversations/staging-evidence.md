@@ -64,3 +64,59 @@ S8 queda **parcial**: configuración y recursos PWA comprobados; instalación, p
 - Correcciones adicionales: estado activo requiere permiso granted; errores síncronos de permiso recuperables; error de desactivación visible; conflicto 409 muestra recuperación por cuenta anterior sin exponer datos técnicos.
 - Verificación local: 58 tests frontend, TypeScript y build OK. Lint completo: 0 errores, 153 advertencias. Revisión independiente de aislamiento/CSRF y recuperación: sin bloqueantes después de las correcciones.
 - Entrega física pendiente: actualizar/reabrir PWA, activar desde Configuración, comprobar suscripción Apple registrada y repetir con iPhone bloqueado. No es necesario reinstalar de entrada; el service worker no cambió en este arreglo.
+
+## S6 — preparación verificada, recorrido bloqueado (2026-10-05)
+
+Registro cerrado a las 11:41 ART (UTC−03:00). Procedimiento: `staging-s6.md`. Rama local `chore/agentic-setup`, HEAD `8c5203155c3628b6d9341a14b4324a5dd8d4a77b`. Solo proyecto `bellomito-staging`, entorno `staging`.
+
+**S6 NO verificado.** No se inició el recorrido porque P4 y P5 no están cumplidos. No confundir salud y despliegues correctos con una prueba de entrega.
+
+### Preparación
+
+| Paso | Resultado observado | Evidencia |
+|---|---|---|
+| P1 API | OK: ACTIVE, Deployment successful; enlace de commit `8c5203155c3628b6d9341a14b4324a5dd8d4a77b`, rama `chore/agentic-setup`; deployment `4e7a9a4c-0128-4784-b0b1-fc6120df0c71` | Detalle leído en Railway |
+| P1 worker | OK: mismo SHA y rama, ACTIVE, Deployment successful; deployment `414de387-cda4-451d-b336-c2d6ab5cbaed` | [Captura](evidence/s6-2026-10-05/p1-worker.jpg) |
+| P1 scheduler | OK: mismo SHA y rama, ACTIVE, Deployment successful; deployment `425728bf-00de-4c32-afab-8963ba090e17` | [Captura](evidence/s6-2026-10-05/p1-scheduler.jpg) |
+| P1 panel | OK: mismo SHA y rama, ACTIVE, Deployment successful; deployment `df6bebda-60dc-4d7c-a06c-5f875136ea2b` | [Captura](evidence/s6-2026-10-05/p1-panel.jpg) |
+| P2 | OK: API `/readyz` HTTP 200, `{"status":"ready"}`; `everprop:production-check --connections` ejecutado en API y worker: 24 OK, 0 FAIL en cada uno | [API](evidence/s6-2026-10-05/p2-api-check.jpg), [worker](evidence/s6-2026-10-05/p2-worker-check.jpg) |
+| P3 | OK: `SELECT (SELECT COUNT(*) FROM jobs) AS pending, (SELECT COUNT(*) FROM failed_jobs) AS failed` devolvió `pending=0`, `failed=0` desde API staging | [Captura](evidence/s6-2026-10-05/p3-queue.jpg) |
+| P4 | BLOQUEADO: panel muestra formulario de login vacío, no hay sesión del asesor disponible. No se verificó rol ni tenant del usuario. Se pidió al usuario iniciar sesión personalmente, sin compartir contraseña | [Captura sin credenciales](evidence/s6-2026-10-05/p4-login-pending.jpg) |
+| P5 | BLOQUEADO: el navegador conectado es el integrado y no expone creación de ventana de incógnito. Se solicitó una ventana de incógnito conectada; no se sustituyó por otra pestaña con almacenamiento compartido | No se abrió sesión de visitante |
+
+La CLI Railway no está disponible en PATH; los chequeos se ejecutaron en la consola web del servicio correcto. Un primer intento de consulta falló por pérdida de separadores de namespace al introducir el comando; se repitió con el alias `DB` y pegado literal. Fue un error del comando diagnóstico, no una excepción del worker. Ninguno de esos comandos escribió en la base.
+
+### Recorridos y consultas pendientes
+
+| Pasos | Estado | Motivo |
+|---|---|---|
+| A1, A2, A3, A4, A5, A6, A7 | NO EJECUTADOS | P4 y P5 pendientes; no se enviaron mensajes de S6 |
+| B1, B2, B3, B4, B5, B6 | NO EJECUTADOS | Recorrido A no ejecutado; worker no detenido ni reiniciado |
+| C1, C2, C3, C4, C5 | NO EJECUTADOS | Sin sesión de asesor ni conversación S6 |
+| Consulta 1: duplicados | NO EJECUTADA | No hubo recorrido S6; no se declara resultado de 0 filas |
+| Consulta 2: estados de envíos | NO EJECUTADA | No hubo envíos S6 |
+| Consulta 3: nota interna sin jobs | NO EJECUTADA | No se creó la nota S6-C |
+| Logs de reinicio B4–B5 | NO APLICA / pendiente | No hubo reinicio del worker |
+
+No se observó un criterio de corte durante las verificaciones preparatorias; los criterios de entrega, duplicación, nota interna y recuperación de cola no fueron ejercitados. El impedimento actual es de acceso y aislamiento del navegador, no un resultado de aprobación ni una falla funcional demostrada.
+
+No se corrigió nada a mano. No se modificaron datos mediante SQL, servicios, variables de IA/Meta, producción, `main` ni Vercel. No se inició Docker. El worker quedó corriendo. Las capturas no incluyen contraseñas, tokens, cookies ni valores de variables. La evidencia queda local, sin commit ni push de esta tanda.
+
+### Operación separada de S6 — recuperación autorizada de cuenta (2026-10-05)
+
+Después de la preparación anterior, el usuario autorizó expresamente recuperar la cuenta administradora de staging y cambiar su correo. Esto no forma parte de S6 ni cambia sus límites de solo lectura.
+
+- Se comprobó el proyecto y entorno Railway exactos antes de escribir; tenant `bellomito-staging`, cuenta existente con rol `TENANT_ADMIN`, sin conflicto con el nuevo correo.
+- Se cambió exclusivamente esa cuenta de `admin-staging@e2e.invalid` a `staging@eversyssolutions.com.ar`, conservando identidad y rol. Estado `PAUSED`, contraseña anterior eliminada; verificación posterior confirmó esos valores y ausencia de contraseña.
+- Se preparó activación con el mecanismo existente: clave temporal en caché, vinculada a esa cuenta y tenant, válida por 24 horas y de un solo uso. No se registró el token en esta evidencia, archivos ni chat.
+- Se dejó la pantalla de activación al usuario para que ingrese y confirme personalmente su contraseña. Activación y login nuevos todavía NO verificados. No se capturará la contraseña.
+- Actualización posterior: el usuario completó personalmente la activación. Se verificó el mensaje visible «Tu cuenta está lista» y la URL `/activar` sin token. [Confirmación sin credenciales](evidence/staging-account-activated.jpg). Se abrió el login y se completó únicamente el correo; login, rol y tenant de la sesión siguen pendientes de verificar. No se leyó ni capturó la contraseña.
+- [Pantalla de activación con campos vacíos](evidence/staging-account-activation.jpg). No hubo cambios de código, deploy, variables, producción, `main` ni Vercel. S6 sigue pendiente.
+
+### S6 — P4 completado tras login personal (2026-10-05)
+
+- El usuario inició sesión personalmente con la cuenta recuperada. `/admin` muestra «Administrador de pruebas staging · Bellomito Staging - DATOS FICTICIOS» y navegación administrativa, incluida Alta de usuarios. Se comprobó acceso a `/admin/conversaciones`: listado y filtros visibles, sin error de autorización. P4 queda OK; la comprobación anterior de rol `TENANT_ADMIN` corresponde a la misma cuenta recuperada.
+- [Bandeja autenticada sin contraseñas, cookies ni tokens](evidence/s6-2026-10-05/p4-authenticated.jpg).
+- P5 continúa bloqueado: el inventario de navegadores conectados solo contiene IAB y MCP Apps; no hay Chrome ni ventana de incógnito controlable. No se sustituyó el requisito del guion por una pestaña con almacenamiento compartido.
+- A1–A7, B1–B6, C1–C5 y las tres consultas finales siguen NO EJECUTADOS. No se enviaron mensajes ni se detuvo el worker. S6 NO verificado; falta P5 para iniciar el recorrido. Los chequeos preparatorios registrados antes no constituyen una nueva comprobación de salud en este intento.
+- Producción, `main`, Vercel y variables IA/Meta sin cambios. Se utilizó la skill computer-use como guía de interacción; no se usó automatización nativa de Windows ni se intentó eludir el aislamiento del navegador.

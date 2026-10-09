@@ -20,6 +20,7 @@ final class ToolGateway
     public function __construct(
         private readonly SchemaValidator $validator,
         private readonly ToolExecutions $executions,
+        private readonly PublicInventory $inventory,
         BuscarPropiedades $buscar,
         ConsultarPropiedad $consultar,
         RegistrarInteres $interes,
@@ -51,6 +52,9 @@ final class ToolGateway
         }
         /** @var array<string, mixed> $arguments */
         try {
+            if (array_intersect_key($tool->schema()['properties'], PublicInventory::PROPERTY_REF) === PublicInventory::PROPERTY_REF) {
+                $arguments = $this->propertyReference($context, $arguments);
+            }
             if ($tool->mutating()) {
                 $key = $this->executions->key($context, $name, $arguments);
                 if (($stored = $this->executions->stored($context, $name, $key)) !== null) {
@@ -72,6 +76,27 @@ final class ToolGateway
 
             return $this->error('DEPENDENCY_UNAVAILABLE', 'No pude completar la operación.', $context, true);
         }
+    }
+
+    /**
+     * Exactly one property reference. A unit code becomes the property id here, before the idempotency
+     * key, so naming the unit by id or by code is the same request (one effect, replayable).
+     *
+     * @param  array<string, mixed>  $arguments
+     * @return array<string, mixed>
+     */
+    private function propertyReference(ToolContext $context, array $arguments): array
+    {
+        if (isset($arguments['property_id']) === isset($arguments['unit_code'])) {
+            throw new ToolError('VALIDATION_ERROR', 'Indicá property_id o unit_code, uno solo.');
+        }
+        if (isset($arguments['unit_code'])) {
+            $arguments['property_id'] = $this->inventory->publicIdForCode($context->tenantId, (string) $arguments['unit_code'])
+                ?? throw new ToolError('NOT_FOUND', 'La propiedad no está disponible.');
+            unset($arguments['unit_code']);
+        }
+
+        return $arguments;
     }
 
     /** @return array<string, mixed> */

@@ -151,17 +151,94 @@ final class ConversationControl
     /**
      * Human reply: only the controlling advisor, and only under human control.
      *
+     * @param  array<string, mixed>|null  $media  stored attachment (ConversationAttachments::store); $text is then its caption
      * @return array{message_id: int, job_id: int, sequence: int, replayed: bool}
      */
-    public function humanReply(int $tenantId, int $conversationId, User $user, string $text, string $idempotencyKey): array
+    public function humanReply(int $tenantId, int $conversationId, User $user, string $text, string $idempotencyKey, ?array $media = null): array
     {
-        return DB::transaction(function () use ($tenantId, $conversationId, $user, $text, $idempotencyKey): array {
+        return DB::transaction(function () use ($tenantId, $conversationId, $user, $text, $idempotencyKey, $media): array {
             $conversation = $this->lock($tenantId, $conversationId);
             if ($conversation->control_state !== 'HUMAN_ACTIVE' || (int) $conversation->controlled_by_user_id !== (int) $user->id) {
                 throw new ConversationConflict('NOT_IN_CONTROL', 'Tomá el control de la conversación antes de responder.');
             }
+            $key = 'user:'.$user->id.':c'.$conversationId.':'.$idempotencyKey;
+            // Same rule the dispatcher enforces, checked up front so the advisor keeps the draft and sees why.
+            // A retry of an already queued reply is a replay, not a new send: it skips the check.
+            $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $conversation->channel_account_id)->first();
+            $blocked = DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('idempotency_key', $key)->exists()
+                ? null : app(ChannelPolicy::class)->check($tenantId, $conversationId, $channel);
+            if ($blocked === 'OUTSIDE_SERVICE_WINDOW') {
+                throw new ConversationConflict($blocked, 'Pasaron más de 24 horas desde el último mensaje del cliente por WhatsApp. Solo se puede escribir con una plantilla aprobada, o esperar a que el cliente vuelva a escribir.');
+            }
+            if ($blocked !== null) {
+                throw new ConversationConflict($blocked, 'Este canal no está disponible para enviar mensajes.');
+            }
 
-            return $this->queueOutbound($conversation, $text, 'USER', $user->id, null, 'user:'.$user->id.':c'.$conversationId.':'.$idempotencyKey);
+            return $this->queueOutbound($conversation, $text, 'USER', $user->id, null, $key, media: $media);
+        }, 3);
+    }
+
+    /**
+     * Approved WhatsApp template from the advisor in control: the only send allowed outside the 24 h window.
+     * Stored with its rendered text so the thread reads like any reply.
+     *
+     * @param  array{name: string, language: string, body: string}  $template
+     * @param  list<string>  $params
+     * @return array{message_id: int, job_id: int, sequence: int, replayed: bool}
+     */
+    public function humanTemplate(int $tenantId, int $conversationId, User $user, array $template, array $params, string $idempotencyKey): array
+    {
+        return DB::transaction(function () use ($tenantId, $conversationId, $user, $template, $params, $idempotencyKey): array {
+            $conversation = $this->lock($tenantId, $conversationId);
+            if ($conversation->control_state !== 'HUMAN_ACTIVE' || (int) $conversation->controlled_by_user_id !== (int) $user->id) {
+                throw new ConversationConflict('NOT_IN_CONTROL', 'Tomá el control de la conversación antes de responder.');
+            }
+            $key = 'user:'.$user->id.':c'.$conversationId.':'.$idempotencyKey;
+            $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $conversation->channel_account_id)->first();
+            $blocked = DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('idempotency_key', $key)->exists()
+                ? null : app(ChannelPolicy::class)->check($tenantId, $conversationId, $channel, $template['name']);
+            if ($blocked !== null) {
+                throw new ConversationConflict($blocked, $blocked === 'TEMPLATE_NOT_APPROVED'
+                    ? 'Esa plantilla no está aprobada para este número. Actualizá la lista de plantillas.' : 'Este canal no está disponible para enviar mensajes.');
+            }
+
+            return $this->queueOutbound($conversation, WhatsAppTemplates::render($template['body'], $params), 'USER', $user->id, null, $key,
+                template: ['name' => $template['name'], 'language' => $template['language'], 'params' => $params]);
+        }, 3);
+    }
+
+    /**
+     * Internal note (S04). Stored as an INTERNAL message in the thread's sequence: the widget, the
+     * assistant's history and the transports only read INBOUND/OUTBOUND, so it never leaves the team.
+     * Idempotent per author and key through the existing unique provider_message_id.
+     *
+     * @return array{sequence: int, replayed: bool}
+     */
+    public function addNote(int $tenantId, int $conversationId, User $user, string $text, string $idempotencyKey): array
+    {
+        return DB::transaction(function () use ($tenantId, $conversationId, $user, $text, $idempotencyKey): array {
+            $conversation = $this->lock($tenantId, $conversationId);
+            $key = 'note:c'.$conversationId.':u'.$user->id.':'.$idempotencyKey;
+            $existing = DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
+                ->where('provider_message_id', $key)->first(['sequence', 'text_body']);
+            if ($existing !== null) {
+                if ($existing->text_body !== $text) {
+                    throw new ConversationConflict('IDEMPOTENCY_CONFLICT', 'La clave ya se usó con otro contenido.');
+                }
+
+                return ['sequence' => (int) $existing->sequence, 'replayed' => true];
+            }
+            $sequence = (int) $conversation->next_sequence;
+            DB::table('messages')->insert([
+                'tenant_id' => $tenantId, 'conversation_id' => $conversationId, 'channel_account_id' => $conversation->channel_account_id,
+                'sequence' => $sequence, 'provider_message_id' => $key, 'direction' => 'INTERNAL', 'sender_type' => 'USER',
+                'message_type' => 'TEXT', 'text_body' => $text, 'metadata_json' => json_encode(['author_user_id' => $user->id], JSON_THROW_ON_ERROR),
+                'occurred_at' => CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v'),
+            ]);
+            // A note is not customer activity: it does not reorder the inbox or touch unread counts.
+            DB::table('conversations')->where('tenant_id', $tenantId)->where('id', $conversationId)->update(['next_sequence' => $sequence + 1]);
+
+            return ['sequence' => $sequence, 'replayed' => false];
         }, 3);
     }
 
@@ -192,14 +269,20 @@ final class ConversationControl
         }
     }
 
-    /** @return array{message_id: int, job_id: int, sequence: int, replayed: bool} */
-    private function queueOutbound(object $conversation, string $text, string $sender, ?int $userId, ?int $epoch, string $key, bool $handoffNotice = false): array
+    /**
+     * @param  array<string, mixed>|null  $media
+     * @param  array{name: string, language: string, params: list<string>}|null  $template
+     * @return array{message_id: int, job_id: int, sequence: int, replayed: bool}
+     */
+    private function queueOutbound(object $conversation, string $text, string $sender, ?int $userId, ?int $epoch, string $key, bool $handoffNotice = false, ?array $media = null, ?array $template = null): array
     {
         $tenantId = (int) $conversation->tenant_id;
+        // The idempotency hash covers the attachment too: same key with another file is a conflict.
+        $contentHash = hash('sha256', $text.($media === null ? '' : "\0".$media['sha256']));
         $existing = DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('idempotency_key', $key)->first(['id', 'message_id', 'payload_json']);
         if ($existing !== null) {
             $payload = json_decode((string) $existing->payload_json, true, 512, JSON_THROW_ON_ERROR);
-            if (($payload['text_sha256'] ?? null) !== hash('sha256', $text)) {
+            if (($payload['text_sha256'] ?? null) !== $contentHash) {
                 throw new ConversationConflict('IDEMPOTENCY_CONFLICT', 'La clave ya se usó con otro contenido.');
             }
 
@@ -212,12 +295,13 @@ final class ConversationControl
         $messageId = (int) DB::table('messages')->insertGetId([
             'tenant_id' => $tenantId, 'conversation_id' => $conversation->id, 'channel_account_id' => $conversation->channel_account_id,
             'sequence' => $sequence, 'control_epoch' => $epoch, 'direction' => 'OUTBOUND', 'sender_type' => $sender,
-            'message_type' => 'TEXT', 'text_body' => $text, 'delivery_status' => 'QUEUED', 'occurred_at' => $now,
+            'message_type' => $template !== null ? 'TEMPLATE' : ($media['kind'] ?? 'TEXT'), 'text_body' => $media !== null && $text === '' ? null : $text,
+            'media_json' => $media === null ? null : json_encode($media, JSON_THROW_ON_ERROR), 'delivery_status' => 'QUEUED', 'occurred_at' => $now,
         ]);
         $jobId = (int) DB::table('outbound_jobs')->insertGetId([
             'tenant_id' => $tenantId, 'channel_account_id' => $conversation->channel_account_id, 'conversation_id' => $conversation->id,
             'message_id' => $messageId, 'control_epoch' => $epoch, 'requested_by_user_id' => $userId, 'idempotency_key' => $key,
-            'job_type' => 'SEND_MESSAGE', 'payload_json' => json_encode(['text_sha256' => hash('sha256', $text)] + ($handoffNotice ? ['handoff_notice' => true] : []), JSON_THROW_ON_ERROR),
+            'job_type' => 'SEND_MESSAGE', 'payload_json' => json_encode(['text_sha256' => $contentHash] + ($template !== null ? ['template' => $template] : []) + ($handoffNotice ? ['handoff_notice' => true] : []), JSON_THROW_ON_ERROR),
             'status' => 'PENDING', 'scheduled_at' => $now,
         ]);
         DB::table('conversations')->where('tenant_id', $tenantId)->where('id', $conversation->id)->update([

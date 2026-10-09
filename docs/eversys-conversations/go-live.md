@@ -24,6 +24,8 @@ Reportado por Ramiro (hecho con Codex el 2026-10-02; no verificado desde esta se
 
 Pendiente:
 
+Antes de subir los cambios de Tech Provider a la rama que Railway despliega automáticamente, aplicar **solo en staging** `2026-10-02.001_integration_token_ciphertext.sql` con `lock_wait_timeout` acotado (ver paso 5 de "Aplicar el SQL"). Verificar la columna `access_token_ciphertext` y la versión `2026-10-02.001` en `schema_versions`. El código consulta esa columna incluso con onboarding apagado; el chequeo de arranque no sustituye esta verificación. Mantener `META_ONBOARDING_ENABLED=false`, `META_SEND_ENABLED=false` y la IA apagada. No ejecutar este paso en producción.
+
 | # | Paso | Verificación |
 |---|---|---|
 | S1 | `api` y `worker` desplegan desde `chore/agentic-setup` (no `main`); worker con `railway-worker.json` y la **misma** `QUEUE_CONNECTION` que la API | `/readyz` 200; `everprop:production-check --connections` todo OK |
@@ -31,7 +33,7 @@ Pendiente:
 | S3 | Panel apuntando a staging: preview de Vercel de la rama con `NEXT_PUBLIC_EVERPROP_API_URL` **y** `NEXT_PUBLIC_API_URL` = API de staging, definidas para esa rama (las de Preview se comparten entre previews). **No usar el preview hasta verificar.** La pestaña Red no alcanza: las `rewrites` de `next.config.ts` (`/api/v1/*`, `/healthz`) se resuelven en el servidor de Next y `src/lib/server/bellomo-materials.ts` llama desde el servidor, con **la URL de producción como valor por defecto** si falta la variable | (a) variables del deployment en Vercel con el host de staging y ninguna de producción; (b) login en el panel con un usuario que **solo existe en staging** (en producción daría 401); (c) los logs de la API de staging muestran esas requests y los de producción no; (d) la página que usa `bellomo-materials` responde con datos sintéticos de staging |
 | S4 | `SANCTUM_STATEFUL_DOMAINS` y `CORS_ALLOWED_ORIGINS` de la API de staging = host del panel de staging | login y bandeja sin errores CORS |
 | S5 | `everprop:channels:web-chat --tenant=<sintético> --panel-origin=<panel staging> --site=<sitio de prueba>`; `EVERSYS_WIDGET_FRAME_ANCESTORS` en el panel y redeploy | `curl -I` de `/widget/<id>`: `frame-ancestors` solo con el sitio de prueba; `/admin/*` con `'none'` |
-| S6 | Recorrido manual: visitante → "Espera asesor" → tomar control → responder → visitante la ve; reiniciar worker con una respuesta en cola | "Enviado" una sola vez; 0 duplicados en `messages` |
+| S6 | Recorrido manual: visitante → "Espera asesor" → tomar control → responder → visitante la ve; reiniciar worker con una respuesta en cola. Guion completo con consultas y criterios de corte en [staging-s6.md](staging-s6.md) | "Enviado" una sola vez; 0 duplicados en `messages` |
 | S7 | Sitio de prueba: preview del sitio (rama `feat/eversys-chat-widget`) con `NEXT_PUBLIC_EVERSYS_*` de staging; el sitio público de Bellomo no se toca | widget de staging visible solo en el preview |
 
 | S8 | PWA y avisos (desde `9cc8986`): `WEBPUSH_PUBLIC_KEY`, `WEBPUSH_PRIVATE_KEY` (secreto) y `WEBPUSH_SUBJECT` (`mailto:` del equipo) **propias de staging** en `api` y `worker`, generadas dentro del contenedor de la API con `php -r 'require "vendor/autoload.php"; print_r(Minishlink\WebPush\VAPID::createVapidKeys());'`; nunca las de producción ni en Git | `everprop:production-check --connections --webpush` OK; `/icon/192` y `/manifest.webmanifest` 200; con la app instalada en el celular y notificaciones activadas, un mensaje del widget de prueba produce un push sin nombre ni texto del cliente que abre ese chat |
@@ -43,7 +45,7 @@ Staging verde **no completa F0 de producción**: los pasos de "Fase 1" de abajo 
 | # | Paso | Quién | Cómo verificar |
 |---|---|---|---|
 | 1 | Backup de MySQL producción **con procedures**: `mysqldump --single-transaction --routines --triggers --events --set-gtid-purged=OFF bellomo_crm`. Restaurarlo de prueba en un MySQL 8.4 aparte y anotar `MAX(applied_at)` de `schema_versions` y conteos de tablas | Ramiro | el restore levanta y `sp_create_or_get_open_lead` existe en la copia |
-| 2 | Aplicar los 4 forward siguiendo **"Aplicar el SQL"** (abajo) | Ramiro (X04) | las 4 versiones en `schema_versions` + chequeos posteriores OK |
+| 2 | Aplicar los 5 forward siguiendo **"Aplicar el SQL"** (abajo) | Ramiro (X04) | las 5 versiones en `schema_versions` + chequeos posteriores OK |
 
 ### Aplicar el SQL (paso 2)
 
@@ -63,11 +65,13 @@ Ventana de bajo tráfico, sin importaciones de inventario corriendo. Las tablas 
 2. `2026-09-29.003_agent_runtime.sql`
 3. `2026-09-30.001_queue_tables.sql`
 4. `2026-09-30.002_conversation_sweep_index.sql` (índice en línea, `LOCK=NONE`; el arranque no lo exige, pero el barrido de IA apagada lo usa)
+5. `2026-10-02.001_integration_token_ciphertext.sql` (columna nullable con `ALGORITHM=INSTANT`; toma un lock de metadatos breve, por eso también va con `lock_wait_timeout`). Antes, en producción: `SELECT TOTAL_ROW_VERSIONS FROM information_schema.INNODB_TABLES WHERE NAME = CONCAT(DATABASE(), '/integration_connections');` debe ser menor a 64; si falla con `ER_INNODB_MAX_ROW_VERSION`, re-ejecutar con `ALGORITHM=INPLACE` (tabla chica). Lo exige el token cifrado por tenant (Tech Provider W3), no el arranque.
 
-**Si falla a mitad:** no restaurar el backup. Cada DDL es atómico y los 4 scripts son re-ejecutables (probado aplicándolos dos veces): corregir la causa (`1205` = lock: esperar y reintentar; `1062` = duplicado del chequeo 4) y volver a correr **el mismo archivo**. La app actual sigue funcionando porque los cambios solo agregan. No mergear hasta tener las 3 versiones registradas (si se mergea antes, `production-check` hace que Railway mantenga el despliegue anterior).
+**Si falla a mitad:** no restaurar el backup. Cada DDL es atómico y los scripts están diseñados para re-ejecución: corregir la causa (`1205` = lock: esperar y reintentar; `1062` = duplicado del chequeo 4) y volver a correr **el mismo archivo**. La app actual sigue funcionando porque los cambios solo agregan. No mergear hasta tener las 5 versiones registradas y los chequeos posteriores completos; el arranque no comprueba la columna del token.
 
 **Chequeos posteriores:**
-- `SELECT version FROM schema_versions WHERE version IN ('2026-09-29.002','2026-09-29.003','2026-09-30.001','2026-09-30.002');` → 4 filas.
+- `SELECT version FROM schema_versions WHERE version IN ('2026-09-29.002','2026-09-29.003','2026-09-30.001','2026-09-30.002','2026-10-02.001');` → 5 filas.
+- `SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='integration_connections' AND COLUMN_NAME='access_token_ciphertext';` → 1.
 - `information_schema.CHECK_CONSTRAINTS`: `ck_messages_delivery` incluye `UNKNOWN` y `ck_outbound_jobs_status` incluye `UNKNOWN_FINAL`.
 - `information_schema.STATISTICS`: `uq_messages_channel_provider`, `uq_outbound_jobs_message`, `uq_channel_accounts_whatsapp_phone`, `ix_chatbot_runs_status_started`.
 - `everprop:schema:verify` cuenta tablas/FKs contra una instalación limpia (60/54/131). Producción puede tener FKs extra de `2026-09-15.002` (se crean solo si había inventario importado): correrlo primero contra el restore del paso 1 y anotar el valor real antes de usarlo como control.
@@ -76,7 +80,7 @@ Ventana de bajo tráfico, sin importaciones de inventario corriendo. Las tablas 
 **Rollback:** de la app, redeployar el commit anterior en Railway; el esquema queda (es compatible hacia atrás). Restaurar el backup es último recurso y pierde lo escrito desde el dump.
 | 3 | Variables API (Railway): `CONVERSATIONS_AI_ENABLED=false`, `AGENT_LLM_PROVIDER=disabled`, `META_SEND_ENABLED=false` | Ramiro | `everprop:production-check --connections` todo OK |
 | 4 | Merge del PR a `main` → despliega API y panel | Ramiro | `/readyz` 200; `/admin/conversaciones`, `/admin/solicitudes-visita`, `/admin/conocimiento` cargan |
-| 5 | Scheduler corriendo (reconciliador cada minuto) | Ramiro | log `expired=… requeued=… stuck_runs=… ai_off_handoffs=…` |
+| 5 | Scheduler corriendo (reconciliador cada minuto) | Ramiro | log `expired=… requeued=… webhook_receipts=… stuck_runs=… ai_off_handoffs=…` |
 | 6 | Crear widget: `php artisan everprop:channels:web-chat --tenant=bellomo --panel-origin=https://ever-prop-bellomo.vercel.app --site=https://<sitio-bellomo>` | Ramiro | imprime `widget_id`, `<script>` y el valor de `EVERSYS_WIDGET_FRAME_ANCESTORS` |
 | 7 | Vercel (panel): `EVERSYS_WIDGET_FRAME_ANCESTORS` con el valor impreso. Se lee en `next.config.ts` al construir: **requiere redeploy** | Ramiro | el iframe carga en el sitio y no en otros dominios |
 | 8 | Sitio Bellomo (rama `feat/eversys-chat-widget`): `NEXT_PUBLIC_EVERSYS_WIDGET_ID` y `NEXT_PUBLIC_EVERSYS_PANEL_ORIGIN` en Vercel. Las `NEXT_PUBLIC_*` quedan **incrustadas en el build**: activar y revertir exige rebuild/redeploy del sitio | EverSys | mensaje de prueba aparece en la bandeja como "Espera asesor"; sin variables sigue Bellomito |
@@ -88,6 +92,8 @@ Con IA apagada el chat ya sirve: toda conversación entra a la bandeja y un ases
 - `QUEUE_CONNECTION=database` o `redis`: **hace falta un worker vivo** consumiendo esa misma conexión (`railway-worker.json`; el worker usa `QUEUE_CONNECTION` o `QUEUE_WORKER_CONNECTION`). Sin worker, las respuestas quedan "En cola" y el visitante no las ve. Que el contenedor arranque no prueba que consuma trabajos: verificar enviando una respuesta de prueba y viendo el estado "Enviado" en la bandeja.
 - Si Web Push usa otra conexión (`WEBPUSH_QUEUE_CONNECTION`), levantar un segundo worker con `QUEUE_WORKER_CONNECTION` = esa conexión.
 
+**KPIs del piloto (S16 mínimo, revisión semanal):** `php artisan everprop:conversations:kpis --tenant=<slug> --from=AAAA-MM-DD --to=AAAA-MM-DD` imprime un JSON solo con agregados, sin textos ni datos de contacto. Incluye, por canal: conversaciones, minutos a la primera respuesta humana (p50/p95, en horario corrido), conversaciones sin respuesta humana (un mensaje en cola, fallido o anterior al del cliente no cuenta) y conversaciones con lead de ese canal creado en el rango (completo = con teléfono o email). También cuenta duplicados: contactos con más de un lead y mensajes del asesor enviados dos veces en menos de 60 s. Las fechas son UTC y `--to` no se incluye. El gate F1 pide duplicados en 0. Antes del piloto se registra una semana de línea base, y cada semana se contrasta con una muestra revisada por una persona.
+
 ## Fase 2 — Asistente IA
 
 **Costo y riesgo:** el modelo se paga en USD. Tope en código: USD 30/mes (`USAGE_GLOBAL_CAP_MICROS`), por turno ≤ ~USD 0,03 con tarifas tipo Haiku 4.5. Requiere tarjeta/cuenta del proveedor (decisión X03) y un worker: Redis en Railway o cola en base (`QUEUE_CONNECTION=database`, sin costo extra).
@@ -98,7 +104,8 @@ Con IA apagada el chat ya sirve: toda conversación entra a la bandeja y un ases
 | 2 | Worker: servicio Railway con `railway-worker.json`; `QUEUE_CONNECTION=database` (o redis) en API **y** worker, `DB_QUEUE_RETRY_AFTER`/`REDIS_QUEUE_RETRY_AFTER` ≥ 240 | `production-check` OK en "Assistant: asynchronous queue" y una respuesta de prueba pasa a "Enviado" |
 | 3 | Cargar en `/admin/conocimiento`: FAQs, financiación y promociones vigentes; aprobarlas | `/admin/conocimiento` muestra "Aprobada" |
 | 4 | Variables: `AGENT_LLM_PROVIDER=anthropic`, `AGENT_LLM_MODEL=<modelo aprobado>`, `ANTHROPIC_API_KEY` (secreto) | `production-check` OK en "Assistant: LLM provider configured" |
-| 5 | Correr los 23 casos de `evals/` contra el modelo real en staging; todos los críticos en verde | reporte de evals |
+| 5 | Correr los casos de modelo de `evals/` contra el modelo real con el runner (`EVAL_LLM=configured`, ver `evals/README.md`), en una base aislada; todos los críticos en verde y calificación humana de los `needs_human` | reporte `storage/app/evals/report-*.json` |
+| 5b | **Copiloto primero:** `CONVERSATIONS_COPILOT_ENABLED=true` (IA autónoma sigue apagada). El asesor pide "Sugerir respuesta", revisa y envía; nada sale solo. Medir 2 semanas con `everprop:conversations:kpis` (bloque `copilot`: borradores, bloqueados, enviados tal cual, editados) | Pasar al paso 6 solo si la mayoría de los borradores se envían tal cual y ninguno bloqueado tenía datos inventados; si no, ajustar prompt/fuentes y repetir |
 | 6 | `CONVERSATIONS_AI_ENABLED=true` en horario con asesores disponibles; monitorear `chatbot_runs` (FAILED/HANDOFF) y `usage_ledger` las primeras 48 h | derivaciones < umbral acordado; gasto dentro del tope |
 
 **Rollback de la IA (no probado en Railway todavía):** poner `CONVERSATIONS_AI_ENABLED=false` en API, worker **y scheduler**. La configuración se cachea al arrancar (`config:cache` en el entrypoint), así que el cambio aplica recién cuando Railway redeploya/reinicia **cada** servicio; un worker que no se reinicia sigue con el valor viejo. Una vez aplicado:
@@ -109,4 +116,4 @@ No borra datos. Medir en staging cuánto tarda de punta a punta antes de promete
 
 ## Fase 3 — WhatsApp
 
-Bloqueado por X01 (verificación de negocio, App Review con videos, permisos avanzados) y por `ChannelPolicy`. Hasta entonces `META_SEND_ENABLED=false`.
+Bloqueado por X01 (verificación de negocio, App Review con videos, permisos avanzados) y por la autorización X04. `ChannelPolicy` ya está (W2), probada solo con simuladores. Hasta entonces `META_SEND_ENABLED=false` y `META_ONBOARDING_ENABLED=false`. La checklist de staging, los guiones, los requisitos de X04 y el procedimiento de apagado están en [meta-app-review.md](meta-app-review.md).

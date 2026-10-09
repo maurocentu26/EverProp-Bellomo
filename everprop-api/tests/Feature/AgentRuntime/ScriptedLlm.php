@@ -13,7 +13,7 @@ use Closure;
  */
 final class ScriptedLlm implements LlmClient
 {
-    /** @var list<array{system: string, messages: list<array<string, mixed>>, allow_tools: bool}> */
+    /** @var list<array{system: string, messages: list<array<string, mixed>>, allow_tools: bool, tools: list<string>}> */
     public array $calls = [];
 
     /** @param list<Closure(array<string, mixed>): (LlmResponse|LlmFailure)> $steps */
@@ -21,7 +21,7 @@ final class ScriptedLlm implements LlmClient
 
     public function complete(string $system, array $messages, array $tools, int $maxOutputTokens, bool $allowTools): LlmResponse
     {
-        $this->calls[] = ['system' => $system, 'messages' => $messages, 'allow_tools' => $allowTools];
+        $this->calls[] = ['system' => $system, 'messages' => $messages, 'allow_tools' => $allowTools, 'tools' => array_column($tools, 'name')];
         $step = array_shift($this->steps) ?? throw new \LogicException('Unexpected LLM call');
         $result = $step(['system' => $system, 'messages' => $messages, 'allow_tools' => $allowTools]);
         if ($result instanceof LlmFailure) {

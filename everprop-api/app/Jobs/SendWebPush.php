@@ -74,6 +74,10 @@ final class SendWebPush implements ShouldQueue
                 'tag' => 'conversation-'.$data['conversation_id'], 'url' => '/admin/conversaciones?c='.$data['conversation_id']];
         }
 
+        if (($data['event_type'] ?? null) === 'INTEGRATION_REVOKED') {
+            return ['title' => $title, 'body' => 'WhatsApp se desconectó. Volvé a conectarlo en Configuración.', 'tag' => 'integration-revoked', 'url' => '/admin/settings#whatsapp'];
+        }
+
         return ['title' => $title, 'body' => 'Tenés una nueva notificación comercial. Abrí el panel para verla.', 'tag' => $notificationId, 'url' => '/admin/notifications'];
     }
 }

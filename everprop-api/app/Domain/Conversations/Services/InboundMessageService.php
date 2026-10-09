@@ -81,9 +81,12 @@ final class InboundMessageService
             'sender_type' => 'CONTACT',
             'message_type' => $message->type,
             'text_body' => $message->text,
+            'media_json' => $message->media === null ? null : json_encode($message->media, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
             'metadata_json' => $message->metadata === [] ? null : json_encode($message->metadata, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
             'delivery_status' => 'RECEIVED',
             'occurred_at' => $message->occurredAt->utc()->format('Y-m-d H:i:s.v'),
+            // Receipt time in UTC, independent of the DB session time zone: ChannelPolicy caps occurred_at with it.
+            'created_at' => CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v'),
         ]);
 
         $reopen = $conversation->control_state === 'CLOSED';

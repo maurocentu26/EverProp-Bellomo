@@ -17,7 +17,7 @@ export type ConversationSummary = {
   unread: number;
   assigned_user: { id: string; name: string } | null;
   last_activity_at: string;
-  last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string } | null;
+  last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string; type?: string | null } | null;
 };
 
 export type ConversationMessage = {
@@ -27,7 +27,21 @@ export type ConversationMessage = {
   text: string | null;
   status: string;
   at: string;
+  /** Internal notes only: who wrote it. */
+  author?: string | null;
+  /** Photo or PDF; `url` is an authorized endpoint (never a storage path). */
+  media?: MessageMedia | null;
 };
+
+export type MessageMedia = { kind: "IMAGE" | "DOCUMENT" | string; name: string; mime: string; size: number; url: string };
+
+/** Accepted by the API (sniffed again from the bytes there). */
+export const ATTACHMENT_TYPES = "image/jpeg,image/png,image/webp,application/pdf";
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+export function fileSize(bytes: number): string {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
+}
 
 export type ConversationFilter = "all" | "waiting" | "mine" | "unread";
 
@@ -43,11 +57,16 @@ export const STATE_LABELS: Record<ConversationState, string> = {
 
 export const CHANNEL_LABELS: Record<string, string> = { WHATSAPP: "WhatsApp", WEB_CHAT: "Chat web" };
 
-export function conversationQuery(filter: ConversationFilter): string {
+/** Search terms shorter than this are ignored (the API rejects them). */
+export const MIN_SEARCH = 2;
+
+export function conversationQuery(filter: ConversationFilter, search = ""): string {
   const params = new URLSearchParams();
   if (filter === "waiting") params.set("state", "WAITING_HUMAN");
   if (filter === "mine") params.set("mine", "1");
   if (filter === "unread") params.set("unread", "1");
+  const term = search.trim().slice(0, 100);
+  if (term.length >= MIN_SEARCH) params.set("q", term);
   const query = params.toString();
   return `/api/v1/admin/conversations${query ? `?${query}` : ""}`;
 }
@@ -67,8 +86,37 @@ export function deliveryLabel(message: Pick<ConversationMessage, "direction" | "
   return labels[message.status] ?? message.status;
 }
 
-export async function listConversations(filter: ConversationFilter) {
-  return apiFetch<{ data: ConversationSummary[] }>(conversationQuery(filter));
+export async function listConversations(filter: ConversationFilter, search = "") {
+  return apiFetch<{ data: ConversationSummary[] }>(conversationQuery(filter, search));
+}
+
+/** "14:05", like the time inside a WhatsApp bubble. */
+export function clockTime(iso: string): string {
+  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+}
+
+const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+/** Separator between days in the thread: "Hoy", "Ayer" or the date (with year only when it differs). */
+export function dayLabel(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (dayKey(date) === dayKey(now)) return "Hoy";
+  if (dayKey(date) === dayKey(yesterday)) return "Ayer";
+  return new Intl.DateTimeFormat("es-AR", {
+    weekday: "long", day: "numeric", month: "long", ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  }).format(date);
+}
+
+/** True when two instants fall on the same local day. */
+export function sameDay(a: string, b: string): boolean {
+  return dayKey(new Date(a)) === dayKey(new Date(b));
+}
+
+/** Avatar letters: first letter of the first two words ("Tomás Peralta" → "TP"). */
+export function initials(name: string): string {
+  const letters = name.trim().split(/\s+/).slice(0, 2).map((word) => word[0] ?? "").join("");
+  return letters.toUpperCase() || "?";
 }
 
 /** One line under the contact name: who spoke last and what, never more than one line. */
@@ -76,7 +124,10 @@ export function previewText(item: Pick<ConversationSummary, "last_message">): st
   const last = item.last_message;
   if (!last) return "";
   const who: Record<string, string> = { USER: "Asesor: ", BOT: "IA: " };
-  return `${who[last.sender] ?? ""}${last.text?.replace(/\s+/g, " ").trim() || "[contenido no textual]"}`;
+  const media: Record<string, string> = { IMAGE: "📷 Foto", DOCUMENT: "📄 PDF" };
+  const text = last.text?.replace(/\s+/g, " ").trim();
+  const label = media[last.type ?? ""];
+  return `${who[last.sender] ?? ""}${label ? (text ? `${label}: ${text}` : label) : text || "[contenido no textual]"}`;
 }
 
 /** The API pages 200 messages per call, oldest first. */
@@ -102,7 +153,7 @@ export function mergeMessages(current: ConversationMessage[], incoming: Conversa
 }
 
 export async function getConversationMessages(id: string, after = 0) {
-  return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean }; data: ConversationMessage[] }>(
+  return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean; copilot_enabled?: boolean; reply_window: { closes_at: string | null } | null }; data: ConversationMessage[] }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages${after > 0 ? `?after=${after}` : ""}`,
   );
 }
@@ -111,6 +162,14 @@ export async function takeOver(id: string) {
   return apiFetch<{ data: { state: ConversationState; epoch: number; confirmed: boolean } }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/takeover`,
     { method: "POST" },
+  );
+}
+
+/** Team-only note: never sent to the customer. */
+export async function addNote(id: string, text: string, idempotencyKey: string) {
+  return apiFetch<{ data: { sequence: number; replayed: boolean } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/notes`,
+    { method: "POST", body: JSON.stringify({ text, idempotency_key: idempotencyKey }) },
   );
 }
 
@@ -133,9 +192,55 @@ export async function resolveUnknownSends(id: string) {
 }
 
 /** The idempotency key belongs to the draft: a retry of the same text reuses it. */
-export async function sendReply(id: string, text: string, idempotencyKey: string) {
+/** `suggestionId`: the copilot draft this reply came from (the server decides whether it was edited). */
+export async function sendReply(id: string, text: string, idempotencyKey: string, suggestionId?: string) {
   return apiFetch<{ data: { sequence: number; replayed: boolean } }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages`,
-    { method: "POST", body: JSON.stringify({ text, idempotency_key: idempotencyKey }) },
+    { method: "POST", body: JSON.stringify({ text, idempotency_key: idempotencyKey,
+      ...(suggestionId ? { suggestion_id: suggestionId } : {}) }) },
+  );
+}
+
+export type WhatsAppTemplate = { name: string; language: string; category: string; body: string; params: number };
+
+/** Approved templates of the conversation's WhatsApp number: the only way to write after the 24 h window. */
+export async function listTemplates(id: string) {
+  return apiFetch<{ data: WhatsAppTemplate[] }>(`/api/v1/admin/conversations/${encodeURIComponent(id)}/templates`);
+}
+
+export async function sendTemplate(id: string, template: WhatsAppTemplate, params: string[], idempotencyKey: string) {
+  return apiFetch<{ data: { sequence: number; replayed: boolean } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/template`,
+    { method: "POST", body: JSON.stringify({ name: template.name, language: template.language, params, idempotency_key: idempotencyKey }) },
+  );
+}
+
+/** Body with {{n}} replaced by what the advisor typed (empty ones stay visible as {{n}}). */
+export function renderTemplate(body: string, params: string[]): string {
+  return body.replace(/\{\{(\d+)\}\}/g, (all, n: string) => params[Number(n) - 1]?.trim() || all);
+}
+
+/** Photo or PDF to the client, with an optional caption (web chat). */
+export async function sendAttachment(id: string, file: File, caption: string, idempotencyKey: string) {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("idempotency_key", idempotencyKey);
+  if (caption) body.append("caption", caption);
+  return apiFetch<{ data: { sequence: number; replayed: boolean } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/attachments`, { method: "POST", body },
+  );
+}
+
+/** The conversation's open lead (created if missing, one per contact), to qualify it and book the visit. */
+export async function openConversationLead(id: string) {
+  return apiFetch<{ data: { lead_id: string; created: boolean } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/lead`, { method: "POST" },
+  );
+}
+
+/** Copilot: a draft for the advisor in control. Nothing is sent until the advisor sends it. */
+export async function suggestReply(id: string) {
+  return apiFetch<{ data: { text: string; suggestion_id: string } }>(
+    `/api/v1/admin/conversations/${encodeURIComponent(id)}/suggestion`, { method: "POST" },
   );
 }

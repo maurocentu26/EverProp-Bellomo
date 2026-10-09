@@ -22,6 +22,7 @@ final class OutboundDispatcher
     public function __construct(
         private readonly TransportRegistry $transports,
         private readonly ConversationControl $control,
+        private readonly ChannelPolicy $policy,
     ) {}
 
     /** @return string final job status after this attempt */
@@ -34,7 +35,7 @@ final class OutboundDispatcher
 
         try {
             $result = $this->transports->for($claim['channel']['channel_type'])
-                ->send($claim['channel'], $claim['recipient'], $claim['text'], $claim['nonce']);
+                ->send($claim['channel'], $claim['recipient'], $claim['text'], $claim['nonce'], $claim['media'], $claim['template']);
             $status = $result->accepted ? 'SENT' : ($result->retryable && $claim['attempt'] < $claim['max_attempts'] ? 'RETRY' : 'FAILED');
             $this->settle($tenantId, $claim, $status, $result->providerMessageId, $result->errorCode);
         } catch (DeliveryAmbiguous) {
@@ -80,6 +81,20 @@ final class OutboundDispatcher
             return ['status' => 'CANCELLED'];
         }
 
+        // Channel rules at send time (Plan W2): a job queued inside the WhatsApp window may outlive it.
+        // Checked before PROCESSING, so an error here leaves the job retryable instead of UNKNOWN.
+        $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $job->channel_account_id)->first();
+        $template = json_decode((string) $job->payload_json, true)['template'] ?? null;
+        $blocked = $this->policy->check($tenantId, (int) $job->conversation_id, $channel, is_array($template) ? (string) $template['name'] : null);
+        if ($blocked !== null) {
+            $now = CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v');
+            DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('id', $jobId)->update(['status' => 'FAILED', 'last_error_code' => $blocked]);
+            DB::table('messages')->where('tenant_id', $tenantId)->where('id', $job->message_id)
+                ->update(['delivery_status' => 'FAILED', 'failed_at' => $now, 'provider_error_code' => $blocked]);
+
+            return ['status' => 'FAILED'];
+        }
+
         $nonce = (string) Str::uuid();
         $now = CarbonImmutable::now('UTC');
         DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('id', $jobId)->update([
@@ -88,7 +103,6 @@ final class OutboundDispatcher
             'lease_expires_at' => $now->addSeconds((int) config('conversations.dispatch_lease_seconds', 60))->format('Y-m-d H:i:s.v'),
         ]);
 
-        $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $job->channel_account_id)->first();
         // Reply to the exact identity of this thread, never to "the contact's latest number".
         $recipient = str_starts_with((string) $conversation->provider_thread_id, 'wa:')
             ? substr((string) $conversation->provider_thread_id, 3)
@@ -98,8 +112,27 @@ final class OutboundDispatcher
             'status' => 'PROCESSING', 'job_id' => $jobId, 'nonce' => $nonce, 'conversation_id' => (int) $job->conversation_id,
             'message_id' => (int) $job->message_id, 'channel' => $channel, 'recipient' => $recipient,
             'text' => (string) DB::table('messages')->where('tenant_id', $tenantId)->where('id', $job->message_id)->value('text_body'),
+            'media' => $this->media($tenantId, (int) $job->conversation_id, (int) $job->message_id),
+            'template' => is_array($template) ? ['name' => (string) $template['name'], 'language' => (string) $template['language'],
+                'params' => array_values(array_map('strval', (array) ($template['params'] ?? [])))] : null,
             'attempt' => (int) $job->attempt_count + 1, 'max_attempts' => (int) $job->max_attempts,
         ];
+    }
+
+    /**
+     * The attachment of the message, with its bytes, for transports that upload it (WhatsApp).
+     *
+     * @return array{kind: string, mime: string, name: string, contents: string}|null
+     */
+    private function media(int $tenantId, int $conversationId, int $messageId): ?array
+    {
+        $media = json_decode((string) DB::table('messages')->where('tenant_id', $tenantId)->where('id', $messageId)->value('media_json'), true);
+        if (! is_array($media)) {
+            return null;
+        }
+        $contents = app(ConversationAttachments::class)->contents($tenantId, $conversationId, $media);
+
+        return ['kind' => (string) $media['kind'], 'mime' => (string) $media['mime'], 'name' => (string) $media['name'], 'contents' => $contents];
     }
 
     /** @param array<string, mixed> $claim */
