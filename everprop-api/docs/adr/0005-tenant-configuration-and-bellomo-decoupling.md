@@ -28,6 +28,8 @@ El producto debe funcionar para un segundo tenant por las mismas rutas y el mism
 
 **Verificado en local el 2026-10-05** con `next build` + `next start` y la API solo conociendo un dominio inventado: con clave, `Host: panel-e2e.test` resuelve el cliente; `Host: localhost` y los headers forjados por el cliente dan 404; sin clave, todo 404. Revisión de aislamiento: un bloqueante (se firmaba el hostname del servidor) y los hallazgos medios y bajos, todos aplicados.
 
+**Excepción acotada (EVP-L02, 2026-10-11, aprobada por Ramiro):** el horario de atención y el aviso fuera de horario viven en `tenants.settings_json.conversations.business_hours` (`{"mon": [["09:00","18:00"]], …}`, hasta dos franjas por día, en la zona horaria de `tenants.timezone`) y `away_message`. Es la misma excepción que los interruptores de IA de EVP-L01. Validación estricta en `BusinessHours::normalize` (un horario mal formado se rechaza, no se interpreta) y auditoría `CONVERSATIONS_BUSINESS_HOURS_UPDATED`. Sin horario = siempre abierto. La preferencia de cada asesor de recibir avisos fuera de horario es por dispositivo, en `web_push_subscriptions.out_of_hours` (forward `2026-10-11.001`). Cuando exista `tenant_config_versions`, el horario se migra ahí.
+
 ## Criterio de aceptación pendiente (resto de S02)
 
 - Segundo tenant sintético `inmobiliaria-demo-2` opera login, inventario, CRM y cobranzas por las mismas rutas con host propio.

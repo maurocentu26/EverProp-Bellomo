@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Tenancy\Models\Tenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -13,7 +14,9 @@ use Illuminate\Support\Facades\DB;
  * Cohort: conversations of one tenant whose first customer message arrived in [from, to) UTC.
  * Conversations with no customer message never enter it. Per channel:
  * - first human response: first advisor message that left (SENT/DELIVERED/READ) after the first
- *   customer message (p50/p95 in minutes, wall-clock: business hours are not modelled);
+ *   customer message (p50/p95 in minutes, wall-clock), also split by whether that message arrived inside the
+ *   tenant's business hours (EVP-L02; no hours configured = everything in hours). Uses the hours set today,
+ *   so editing them reclassifies past weeks;
  * - without human response: no such message (a bot reply, a queued or unconfirmed send do not count);
  * - conversations with lead: the contact got a lead inside the range, after the conversation started,
  *   from this channel or with no source channel; complete = the contact has a phone, an email or a
@@ -51,6 +54,7 @@ final class ConversationKpis extends Command
     /** @return array<string, mixed> */
     public function compute(int $tenantId, CarbonImmutable $from, CarbonImmutable $to): array
     {
+        $hours = app(BusinessHours::class);
         $format = 'Y-m-d H:i:s.v';
         $conversations = DB::table('conversations as c')
             ->join('channel_accounts as ca', fn ($j) => $j->on('ca.id', '=', 'c.channel_account_id')->on('ca.tenant_id', '=', 'c.tenant_id'))
@@ -86,11 +90,14 @@ final class ConversationKpis extends Command
         $byChannel = [];
         foreach ($conversations->groupBy('channel_type') as $channel => $rows) {
             $minutes = [];
+            $bySlot = ['in_hours' => [], 'out_of_hours' => []];
             $leadCount = $complete = 0;
             foreach ($rows as $row) {
                 $start = CarbonImmutable::parse($row->first_inbound_at, 'UTC');
+                $slot = $hours->isOpen($tenantId, $start) ? 'in_hours' : 'out_of_hours';
+                $bySlot[$slot]['conversations'] = ($bySlot[$slot]['conversations'] ?? 0) + 1;
                 if (isset($firstHuman[$row->id])) {
-                    $minutes[] = $start->diffInSeconds(CarbonImmutable::parse($firstHuman[$row->id], 'UTC')) / 60;
+                    $minutes[] = $bySlot[$slot][] = $start->diffInSeconds(CarbonImmutable::parse($firstHuman[$row->id], 'UTC')) / 60;
                 }
                 $hasLead = ($leads[$row->contact_id] ?? collect())->contains(fn ($l) => CarbonImmutable::parse($l->created_at, 'UTC')->greaterThanOrEqualTo($start)
                     && ($l->source_channel_account_id === null || (int) $l->source_channel_account_id === (int) $row->channel_account_id));
@@ -102,6 +109,14 @@ final class ConversationKpis extends Command
                 'conversations' => $rows->count(),
                 'first_human_response_minutes' => ['answered' => count($minutes), 'p50' => $this->percentile($minutes, 50), 'p95' => $this->percentile($minutes, 95)],
                 'without_human_response' => $rows->count() - count($minutes),
+                // EVP-L02: split by whether the first customer message arrived inside the tenant's business hours.
+                'by_business_hours' => array_map(function (array $slot): array {
+                    $total = $slot['conversations'] ?? 0;
+                    unset($slot['conversations']);
+                    sort($slot);
+
+                    return ['conversations' => $total, 'answered' => count($slot), 'p50' => $this->percentile($slot, 50), 'p95' => $this->percentile($slot, 95)];
+                }, $bySlot),
                 'conversations_with_lead' => $leadCount, 'conversations_with_complete_lead' => $complete,
             ];
         }
