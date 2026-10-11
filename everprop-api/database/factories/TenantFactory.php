@@ -23,7 +23,9 @@ final class TenantFactory extends Factory
             'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(1000, 9999),
             'timezone' => 'America/Argentina/Salta',
             'status' => TenantStatus::ACTIVE->value,
-            'settings_json' => null,
+            // Test tenants opt in to the assistant and copilot (EVP-L01), so the platform flags drive older tests.
+            // Real tenants default to off; AiSettingsTest covers that with settings_json = null.
+            'settings_json' => ['conversations' => ['ai_enabled' => true, 'copilot_enabled' => true]],
         ];
     }
 }

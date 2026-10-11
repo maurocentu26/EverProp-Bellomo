@@ -3,6 +3,7 @@
 namespace App\Domain\AgentRuntime\Tools;
 
 use App\Domain\Conversations\Services\ConversationControl;
+use App\Domain\Conversations\Services\InboundMessageService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -45,6 +46,10 @@ final class ToolExecutions
             if ($conversation === null || (int) $conversation->control_epoch !== $context->epoch
                 || ! in_array($conversation->control_state, ConversationControl::BOT_STATES, true)) {
                 throw new ToolError('STALE_CONTROL', 'La conversación ya no está a cargo del asistente.');
+            }
+            // Switched off mid-turn (EVP-L01): no lead, interest or visit request after the admin turned it off.
+            if (! InboundMessageService::aiEnabled($context->tenantId)) {
+                throw new ToolError('STALE_CONTROL', 'El asistente está apagado para este cliente.'); // same contract code as a takeover
             }
             $result = $effect();
             DB::table('tool_executions')->insert([

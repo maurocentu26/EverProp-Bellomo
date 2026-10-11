@@ -51,9 +51,11 @@ final class InboundMessageService
         }
 
         // G2: the assistant answers text turns of conversations under bot control (checked again in the job).
-        if (self::aiEnabled() && $message->type === 'TEXT' && $message->text !== null && trim($message->text) !== '') {
+        // A failed read must not 500 after the message is stored (the retry would replay and skip this): fail closed.
+        $ai = rescue(fn () => self::aiEnabled($message->tenantId), false, false);
+        if ($ai && $message->type === 'TEXT' && $message->text !== null && trim($message->text) !== '') {
             RunAgentJob::dispatch($message->tenantId, $result['conversation_id'], $result['sequence']);
-        } elseif (! self::aiEnabled()) {
+        } elseif (! $ai) {
             // Assistant switched off (rollback) while this conversation was under bot control: nobody would
             // answer it and it would not show under "Esperan asesor". Hand it to a human. The message is already
             // stored: a failure here must not turn into a 500 (a retry would replay and skip this), the sweep recovers it.
@@ -91,7 +93,7 @@ final class InboundMessageService
 
         $reopen = $conversation->control_state === 'CLOSED';
         // A new message reopens a closed conversation with a fresh epoch; AI stays off if a human owned it.
-        $state = $reopen ? ($conversation->controlled_by_user_id || ! self::aiEnabled() ? 'WAITING_HUMAN' : 'AI_ACTIVE') : $conversation->control_state;
+        $state = $reopen ? ($conversation->controlled_by_user_id || ! self::aiEnabled($message->tenantId) ? 'WAITING_HUMAN' : 'AI_ACTIVE') : $conversation->control_state;
         DB::table('conversations')->where('tenant_id', $message->tenantId)->where('id', $conversation->id)->update([
             'next_sequence' => $sequence + 1,
             'unread_count' => DB::raw('unread_count + 1'),
@@ -159,6 +161,7 @@ final class InboundMessageService
             return $conversation;
         }
 
+        $ai = self::aiEnabled($message->tenantId);
         DB::table('conversations')->insert([
             'tenant_id' => $message->tenantId,
             'public_id' => (string) Str::uuid(),
@@ -166,9 +169,9 @@ final class InboundMessageService
             'channel_account_id' => $message->channelAccountId,
             'provider_thread_id' => $message->threadId,
             'status' => 'OPEN',
-            'bot_mode' => self::aiEnabled() ? 'BOT_FIRST' : 'HUMAN_FIRST',
-            // Until the AI coordinator is enabled (G2) nobody would answer an AI_ACTIVE conversation.
-            'control_state' => self::aiEnabled() ? 'AI_ACTIVE' : 'WAITING_HUMAN',
+            'bot_mode' => $ai ? 'BOT_FIRST' : 'HUMAN_FIRST',
+            // With the assistant off for this tenant nobody would answer an AI_ACTIVE conversation.
+            'control_state' => $ai ? 'AI_ACTIVE' : 'WAITING_HUMAN',
             'last_activity_at' => $now->format('Y-m-d H:i:s.v'),
         ]);
 
@@ -192,14 +195,43 @@ final class InboundMessageService
     }
 
     /**
-     * Fail-safe: in production a synchronous queue would run the model call inside the visitor's
-     * (or Meta's webhook) request and lose delayed retries, so the assistant stays off and
-     * conversations wait for an advisor instead.
+     * The assistant answers this tenant's conversations only when the platform allows it (env, global kill switch)
+     * AND the tenant's admin switched it on (EVP-L01, off by default). Read from the database on every call so a
+     * switch takes effect without a redeploy. Fail-safe: in production a synchronous queue would run the model call
+     * inside the visitor's (or Meta's webhook) request and lose delayed retries, so the assistant stays off.
      */
-    public static function aiEnabled(): bool
+    public static function aiEnabled(int $tenantId): bool
+    {
+        return self::aiAvailable() && self::tenantSwitch($tenantId, 'ai_enabled');
+    }
+
+    /** Platform-level gate for the assistant, before any tenant switch. */
+    public static function aiAvailable(): bool
     {
         return (bool) config('conversations.ai_enabled', false)
             && ! (app()->isProduction() && config('queue.connections.'.config('queue.default').'.driver') === 'sync');
+    }
+
+    /** Copilot drafts for this tenant: platform switch, a configured provider and the tenant's own switch. */
+    public static function copilotEnabled(int $tenantId): bool
+    {
+        return self::copilotAvailable() && self::tenantSwitch($tenantId, 'copilot_enabled');
+    }
+
+    public static function copilotAvailable(): bool
+    {
+        return (bool) config('conversations.copilot_enabled') && config('agent.llm_provider') !== 'disabled';
+    }
+
+    /**
+     * Tenant switches live in tenants.settings_json.conversations (ADR 0005 exception until tenant_config_versions
+     * exists, like usage.monthly_cap_micros). Missing or non-true = off.
+     */
+    private static function tenantSwitch(int $tenantId, string $key): bool
+    {
+        $settings = json_decode((string) DB::table('tenants')->where('id', $tenantId)->value('settings_json'), true);
+
+        return is_array($settings) && ($settings['conversations'][$key] ?? false) === true;
     }
 
     /** @return array{message_id: int, conversation_id: int, conversation_public_id: string, sequence: int}|null */

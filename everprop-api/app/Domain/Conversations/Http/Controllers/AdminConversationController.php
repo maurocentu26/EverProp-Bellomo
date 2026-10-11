@@ -125,8 +125,8 @@ final class AdminConversationController extends Controller
 
         return response()->json([
             'conversation' => ['id' => $row->public_id, 'state' => $row->control_state, 'epoch' => (int) $row->control_epoch,
-                'ai_enabled' => InboundMessageService::aiEnabled(),
-                'copilot_enabled' => (bool) config('conversations.copilot_enabled') && config('agent.llm_provider') !== 'disabled',
+                'ai_enabled' => InboundMessageService::aiEnabled((int) $row->tenant_id),
+                'copilot_enabled' => InboundMessageService::copilotEnabled((int) $row->tenant_id),
                 'reply_window' => $isWhatsApp ? ['closes_at' => app(ChannelPolicy::class)
                     ->windowClosesAt((int) $row->tenant_id, (int) $row->id, (int) $row->channel_account_id)?->toISOString()] : null],
             'data' => $messages->map(fn ($m) => [
