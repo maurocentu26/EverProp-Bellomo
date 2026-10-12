@@ -1,7 +1,7 @@
-# EVP-L09 — Check de GitHub: la rama del PR lleva la clave del ticket
+# EVP-9 — Check de GitHub: la rama del PR lleva la clave del ticket
 
-Rama `ticket/EVP-L09-check-rama-ticket` (desde `develop`) · fecha 2026-10-12 · Claude Code con Ramiro Ruggeri
-ID local provisorio (serie EVP-L autorizada por el PM).
+Rama `ticket/EVP-9-check-rama-ticket` (desde `develop`) · fecha 2026-10-12 · Claude Code con Ramiro Ruggeri
+Ticket Jira [EVP-9](https://eversys.atlassian.net/browse/EVP-9) (desarrollado en local como EVP-L09).
 
 ## 1. Qué pedía el ticket
 
@@ -24,7 +24,7 @@ ID local provisorio (serie EVP-L autorizada por el PM).
 - Formatos que acepta:
   - las claves reales de Jira (`EVP-14`);
   - las de proceso que ya existen (`EVP-0`, `EVP-0.1`);
-  - las locales (`EVP-L01`).
+  - las locales (`EVP-3`).
 - **Descartado:**
   - validar el título del PR o los commits: la rama ya vincula todo y no hace falta duplicar el control;
   - consultar Jira para ver si el ticket existe: necesita credenciales en CI y Jira no está conectado.
@@ -35,7 +35,7 @@ Se corrió localmente el script del paso (bash) con distintos nombres de rama:
 
 | Rama | Resultado |
 |---|---|
-| `ticket/EVP-14-recordatorios-email`, `ticket/EVP-L09-check-rama-ticket`, `ticket/EVP-0.1-sin-ticket-no-hay-cambios`, `ticket/EVP-0-proceso-jira`, `main` | Pasa |
+| `ticket/EVP-14-recordatorios-email`, `ticket/EVP-9-check-rama-ticket`, `ticket/EVP-0.1-sin-ticket-no-hay-cambios`, `ticket/EVP-0-proceso-jira`, `main` | Pasa |
 | `chore/staging-on-develop`, `ticket/EVP-14`, `ticket/evp-14-x`, `feature/EVP-14-x`, `ticket/EVP-14-x;rm`, `ticket/EVP-1-a$(id)` | Falla |
 
 **No verificado:**
