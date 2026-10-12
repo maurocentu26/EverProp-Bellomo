@@ -1,7 +1,7 @@
-# EVP-L01 — Interruptor de IA por cliente, sin redeploy
+# EVP-3 — Interruptor de IA por cliente, sin redeploy
 
-Rama `ticket/EVP-L01-interruptor-ia` · fecha 2026-10-11 · Claude Code con Ramiro Ruggeri
-ID local provisorio: el PM autorizó desarrollar en local y cargar en Jira después (excepción de `TICKETS.md`). Ticket anterior: EVP-0.1, revisado y mergeado (PR #11).
+Rama `ticket/EVP-3-interruptor-ia` · fecha 2026-10-11 · Claude Code con Ramiro Ruggeri
+Ticket Jira [EVP-3](https://eversys.atlassian.net/browse/EVP-3) (desarrollado en local como EVP-L01).md`). Ticket anterior: EVP-0.1, revisado y mergeado (PR #11).
 
 ## 1. Qué pedía el ticket
 
@@ -14,7 +14,7 @@ ID local provisorio: el PM autorizó desarrollar en local y cargar en Jira despu
 - Apagar un cliente no toca a otro.
 - Revisión de aislamiento y de seguridad de IA.
 
-**Fuera de alcance:** cupos de gasto por cliente (ya están en el ledger), horario de atención (EVP-L02) y la tabla versionada de configuración (resto de S02).
+**Fuera de alcance:** cupos de gasto por cliente (ya están en el ledger), horario de atención (EVP-4) y la tabla versionada de configuración (resto de S02).
 
 ## 2. Qué se implementó
 
