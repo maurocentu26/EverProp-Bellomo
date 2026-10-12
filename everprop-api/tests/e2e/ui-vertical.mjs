@@ -81,17 +81,28 @@ try {
   // ---------- advisor in the panel ----------
   const panel = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const pp = await panel.newPage();
-  await pp.goto(`${PANEL}/login`);
-  await pp.locator('input[type="email"]').fill("manager.a@e2e.invalid");
-  await pp.locator('input[type="password"]').fill("password");
-  await pp.getByRole("button", { name: "Ingresar" }).click();
-  await pp.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30000 });
+  // api-vertical.mjs just used this IP's login budget (5/min): on 429 wait out the window once, never loosen the limit.
+  for (let attempt = 0; ; attempt++) {
+    await pp.goto(`${PANEL}/login`); // fresh form: no stale error from the previous attempt
+    await pp.locator('input[type="email"]').fill("manager.a@e2e.invalid");
+    await pp.locator('input[type="password"]').fill("password");
+    await pp.getByRole("button", { name: "Ingresar" }).click();
+    const throttled = await Promise.race([
+      pp.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30000 }).then(() => false, () => undefined),
+      pp.getByText(/Too Many Attempts/i).waitFor({ timeout: 30000 }).then(() => true, () => undefined),
+    ]);
+    if (throttled === undefined) throw new Error("login: no salió de /login en 30 s");
+    if (!throttled) break;
+    if (attempt === 1) throw new Error("login: sigue limitado (429) después de esperar la ventana");
+    await pp.waitForTimeout(61000);
+  }
   await pp.goto(`${PANEL}/admin/conversaciones`);
   const item = pp.getByRole("button", { name: /Visitante del chat web/ }).first();
   await item.waitFor({ timeout: 30000 });
   check("U6", "la conversación del visitante aparece en 'Esperan asesor'", await item.isVisible());
   await item.click();
-  await pp.getByText(text1).waitFor({ timeout: 15000 });
+  // The text shows twice (list preview and thread): any of them proves it arrived.
+  await pp.getByText(text1).first().waitFor({ timeout: 15000 });
   await pp.getByRole("button", { name: /Tomar control/ }).click();
   // By its accessible label, not the placeholder (the WhatsApp-style composer changed it).
   const reply = pp.getByLabel("Respuesta al cliente");
