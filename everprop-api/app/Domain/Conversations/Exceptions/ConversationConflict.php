@@ -12,6 +12,9 @@ final class ConversationConflict extends RuntimeException
         parent::__construct($message);
     }
 
+    /** Expected business rejection, answered as JSON by render(): not an error to log. */
+    public function report(): void {}
+
     public function render(): JsonResponse
     {
         return response()->json(['ok' => false, 'error' => ['code' => $this->code_, 'message' => $this->getMessage(), 'retryable' => false]], $this->status);

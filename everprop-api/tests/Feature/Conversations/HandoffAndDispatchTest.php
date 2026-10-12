@@ -14,8 +14,11 @@ use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Closure;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -135,6 +138,18 @@ final class HandoffAndDispatchTest extends TestCase
         $this->assertDatabaseHas('conversations', ['id' => $conversation, 'control_state' => 'HUMAN_ACTIVE']);
         $this->assertDatabaseHas('outbound_jobs', ['id' => $draft['job_id'], 'status' => 'UNKNOWN_FINAL']);
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'action_code' => 'OUTBOUND_UNKNOWN_FINAL', 'entity_id' => $draft['job_id']]);
+    }
+
+    public function test_conversation_conflict_is_not_reported_as_an_error(): void
+    {
+        $logged = [];
+        Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$logged): void {
+            $logged[] = $event->level;
+        });
+
+        app(ExceptionHandler::class)->report(new ConversationConflict('NOT_IN_CONTROL', 'Tomá el control.'));
+
+        $this->assertSame([], $logged);
     }
 
     public function test_expired_dispatch_lease_becomes_unknown_not_resent(): void
