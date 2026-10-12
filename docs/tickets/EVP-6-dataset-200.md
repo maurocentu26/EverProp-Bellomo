@@ -1,7 +1,7 @@
-# EVP-L03 — Dataset de evaluación hacia 200 casos
+# EVP-6 — Dataset de evaluación hacia 200 casos
 
-Rama `ticket/EVP-L03-dataset-200` (desde `develop`) · fecha 2026-10-12 · Claude Code (agente `eval-engineer`) con Ramiro Ruggeri
-ID local provisorio (serie EVP-L autorizada por el PM).
+Rama `ticket/EVP-6-dataset-200` (desde `develop`) · fecha 2026-10-12 · Claude Code (agente `eval-engineer`) con Ramiro Ruggeri
+Ticket Jira [EVP-6](https://eversys.atlassian.net/browse/EVP-6) (desarrollado en local como EVP-L03).
 
 ## 1. Qué pedía el ticket
 
@@ -31,7 +31,7 @@ Todos con datos sintéticos.
 | failures | 20/20 | FAIL-013..020 |
 | rioplatense | 20/20 | RIO-010..020 |
 
-- Los IDs CRM-015..022 y SEC-020 quedaron libres porque son de EVP-L10. **Al mergear las dos ramas el dataset llega a 200**, sin conflictos de ID.
+- Los IDs CRM-015..022 y SEC-020 quedaron libres porque son de EVP-5. **Al mergear las dos ramas el dataset llega a 200**, sin conflictos de ID.
 - **Qué cubren:**
   - **search:** filtros combinados, búsquedas sin resultados y códigos ambiguos (12, 12A y 12B son unidades distintas).
   - **current-data:** cambios de precio, documentos vencidos, moneda `null` y unidades vendidas o reservadas.
@@ -59,7 +59,7 @@ Entorno: stack Docker aislado `everprop-lote3` (base sintética), 2026-10-12.
 
 En `dry` el modelo responde siempre "Te paso con un asesor", así que el PASS/FAIL no mide calidad. Esta corrida solo prueba que las fixtures y los chequeos funcionan.
 
-**No verificado: el rendimiento contra el modelo real.** Es EVP-L04 y necesita X03.
+**No verificado: el rendimiento contra el modelo real.** Es EVP-10 y necesita X03.
 
 ## 5. Pendientes y riesgos (límites del evaluador que encontró el agente)
 
