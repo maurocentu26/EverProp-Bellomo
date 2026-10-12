@@ -6,7 +6,7 @@ Dataset versionado para decidir releases del núcleo conversacional (Q01). Dise�
 - `cases/<segmento>.jsonl`: un caso por línea. Segmentos: `search`, `current-data`, `crm`, `security`, `failures`, `rioplatense`.
 - `validate.mjs`: valida estructura, IDs únicos y cobertura. Sin dependencias: `node evals/validate.mjs`.
 
-Estado: **semilla** con los casos obligatorios del diseño. Objetivo 200 casos (60/30/30/40/20/20).
+Estado: **191 casos** (EVP-L03; 200 al integrar EVP-L10). Objetivo 200 casos (60/30/30/40/20/20).
 
 ## Runner (`everprop-api/tests/Feature/Evals/ModelEvalTest.php`)
 
