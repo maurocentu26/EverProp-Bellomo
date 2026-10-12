@@ -1,7 +1,7 @@
-# EVP-L02 — Horario de atención (base)
+# EVP-4 — Horario de atención (base)
 
-Rama `ticket/EVP-L02-horario-atencion` · fecha 2026-10-11 · Claude Code con Ramiro Ruggeri
-ID local provisorio: la serie EVP-L la revisa el PM al final. Sale de `develop`, no de EVP-L01.
+Rama `ticket/EVP-4-horario-atencion` · fecha 2026-10-11 · Claude Code con Ramiro Ruggeri
+Ticket Jira [EVP-4](https://eversys.atlassian.net/browse/EVP-4) (desarrollado en local como EVP-L02). Sale de `develop`, no de EVP-3.
 
 ## 1. Qué pedía el ticket
 
@@ -11,10 +11,10 @@ ID local provisorio: la serie EVP-L la revisa el PM al final. Sale de `develop`,
 - los KPIs distinguen lo que entra dentro y fuera de horario.
 
 **Decisiones de Ramiro (11/10):**
-- El chatbot tiene que ayudar todo lo posible fuera de horario hasta poder derivar. Va en un ticket aparte, **EVP-L10**, porque cambia el prompt y necesita revisión de seguridad de IA y evals.
+- El chatbot tiene que ayudar todo lo posible fuera de horario hasta poder derivar. Va en un ticket aparte, **EVP-5**, porque cambia el prompt y necesita revisión de seguridad de IA y evals.
 - La preferencia de avisos es de cada asesor.
 - Los feriados van en otro ticket.
-- El horario se guarda en `settings_json`, con la misma excepción que EVP-L01.
+- El horario se guarda en `settings_json`, con la misma excepción que EVP-3.
 
 **Cómo lo resuelven otros** (investigado, base del diseño de L02 y L10). Zendesk, Intercom y las guías de atención por WhatsApp coinciden en esto:
 - el asistente atiende las 24 horas;
@@ -22,7 +22,7 @@ ID local provisorio: la serie EVP-L la revisa el PM al final. Sale de `develop`,
 - los avisos dan la hora real de vuelta, no un "te respondemos pronto";
 - la cola de la mañana tiene prioridad.
 
-**Fuera de alcance:** el asistente fuera de horario (EVP-L10), feriados, guardias y calendario externo.
+**Fuera de alcance:** el asistente fuera de horario (EVP-5), feriados, guardias y calendario externo.
 
 ## 2. Qué se implementó
 
@@ -107,10 +107,10 @@ No lleva revisión de seguridad de IA: no toca el prompt, el modelo ni las herra
 
 - **Orden de despliegue obligatorio:** aplicar `2026-10-11.001` **antes** de desplegar el código. Sin la columna, `push/config` da 500 y `SendWebPush` falla fuera de horario. La versión anterior de la app tolera la columna nueva.
 - **Al aplicar el script en staging o producción:** correr antes `SET SESSION lock_wait_timeout = 5;`, porque el `ALTER` instantáneo igual toma un lock breve. Preflight: `ROW_FORMAT` = Dynamic y `TOTAL_ROW_VERSIONS` < 64.
-- **EVP-L10:** el primer aviso cuando la IA deriva fuera de horario dentro de un turno es parte de "el asistente fuera de horario".
+- **EVP-5:** el primer aviso cuando la IA deriva fuera de horario dentro de un turno es parte de "el asistente fuera de horario".
 - **Feriados:** otro ticket.
 - **KPIs:** se clasifican con el horario vigente; si se edita, cambia la clasificación de semanas pasadas.
 - **Hallazgos aparte**, para otros tickets:
-  - los dos forwards `2026-10-07.001` (ver EVP-L01);
+  - los dos forwards `2026-10-07.001` (ver EVP-3);
   - `web_push_subscriptions` arrastra `TIMESTAMP` y claves foráneas simples desde `2026-09-14.002`.
-- **Integración con EVP-L01:** las dos ramas tocan `InboundMessageService`, `ConversationControl` y `routes/api.php`, en zonas distintas. Al mergear la segunda va a haber conflictos chicos.
+- **Integración con EVP-3:** las dos ramas tocan `InboundMessageService`, `ConversationControl` y `routes/api.php`, en zonas distintas. Al mergear la segunda va a haber conflictos chicos.
