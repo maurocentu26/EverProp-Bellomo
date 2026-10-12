@@ -1,7 +1,7 @@
-# EVP-L10 — El asistente fuera de horario
+# EVP-5 — El asistente fuera de horario
 
-Rama `ticket/EVP-L10-asistente-fuera-de-horario` · fecha 2026-10-11 · Claude Code con Ramiro Ruggeri
-ID local provisorio. **Excepción a `TICKETS.md` autorizada por Ramiro:** la rama sale de `ticket/EVP-L02-horario-atencion` (commit `b2068df`) y no de `develop`, porque usa su servicio de horario. Se revisa y mergea **después** de EVP-L02.
+Rama `ticket/EVP-5-asistente-fuera-de-horario` · fecha 2026-10-11 · Claude Code con Ramiro Ruggeri
+Ticket Jira [EVP-5](https://eversys.atlassian.net/browse/EVP-5) (desarrollado en local como EVP-L10). **Excepción a `TICKETS.md` autorizada por Ramiro:** la rama sale de `ticket/EVP-4-horario-atencion` (commit `b2068df`) y no de `develop`, porque usa su servicio de horario. Se revisa y mergea **después** de EVP-4.
 
 ## 1. Qué pedía el ticket
 
@@ -79,7 +79,7 @@ ID local provisorio. **Excepción a `TICKETS.md` autorizada por Ramiro:** la ram
 - **El prompt orienta y el código asegura.** Las reglas 8 a 10 hacen probable el comportamiento correcto, pero lo que no se negocia (no prometer inmediatez, decir cuándo vuelve el equipo) lo garantizan el filtro de salida y los textos fijos, con el mismo principio que `OutputGuard` ya aplica a montos y confirmaciones.
 - **Agregar la línea fija en lugar de reemplazar el texto:** la primera versión reemplazaba toda la despedida del modelo. La revisión mostró que así se perdía la ayuda que había dado en el mismo turno, por ejemplo la disponibilidad que consultó. Al agregar la línea, se conserva la ayuda y la promesa de tiempo es siempre la fija.
 - **Datos validados en el prompt:** el horario sale de un formato validado, sin texto libre, así que no hay vía de inyección. El aviso que escribe el administrador nunca llega al modelo.
-- **Reutiliza** `BusinessHours` (EVP-L02), el filtro de salida, los avisos fijos y el evaluador Q01.
+- **Reutiliza** `BusinessHours` (EVP-4), el filtro de salida, los avisos fijos y el evaluador Q01.
 - **Descartado:** un agente o flujo separado para la noche, porque duplica lógica, y avisos generados por el modelo, que pueden prometer de más.
 
 ## 4. Cómo se verificó
@@ -96,13 +96,13 @@ Entorno: stack Docker aislado `everprop-lote3` (PHP 8.4.24, MySQL 8.4, base sint
 | Revisión `llm-security-reviewer` | Sin bloqueantes. **Aplicados:** M1 (promesas inmediatas en cualquier respuesta → `IMMEDIATE_PROMISE`), M2 (registrar interés solo con pedido o aceptación), M3 (conservar la ayuda del modelo), B1 (las reglas 1–7 prevalecen; se deriva aunque no haya contacto), B2 (CRM-017 a web y comentario del evaluador), B3 (los `rescue` reportan), B4 (casos CRM-020, CRM-021, CRM-022 y SEC-020) y B5 (zona horaria del cliente para "hoy") |
 
 **No verificado:**
-- **Las evaluaciones contra el modelo real**, que requieren X03 y son EVP-L04. Hasta entonces no hay evidencia de que el modelo cumpla CRM-016, CRM-019, CRM-020, CRM-021 ni SEC-020. Lo que sí está garantizado por código: los avisos fijos y el frenado de promesas inmediatas.
+- **Las evaluaciones contra el modelo real**, que requieren X03 y son EVP-10. Hasta entonces no hay evidencia de que el modelo cumpla CRM-016, CRM-019, CRM-020, CRM-021 ni SEC-020. Lo que sí está garantizado por código: los avisos fijos y el frenado de promesas inmediatas.
 - **Staging.**
 
 ## 5. Pendientes y riesgos
 
-- **Dependencia:** mergear EVP-L02 primero.
-- **Conflictos con EVP-L01:** las dos ramas tocan el coordinador y el reconciliador. Al integrar hay que combinar los dos cortes (interruptor por cliente y horario).
-- **La lista de frases de `IMMEDIATE_PROMISE` es heurística** (`ponytail` implícito). Puede frenar alguna frase inocente; el costo es que el cliente recibe el aviso fijo. Conviene ajustarla con los resultados de EVP-L04.
+- **Dependencia:** mergear EVP-4 primero.
+- **Conflictos con EVP-3:** las dos ramas tocan el coordinador y el reconciliador. Al integrar hay que combinar los dos cortes (interruptor por cliente y horario).
+- **La lista de frases de `IMMEDIATE_PROMISE` es heurística** (`ponytail` implícito). Puede frenar alguna frase inocente; el costo es que el cliente recibe el aviso fijo. Conviene ajustarla con los resultados de EVP-10.
 - **La segunda llamada al modelo fuera de horario** (la despedida) se sigue pagando. Si los evals muestran que no aporta, se puede ahorrar.
 - **Prioridad de la cola de la mañana** para las consultas que llegan de noche (recomendación de la industria): un ticket aparte sobre la bandeja.
