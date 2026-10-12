@@ -1,7 +1,7 @@
-# EVP-L08 — Scripts del entorno cloud de Claude: probar o descartar
+# EVP-8 — Scripts del entorno cloud de Claude: probar o descartar
 
-Rama `ticket/EVP-L08-entorno-cloud` (desde `develop`) · fecha 2026-10-12 · Claude Code con Ramiro Ruggeri
-ID local provisorio (serie EVP-L autorizada por el PM).
+Rama `ticket/EVP-8-entorno-cloud` (desde `develop`) · fecha 2026-10-12 · Claude Code con Ramiro Ruggeri
+Ticket Jira [EVP-8](https://eversys.atlassian.net/browse/EVP-8) (desarrollado en local como EVP-L08).
 
 ## 1. Qué pedía el ticket
 
@@ -46,4 +46,4 @@ El ticket pide revisarlos y decidir si se quedan o se descartan.
 
 - **Hacer la corrida real** antes del merge. Si falla, corregir en esta rama o descartar.
 - **Tiempo de setup:** el caché del entorno exige terminar en unos 5 minutos. La construcción de la imagen PHP más `composer install` puede pasarse. El script informa la duración.
-- **Los worktrees viejos** `.claude/worktrees/claude-cloud-setup` y `objective-archimedes-837780` (orígenes de los WIP de EVP-L08 y EVP-L06) se pueden borrar después del merge.
+- **Los worktrees viejos** `.claude/worktrees/claude-cloud-setup` y `objective-archimedes-837780` (orígenes de los WIP de EVP-8 y EVP-7) se pueden borrar después del merge.
