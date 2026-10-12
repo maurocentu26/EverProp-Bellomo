@@ -16,6 +16,11 @@ El ticket pide revisarlos y decidir si se quedan o se descartan.
 - Se trajeron los dos scripts desde el WIP.
 - `setup.sh` citaba un `.claude/cloud/NETWORK.md` que nunca existió. Se reemplazó la referencia por la lista de dominios necesarios, escrita en el mismo comentario.
 
+**Correcciones de la revisión de código** (revisor independiente, 2026-10-12):
+- **Bloqueante:** `composer install` corría con el usuario de la imagen (uid 10001) y no podía escribir `vendor/` ni el caché del checkout. Ahora usa `--user "$(id -u):$(id -g)"`, igual que el CI.
+- **Idempotencia:** antes daba el esquema por importado si había tablas, aunque una importación anterior hubiera quedado a medias. Ahora se da por hecho solo si `schema:verify` pasa en las dos bases. Con tablas y la verificación fallando, el script se detiene y no borra nada.
+- **Orden de arranque:** primero levanta `nginx` (que arrastra php, mysql, redis e init), después importa el esquema y recién ahí arranca el worker y el scheduler.
+
 ## 3. Decisión: se quedan, pendientes de una corrida real
 
 - **Repiten el mismo camino que el CI** (`api.yml`): PHP 8.4, MySQL 8.4, baseline más forward y `schema:verify`. No usan SQLite ni se conectan a staging o producción.
@@ -33,7 +38,8 @@ El ticket pide revisarlos y decidir si se quedan o se descartan.
 
 | Comprobación | Resultado |
 |---|---|
-| `bash -n` sobre los dos scripts | OK |
+| `bash -n` sobre los dos scripts (también después de las correcciones) | OK |
+| Revisión de código independiente | Sin problemas en secretos, `sed`/`awk`, `set -e`, nombres de servicio ni hash. Los tres hallazgos están corregidos |
 | Hash SHA-256 del baseline actual contra el del script | Coinciden (`4c8b170b…`) |
 | Servicios usados (`everprop-api-php/mysql/redis/nginx/init`) contra `compose.yaml` | Todos existen |
 | Placeholders `CHANGE_ME_` que reemplaza contra `.env.example` | Reemplaza APP_KEY, DB, REDIS y WEBHOOK. Los de AWS quedan, y el control final no los exige (no hacen falta para los tests) |

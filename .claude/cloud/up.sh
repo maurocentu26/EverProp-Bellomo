@@ -69,7 +69,8 @@ prepare() {
   if [ ! -f vendor/autoload.php ]; then
     log "composer install…"
     mkdir -p "$COMPOSER_CACHE"
-    dc run --rm --no-deps -v "$COMPOSER_CACHE:/tmp/composer" -e COMPOSER_HOME=/tmp/composer -e COMPOSER_PROCESS_TIMEOUT=900 \
+    # Same user as the checkout (CI: api.yml), or composer cannot write vendor/ nor the cache.
+    dc run --rm --no-deps --user "$(id -u):$(id -g)" -v "$COMPOSER_CACHE:/tmp/composer" -e COMPOSER_HOME=/tmp/composer -e COMPOSER_PROCESS_TIMEOUT=900 \
       -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/var/www/html \
       everprop-api-php composer install --no-interaction --prefer-dist --no-progress --no-scripts
   fi
@@ -82,8 +83,13 @@ mysql_root() { dc exec -T everprop-api-mysql sh -c 'MYSQL_PWD="$(cat /run/secret
 # Port de scripts/import-schema.ps1, idempotente: solo importa si la base está vacía.
 import_schema() {
   local tables
-  tables=$(mysql_root -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='bellomo_crm'")
-  if [ "$tables" != "0" ]; then log "Esquema ya importado ($tables tablas)."; return; fi
+  # Done = both databases pass schema:verify; a table count would also skip a half-imported schema.
+  if dc exec -T everprop-api-php php artisan everprop:schema:verify >/dev/null 2>&1      && dc exec -T everprop-api-php php artisan everprop:schema:verify --env=testing >/dev/null 2>&1; then
+    log "Esquema ya importado y verificado."; return
+  fi
+  tables=$(mysql_root -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('bellomo_crm','bellomo_crm_test')")
+  # Never drop data automatically: a partial import is resolved by hand.
+  [ "$tables" = "0" ] || die "Esquema incompleto ($tables tablas) y schema:verify falla: revisar a mano."
   local baseline=database/schema/bellomo_crm_omnichannel_mysql8.baseline.sql
   echo "$BASELINE_SHA256  $baseline" | sha256sum -c --quiet - || die "El baseline no coincide con el hash canónico."
   log "Importando baseline en bellomo_crm y bellomo_crm_test…"
@@ -101,6 +107,8 @@ import_schema() {
 prepare
 [ "${1:-}" = "--prepare" ] && { log "Preparación lista."; exit 0; }
 log "Levantando stack $PROJECT…"
-dc up -d --no-build --wait --wait-timeout 240
+# nginx brings php, mysql, redis and init; worker and scheduler wait for the schema.
+dc up -d --no-build --wait --wait-timeout 240 everprop-api-nginx
 import_schema
+dc up -d --no-build --wait --wait-timeout 240
 log "Listo. Tests: docker compose --project-name $PROJECT exec -T everprop-api-php php artisan test"
