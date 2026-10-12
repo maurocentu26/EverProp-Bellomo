@@ -6,6 +6,7 @@ use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
 use App\Domain\AgentRuntime\Coordinator\PromptBuilder;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Conversations\Services\ConversationControl;
 use DateTimeInterface;
 use Illuminate\Bus\Queueable;
@@ -67,7 +68,7 @@ final class RunAgentJob implements ShouldQueue
         }
         try {
             $result = app(ConversationControl::class)->requestHuman($this->tenantId, $this->conversationId, (int) $conversation->control_epoch,
-                'TOOL_FAILURE: turno del asistente no completado', app(PromptBuilder::class)->unavailableNotice(),
+                'TOOL_FAILURE: turno del asistente no completado', app(PromptBuilder::class)->unavailableNotice(rescue(fn () => app(BusinessHours::class)->backPhrase($this->tenantId), null)),
                 'turn-failed:'.$this->conversationId.':'.$this->inputSequence);
             if ($result['notice_job_id'] !== null) {
                 DispatchOutboundJob::dispatch($this->tenantId, $result['notice_job_id']);

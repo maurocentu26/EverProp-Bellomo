@@ -8,6 +8,7 @@ use App\Domain\AgentRuntime\Llm\LlmResponse;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Inventory\Enums\ProjectStatus;
 use App\Domain\Tenancy\Models\Tenant;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Feature\AgentRuntime\ScriptedLlm;
@@ -151,14 +152,23 @@ final class ModelEvalTest extends TestCase
      */
     private function play(array $case): array
     {
+        $this->travelBack(); // a previous case's fixed clock (fixtures.now) must not leak into this one
         ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration('WEB');
         $tenant->update(['name' => 'Inmobiliaria Sintética']);
         $this->tenants[] = (int) $tenant->id;
         $channel = $this->webChannel($tenant->id, $integration);
         DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'New', 'category' => 'OPEN', 'position' => 1, 'is_active' => true]);
         $this->seedFixtures($case, $tenant);
+        // EVP-L10: out-of-hours cases fix the tenant schedule and the local time (America/Argentina/Salta).
+        if (isset($case['fixtures']['business_hours'])) {
+            $tenant->update(['timezone' => 'America/Argentina/Salta', 'settings_json' => ['conversations' => ['business_hours' => $case['fixtures']['business_hours']]]]);
+        }
+        if (isset($case['fixtures']['now'])) {
+            $this->travelTo(CarbonImmutable::parse($case['fixtures']['now'], 'America/Argentina/Salta'));
+        }
 
-        // ponytail: WhatsApp cases are played on the web widget (the prompt only changes the channel name);
+        // ponytail: WhatsApp cases are played on the web widget (the prompt changes the channel name and, out of hours,
+        // drops the web-only "ask for a phone or email" line);
         // the WhatsApp transport itself is covered by the deterministic webhook suites.
         // Read-only tools leave no row (only mutations are in tool_executions): record what the model asked for.
         $model = app(LlmClient::class);

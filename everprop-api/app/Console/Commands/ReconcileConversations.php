@@ -6,6 +6,7 @@ use App\Domain\AgentRuntime\Coordinator\PromptBuilder;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
 use App\Domain\Conversations\Jobs\ProcessMetaWebhookReceipt;
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
 use Illuminate\Console\Command;
@@ -74,7 +75,7 @@ final class ReconcileConversations extends Command
                     continue;
                 }
                 $result = app(ConversationControl::class)->requestHuman((int) $run->tenant_id, (int) $run->conversation_id, (int) $run->control_epoch,
-                    'TOOL_FAILURE: turno del asistente vencido', app(PromptBuilder::class)->unavailableNotice(), 'run:'.$run->id);
+                    'TOOL_FAILURE: turno del asistente vencido', app(PromptBuilder::class)->unavailableNotice(rescue(fn () => app(BusinessHours::class)->backPhrase((int) $run->tenant_id), null)), 'run:'.$run->id);
                 // Marked FAILED only after the handoff: if it errors, the next sweep retries it.
                 $fail();
                 if ($result['notice_job_id'] !== null) {

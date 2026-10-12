@@ -10,6 +10,7 @@ use App\Domain\AgentRuntime\Tools\ToolContext;
 use App\Domain\AgentRuntime\Tools\ToolGateway;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Usage\QuotaExceeded;
@@ -80,11 +81,12 @@ final class AgentCoordinator
 
         try {
             $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage);
-            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], $trace['visit_requested'] ?? false);
+            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], $trace['visit_requested'] ?? false,
+                outOfHours: $this->back($tenantId) !== null);
             if ($text === '' || $violations !== []) {
                 $trace['guard'] = $violations === [] ? ['EMPTY_REPLY'] : $violations;
                 $context->handoff ??= ['reason' => 'NO_EVIDENCE', 'summary' => 'Respuesta descartada por control de salida.'];
-                $text = $this->prompts->guardedNotice();
+                $text = $this->prompts->guardedNotice($this->back($tenantId));
             }
             $decision = $this->deliver($context, $text);
             $this->finish($context, $decision === 'HANDOFF' ? 'HANDOFF' : 'REPLY', 'SUCCEEDED', null, $trace, $usage);
@@ -199,7 +201,10 @@ final class AgentCoordinator
         $trace['prices'] = [];
 
         $tenantName = (string) DB::table('tenants')->where('id', $context->tenantId)->value('name');
-        $system = $this->prompts->system($tenantName, $channelType, CarbonImmutable::now('America/Argentina/Buenos_Aires')->toDateString(), $sources, $copilot);
+        // A draft is for an advisor who is already here: business hours only shape the assistant's own turn.
+        $timezone = rescue(fn () => app(BusinessHours::class)->settings($context->tenantId)['timezone'], 'America/Argentina/Buenos_Aires');
+        $system = $this->prompts->system($tenantName, $channelType, CarbonImmutable::now($timezone)->toDateString(), $sources, $copilot,
+            $copilot ? null : $this->hours($context->tenantId));
         $definitions = $this->tools->definitions();
         if ($copilot) {
             $definitions = array_values(array_filter($definitions, fn (array $d): bool => in_array($d['name'], self::COPILOT_TOOLS, true)));
@@ -238,7 +243,7 @@ final class AgentCoordinator
         }
         if ($context->handoff !== null && $response->text() === '') {
             // No need for a second call just to say goodbye.
-            return $this->prompts->handoffNotice();
+            return $this->prompts->handoffNotice($this->back($context->tenantId));
         }
 
         $messages[] = ['role' => 'assistant', 'content' => $response->content];
@@ -331,6 +336,13 @@ final class AgentCoordinator
     {
         $key = 'run:'.$context->runId;
         if ($context->handoff !== null) {
+            // Out of hours (EVP-L10) the visitor always gets the fixed line saying when a person answers. The model's
+            // own text (already checked by OutputGuard, including immediate promises) stays, so its help is not lost.
+            $back = $this->back($context->tenantId);
+            if ($back !== null && ! in_array($text, [$this->prompts->handoffNotice($back), $this->prompts->guardedNotice($back),
+                $this->prompts->unavailableNotice($back)], true)) {
+                $text = trim($text) === '' ? $this->prompts->handoffNotice($back) : trim($text).' '.$this->prompts->backLine($back);
+            }
             // Suggest the lead owner only if they can still take conversations.
             $leadOwner = DB::table('chatbot_sessions as s')
                 ->join('leads as l', fn ($j) => $j->on('l.id', '=', 's.lead_id')->on('l.tenant_id', '=', 's.tenant_id'))
@@ -362,13 +374,30 @@ final class AgentCoordinator
     {
         $context->handoff = ['reason' => 'TOOL_FAILURE', 'summary' => 'Asistente no disponible ('.$code.').'];
         try {
-            $this->deliver($context, $this->prompts->unavailableNotice());
+            $this->deliver($context, $this->prompts->unavailableNotice($this->back($context->tenantId)));
         } catch (ConversationConflict) {
             // Already under human control: nothing to hand off.
         }
         $this->finish($context, 'HANDOFF', 'FAILED', $code, $trace, $usage);
 
         return 'FAILED_HANDOFF';
+    }
+
+    /** When the team is back, only outside business hours; a failed read behaves as in hours (no claim made). */
+    private function back(int $tenantId): ?string
+    {
+        return rescue(fn () => app(BusinessHours::class)->backPhrase($tenantId), null);
+    }
+
+    /** @return array{summary: string, back: ?string}|null */
+    private function hours(int $tenantId): ?array
+    {
+        return rescue(function () use ($tenantId): ?array {
+            $hours = app(BusinessHours::class);
+            $summary = $hours->describe($tenantId);
+
+            return $summary === null ? null : ['summary' => $summary, 'back' => $hours->backPhrase($tenantId)];
+        }, null);
     }
 
     /** Idempotent per (conversation, inbound sequence): a redelivered job does not answer twice. */
