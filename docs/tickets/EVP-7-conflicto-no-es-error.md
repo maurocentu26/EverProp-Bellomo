@@ -1,7 +1,7 @@
-# EVP-L06 — Un ConversationConflict no se registra como error
+# EVP-7 — Un ConversationConflict no se registra como error
 
-Rama `ticket/EVP-L06-conflicto-no-es-error` (desde `develop`) · fecha 2026-10-12 · Claude Code con Ramiro Ruggeri
-ID local provisorio (serie EVP-L autorizada por el PM).
+Rama `ticket/EVP-7-conflicto-no-es-error` (desde `develop`) · fecha 2026-10-12 · Claude Code con Ramiro Ruggeri
+Ticket Jira [EVP-7](https://eversys.atlassian.net/browse/EVP-7) (desarrollado en local como EVP-L06).
 
 ## 1. Qué pedía el ticket
 
