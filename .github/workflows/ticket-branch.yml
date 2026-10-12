@@ -1,0 +1,26 @@
+name: Ticket branch
+
+# TICKETS.md: every change to develop comes from ticket/EVP-<key>-<slug> (Jira key like EVP-14, or a local EVP-L01).
+# Only exception: main, merged back into develop after each release (CLAUDE.md).
+on:
+  pull_request:
+    branches: [develop]
+    types: [opened, reopened, edited, synchronize]
+
+permissions: {}
+
+jobs:
+  name:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Branch carries an EVP ticket key
+        env:
+          HEAD: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD" == main || "$HEAD" =~ ^ticket/EVP-(L[0-9]+|[0-9]+(\.[0-9]+)?)-[a-z0-9][a-z0-9-]*$ ]]; then
+            echo "OK: $HEAD"
+          else
+            echo "::error::La rama '$HEAD' no sigue TICKETS.md: tiene que ser ticket/EVP-XX-descripcion (o ticket/EVP-LXX-... local)."
+            exit 1
+          fi

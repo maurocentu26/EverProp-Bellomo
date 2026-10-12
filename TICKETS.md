@@ -32,6 +32,7 @@ Los tickets viven en Jira, proyecto **EVP** (claves `EVP-XX`). Al empezar una se
 
 - Todo trabajo arranca con un ticket de Jira `EVP-XX` que existe y tiene un objetivo concreto (ver la regla principal).
 - Rama nueva desde `develop` actualizado: `ticket/EVP-XX-<descripcion-corta>`, por ejemplo `ticket/EVP-14-recordatorios-email`. La clave en el nombre vincula la rama, los commits y el PR con el ticket en Jira.
+- El check `Ticket branch` (`.github/workflows/ticket-branch.yml`) rechaza los PR a `develop` cuya rama no siga este formato (también acepta las claves locales `EVP-LXX`; la única excepción es `main`, que vuelve a `develop` después de cada release).
 - Con Jira conectado: al crear la rama, pasar el ticket a **En curso**; al abrir el PR con el informe, pasarlo a **En revisión** y enlazar el informe. Los estados siguientes los mueven las personas.
 - Un ticket por rama. Si aparece trabajo que no es del ticket, no se hace: se anota como pendiente en el informe y se propone como ticket nuevo.
 - Si el ticket es un ítem del backlog de Conversations (S01–S17, Q01–Q03), seguir además la skill `backlog-item`.
