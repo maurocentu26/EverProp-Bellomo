@@ -33,3 +33,5 @@ Pushing a release branch does not apply the SQL or deploy production. Deployment
 ## Rotador (2026-10-07)
 
 Apply `database/schema/forward/2026-10-07.001_rotator_role.sql` to each database before deploying the role change. It converts existing INVENTORY_MANAGER accounts to ROTATOR and removes their inventory/price write permissions. Rotators can read tenant leads and active advisors and change only `agent_id` through PUT/PATCH `/api/v1/admin/leads/{lead}`. They cannot manage inventory, users or collections. The frontend uses `/admin/leads` for manual assignment.
+
+This script shares version `2026-10-07.001` with `collection_email_attempts` and does not write a `schema_versions` row (it predates the EVP-16 check). To confirm it is applied, check that `production:check` reports the `ROTATOR` role in the `ck_users_role` constraint. A missing version row does not mean the script was skipped.
