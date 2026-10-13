@@ -22,7 +22,7 @@ use Minishlink\WebPush\WebPush;
 use Mockery\Expectation;
 use Tests\TestCase;
 
-/** EVP-L02: tenant business hours, the away notice for visitors and each advisor's out-of-hours push choice. */
+/** EVP-L02: tenant business hours, the away notice for visitors and each advisor's out-of-hours push choice. EVP-14: holidays. */
 final class BusinessHoursTest extends TestCase
 {
     use ConversationTestSupport, DatabaseTransactions;
@@ -270,5 +270,66 @@ final class BusinessHoursTest extends TestCase
         $this->actingAs($this->user($b, RoleCode::SALES_ADVISOR))->withHeaders($this->tenantHeaders($b))
             ->putJson('/api/v1/admin/push/subscriptions/preferences', ['endpoint' => $device['endpoint'], 'out_of_hours' => false])->assertNotFound();
         $this->assertSame(1, (int) DB::table('web_push_subscriptions')->where('tenant_id', $a->id)->value('out_of_hours'));
+    }
+
+    /** @param list<string> $holidays */
+    private function tenantWithHolidays(array $holidays): Tenant
+    {
+        return Tenant::factory()->create(['timezone' => 'America/Argentina/Salta',
+            'settings_json' => ['conversations' => ['business_hours' => self::WEEK, 'holidays' => $holidays]]]);
+    }
+
+    public function test_a_holiday_is_closed_all_day_and_the_next_opening_skips_it(): void
+    {
+        // Monday 2026-10-12 and Tuesday 2026-10-13 are holidays: Saturday afternoon points to Wednesday 9:00.
+        $tenant = $this->tenantWithHolidays(['2026-10-12', '2026-10-13']);
+        $hours = app(BusinessHours::class);
+        $local = fn (string $at) => CarbonImmutable::parse($at, 'America/Argentina/Salta');
+
+        $this->assertFalse($hours->isOpen($tenant->id, $local('2026-10-12 10:00')), 'a weekday inside its hours is closed on a holiday');
+        $this->assertTrue($hours->isOpen($tenant->id, $local('2026-10-14 10:00')));
+        $this->assertSame('2026-10-14 09:00', $hours->nextOpening($tenant->id, $local('2026-10-10 14:00'))?->format('Y-m-d H:i'));
+        $this->assertSame('a partir del miércoles a las 9:00', $hours->backPhrase($tenant->id, $local('2026-10-12 10:00')));
+
+        // The visitor writing on the holiday gets the away notice with the real return.
+        $this->at('2026-10-12 10:00');
+        $notice = $this->botTexts($this->visitor($tenant));
+        $this->assertCount(1, $notice);
+        $this->assertStringContainsString('a partir del miércoles a las 9:00', $notice[0]);
+    }
+
+    public function test_a_long_closure_names_the_date_and_holidays_without_hours_change_nothing(): void
+    {
+        // A whole week of holidays: the weekday alone would be ambiguous, so the date is added.
+        $tenant = $this->tenantWithHolidays(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-19']);
+        $at = CarbonImmutable::parse('2026-10-11 12:00', 'America/Argentina/Salta');
+        $this->assertSame('a partir del martes 20/10 a las 9:00', app(BusinessHours::class)->backPhrase($tenant->id, $at));
+
+        $always = Tenant::factory()->create(['settings_json' => ['conversations' => ['holidays' => ['2026-10-12']]]]);
+        $this->assertTrue(app(BusinessHours::class)->isOpen($always->id, CarbonImmutable::parse('2026-10-12 10:00', 'America/Argentina/Salta')), 'no schedule = always open');
+    }
+
+    public function test_the_admin_sets_holidays_with_validation_and_omitting_them_keeps_them(): void
+    {
+        [$a, $b] = [$this->tenant(), $this->tenant()];
+        $admin = $this->user($a, RoleCode::TENANT_ADMIN);
+        $put = fn (Tenant $host, array $body) => $this->actingAs($admin)->withHeaders($this->tenantHeaders($host))->putJson('/api/v1/admin/business-hours', $body);
+
+        foreach ([['2026-02-30'], ['25/12/2026'], ['2026-12-25T00:00'], [20261225], ['x' => '2026-12-25'], array_fill(0, 61, '2026-12-25')] as $bad) {
+            $put($a, ['business_hours' => self::WEEK, 'holidays' => $bad])->assertStatus(422)->assertJsonPath('error.code', 'INVALID_HOLIDAYS');
+        }
+        $put($a, ['business_hours' => self::WEEK, 'holidays' => ['2026-12-25', '2026-01-01', '2026-12-25']])->assertOk()
+            ->assertJsonPath('data.holidays', ['2026-01-01', '2026-12-25']);
+        $audit = DB::table('audit_logs')->where('tenant_id', $a->id)->where('action_code', 'CONVERSATIONS_BUSINESS_HOURS_UPDATED')->get();
+        $this->assertCount(1, $audit, 'only the valid change is audited');
+        $this->assertSame(['2026-01-01', '2026-12-25'], json_decode((string) $audit[0]->after_json, true)['holidays']);
+
+        // An older client that only sends the hours does not wipe them; an empty list clears them.
+        $put($a, ['business_hours' => self::WEEK])->assertOk()->assertJsonPath('data.holidays', ['2026-01-01', '2026-12-25']);
+        $put($a, ['business_hours' => self::WEEK, 'holidays' => []])->assertOk()->assertJsonPath('data.holidays', []);
+
+        // Another tenant: its host answers 404 and its settings stay untouched.
+        $put($b, ['business_hours' => self::WEEK, 'holidays' => ['2026-12-25']])->assertNotFound();
+        $this->assertSame([], app(BusinessHours::class)->settings($b->id)['holidays']);
     }
 }

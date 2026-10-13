@@ -9,29 +9,32 @@ use Illuminate\Support\Facades\DB;
  * Tenant business hours (EVP-L02): when the team answers, in the tenant's own timezone. Stored in
  * tenants.settings_json.conversations.business_hours as {"mon": [["09:00","18:00"]], ...}, up to two ranges per
  * day, same-day only (ADR 0005 exception, like the AI switches). No schedule configured = always open, so a tenant
- * that never sets hours behaves exactly as before. Holidays are not modelled yet.
+ * that never sets hours behaves exactly as before. Holidays (EVP-14) are closed dates in the tenant's timezone,
+ * stored next to it as "holidays": ["2026-12-25", ...]; they only apply when a schedule exists.
  */
 final class BusinessHours
 {
     public const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
+    public const MAX_HOLIDAYS = 60;
+
     private const NAMES = ['mon' => 'lunes', 'tue' => 'martes', 'wed' => 'miércoles', 'thu' => 'jueves', 'fri' => 'viernes', 'sat' => 'sábado', 'sun' => 'domingo'];
 
-    /** @var array<int, array{schedule: array<string, list<array{0: string, 1: string}>>|null, away_message: string|null, timezone: string}> */
+    /** @var array<int, array{schedule: array<string, list<array{0: string, 1: string}>>|null, holidays: list<string>, away_message: string|null, timezone: string}> */
     private array $memo = [];
 
     /**
      * Read once per instance (the container builds a new one per resolve), so a report over many rows does not
      * query the tenant every time and a later request always sees fresh settings.
      *
-     * @return array{schedule: array<string, list<array{0: string, 1: string}>>|null, away_message: string|null, timezone: string}
+     * @return array{schedule: array<string, list<array{0: string, 1: string}>>|null, holidays: list<string>, away_message: string|null, timezone: string}
      */
     public function settings(int $tenantId): array
     {
         return $this->memo[$tenantId] ??= $this->load($tenantId);
     }
 
-    /** @return array{schedule: array<string, list<array{0: string, 1: string}>>|null, away_message: string|null, timezone: string} */
+    /** @return array{schedule: array<string, list<array{0: string, 1: string}>>|null, holidays: list<string>, away_message: string|null, timezone: string} */
     private function load(int $tenantId): array
     {
         $tenant = DB::table('tenants')->where('id', $tenantId)->first(['settings_json', 'timezone']);
@@ -41,6 +44,7 @@ final class BusinessHours
 
         return [
             'schedule' => self::normalize($conversations['business_hours'] ?? null),
+            'holidays' => self::normalizeHolidays($conversations['holidays'] ?? []) ?? [],
             'away_message' => is_string($message) && trim($message) !== '' ? $message : null,
             // A mistyped zone must not break alerts or the inbox: fall back to the platform default (baseline).
             'timezone' => in_array($tenant?->timezone, \DateTimeZone::listIdentifiers(), true) ? (string) $tenant->timezone : 'America/Argentina/Salta',
@@ -49,21 +53,26 @@ final class BusinessHours
 
     public function isOpen(int $tenantId, ?CarbonImmutable $at = null): bool
     {
-        ['schedule' => $schedule, 'timezone' => $tz] = $this->settings($tenantId);
+        ['schedule' => $schedule, 'holidays' => $holidays, 'timezone' => $tz] = $this->settings($tenantId);
+        $local = ($at ?? CarbonImmutable::now())->setTimezone($tz);
 
-        return $schedule === null || self::openAt($schedule, ($at ?? CarbonImmutable::now())->setTimezone($tz));
+        return $schedule === null || (! in_array($local->toDateString(), $holidays, true) && self::openAt($schedule, $local));
     }
 
     /** Next moment the team opens, in the tenant's timezone; null when always open or no day has hours. */
     public function nextOpening(int $tenantId, ?CarbonImmutable $at = null): ?CarbonImmutable
     {
-        ['schedule' => $schedule, 'timezone' => $tz] = $this->settings($tenantId);
+        ['schedule' => $schedule, 'holidays' => $holidays, 'timezone' => $tz] = $this->settings($tenantId);
         if ($schedule === null) {
             return null;
         }
         $local = ($at ?? CarbonImmutable::now())->setTimezone($tz);
-        for ($offset = 0; $offset <= 7; $offset++) {
+        // A week, plus one day per holiday that could fall in the way.
+        for ($offset = 0; $offset <= 7 + count($holidays); $offset++) {
             $day = $local->addDays($offset);
+            if (in_array($day->toDateString(), $holidays, true)) {
+                continue;
+            }
             foreach ($schedule[self::DAYS[$day->dayOfWeekIso - 1]] as [$start]) {
                 $opens = $day->setTimeFromTimeString($start);
                 if ($opens->greaterThan($local)) {
@@ -135,9 +144,12 @@ final class BusinessHours
             return 'apenas vuelva el equipo';
         }
         $today = ($at ?? CarbonImmutable::now())->setTimezone($next->timezone)->startOfDay();
-        $from = match ((int) $today->diffInDays($next->startOfDay())) {
-            0 => 'de hoy',
-            1 => 'de mañana',
+        $days = (int) $today->diffInDays($next->startOfDay());
+        $from = match (true) {
+            $days === 0 => 'de hoy',
+            $days === 1 => 'de mañana',
+            // Past a week (only with holidays) the weekday alone is ambiguous: add the date.
+            $days >= 7 => 'del '.self::NAMES[self::DAYS[$next->dayOfWeekIso - 1]].' '.$next->format('j/n'),
             default => 'del '.self::NAMES[self::DAYS[$next->dayOfWeekIso - 1]],
         };
 
@@ -173,6 +185,27 @@ final class BusinessHours
         }
 
         return $schedule;
+    }
+
+    /**
+     * Validated holiday list (unique, sorted "YYYY-MM-DD" real dates, at most MAX_HOLIDAYS) or null when malformed.
+     *
+     * @return list<string>|null
+     */
+    public static function normalizeHolidays(mixed $raw): ?array
+    {
+        if (! is_array($raw) || ! array_is_list($raw) || count($raw) > self::MAX_HOLIDAYS) {
+            return null;
+        }
+        foreach ($raw as $date) {
+            if (! is_string($date) || preg_match('/\A(\d{4})-(\d{2})-(\d{2})\z/', $date, $m) !== 1 || ! checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+                return null;
+            }
+        }
+        $dates = array_values(array_unique($raw));
+        sort($dates);
+
+        return $dates;
     }
 
     /** @param array<string, list<array{0: string, 1: string}>> $schedule */
