@@ -56,7 +56,7 @@ final class AgentCoordinator
             return 'SKIPPED_NOT_BOT';
         }
         // A turn queued before the assistant was switched off must not call the model.
-        if (! InboundMessageService::aiEnabled()) {
+        if (! InboundMessageService::aiEnabled($tenantId)) {
             InboundMessageService::handOffOrphanedBotConversation($tenantId, $conversationId);
 
             return 'SKIPPED_AI_DISABLED';
@@ -95,6 +95,10 @@ final class AgentCoordinator
         } catch (ConversationConflict $e) {
             // An advisor took over (or closed) while we were thinking: discard silently.
             $this->finish($context, 'IGNORE', 'CANCELLED', $e->code_, $trace, $usage);
+            if ($e->code_ === 'AI_DISABLED') {
+                // Switched off mid-turn: nobody else would answer, so a human takes it now (the sweep is the backstop).
+                InboundMessageService::handOffOrphanedBotConversation($tenantId, $conversationId);
+            }
 
             return 'STALE';
         } catch (QuotaExceeded|LlmFailure $e) {
@@ -119,7 +123,7 @@ final class AgentCoordinator
      */
     public function suggest(int $tenantId, int $conversationId): array
     {
-        if (! config('conversations.copilot_enabled') || config('agent.llm_provider') === 'disabled') {
+        if (! InboundMessageService::copilotEnabled($tenantId)) {
             throw new CopilotFailure('COPILOT_DISABLED');
         }
         $conversation = DB::table('conversations as c')

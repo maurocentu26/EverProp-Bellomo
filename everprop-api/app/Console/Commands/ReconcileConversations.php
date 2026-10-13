@@ -88,23 +88,29 @@ final class ReconcileConversations extends Command
             }
         }
 
-        // Assistant switched off: OPEN conversations left under bot control with a recent unanswered visitor
-        // go to humans. Bounded to recent activity: rows that predate the runtime got control_state AI_ACTIVE
-        // by column default (forward 2026-09-29.002) and must not flood the inbox.
+        // Assistant switched off (globally or for a tenant, EVP-L01): OPEN conversations left under bot control with
+        // a recent unanswered visitor go to humans. Bounded to recent activity: rows that predate the runtime got
+        // control_state AI_ACTIVE by column default (forward 2026-09-29.002) and must not flood the inbox.
         $orphaned = 0;
-        if (! InboundMessageService::aiEnabled()) {
-            $candidates = DB::table('conversations')->whereIn('control_state', ConversationControl::BOT_STATES)
-                ->where('status', 'OPEN')->whereNull('closed_at')
-                ->where('last_inbound_at', '>=', now()->subHours((int) config('conversations.ai_off_sweep_hours', 72)))
-                ->where(fn ($q) => $q->whereNull('last_outbound_at')->orWhereColumn('last_inbound_at', '>', 'last_outbound_at'))
-                // ponytail: oldest unanswered first; >500 rows failing on every run would still starve the rest (then page by id).
-                ->orderBy('last_inbound_at')->limit(500)->get(['id', 'tenant_id']);
-            foreach ($candidates as $c) {
-                try {
-                    $orphaned += (int) InboundMessageService::handOffOrphanedBotConversation((int) $c->tenant_id, (int) $c->id);
-                } catch (\Throwable $e) {
-                    report($e); // one bad row must not stop the sweep
-                }
+        // Tenants whose assistant is on are excluded up front, so they cannot fill the 500-row page.
+        $aiOn = InboundMessageService::aiAvailable()
+            ? DB::table('tenants')->whereRaw("JSON_EXTRACT(settings_json, '$.conversations.ai_enabled') = CAST('true' AS JSON)")->pluck('id')->all()
+            : [];
+        $candidates = DB::table('conversations')->whereIn('control_state', ConversationControl::BOT_STATES)
+            ->when($aiOn !== [], fn ($q) => $q->whereNotIn('tenant_id', $aiOn))
+            ->where('status', 'OPEN')->whereNull('closed_at')
+            ->where('last_inbound_at', '>=', now()->subHours((int) config('conversations.ai_off_sweep_hours', 72)))
+            ->where(fn ($q) => $q->whereNull('last_outbound_at')->orWhereColumn('last_inbound_at', '>', 'last_outbound_at'))
+            // ponytail: oldest unanswered first; >500 rows failing on every run would still starve the rest (then page by id).
+            ->orderBy('last_inbound_at')->limit(500)->get(['id', 'tenant_id']);
+        foreach ($candidates as $c) {
+            if (InboundMessageService::aiEnabled((int) $c->tenant_id)) {
+                continue; // switched on after the list above was read
+            }
+            try {
+                $orphaned += (int) InboundMessageService::handOffOrphanedBotConversation((int) $c->tenant_id, (int) $c->id);
+            } catch (\Throwable $e) {
+                report($e); // one bad row must not stop the sweep
             }
         }
 

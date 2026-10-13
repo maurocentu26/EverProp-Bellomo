@@ -43,12 +43,13 @@ final class PublicChatController extends Controller
         $visitor = 'visitor:'.$sessionId;
         $contact = $contacts->resolve($tenantId, [], ['channel_type' => 'WEB_CHAT', 'provider_user_id' => $visitor], $now);
 
-        DB::transaction(function () use ($tenantId, $channel, $sessionId, $token, $now, $contact, $request): void {
+        $ai = InboundMessageService::aiEnabled($tenantId);
+        DB::transaction(function () use ($tenantId, $channel, $sessionId, $token, $now, $contact, $request, $ai): void {
             $conversationId = (int) DB::table('conversations')->insertGetId([
                 'tenant_id' => $tenantId, 'public_id' => (string) Str::uuid(), 'contact_id' => $contact['id'],
                 'channel_account_id' => $channel->id, 'provider_thread_id' => 'web:'.$sessionId, 'status' => 'OPEN',
-                'bot_mode' => InboundMessageService::aiEnabled() ? 'BOT_FIRST' : 'HUMAN_FIRST',
-                'control_state' => InboundMessageService::aiEnabled() ? 'AI_ACTIVE' : 'WAITING_HUMAN',
+                'bot_mode' => $ai ? 'BOT_FIRST' : 'HUMAN_FIRST',
+                'control_state' => $ai ? 'AI_ACTIVE' : 'WAITING_HUMAN',
                 'last_activity_at' => $now->format('Y-m-d H:i:s.v'),
             ]);
             DB::table('public_chat_sessions')->insert([
