@@ -93,8 +93,11 @@ final class AdminLeadController extends Controller
             if (! empty($leadIds)) {
                 $linkedProps = DB::table('lead_properties')
                     ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
-                    ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
+                    ->leftJoin('projects', function ($join) {
+                        $join->on('projects.id', '=', 'properties.project_id')->on('projects.tenant_id', '=', 'properties.tenant_id');
+                    })
                     ->where('lead_properties.tenant_id', $tenantId)
+                    ->where('properties.tenant_id', $tenantId)
                     ->whereIn('lead_properties.lead_id', $leadIds)
                     ->select([
                         'lead_properties.lead_id',
@@ -113,7 +116,7 @@ final class AdminLeadController extends Controller
                     ])
                     ->get();
 
-                $canViewPrices = $this->inventoryAccess->mayViewPriceFields($user);
+                $canViewPrices = $user->role() === RoleCode::ROTATOR || $this->inventoryAccess->mayViewPriceFields($user);
                 foreach ($linkedProps as $prop) {
                     $linkedPropertyIds[$prop->lead_id][] = $prop->property_public_id;
                     $linkedPropertiesMap[$prop->lead_id][] = [
@@ -343,6 +346,7 @@ final class AdminLeadController extends Controller
         try {
             $tenantId = $this->tenantContext->id();
             $user = $request->user();
+            abort_unless($user && (new LeadAccessPolicy)->viewAny($user, $tenantId), 403);
 
             $query = DB::table('leads')
                 ->join('contacts', 'contacts.id', '=', 'leads.contact_id')
@@ -353,6 +357,8 @@ final class AdminLeadController extends Controller
                 ->whereNull('leads.deleted_at')
                 ->select([
                     'leads.id',
+                    'leads.tenant_id',
+                    'leads.assigned_user_id as assigned_user_db_id',
                     'leads.public_id',
                     'leads.title',
                     'leads.source_channel',
@@ -387,10 +393,17 @@ final class AdminLeadController extends Controller
                 return response()->json(['error' => 'Lead not found'], 404);
             }
 
+            abort_unless((new LeadAccessPolicy)->view($user, $tenantId, (object) [
+                'tenant_id' => $lead->tenant_id, 'assigned_user_id' => $lead->assigned_user_db_id,
+            ]), 403);
+
             $linkedProps = DB::table('lead_properties')
                 ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
-                ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
+                ->leftJoin('projects', function ($join) {
+                    $join->on('projects.id', '=', 'properties.project_id')->on('projects.tenant_id', '=', 'properties.tenant_id');
+                })
                 ->where('lead_properties.tenant_id', $tenantId)
+                ->where('properties.tenant_id', $tenantId)
                 ->where('lead_properties.lead_id', $lead->id)
                 ->select([
                     'lead_properties.interest_level',
@@ -409,7 +422,7 @@ final class AdminLeadController extends Controller
                 ->get();
 
             $propertyIds = $linkedProps->pluck('property_public_id')->all();
-            $canViewPrices = $this->inventoryAccess->mayViewPriceFields($request->user());
+            $canViewPrices = $user->role() === RoleCode::ROTATOR || $this->inventoryAccess->mayViewPriceFields($user);
             $propertiesList = $linkedProps->map(function ($prop) use ($canViewPrices) {
                 return [
                     'id' => $prop->property_public_id,
@@ -492,7 +505,8 @@ final class AdminLeadController extends Controller
                 }
 
                 $actor = $request->user();
-                abort_unless($actor && (new LeadAccessPolicy)->update($actor, $tenantId, $lead), 403);
+                abort_unless($actor && ((new LeadAccessPolicy)->update($actor, $tenantId, $lead)
+                    || ($actor->role() === RoleCode::ROTATOR && (new LeadAccessPolicy)->assign($actor, $tenantId))), 403);
                 if (array_key_exists('agent_id', $validated)) {
                     abort_unless((new LeadAccessPolicy)->assign($actor, $tenantId), 403);
                 }

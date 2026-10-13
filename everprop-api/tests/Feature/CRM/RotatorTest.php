@@ -7,6 +7,7 @@ use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class RotatorTest extends TestCase
@@ -39,6 +40,57 @@ final class RotatorTest extends TestCase
             $this->getJson('/api/v1/admin/'.$module)->assertForbidden();
         }
         $this->withHeaders(['X-Everprop-Tenant' => $foreign->tenant->public_id])->getJson('/api/v1/admin/leads')->assertNotFound();
+    }
+
+    public function test_rotator_reads_complete_leads_but_cannot_change_commercial_data(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $admin = User::factory()->for($tenant)->create(['role_code' => RoleCode::TENANT_ADMIN]);
+        $rotator = User::factory()->for($tenant)->create(['role_code' => RoleCode::ROTATOR]);
+        $advisor = User::factory()->for($tenant)->create(['role_code' => RoleCode::SALES_ADVISOR]);
+        $foreign = User::factory()->create(['role_code' => RoleCode::ROTATOR]);
+        DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'Nuevo', 'category' => 'OPEN', 'position' => 1]);
+        $this->actingAs($admin)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
+        $lead = $this->postJson('/api/v1/admin/leads', [
+            'name' => 'Ficha completa', 'email' => 'lead@example.invalid', 'phone' => '+5493881234567',
+            'source_channel' => 'INSTAGRAM', 'priority' => 'HIGH', 'budget' => 150000, 'currency' => 'USD', 'notes' => 'Busca casa',
+        ])->assertCreated()->json('data.id');
+        $property = (string) Str::uuid();
+        DB::table('properties')->insert([
+            'tenant_id' => $tenant->id, 'public_id' => $property, 'title' => 'Casa de interés',
+            'operation' => 'SALE', 'category' => 'HOUSE', 'status' => 'AVAILABLE',
+            'price' => 120000, 'currency_code' => 'USD', 'city' => 'Salta', 'province' => 'Salta',
+        ]);
+        $path = '/api/v1/admin/leads/'.$lead;
+        $this->postJson($path.'/properties', ['property_id' => $property, 'notes' => 'Con jardín'])->assertOk();
+        $this->postJson($path.'/follow-ups', ['type' => 'note', 'summary' => 'Consulta inicial', 'occurred_at' => now()->subMinute()->toISOString(), 'result' => 'Pendiente'])->assertCreated();
+        $visit = $this->postJson('/api/v1/admin/visits', ['lead_id' => $lead, 'scheduled_at' => now()->addDay()->toISOString()])->assertCreated()->json('data.id');
+        $this->actingAs($rotator);
+        foreach ([null, $advisor->public_id] as $assigned) {
+            $this->putJson($path, ['agent_id' => $assigned])->assertOk();
+            $this->getJson($path)->assertOk()->assertJsonPath('data.agent_id', $assigned)
+                ->assertJsonPath('data.budget', 150000)->assertJsonPath('data.notes', 'Busca casa')
+                ->assertJsonPath('data.properties.0.price', 120000)->assertJsonPath('data.properties.0.currency', 'USD')
+                ->assertJsonPath('data.properties.0.notes', 'Con jardín');
+            $this->getJson('/api/v1/admin/leads')->assertOk()->assertJsonFragment(['price' => 120000]);
+            $this->getJson($path.'/follow-ups')->assertOk()->assertJsonFragment(['summary' => 'Consulta inicial']);
+            $this->getJson('/api/v1/admin/visits')->assertOk()->assertJsonFragment(['id' => $visit]);
+        }
+        $this->postJson($path.'/follow-ups', ['type' => 'note', 'summary' => 'Prohibido'])->assertForbidden();
+        $this->postJson($path.'/properties', ['property_id' => $property])->assertForbidden();
+        $this->patchJson($path.'/properties/'.$property, ['notes' => 'Prohibido'])->assertForbidden();
+        $this->deleteJson($path.'/properties/'.$property)->assertForbidden();
+        $this->postJson('/api/v1/admin/visits', ['lead_id' => $lead, 'scheduled_at' => now()->addDays(2)->toISOString()])->assertForbidden();
+        $this->patchJson('/api/v1/admin/visits/'.$visit.'/cancel')->assertForbidden();
+        // Laravel's test router retains controllers between requests; resolve their tenant context anew.
+        foreach (app('router')->getRoutes()->getRoutes() as $route) {
+            $route->flushController();
+        }
+        $this->actingAs($foreign)->withHeaders(['X-Everprop-Tenant' => $foreign->tenant->public_id]);
+        $this->getJson($path)->assertNotFound();
+        $this->getJson($path.'/follow-ups')->assertNotFound();
+        $this->getJson('/api/v1/admin/leads')->assertOk()->assertJsonMissing(['id' => $lead]);
+        $this->getJson('/api/v1/admin/visits')->assertOk()->assertJsonMissing(['id' => $visit]);
     }
 
     public function test_rotator_creates_new_leads_only_in_its_tenant_without_properties(): void

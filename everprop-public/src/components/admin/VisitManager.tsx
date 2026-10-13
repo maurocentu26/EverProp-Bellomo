@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { QuickScheduleButtons } from "@/components/admin/QuickScheduleButtons";
 
 type Props = {
+  readOnly?: boolean;
   title: string;
   subtitle: string;
   visits: Visit[];
@@ -61,6 +62,7 @@ function formatVisitDate(iso: string) {
 }
 
 export default function VisitManager({
+  readOnly = false,
   title,
   subtitle,
   visits,
@@ -201,7 +203,7 @@ export default function VisitManager({
 
       <div className="grid min-w-0 grid-cols-1 gap-6 items-start @min-[56rem]:grid-cols-12">
         {/* Formulario de Agendamiento */}
-        <div className="min-w-0 @min-[56rem]:col-span-5">
+        {!readOnly && <div className="min-w-0 @min-[56rem]:col-span-5">
           <form onSubmit={handleSubmit} className="min-w-0 space-y-4 p-4 @min-[32rem]:p-6 rounded-2xl border border-slate-200 bg-white shadow-xs dark:bg-card dark:border-border">
             {propertyOptions && propertyOptions.length > 0 && (
               <div className="space-y-1.5">
@@ -403,10 +405,10 @@ export default function VisitManager({
               Confirmar Visita
             </Button>
           </form>
-        </div>
+        </div>}
 
         {/* Lista de Visitas (Timeline) */}
-        <div className="min-w-0 space-y-4 @min-[56rem]:col-span-7">
+        <div className={cn("min-w-0 space-y-4", readOnly ? "@min-[56rem]:col-span-12" : "@min-[56rem]:col-span-7")}>
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Cronograma de Visitas</h3>
 
           {sortedVisits.length === 0 ? (
@@ -446,7 +448,7 @@ export default function VisitManager({
                     </div>
 
                     {/* Acciones */}
-                    {onDelete && visit.status === "scheduled" && <div className="flex items-center gap-1">
+                    {!readOnly && onDelete && visit.status === "scheduled" && <div className="flex items-center gap-1">
                         <Button
                             variant="ghost"
                             size="icon"

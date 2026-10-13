@@ -96,7 +96,7 @@ final class AdminVisitController extends Controller
     public function store(Request $request, TenantContext $context, VisitPolicy $policy, InventoryAccess $inventoryAccess): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user && $policy->viewAny($user, $context->id()) && $user->role() !== RoleCode::READ_ONLY, 403);
+        abort_unless($user && $policy->viewAny($user, $context->id()) && ! in_array($user->role(), [RoleCode::READ_ONLY, RoleCode::ROTATOR], true), 403);
         $data = $request->validate([
             'lead_id' => 'nullable|uuid', 'property_id' => 'nullable|uuid', 'agent_id' => 'nullable|uuid',
             'guest_name' => 'required_without:lead_id|nullable|string|max:160',
@@ -162,7 +162,7 @@ final class AdminVisitController extends Controller
 
     public function cancel(Request $request, TenantContext $context, VisitPolicy $policy, string $visit): JsonResponse
     {
-        abort_if($request->user()?->role() === RoleCode::READ_ONLY, 403);
+        abort_if(in_array($request->user()?->role(), [RoleCode::READ_ONLY, RoleCode::ROTATOR], true), 403);
         $row = $this->query($request, $context, $policy)->where('v.public_id', $visit)->first(['v.id', 'v.status']);
         abort_unless($row !== null, 404);
         abort_unless($row->status === 'SCHEDULED', 422, 'Solo se puede cancelar una cita pendiente.');

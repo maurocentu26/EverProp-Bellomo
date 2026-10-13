@@ -18,6 +18,9 @@ export type LeadInterest = {
   projectId?: string;
   propertyId?: string;
   propertyTitle?: string;
+  projectName?: string;
+  unitNumber?: string;
+  sectorName?: string;
   status?: string;
   interestLevel?: string;
   unitId?: string;
@@ -133,6 +136,9 @@ export type Lead = {
   companyId: string;
   name: string;
   origin: string;
+  budget?: number;
+  currency?: string;
+  priority?: string;
   propertyIds: string[]; 
   projectId?: string;
   unitIds?: string[];

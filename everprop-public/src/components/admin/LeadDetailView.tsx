@@ -100,6 +100,9 @@ type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInter
 export default function LeadDetailView({ leadId }: { leadId: string }) {
   const { currentUser } = useAuth();
   const router = useRouter();
+  const currentUserId = currentUser?.id;
+  const isRotator = currentUser?.role === "ROTATOR";
+  const canAssign = currentUser?.role === "ADMIN" || isRotator;
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [lead, setLead] = useState<Lead | null>(null);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
@@ -122,7 +125,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           const [singleLead, apiLeads, catalog, apiFollowUps, apiVisits] = await Promise.all([
             loadEverpropLeadById(leadId).catch(() => null),
             loadEverpropLeads().catch(() => []),
-            loadEverpropCatalog(),
+            isRotator ? Promise.resolve({ properties: [], projects: [] }) : loadEverpropCatalog(),
             loadEverpropLeadFollowUps(leadId),
             loadEverpropVisits(),
           ]);
@@ -150,11 +153,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
       setFollowUps(loadLeadFollowUpList([], companyId));
       setLead(foundLead);
     }
-    void loadData();
+    if (currentUserId) void loadData();
     return () => {
       active = false;
     };
-  }, [leadId]);
+  }, [leadId, currentUserId, isRotator]);
 
   const interests = useMemo(() => lead ? normalizeLeadInterests(lead, allProperties) : [], [allProperties, lead]);
   const projectById = useMemo(() => new Map(allProjects.map((project) => [project.id, project])), [allProjects]);
@@ -330,19 +333,17 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   async function handleReassignAgentConfirmed(agentId?: string) {
     if (!lead) return;
     const newAdvisor = getAdvisor(agentId);
-    const updatedLead: Lead = {
+    let updatedLead: Lead = {
       ...lead,
       agentId,
       agentName: newAdvisor?.name,
     };
-    const nextLeads = allLeads.map((candidate) => candidate.id === lead.id ? updatedLead : candidate);
-
-
     if (!isMockDataMode) {
       try {
         await updateEverpropLead(lead.id, {
           agentId: agentId || null,
         });
+        updatedLead = { ...await loadEverpropLeadById(lead.id), visits: lead.visits };
       } catch (err: any) {
         toast.error(err instanceof Error ? err.message : "No se pudo reasignar el lead.");
         return;
@@ -539,9 +540,13 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </div>
             </div>
 
-            <Link href={`/admin/leads/${lead.id}/edit`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
+            <dl className="mt-4 space-y-2 text-xs">
+              <div><dt className="font-semibold">Presupuesto</dt><dd>{lead.budget != null ? `${lead.currency || "USD"} ${lead.budget.toLocaleString("es-AR")}` : "Sin informar"}</dd></div>
+              <div><dt className="font-semibold">Prioridad</dt><dd>{({ low: "Baja", normal: "Normal", high: "Alta", urgent: "Urgente" } as Record<string, string>)[lead.priority || ""] || lead.priority || "Sin informar"}</dd></div>
+            </dl>
+            {!isRotator && <Link href={`/admin/leads/${lead.id}/edit`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
               <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
-            </Link>
+            </Link>}
             {currentUser?.role === "ADMIN" && (
               <Button
                 variant="outline"
@@ -558,7 +563,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500 dark:text-slate-400">Asesor responsable</p>
             <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">{assignedAgent?.name ?? "Sin asignar"}</p>
             <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
-            {currentUser?.role === "ADMIN" && (
+            {canAssign && (
               <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
                 Cambiar asesor
               </Button>
@@ -581,21 +586,21 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             {!lead.agentId && (
               <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 font-medium">Asigná un asesor antes de registrar un seguimiento.</p>
             )}
-            <Button
+            {!isRotator && <Button
               onClick={() => setFollowUpEditorOpen(true)}
               disabled={!lead.agentId}
               className="mt-3 h-9 w-full gap-1.5 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               <Plus className="size-3.5" />
               Registrar seguimiento
-            </Button>
+            </Button>}
           </section>
         </div>
 
         {/* ── Main Column (8 cols): Deep content ── */}
         <div className="min-w-0 space-y-6 lg:order-1 lg:col-span-8">
       {/* Financing Calculator Card */}
-      <div className="min-w-0">
+      {!isRotator && <div className="min-w-0">
         <FinancingCalculator
           key={`${lead.id}-${primaryProperty?.id ?? "none"}`}
           defaultPrice={primaryProperty?.price}
@@ -612,7 +617,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             }
           }}
         />
-      </div>
+      </div>}
 
 
           {/* Pending Info Alert */}
@@ -622,7 +627,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden="true" />
                 <div>
                   <p className="text-xs font-bold text-amber-950 dark:text-amber-100">Información pendiente</p>
-                  <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">El cliente ya está registrado. Podés completar estos datos con el botón &quot;Completar ficha&quot;.</p>
+                  <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">{isRotator ? "Estos datos todavía no fueron informados." : "El cliente ya está registrado. Podés completar estos datos con el botón Completar ficha."}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {generalPendingData.map((item) => (
                       <span key={item} className="rounded-md border border-amber-200 dark:border-amber-900 bg-white dark:bg-amber-950/60 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:text-amber-200">
@@ -657,9 +662,9 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <h2 id="lead-follow-up-timeline-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">Línea de tiempo</h2>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Cada contacto conserva su asesor, fecha, tipo, resumen, resultado y próximo paso.</p>
               </div>
-              <Button onClick={() => setFollowUpEditorOpen(true)} disabled={!lead.agentId} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              {!isRotator && <Button onClick={() => setFollowUpEditorOpen(true)} disabled={!lead.agentId} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 <Plus className="size-3.5" aria-hidden="true" /> Nuevo seguimiento
-              </Button>
+              </Button>}
             </div>
             <div className="mt-5">
               <LeadFollowUpTimeline leadId={lead.id} companyId={lead.companyId} followUps={followUps} />
@@ -667,7 +672,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
 
           {/* Financing Agreements & Installment Tracking */}
-          {FINAL_DELIVERY_ENABLED && (
+          {FINAL_DELIVERY_ENABLED && !isRotator && (
             <div id="financing-agreements">
               <LeadFinancingAgreements
                 leadId={lead.id}
@@ -693,9 +698,9 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <h2 id="lead-interests-title" className="mt-1 text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">Intereses independientes</h2>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Cada ficha conserva su propio proyecto, activo, unidad, preferencias y notas.</p>
               </div>
-              <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
+              {!isRotator && <Button onClick={() => setInterestEditor({ mode: "new" })} className="h-8 w-full gap-1.5 bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 sm:w-auto shadow-sm">
                 <Plus className="size-3.5" aria-hidden="true" /> Agregar interés
-              </Button>
+              </Button>}
             </div>
 
             {interests.length === 0 ? (
@@ -723,9 +728,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                         </span>
                       </div>
                       <dl className="mt-3.5 space-y-2 text-xs">
-                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Proyecto</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{project?.name || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Proyecto</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{project?.name || interest.projectName || "Sin informar"}</dd></div>
                         <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Activo</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
-                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Unidad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Unidad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : [interest.unitNumber, interest.sectorName].filter(Boolean).join(" · ") || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Precio</dt><dd>{interest.price != null ? `${interest.currency || "USD"} ${interest.price.toLocaleString("es-AR")}` : "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Estado / interés</dt><dd>{STAGE_LABELS[interest.status as keyof typeof STAGE_LABELS] || interest.status || "Sin informar"} · {({ LOW: "Bajo", MEDIUM: "Medio", HIGH: "Alto" } as Record<string, string>)[interest.interestLevel || ""] || interest.interestLevel || "Sin informar"}</dd></div>
                       </dl>
                       <div className="mt-3.5 space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3 text-xs">
                         <div><p className="font-semibold text-slate-500 dark:text-slate-400">Preferencias</p><p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{interest.preferences || "Sin informar"}</p></div>
@@ -741,15 +748,15 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                           )}
                         </div>
                       </div>
-                      <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+                      {!isRotator && <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
                         <Button variant="outline" size="sm" onClick={() => setInterestEditor({ mode: "edit", interest })} className="h-8 gap-1.5 text-xs font-semibold dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
                           <Edit3 className="size-3" aria-hidden="true" /> Editar
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => setInterestToDelete(interest)} className="h-8 gap-1.5 border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-800">
                           <Trash2 className="size-3" aria-hidden="true" /> Eliminar
                         </Button>
-                      </div>
-                      {(property || unit || interest.propertyId || interest.unitId) && (
+                      </div>}
+                      {!isRotator && (property || unit || interest.propertyId || interest.unitId) && (
                         <Link href={`/admin/properties/${(unit ?? property)?.id || interest.propertyId || interest.unitId}`} className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors">
                           Ver activo <ExternalLink className="size-3" aria-hidden="true" />
                         </Link>
@@ -764,8 +771,9 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           {/* Visits & Agenda */}
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6">
             <VisitManager
+              readOnly={isRotator}
               title="Gestión de visitas y citas"
-              subtitle="Agendá citas para cualquiera de sus activos de interés."
+              subtitle={isRotator ? "Visitas y citas registradas para este lead." : "Agendá citas para cualquiera de sus activos de interés."}
               visits={lead.visits ?? []}
               onSchedule={handleScheduleVisit}
               onDelete={async (visitId) => {
@@ -797,7 +805,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           onConfirm={handleConfirmStageUpdate}
         />
       )}
-      {advisorEditorOpen && currentUser?.role === "ADMIN" && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
+      {advisorEditorOpen && canAssign && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
 
       <Dialog open={Boolean(interestToDelete)} onOpenChange={(open) => !open && setInterestToDelete(null)}>
         <DialogContent className="sm:max-w-md dark:border-slate-800 dark:bg-slate-900"><DialogHeader><DialogTitle className="dark:text-slate-100">Eliminar este interés</DialogTitle><DialogDescription className="dark:text-slate-400">Se quitará solamente esta ficha. El cliente y sus demás intereses no serán eliminados.</DialogDescription></DialogHeader><DialogFooter className="mt-4 gap-2"><Button variant="outline" onClick={() => setInterestToDelete(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button><Button variant="destructive" onClick={handleDeleteInterest}>Eliminar interés</Button></DialogFooter></DialogContent>

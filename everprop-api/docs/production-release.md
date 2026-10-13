@@ -32,3 +32,9 @@ Pushing a release branch does not apply the SQL or deploy production. Deployment
 ## Rotador (2026-10-07)
 
 Apply `database/schema/forward/2026-10-07.001_rotator_role.sql` to each database before deploying the role change. It converts existing INVENTORY_MANAGER accounts to ROTATOR and removes their inventory/price write permissions. Rotators can read tenant leads and active advisors and change only `agent_id` through PUT/PATCH `/api/v1/admin/leads/{lead}`. They cannot manage inventory, users or collections. The frontend uses `/admin/leads` for manual assignment.
+
+## Ficha completa del rotador (2026-10-13)
+
+El rotador puede abrir la ficha de cualquier lead de su empresa, antes y después de asignar asesor. La ficha muestra presupuesto, prioridad, notas, propiedades vinculadas con precios, seguimientos y visitas, sin cargar el catálogo general. Conserva creación y asignación de leads; la edición comercial, los intereses, los seguimientos y las visitas siguen bloqueados para escritura.
+
+Esta actualización sólo despliega código de API y panel; no requiere SQL ni cambios de configuración. Las cuentas y registros de QA locales no forman parte del release. Verificar el despliegue de ambos servicios y probar la ficha con una cuenta rotador existente en producción.
