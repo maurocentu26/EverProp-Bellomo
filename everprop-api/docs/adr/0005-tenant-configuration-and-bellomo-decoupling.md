@@ -28,6 +28,8 @@ El producto debe funcionar para un segundo tenant por las mismas rutas y el mism
 
 **Verificado en local el 2026-10-05** con `next build` + `next start` y la API solo conociendo un dominio inventado: con clave, `Host: panel-e2e.test` resuelve el cliente; `Host: localhost` y los headers forjados por el cliente dan 404; sin clave, todo 404. Revisión de aislamiento: un bloqueante (se firmaba el hostname del servidor) y los hallazgos medios y bajos, todos aplicados.
 
+**Excepción acotada (EVP-L01, 2026-10-11, aprobada por Ramiro):** los interruptores por cliente del asistente y del copiloto viven en `tenants.settings_json.conversations.ai_enabled` / `copilot_enabled`, igual que el tope de gasto (`usage.monthly_cap_micros`). Se eligió para no adelantar `tenant_config_versions` (resto de S02, 2–3 jornadas) solo por dos booleanos. Ausente o distinto de `true` = apagado. Cada cambio queda en `audit_logs` (`CONVERSATIONS_AI_SETTINGS_UPDATED`, antes/después y actor). Cuando exista `tenant_config_versions`, estas claves se migran ahí y se elimina la lectura de `settings_json`.
+
 ## Criterio de aceptación pendiente (resto de S02)
 
 - Segundo tenant sintético `inmobiliaria-demo-2` opera login, inventario, CRM y cobranzas por las mismas rutas con host propio.

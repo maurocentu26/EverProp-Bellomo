@@ -5,6 +5,7 @@ use App\Domain\AgentRuntime\VisitRequests\AdminVisitRequestController;
 use App\Domain\Collections\CollectionBillingController;
 use App\Domain\Collections\CollectionEmailController;
 use App\Domain\Collections\CollectionsController;
+use App\Domain\Conversations\Http\Controllers\AdminAiSettingsController;
 use App\Domain\Conversations\Http\Controllers\AdminConversationController;
 use App\Domain\Conversations\Http\Controllers\MetaWhatsAppWebhookController;
 use App\Domain\Conversations\Http\Controllers\PublicChatController;
@@ -94,6 +95,9 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::post('/conversations/{conversation}/suggestion', [AdminConversationController::class, 'suggest'])->whereUuid('conversation')->middleware('throttle:copilot');
         Route::post('/conversations/{conversation}/close', [AdminConversationController::class, 'close'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resolve-unknown', [AdminConversationController::class, 'resolveUnknown'])->whereUuid('conversation');
+
+        Route::get('/conversations-ai', [AdminAiSettingsController::class, 'show']);
+        Route::put('/conversations-ai', [AdminAiSettingsController::class, 'update'])->middleware('throttle:30,1');
 
         Route::get('/knowledge', [AdminKnowledgeController::class, 'index']);
         Route::post('/knowledge', [AdminKnowledgeController::class, 'store']);
