@@ -111,6 +111,11 @@ final class ConversationKpisTest extends TestCase
             'conversations' => 3,
             'first_human_response_minutes' => ['answered' => 2, 'p50' => 10.0, 'p95' => 120.0],
             'without_human_response' => 1,
+            // No business hours configured = always open (EVP-L02).
+            'by_business_hours' => [
+                'in_hours' => ['conversations' => 3, 'answered' => 2, 'p50' => 10.0, 'p95' => 120.0],
+                'out_of_hours' => ['conversations' => 0, 'answered' => 0, 'p50' => null, 'p95' => null],
+            ],
             'conversations_with_lead' => 1,
             'conversations_with_complete_lead' => 1,
         ], $kpis['by_channel']['WHATSAPP']);

@@ -6,6 +6,7 @@ use App\Domain\Collections\CollectionBillingController;
 use App\Domain\Collections\CollectionEmailController;
 use App\Domain\Collections\CollectionsController;
 use App\Domain\Conversations\Http\Controllers\AdminAiSettingsController;
+use App\Domain\Conversations\Http\Controllers\AdminBusinessHoursController;
 use App\Domain\Conversations\Http\Controllers\AdminConversationController;
 use App\Domain\Conversations\Http\Controllers\MetaWhatsAppWebhookController;
 use App\Domain\Conversations\Http\Controllers\PublicChatController;
@@ -98,6 +99,8 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
 
         Route::get('/conversations-ai', [AdminAiSettingsController::class, 'show']);
         Route::put('/conversations-ai', [AdminAiSettingsController::class, 'update'])->middleware('throttle:30,1');
+        Route::get('/business-hours', [AdminBusinessHoursController::class, 'show']);
+        Route::put('/business-hours', [AdminBusinessHoursController::class, 'update'])->middleware('throttle:30,1');
 
         Route::get('/knowledge', [AdminKnowledgeController::class, 'index']);
         Route::post('/knowledge', [AdminKnowledgeController::class, 'store']);
@@ -116,6 +119,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/push/config', [WebPushController::class, 'config']);
         Route::post('/push/subscriptions', [WebPushController::class, 'store'])->middleware('throttle:30,1');
         Route::delete('/push/subscriptions', [WebPushController::class, 'destroy']);
+        Route::put('/push/subscriptions/preferences', [WebPushController::class, 'preferences'])->middleware('throttle:30,1');
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/count', [AdminNotificationController::class, 'count'])->name('notifications.count');
         Route::post('/notifications/mark-all-read', [AdminNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');

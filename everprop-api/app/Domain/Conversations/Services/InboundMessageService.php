@@ -5,6 +5,7 @@ namespace App\Domain\Conversations\Services;
 use App\Domain\AgentRuntime\Jobs\RunAgentJob;
 use App\Domain\Conversations\Data\InboundMessage;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
+use App\Domain\Conversations\Jobs\DispatchOutboundJob;
 use App\Domain\Conversations\Notifications\ConversationNeedsAttention;
 use App\Domain\CRM\Services\ContactIdentityResolver;
 use Carbon\CarbonImmutable;
@@ -62,10 +63,17 @@ final class InboundMessageService
             rescue(fn () => self::handOffOrphanedBotConversation($message->tenantId, $result['conversation_id']));
         }
 
+        // EVP-L02: outside business hours, a visitor waiting for a person gets one fixed notice per episode. Like
+        // the handoff above, a failure must not 500 after the message is stored.
+        if ($result['waiting_episode']) {
+            rescue(fn () => $this->awayNotice($message->tenantId, $result['conversation_id'], (string) $result['message_id']));
+        }
+        unset($result['waiting_episode']);
+
         return $result;
     }
 
-    /** @return array{message_id: int, conversation_id: int, conversation_public_id: string, sequence: int, replayed: bool} */
+    /** @return array{message_id: int, conversation_id: int, conversation_public_id: string, sequence: int, replayed: bool, waiting_episode: bool} */
     private function persist(InboundMessage $message, int $contactId, ?int $identityId): array
     {
         $now = CarbonImmutable::now('UTC');
@@ -109,7 +117,8 @@ final class InboundMessageService
 
         // One alert per unattended episode: the first unread message in a conversation people handle.
         // unread_count only resets when the assignee reads, so follow-ups before that don't repeat it.
-        if (in_array($state, ['WAITING_HUMAN', 'HUMAN_ACTIVE'], true) && ($reopen || (int) $conversation->unread_count === 0)) {
+        $newEpisode = in_array($state, ['WAITING_HUMAN', 'HUMAN_ACTIVE'], true) && ($reopen || (int) $conversation->unread_count === 0);
+        if ($newEpisode) {
             ConversationNeedsAttention::sendFor($conversation);
         }
 
@@ -136,6 +145,8 @@ final class InboundMessageService
             'conversation_public_id' => (string) $conversation->public_id,
             'sequence' => $sequence,
             'replayed' => false,
+            // EVP-L02: first unanswered message of an episode waiting for a person (an away notice may follow).
+            'waiting_episode' => $newEpisode && $state === 'WAITING_HUMAN',
         ];
     }
 
@@ -176,6 +187,18 @@ final class InboundMessageService
         ]);
 
         return $find(true) ?? throw new \RuntimeException('Conversation could not be created.');
+    }
+
+    private function awayNotice(int $tenantId, int $conversationId, string $key): void
+    {
+        $hours = app(BusinessHours::class);
+        if ($hours->isOpen($tenantId)) {
+            return;
+        }
+        $jobId = app(ConversationControl::class)->queueAwayNotice($tenantId, $conversationId, $hours->awayMessage($tenantId), $key);
+        if ($jobId !== null) {
+            DispatchOutboundJob::dispatch($tenantId, $jobId);
+        }
     }
 
     /** Assistant off: moves a conversation still under bot control to WAITING_HUMAN (epoch-fenced, tenant-scoped). */

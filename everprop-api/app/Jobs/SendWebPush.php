@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Identity\Policies\WebPushPolicy;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Domain\Tenancy\TenantContext;
@@ -45,7 +46,9 @@ final class SendWebPush implements ShouldQueue
             return;
         }
         $sender = app(WebPush::class);
-        $rows = DB::table('web_push_subscriptions')->where('tenant_id', $context->id())->where('user_id', $user->id)->get();
+        $rows = DB::table('web_push_subscriptions')->where('tenant_id', $context->id())->where('user_id', $user->id)
+            // EVP-L02: outside business hours only devices that chose to keep receiving; the bell still has it.
+            ->when(! app(BusinessHours::class)->isOpen($context->id()), fn ($q) => $q->where('out_of_hours', 1))->get();
         foreach ($rows as $row) {
             $subscription = Subscription::create(json_decode(Crypt::decryptString($row->subscription), true));
             // Lock-screen payload deliberately excludes client names and contact details.

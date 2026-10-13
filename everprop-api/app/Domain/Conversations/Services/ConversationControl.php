@@ -260,6 +260,30 @@ final class ConversationControl
         }
     }
 
+    /**
+     * EVP-L02: fixed out-of-hours notice for a conversation waiting for a person. Sent with the handoff-notice flag
+     * (the dispatcher already lets those through under WAITING_HUMAN) and the current epoch, so a takeover cancels it.
+     * Idempotent per inbound message, at most one every 12 h per conversation; nothing once an advisor took control.
+     */
+    public function queueAwayNotice(int $tenantId, int $conversationId, string $text, string $key): ?int
+    {
+        return DB::transaction(function () use ($tenantId, $conversationId, $text, $key): ?int {
+            $conversation = $this->lock($tenantId, $conversationId);
+            if ($conversation->control_state !== 'WAITING_HUMAN') {
+                return null;
+            }
+            // At most one every 12 h per conversation: reading the chat resets the alert episode, not the visitor's wait.
+            // ponytail: LIKE on the key prefix is fine per conversation; an indexed notice column if it ever matters.
+            $recent = DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
+                ->where('idempotency_key', 'like', 'away:%')->where('scheduled_at', '>=', now('UTC')->subHours(12)->format('Y-m-d H:i:s.v'))->exists(); // app clock, like queueOutbound
+            if ($recent) {
+                return null;
+            }
+
+            return $this->queueOutbound($conversation, $text, 'BOT', null, (int) $conversation->control_epoch, 'away:'.$key, true)['job_id'];
+        }, 3);
+    }
+
     public function lock(int $tenantId, int $conversationId): object
     {
         return DB::table('conversations')->where('tenant_id', $tenantId)->where('id', $conversationId)

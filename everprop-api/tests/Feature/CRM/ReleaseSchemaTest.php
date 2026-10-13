@@ -21,7 +21,7 @@ final class ReleaseSchemaTest extends TestCase
             $before[$table] = DB::table($table)->orderBy(Schema::hasColumn($table, 'id') ? 'id' : 'tenant_id')->get()->toJson();
         }
         foreach (range(1, 2) as $attempt) {
-            foreach (['2026-09-15.001_real_inventory_source.sql', '2026-09-15.002_real_inventory_relations.sql'] as $migration) {
+            foreach (['2026-09-15.001_real_inventory_source.sql', '2026-09-15.002_real_inventory_relations.sql', '2026-10-11.001_web_push_out_of_hours.sql'] as $migration) {
                 DB::unprepared(file_get_contents(database_path('schema/forward/'.$migration)));
             }
             foreach (['apply-visit-extension.php', 'apply-web-push.php'] as $script) {
