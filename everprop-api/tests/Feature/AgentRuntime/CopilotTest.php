@@ -4,13 +4,17 @@ namespace Tests\Feature\AgentRuntime;
 
 use App\Console\Commands\ConversationKpis;
 use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
+use App\Domain\AgentRuntime\Knowledge\KnowledgeService;
 use App\Domain\AgentRuntime\Llm\LlmClient;
+use App\Domain\AgentRuntime\Llm\OpenAiChatClient;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Feature\Conversations\ConversationTestSupport;
@@ -213,5 +217,28 @@ final class CopilotTest extends TestCase
         $this->assertSame(['FAILED', 'IGNORE'], array_values((array) DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->first(['status', 'decision'])));
         $this->assertSame('HUMAN_ACTIVE', DB::table('conversations')->where('id', $f['id'])->value('control_state'));
         $this->assertSame(0, DB::table('outbound_jobs')->where('tenant_id', $f['tenant']->id)->count());
+    }
+
+    public function test_openai_draft_uses_approved_knowledge_and_never_sends(): void
+    {
+        $f = $this->inControl();
+        $this->app['env'] = 'local';
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        config(['agent.llm_provider' => 'openai', 'conversations.ai_enabled' => false]);
+        $knowledge = app(KnowledgeService::class);
+        $doc = $knowledge->create((int) $f['tenant']->id, (int) $f['advisor']->id,
+            ['title' => 'L-101 información pública', 'body' => '¿Cuánto sale el L-101? Para el precio consultar inventario vigente. Está en un barrio con acceso pavimentado.']);
+        $knowledge->approve((int) $f['tenant']->id, $doc, (int) $f['advisor']->id);
+        $this->app->instance(LlmClient::class, new OpenAiChatClient('fake-local-key', 'explicit-model', 20));
+        Http::preventStrayRequests();
+        Http::fake(['api.openai.com/*' => Http::response([
+            'choices' => [['finish_reason' => 'stop', 'message' => ['content' => 'El L-101 tiene acceso pavimentado.']]],
+            'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 15],
+        ])]);
+        $before = $this->snapshot($f);
+        $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk()->assertJsonPath('data.text', 'El L-101 tiene acceso pavimentado.');
+        $this->assertSame($before, $this->snapshot($f));
+        Http::assertSent(fn ($r) => str_contains($r['messages'][0]['content'], 'acceso pavimentado'));
+        $this->assertSame(1, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'COMMITTED')->count());
     }
 }
