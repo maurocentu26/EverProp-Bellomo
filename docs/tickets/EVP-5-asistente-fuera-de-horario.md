@@ -104,6 +104,15 @@ Entorno: stack Docker aislado `everprop-lote3` (PHP 8.4.24, MySQL 8.4, base sint
 - `OutOfHoursAssistantTest` fallaba porque EVP-3 apaga la IA si el tenant no tiene `ai_enabled: true`, y el test reemplazaba `settings_json`. Se agregó `ai_enabled: true` al test; el código de la app no cambió.
 - Suite completa: 361 tests sin fallos. Pint y PHPStan OK.
 
+**Integración con EVP-6 (2026-10-13):**
+- Se mergeó `develop` (con EVP-6). En los conflictos del dataset y de `ModelEvalTest` se conservaron las dos partes, y el dataset quedó en **202 casos válidos**.
+- La fixture `business_hours` del evaluador ahora se combina con `settings_json` en lugar de reemplazarlo, para no apagar la IA del tenant (EVP-3).
+- Verificación:
+  - `ModelEvalTest` y `OutOfHoursAssistantTest` pasan;
+  - en `EVAL_LLM=dry` corren los 202 casos (PASS 57, FAIL 118, DETERMINISTIC 27; en `dry` el modelo responde siempre lo mismo, así que esto no mide calidad);
+  - Pint y PHPStan OK;
+  - la suite completa no se corrió en esta integración, por pedido de Ramiro. La corre el CI del PR.
+
 ## 5. Pendientes y riesgos
 
 - **Dependencia:** mergear EVP-4 primero.

@@ -22,6 +22,7 @@
         "must_include": { "type": "array", "items": { "type": "string" } },
         "must_not_include": { "type": "array", "items": { "type": "string" } },
         "tools": { "type": "array", "items": { "type": "string" } },
+        "tools_forbidden": { "type": "array", "items": { "type": "string" } },
         "persisted": {}
       }
     },
