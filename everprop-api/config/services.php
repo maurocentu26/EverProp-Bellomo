@@ -45,6 +45,13 @@ return [
     // EverSys Meta app (Tech Provider). One app-level webhook for every tenant: the tenant is
     // derived from the verified phone_number_id -> channel_accounts mapping, never from the body.
     // Anthropic Messages API for the assistant (AGENT_LLM_PROVIDER=anthropic). Key only via env/secret store.
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+        'input_rate' => env('OPENAI_INPUT_MICROS_PER_TOKEN'),
+        'output_rate' => env('OPENAI_OUTPUT_MICROS_PER_TOKEN'),
+        'local_budget_usd' => env('OPENAI_LOCAL_BUDGET_USD'),
+    ],
+
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    // disabled | anthropic. Real calls need an approved provider/region (X03) and a key.
+    // disabled | anthropic | openai (local copilot only). Real calls need an approved provider/region (X03) and a key.
     'llm_provider' => env('AGENT_LLM_PROVIDER', 'disabled'),
     // No default model on purpose: pick it explicitly (economics D13 anchors cost on Haiku-class).
     'llm_model' => env('AGENT_LLM_MODEL'),
