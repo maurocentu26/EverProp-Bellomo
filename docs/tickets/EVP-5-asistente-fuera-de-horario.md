@@ -99,10 +99,15 @@ Entorno: stack Docker aislado `everprop-lote3` (PHP 8.4.24, MySQL 8.4, base sint
 - **Las evaluaciones contra el modelo real**, que requieren X03 y son EVP-10. Hasta entonces no hay evidencia de que el modelo cumpla CRM-016, CRM-019, CRM-020, CRM-021 ni SEC-020. Lo que sí está garantizado por código: los avisos fijos y el frenado de promesas inmediatas.
 - **Staging.**
 
+**Integración con EVP-3 (2026-10-13):**
+- La rama se actualizó con EVP-4, que ya incluye `develop` con EVP-3. No hubo conflictos de texto.
+- `OutOfHoursAssistantTest` fallaba porque EVP-3 apaga la IA si el tenant no tiene `ai_enabled: true`, y el test reemplazaba `settings_json`. Se agregó `ai_enabled: true` al test; el código de la app no cambió.
+- Suite completa: 361 tests sin fallos. Pint y PHPStan OK.
+
 ## 5. Pendientes y riesgos
 
 - **Dependencia:** mergear EVP-4 primero.
-- **Conflictos con EVP-3:** las dos ramas tocan el coordinador y el reconciliador. Al integrar hay que combinar los dos cortes (interruptor por cliente y horario).
+- **Integración con EVP-3:** resuelta (ver §4).
 - **La lista de frases de `IMMEDIATE_PROMISE` es heurística** (`ponytail` implícito). Puede frenar alguna frase inocente; el costo es que el cliente recibe el aviso fijo. Conviene ajustarla con los resultados de EVP-10.
 - **La segunda llamada al modelo fuera de horario** (la despedida) se sigue pagando. Si los evals muestran que no aporta, se puede ahorrar.
 - **Prioridad de la cola de la mañana** para las consultas que llegan de noche (recomendación de la industria): un ticket aparte sobre la bandeja.

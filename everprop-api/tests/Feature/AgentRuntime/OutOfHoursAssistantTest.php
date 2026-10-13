@@ -48,7 +48,7 @@ final class OutOfHoursAssistantTest extends TestCase
     {
         ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration('WEB');
         $this->tenants[] = (int) $tenant->id;
-        $tenant->update(['timezone' => 'America/Argentina/Salta', 'settings_json' => $hours === null ? null : ['conversations' => ['business_hours' => $hours]]]);
+        $tenant->update(['timezone' => 'America/Argentina/Salta', 'settings_json' => ['conversations' => ['ai_enabled' => true] + ($hours === null ? [] : ['business_hours' => $hours])]]);
         DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'New', 'category' => 'OPEN', 'position' => 1, 'is_active' => true]);
         $channel = $this->webChannel($tenant->id, $integration);
         $this->travelTo(CarbonImmutable::parse($localNow, 'America/Argentina/Salta'));
