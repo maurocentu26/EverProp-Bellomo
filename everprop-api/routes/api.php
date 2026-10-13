@@ -5,6 +5,7 @@ use App\Domain\AgentRuntime\VisitRequests\AdminVisitRequestController;
 use App\Domain\Collections\CollectionBillingController;
 use App\Domain\Collections\CollectionEmailController;
 use App\Domain\Collections\CollectionsController;
+use App\Domain\Conversations\Http\Controllers\AdminAiSettingsController;
 use App\Domain\Conversations\Http\Controllers\AdminBusinessHoursController;
 use App\Domain\Conversations\Http\Controllers\AdminConversationController;
 use App\Domain\Conversations\Http\Controllers\MetaWhatsAppWebhookController;
@@ -96,6 +97,8 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::post('/conversations/{conversation}/close', [AdminConversationController::class, 'close'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resolve-unknown', [AdminConversationController::class, 'resolveUnknown'])->whereUuid('conversation');
 
+        Route::get('/conversations-ai', [AdminAiSettingsController::class, 'show']);
+        Route::put('/conversations-ai', [AdminAiSettingsController::class, 'update'])->middleware('throttle:30,1');
         Route::get('/business-hours', [AdminBusinessHoursController::class, 'show']);
         Route::put('/business-hours', [AdminBusinessHoursController::class, 'update'])->middleware('throttle:30,1');
 

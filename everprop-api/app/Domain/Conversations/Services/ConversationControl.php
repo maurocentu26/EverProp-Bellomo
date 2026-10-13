@@ -64,7 +64,7 @@ final class ConversationControl
     public function resume(int $tenantId, int $conversationId, User $user, string $reason): array
     {
         return DB::transaction(function () use ($tenantId, $conversationId, $user, $reason): array {
-            if (! InboundMessageService::aiEnabled()) {
+            if (! InboundMessageService::aiEnabled($tenantId)) {
                 throw new ConversationConflict('AI_DISABLED', 'La IA todavía no está habilitada para responder.');
             }
             $conversation = $this->lock($tenantId, $conversationId);
@@ -143,6 +143,10 @@ final class ConversationControl
         return DB::transaction(function () use ($tenantId, $conversationId, $expectedEpoch, $text, $idempotencyKey): array {
             $conversation = $this->lock($tenantId, $conversationId);
             $this->assertBotControl($conversation, $expectedEpoch);
+            // Switched off while the model was thinking (EVP-L01): the reply must not go out.
+            if (! InboundMessageService::aiEnabled($tenantId)) {
+                throw new ConversationConflict('AI_DISABLED', 'La IA está apagada para este cliente.');
+            }
 
             return $this->queueOutbound($conversation, $text, 'BOT', null, $expectedEpoch, 'bot:'.$idempotencyKey);
         }, 3);
