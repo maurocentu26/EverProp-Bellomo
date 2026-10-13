@@ -116,10 +116,23 @@ final class BusinessHours
             return $custom;
         }
         $hours = $this->describe($tenantId);
+
+        return 'Gracias por escribirnos. Ahora estamos fuera del horario de atención'.($hours !== null ? " ({$hours})" : '').'. '
+            .'Un asesor te responde por este chat '.($this->backPhrase($tenantId, $at) ?? 'apenas vuelva el equipo').'.';
+    }
+
+    /**
+     * When the team is back, for fixed texts: "a partir de hoy / de mañana / del lunes a las 9:00", or
+     * "apenas vuelva el equipo" if no day has hours. Null while open or with no schedule (nothing to announce).
+     */
+    public function backPhrase(int $tenantId, ?CarbonImmutable $at = null): ?string
+    {
+        if ($this->isOpen($tenantId, $at)) {
+            return null;
+        }
         $next = $this->nextOpening($tenantId, $at);
-        $text = 'Gracias por escribirnos. Ahora estamos fuera del horario de atención'.($hours !== null ? " ({$hours})" : '').'.';
         if ($next === null) {
-            return $text.' Un asesor te responde por este chat apenas vuelva el equipo.';
+            return 'apenas vuelva el equipo';
         }
         $today = ($at ?? CarbonImmutable::now())->setTimezone($next->timezone)->startOfDay();
         $from = match ((int) $today->diffInDays($next->startOfDay())) {
@@ -128,7 +141,7 @@ final class BusinessHours
             default => 'del '.self::NAMES[self::DAYS[$next->dayOfWeekIso - 1]],
         };
 
-        return $text.' Un asesor te responde por este chat a partir '.$from.' a las '.$next->format('G:i').'.';
+        return 'a partir '.$from.' a las '.$next->format('G:i');
     }
 
     /**

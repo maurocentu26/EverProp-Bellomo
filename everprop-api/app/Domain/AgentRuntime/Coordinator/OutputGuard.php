@@ -35,12 +35,15 @@ final class OutputGuard
         '/\b(te\s+espero|te\s+esperamos|nos\s+vemos)\b/iu',
     ];
 
+    /** EVP-L10: promises of immediate human attention, rejected outside business hours. */
+    private const IMMEDIATE = '/\b(enseguida|a la brevedad|en breve|en (unos|pocos) minutos|en un rato|hoy mismo|ahora mismo|ya te (atiende|atienden|llama|llaman|contacta|contactan|escribe|escriben|responde|responden))\b/iu';
+
     /**
      * @param  list<array{amount: string, currency: string}>  $prices  prices returned by tools this turn
      * @param  list<string>  $knowledge  approved knowledge excerpts shown to the model this turn
      * @return list<string> violation codes (empty = ok)
      */
-    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false): array
+    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false): array
     {
         $allowed = [];
         foreach ($prices as $price) {
@@ -78,6 +81,10 @@ final class OutputGuard
         // A copilot draft cannot act, so it must not say it registered, requested or handed anything off.
         if ($draft && preg_match('/\b(registr|anot|ped|solicit|deriv|pas)(é|e|amos)\b[^.!?\n]{0,50}(inter[eé]s|visita|asesor|datos|contacto|tel[eé]fono)/iu', $text) === 1) {
             $violations[] = 'ACTION_CLAIM';
+        }
+        // EVP-L10: with nobody online, never promise a person right away (the fixed notice says when they are back).
+        if ($outOfHours && preg_match(self::IMMEDIATE, $text) === 1) {
+            $violations[] = 'IMMEDIATE_PROMISE';
         }
         if ($visitRequested && ! in_array('CONFIRMATION_CLAIM', $violations, true)
             && preg_match('/asesor[^.!?\n]{0,60}confirm|confirm[^.!?\n]{0,60}asesor/iu', $text) !== 1) {
