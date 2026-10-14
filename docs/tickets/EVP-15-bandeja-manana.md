@@ -55,7 +55,14 @@ Entorno: stack Docker aislado `everprop-lote3` (PHP 8.4, MySQL 8.4, base sintét
 - **`npm run build` completo:** otra sesión estaba editando el panel en el mismo checkout. Lo corre el CI del PR.
 - **Comprobación de la revisión que no se puede hacer:** que el test detecte la falta del filtro de tenant en la subconsulta. Los IDs de conversación son únicos globalmente, así que el resultado no cambiaría. Lo que sí se prueba es que no hay cruces entre tenants.
 
+**CI del PR #23 (primera corrida):**
+- El E2E de navegador falló.
+- **Causa:** el panel abre en "Esperan asesor", y el E2E hacía clic en la **primera** conversación, que con el orden viejo era la más nueva. Con la cola de la más vieja a la más nueva, la primera pasó a ser otra conversación del mismo recorrido, el asesor respondió ahí y el visitante nuevo no recibió la respuesta.
+- No es un error del cambio sino una suposición del test.
+- **Corrección:** el E2E elige la conversación por el mensaje de su visitante (`ui-vertical.mjs`), no por su posición.
+
 ## 5. Pendientes y riesgos
 
 - **`out_of_hours` usa el horario vigente**, no el que regía cuando empezó la espera. Si el tenant cambia el horario, las esperas viejas se reclasifican. Es aceptable para una marca de prioridad.
+- **Cambio de comportamiento visible:** como el panel abre en "Esperan asesor", lo primero que ve el asesor ahora es la espera más vieja y no el último mensaje. Es lo que pide el ticket, pero conviene avisarle al equipo.
 - **El recuadro muestra la última derivación del asistente**, aunque sea de un episodio anterior de la misma conversación, con su fecha y hora. Si confunde, se puede limitar al episodio actual.
