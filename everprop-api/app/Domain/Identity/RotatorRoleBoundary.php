@@ -19,8 +19,9 @@ final class RotatorRoleBoundary
                 'api/v1/admin/lead-advisors',
                 'api/v1/admin/notifications*',
                 'api/v1/admin/follow-ups*',
-                'api/v1/admin/visits*'
-            ) || $request->is('api/v1/admin/visits');
+                'api/v1/admin/visits',
+                'api/v1/admin/visits/*/cancel'
+            );
 
             $isCatalogRead = $request->isMethod('GET') && $request->is(
                 'api/v1/admin/projects',

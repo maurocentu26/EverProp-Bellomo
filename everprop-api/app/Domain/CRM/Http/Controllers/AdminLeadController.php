@@ -498,8 +498,7 @@ final class AdminLeadController extends Controller
                 }
 
                 $actor = $request->user();
-                abort_unless($actor && ((new LeadAccessPolicy)->update($actor, $tenantId, $lead)
-                    || ($actor->role() === RoleCode::ROTATOR && (new LeadAccessPolicy)->assign($actor, $tenantId))), 403);
+                abort_unless($actor && (new LeadAccessPolicy)->update($actor, $tenantId, $lead), 403);
                 if (array_key_exists('agent_id', $validated)) {
                     abort_unless((new LeadAccessPolicy)->assign($actor, $tenantId), 403);
                 }
