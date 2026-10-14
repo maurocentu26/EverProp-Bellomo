@@ -5,6 +5,7 @@ namespace App\Domain\Conversations\Http\Controllers;
 use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
 use App\Domain\AgentRuntime\Coordinator\CopilotFailure;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Conversations\Services\ChannelPolicy;
 use App\Domain\Conversations\Services\ConversationAttachments;
 use App\Domain\Conversations\Services\ConversationControl;
@@ -58,6 +59,8 @@ final class AdminConversationController extends Controller
             ->leftJoin('contacts as ct', fn ($j) => $j->on('ct.id', '=', 'c.contact_id')->on('ct.tenant_id', '=', 'c.tenant_id'))
             ->join('channel_accounts as ca', fn ($j) => $j->on('ca.id', '=', 'c.channel_account_id')->on('ca.tenant_id', '=', 'c.tenant_id'))
             ->leftJoin('users as u', fn ($j) => $j->on('u.id', '=', 'c.assigned_user_id')->on('u.tenant_id', '=', 'c.tenant_id'))
+            // EVP-15: the "waiting" queue goes oldest wait first, so what arrived overnight is on top in the morning.
+            ->when(($filters['state'] ?? null) === 'WAITING_HUMAN', fn ($q) => $q->orderByRaw('waiting_since IS NULL')->orderBy('waiting_since'))
             ->orderByDesc('c.last_activity_at')->orderByDesc('c.id')
             ->select(['c.public_id', 'c.control_state', 'c.control_epoch', 'c.unread_count', 'c.last_activity_at', 'c.status',
                 'ca.channel_type', 'ct.display_name', 'u.public_id as assigned_user_id', 'u.display_name as assigned_user_name'])
@@ -65,7 +68,9 @@ final class AdminConversationController extends Controller
             ->selectSub($this->lastMessage('LEFT(m.text_body, 140)'), 'preview_text')
             ->selectSub($this->lastMessage('m.sender_type'), 'preview_sender')
             ->selectSub($this->lastMessage('m.message_type'), 'preview_type')
+            ->selectSub($this->waitingSince(), 'waiting_since')
             ->simplePaginate(50);
+        $hours = app(BusinessHours::class);
 
         return response()->json([
             'meta' => ['next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null],
@@ -75,7 +80,7 @@ final class AdminConversationController extends Controller
                 'assigned_user' => $c->assigned_user_id ? ['id' => $c->assigned_user_id, 'name' => $c->assigned_user_name] : null,
                 'last_activity_at' => CarbonImmutable::parse($c->last_activity_at, 'UTC')->toISOString(),
                 'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender, 'type' => $c->preview_type],
-            ])->all(),
+            ] + $this->waiting($c, $hours))->all(),
         ]);
     }
 
@@ -98,6 +103,50 @@ final class AdminConversationController extends Controller
                     ->when(strlen($digits) >= 4, fn ($p) => $p->orWhere('sc.phone_e164', 'like', '%'.$digits.'%'))))
             ->orWhereExists(fn ($m) => $m->from('messages as sm')->whereColumn('sm.tenant_id', 'c.tenant_id')->whereColumn('sm.conversation_id', 'c.id')
                 ->where('sm.text_body', 'like', $like)));
+    }
+
+    /**
+     * EVP-15: start of the current wait = the visitor's first message no person has answered yet (after the last
+     * message a user sent). Bot replies don't count: an assistant handoff still waits for a person.
+     */
+    private function waitingSince(): Builder
+    {
+        return DB::table('messages as w')->selectRaw('MIN(w.occurred_at)')
+            ->whereColumn('w.tenant_id', 'c.tenant_id')->whereColumn('w.conversation_id', 'c.id')->where('w.direction', 'INBOUND')
+            ->whereRaw("w.sequence > COALESCE((SELECT MAX(h.sequence) FROM messages h WHERE h.tenant_id = c.tenant_id AND h.conversation_id = c.id AND h.direction = 'OUTBOUND' AND h.sender_type = 'USER'), 0)");
+    }
+
+    /** @return array{waiting_since: ?string, out_of_hours: bool} */
+    private function waiting(object $c, BusinessHours $hours): array
+    {
+        if ($c->control_state !== 'WAITING_HUMAN' || $c->waiting_since === null) {
+            return ['waiting_since' => null, 'out_of_hours' => false];
+        }
+        $since = CarbonImmutable::parse($c->waiting_since, 'UTC');
+
+        // Tenant from the request context: one settings read per page (BusinessHours memoizes per tenant).
+        return ['waiting_since' => $since->toISOString(), 'out_of_hours' => ! $hours->isOpen($this->tenantId(), $since)];
+    }
+
+    /**
+     * EVP-15: what the assistant gathered before its last handoff ("REASON: summary", model-written and shown to the
+     * team only as plain text). Null when the assistant never handed this conversation off.
+     *
+     * @return array{reason: string, summary: string, at: string}|null
+     */
+    private function lastHandoff(int $tenantId, int $conversationId): ?array
+    {
+        $session = DB::table('chatbot_sessions')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
+            ->where('status', 'HANDED_OFF')->whereNotNull('handoff_reason')->orderByDesc('ended_at')->orderByDesc('id')->first(['handoff_reason', 'ended_at']);
+        if ($session === null || $session->ended_at === null) {
+            return null;
+        }
+        [$reason, $summary] = array_pad(explode(': ', (string) $session->handoff_reason, 2), 2, '');
+        if (preg_match('/\A[A-Z_]{2,40}\z/', $reason) !== 1) {
+            [$reason, $summary] = ['OTHER', (string) $session->handoff_reason];
+        }
+
+        return ['reason' => $reason, 'summary' => $summary, 'at' => CarbonImmutable::parse($session->ended_at, 'UTC')->toISOString()];
     }
 
     private function lastMessage(string $column): Builder
@@ -126,6 +175,7 @@ final class AdminConversationController extends Controller
         return response()->json([
             'conversation' => ['id' => $row->public_id, 'state' => $row->control_state, 'epoch' => (int) $row->control_epoch,
                 'ai_enabled' => InboundMessageService::aiEnabled((int) $row->tenant_id),
+                'handoff' => $this->lastHandoff((int) $row->tenant_id, (int) $row->id),
                 'copilot_enabled' => InboundMessageService::copilotEnabled((int) $row->tenant_id),
                 'reply_window' => $isWhatsApp ? ['closes_at' => app(ChannelPolicy::class)
                     ->windowClosesAt((int) $row->tenant_id, (int) $row->id, (int) $row->channel_account_id)?->toISOString()] : null],

@@ -18,6 +18,21 @@ export type ConversationSummary = {
   assigned_user: { id: string; name: string } | null;
   last_activity_at: string;
   last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string; type?: string | null } | null;
+  /** EVP-15: waiting for a person since (first unanswered visitor message); only while WAITING_HUMAN. */
+  waiting_since?: string | null;
+  /** EVP-15: that wait started outside the team's business hours. */
+  out_of_hours?: boolean;
+};
+
+/** EVP-15: what the assistant gathered before handing off. */
+export type HandoffSummary = { reason: string; summary: string; at: string };
+
+export const HANDOFF_REASONS: Record<string, string> = {
+  USER_REQUEST: "El cliente pidió hablar con una persona",
+  NO_EVIDENCE: "El asistente no tenía datos verificados",
+  TOOL_FAILURE: "Falló una consulta del asistente",
+  COMMERCIAL_EXCEPTION: "Pide condiciones especiales",
+  AI_DISABLED: "Asistente apagado",
 };
 
 export type ConversationMessage = {
@@ -153,7 +168,7 @@ export function mergeMessages(current: ConversationMessage[], incoming: Conversa
 }
 
 export async function getConversationMessages(id: string, after = 0) {
-  return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean; copilot_enabled?: boolean; reply_window: { closes_at: string | null } | null }; data: ConversationMessage[] }>(
+  return apiFetch<{ conversation: { id: string; state: ConversationState; epoch: number; ai_enabled: boolean; copilot_enabled?: boolean; handoff?: HandoffSummary | null; reply_window: { closes_at: string | null } | null }; data: ConversationMessage[] }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/messages${after > 0 ? `?after=${after}` : ""}`,
   );
 }

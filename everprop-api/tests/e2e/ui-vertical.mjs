@@ -97,7 +97,8 @@ try {
     await pp.waitForTimeout(61000);
   }
   await pp.goto(`${PANEL}/admin/conversaciones`);
-  const item = pp.getByRole("button", { name: /Visitante del chat web/ }).first();
+  // By this visitor's own message, not by position: the waiting queue goes oldest first (EVP-15).
+  const item = pp.getByRole("button", { name: new RegExp(`Visitante del chat web.*${text1}`) });
   await item.waitFor({ timeout: 30000 });
   check("U6", "la conversación del visitante aparece en 'Esperan asesor'", await item.isVisible());
   await item.click();
