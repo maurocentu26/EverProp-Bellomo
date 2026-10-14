@@ -6,7 +6,7 @@ import { apiFetch, EverpropApiError } from "@/lib/everprop-api";
 type Day = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 type Range = [string, string];
 type Schedule = Record<Day, Range[]>;
-type State = { business_hours: Schedule | null; away_message: string | null; timezone: string; summary: string | null; open_now: boolean; away_message_preview: string | null };
+type State = { business_hours: Schedule | null; away_message: string | null; holidays: string[]; timezone: string; summary: string | null; open_now: boolean; away_message_preview: string | null };
 
 const DAYS: { key: Day; label: string }[] = [
   { key: "mon", label: "Lunes" }, { key: "tue", label: "Martes" }, { key: "wed", label: "Miércoles" }, { key: "thu", label: "Jueves" },
@@ -14,11 +14,16 @@ const DAYS: { key: Day; label: string }[] = [
 ];
 const DEFAULT: Schedule = { mon: [["09:00", "18:00"]], tue: [["09:00", "18:00"]], wed: [["09:00", "18:00"]], thu: [["09:00", "18:00"]], fri: [["09:00", "18:00"]], sat: [], sun: [] };
 
-/** EVP-L02: tenant business hours and the away text visitors get. Only tenant admins see the card. */
+const MAX_HOLIDAYS = 60;
+const formatDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+/** EVP-L02: tenant business hours and the away text visitors get; EVP-14: holidays. Only tenant admins see the card. */
 export function BusinessHoursSettings() {
   const [state, setState] = useState<State | null>(null);
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [away, setAway] = useState("");
+  const [holidays, setHolidays] = useState<string[]>([]);
+  const [newHoliday, setNewHoliday] = useState("");
   const [hidden, setHidden] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -27,6 +32,13 @@ export function BusinessHoursSettings() {
     setState(data);
     setSchedule(data.business_hours);
     setAway(data.away_message ?? "");
+    setHolidays(data.holidays ?? []);
+  }
+
+  function addHoliday() {
+    if (!newHoliday || holidays.includes(newHoliday) || holidays.length >= MAX_HOLIDAYS) return;
+    setHolidays([...holidays, newHoliday].sort());
+    setNewHoliday("");
   }
 
   useEffect(() => {
@@ -49,12 +61,12 @@ export function BusinessHoursSettings() {
     setSaving(true);
     setMessage("");
     try {
-      const { data } = await apiFetch<{ data: State }>("/api/v1/admin/business-hours", { method: "PUT", body: JSON.stringify({ business_hours: next, away_message: away.trim() || null }) });
+      const { data } = await apiFetch<{ data: State }>("/api/v1/admin/business-hours", { method: "PUT", body: JSON.stringify({ business_hours: next, away_message: away.trim() || null, holidays }) });
       load(data);
       setMessage("Horario guardado.");
     } catch (error) {
       setMessage(error instanceof EverpropApiError && error.status === 422
-        ? "Revisá el horario: hasta dos franjas por día, la hora de inicio antes que la de fin y sin superponerse."
+        ? "Revisá el horario y los feriados: hasta dos franjas por día, la hora de inicio antes que la de fin, sin superponerse, y fechas válidas."
         : "No se pudo guardar. Volvé a intentarlo.");
     } finally {
       setSaving(false);
@@ -103,6 +115,26 @@ export function BusinessHoursSettings() {
               )}
             </div>
           ))}
+          <div className="space-y-2 border-t border-border pt-3">
+            <label htmlFor="new-holiday" className="text-sm font-medium">Feriados (cerrado todo el día)</label>
+            <div className="flex flex-wrap items-center gap-3">
+              <input id="new-holiday" type="date" value={newHoliday} onChange={(e) => setNewHoliday(e.target.value)} className="rounded-lg border border-border bg-background px-2 py-1 text-sm" />
+              <button type="button" onClick={addHoliday} disabled={!newHoliday || holidays.length >= MAX_HOLIDAYS} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-muted disabled:opacity-50">Agregar feriado</button>
+            </div>
+            {holidays.length === 0
+              ? <p className="text-sm text-muted-foreground">Sin feriados cargados.</p>
+              : (
+                <ul className="space-y-1 text-sm">
+                  {holidays.map((date) => (
+                    <li key={date} className="flex items-center gap-3">
+                      <span>{formatDate(date)}</span>
+                      <button type="button" onClick={() => setHolidays(holidays.filter((d) => d !== date))} aria-label={`Quitar feriado ${formatDate(date)}`} className="text-sm underline">Quitar</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            <p className="text-xs text-muted-foreground">Se guardan con el botón “Guardar horario”. Hasta {MAX_HOLIDAYS} fechas.</p>
+          </div>
           <div className="border-t border-border pt-3">
             <label htmlFor="away-message" className="text-sm font-medium">Aviso fuera de horario (opcional)</label>
             <textarea id="away-message" maxLength={500} rows={3} value={away} onChange={(e) => setAway(e.target.value)}

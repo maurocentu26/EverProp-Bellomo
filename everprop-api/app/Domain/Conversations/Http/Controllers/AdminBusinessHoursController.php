@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * EVP-L02: the tenant admin sets the team's business hours and, optionally, the text a visitor gets while the team
- * is away. Same storage, RBAC and audit as the AI switches (ADR 0005 exception).
+ * is away. Same storage, RBAC and audit as the AI switches (ADR 0005 exception). EVP-14 adds holidays (closed dates).
  */
 final class AdminBusinessHoursController extends Controller
 {
@@ -31,20 +31,28 @@ final class AdminBusinessHoursController extends Controller
         $data = $request->validate([
             'business_hours' => 'present|nullable|array',
             'away_message' => 'nullable|string|max:500',
+            'holidays' => 'sometimes|nullable|array',
         ]);
         $schedule = $data['business_hours'] === null ? null : BusinessHours::normalize($data['business_hours']);
         if ($data['business_hours'] !== null && $schedule === null) {
             return response()->json(['error' => ['code' => 'INVALID_SCHEDULE',
                 'message' => 'Revisá el horario: hasta dos franjas por día, en formato HH:MM, la hora de inicio antes que la de fin y sin superponerse.']], 422);
         }
+        // Omitted = keep the stored ones, so an older client that doesn't send them can't wipe them.
+        $holidays = array_key_exists('holidays', $data) ? BusinessHours::normalizeHolidays($data['holidays'] ?? []) : false;
+        if ($holidays === null) {
+            return response()->json(['error' => ['code' => 'INVALID_HOLIDAYS',
+                'message' => 'Revisá los feriados: fechas reales en formato AAAA-MM-DD, hasta '.BusinessHours::MAX_HOLIDAYS.'.']], 422);
+        }
         $away = isset($data['away_message']) && trim($data['away_message']) !== '' ? trim($data['away_message']) : null;
         $tenantId = app(TenantContext::class)->id();
 
-        DB::transaction(function () use ($tenantId, $user, $schedule, $away, $request): void {
+        DB::transaction(function () use ($tenantId, $user, $schedule, $away, $holidays, $request): void {
             $settings = json_decode((string) DB::table('tenants')->where('id', $tenantId)->lockForUpdate()->value('settings_json'), true) ?: [];
             $current = is_array($settings['conversations'] ?? null) ? $settings['conversations'] : [];
-            $before = ['business_hours' => BusinessHours::normalize($current['business_hours'] ?? null), 'away_message' => $current['away_message'] ?? null];
-            $after = ['business_hours' => $schedule, 'away_message' => $away];
+            $stored = BusinessHours::normalizeHolidays($current['holidays'] ?? []) ?? [];
+            $before = ['business_hours' => BusinessHours::normalize($current['business_hours'] ?? null), 'away_message' => $current['away_message'] ?? null, 'holidays' => $stored];
+            $after = ['business_hours' => $schedule, 'away_message' => $away, 'holidays' => $holidays === false ? $stored : $holidays];
             if ($before === $after) {
                 return; // nothing changed: no write, no audit row
             }
@@ -72,6 +80,7 @@ final class AdminBusinessHoursController extends Controller
         return [
             'business_hours' => $settings['schedule'], // null = always open
             'away_message' => $settings['away_message'],
+            'holidays' => $settings['holidays'],
             'timezone' => $settings['timezone'],
             'summary' => $hours->describe($tenantId),
             'open_now' => $hours->isOpen($tenantId),
