@@ -21,3 +21,45 @@ test('lead creation preserves zero budget, optional assignment and commercial fi
  assert.equal(request.body.agent_id, 'advisor-a');
  assert.equal(request.body.budget, null);
 });
+test('lead creation supports linking propertyId and mapLead maps full commercial profile', async () => {
+ let request;
+ const api = client((url, init) => {
+  request = {url, body: JSON.parse(init.body)};
+  return {data: {
+   id: 'lead-b',
+   name: 'Lead con inmueble',
+   source_channel: 'WHATSAPP',
+   stage: 'NEW',
+   budget: 150000,
+   currency: 'USD',
+   priority: 'HIGH',
+   properties: [{
+    id: 'prop-1',
+    title: 'Depto Centro',
+    price: 120000,
+    currency: 'USD',
+    project_name: 'Torre Central',
+    unit_number: '4B',
+    sector_name: 'Torre 1',
+   }],
+  }};
+ });
+ const lead = await api.createEverpropLead({
+  name: 'Lead con inmueble',
+  propertyId: 'prop-1',
+  budget: 150000,
+  currency: 'USD',
+  priority: 'HIGH',
+ });
+ assert.equal(request.body.property_id, 'prop-1');
+ assert.equal(request.body.budget, 150000);
+ assert.equal(request.body.currency, 'USD');
+ assert.equal(lead.budget, 150000);
+ assert.equal(lead.currency, 'USD');
+ assert.equal(lead.priority, 'HIGH');
+ assert.equal(lead.interests[0].price, 120000);
+ assert.equal(lead.interests[0].projectName, 'Torre Central');
+ assert.equal(lead.interests[0].unitNumber, '4B');
+ assert.equal(lead.interests[0].sectorName, 'Torre 1');
+ assert.equal(lead.interests[0].unitId, 'prop-1');
+});

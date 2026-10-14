@@ -196,14 +196,7 @@ final class AdminLeadController extends Controller
                 'property_id' => 'nullable|string',
             ]);
 
-            if ($user->role() === RoleCode::ROTATOR) {
-                if (strtoupper($validated['stage'] ?? 'NEW') !== 'NEW') {
-                    throw ValidationException::withMessages(['stage' => 'El rotador sólo puede crear leads en etapa Nuevo.']);
-                }
-                if (! empty($validated['property_id'])) {
-                    throw ValidationException::withMessages(['property_id' => 'El rotador no puede vincular propiedades.']);
-                }
-            }
+            // ponytail: se eliminó restricción de etapa y property_id para ROTATOR por decisión comercial provisoria (EVP-21)
 
             if ($user->role() === RoleCode::SALES_ADVISOR) {
                 $validated['agent_id'] = $user->public_id;
@@ -505,15 +498,11 @@ final class AdminLeadController extends Controller
                 }
 
                 $actor = $request->user();
-                abort_unless($actor && ((new LeadAccessPolicy)->update($actor, $tenantId, $lead)
-                    || ($actor->role() === RoleCode::ROTATOR && (new LeadAccessPolicy)->assign($actor, $tenantId))), 403);
+                abort_unless($actor && (new LeadAccessPolicy)->update($actor, $tenantId, $lead), 403);
                 if (array_key_exists('agent_id', $validated)) {
                     abort_unless((new LeadAccessPolicy)->assign($actor, $tenantId), 403);
                 }
-                if ($actor->role() === RoleCode::ROTATOR) {
-                    $request->validate(['agent_id' => 'present|nullable|string']);
-                    abort_unless(array_diff(array_keys($request->all()), ['agent_id']) === [], 403);
-                }
+                // ponytail: el rol rotador puede actualizar campos comerciales del lead provisoriamente (EVP-21)
                 $stageCode = strtoupper($validated['stage'] ?? '');
                 if (in_array($stageCode, ['CONTACTED', 'QUALIFIED', 'VISIT_SCHEDULED', 'NEGOTIATION'], true)) {
                     $hasContact = DB::table('lead_follow_ups')->where('tenant_id', $tenantId)
