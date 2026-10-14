@@ -12,9 +12,11 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -72,6 +74,26 @@ final class ChannelPolicyTest extends TestCase
 
         $this->assertDatabaseHas('messages', ['conversation_id' => $c['conversation'], 'direction' => 'OUTBOUND', 'delivery_status' => 'SENT']);
         Http::assertSent(fn ($r) => str_contains($r->url(), '/PN-OPEN/messages'));
+    }
+
+    public function test_a_whatsapp_attachment_the_worker_cannot_read_fails_visibly_and_nothing_is_sent(): void
+    {
+        config(['filesystems.private' => 'local']);
+        Storage::fake('local');
+        $c = $this->whatsappConversation('PN-FILE', CarbonImmutable::now()->subHours(1));
+        Queue::fake(); // the outbound job waits, as if the worker picked it up later
+        $publicId = (string) DB::table('conversations')->where('id', $c['conversation'])->value('public_id');
+        $this->actingAs($c['advisor'])->withHeaders($this->tenantHeaders($c['tenant']))->post("/api/v1/admin/conversations/$publicId/attachments",
+            ['file' => UploadedFile::fake()->createWithContent('plano.pdf', "%PDF-1.4\n%%EOF\n"), 'idempotency_key' => 'attach-missing-0001'], ['Accept' => 'application/json'])->assertStatus(202);
+        $message = DB::table('messages')->where('conversation_id', $c['conversation'])->where('direction', 'OUTBOUND')->sole();
+        // EVP-19: stored by the API, absent on the worker's disk (separate Railway volumes).
+        Storage::disk('local')->delete(json_decode((string) $message->media_json, true)['path']);
+        $job = (int) DB::table('outbound_jobs')->where('message_id', $message->id)->value('id');
+
+        $this->assertSame('FAILED', app(OutboundDispatcher::class)->dispatch((int) $c['tenant']->id, $job));
+        $this->assertSame('ATTACHMENT_MISSING', DB::table('outbound_jobs')->where('id', $job)->value('last_error_code'));
+        $this->assertSame('FAILED', DB::table('messages')->where('id', $message->id)->value('delivery_status'));
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), '/PN-FILE/'));
     }
 
     public function test_after_24_hours_free_text_is_refused_up_front_and_nothing_is_sent(): void

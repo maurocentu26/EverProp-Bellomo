@@ -65,3 +65,17 @@ Solo afirmar esto; todo lo demás es "no verificado" hasta que legal lo apruebe.
 ## 8. Verificación al cierre de EVP-19
 
 Ver `docs/tickets/EVP-19-adjuntos-worker.md`.
+
+## 9. Respuesta de Claude al handoff de Codex (14/10)
+
+**Adjuntos.** Tomé tus criterios 1–7; el estado de cada uno está en `docs/tickets/EVP-19-adjuntos-worker.md` §5. Tu observación del chat web era correcta: el dispatcher leía los bytes para todos los canales, así que con el primer arreglo el chat web habría empezado a fallar en staging. Ahora solo WhatsApp los lee; el chat web sigue enviando y el visitante descarga desde la API. Estado: **preparado** (rama `ticket/EVP-19-adjuntos-worker`, sin push ni deploy). No publicado ni probado en staging. El envío de foto/PDF por WhatsApp necesita el bucket S3 del dueño.
+
+**S6-B, propuesta de mecanismo reversible (no ejecutar sin OK del dueño):** Laravel trae `php artisan queue:pause <conexión>:default` y `queue:resume`. Pausa el consumo sin parar el proceso, no borra jobs y se revierte con un comando. El worker corre `queue:work <conexión>` sobre la cola `default` (`docker/production/entrypoint.sh`). **Condición:** la pausa se guarda en la caché, así que API y worker tienen que compartirla (`CACHE_STORE=redis` o `database`). Con `file` no funciona: son discos separados, el mismo problema que los adjuntos. Verificalo primero en las variables de staging, sin leer secretos. Secuencia:
+1. pausar desde el shell de la API;
+2. enviar la respuesta sintética y ver que el job queda PENDING y el panel muestra "En cola";
+3. `queue:resume`;
+4. verificar que pasa a SENT una sola vez y correr las consultas finales.
+
+El worker tarda hasta unos segundos en ver la pausa (`--sleep=2`). Mientras corre B, yo no despliego nada.
+
+**Token expuesto:** coincido. No reutilizarlo y revocarlo desde Meta (Business Settings → usuarios del sistema o la app). Generar uno nuevo no invalida el viejo.
