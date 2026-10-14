@@ -131,27 +131,39 @@ final class InboxQueueTest extends TestCase
     public function test_the_thread_shows_the_assistant_summary_and_only_to_its_tenant(): void
     {
         config(['conversations.ai_enabled' => true]);
-        $t = $this->tenant(ai: true);
+        [$a, $b] = [$this->tenant(ai: true), $this->tenant(ai: true)];
         $this->app->instance(LlmClient::class, new ScriptedLlm([
+            ScriptedLlm::tool('derivar_a_asesor', ['reason' => 'NO_EVIDENCE', 'summary' => 'Resumen de B'], 'Te paso.'),
+            ScriptedLlm::text('Te paso con un asesor.'),
             ScriptedLlm::tool('derivar_a_asesor', ['reason' => 'USER_REQUEST', 'summary' => 'Quiere financiación del 12A; tel 3885550101'], 'Te paso.'),
             ScriptedLlm::text('Te paso con un asesor.'),
         ]));
+        // Tenant B's visitor waits first (older) and in hours; A's arrives later, out of hours.
+        $this->at('2026-10-09 10:00');
+        $idB = $this->visitor($b, 'hola desde B');
         $this->at('2026-10-10 14:00');
-        $id = $this->visitor($t, 'quiero hablar con alguien, mi tel es 3885550101');
+        $idA = $this->visitor($a, 'quiero hablar con alguien, mi tel es 3885550101');
 
-        $thread = $this->actingAs($this->user($t['tenant'], RoleCode::SALES_ADVISOR))->withHeaders($this->tenantHeaders($t['tenant']))
-            ->getJson("/api/v1/admin/conversations/{$id}/messages")->assertOk();
-        $thread->assertJsonPath('conversation.state', 'WAITING_HUMAN')
+        $thread = fn (array $t, string $id) => $this->actingAs($this->user($t['tenant'], RoleCode::SALES_ADVISOR))
+            ->withHeaders($this->tenantHeaders($t['tenant']))->getJson("/api/v1/admin/conversations/{$id}/messages");
+        $thread($a, $idA)->assertOk()->assertJsonPath('conversation.state', 'WAITING_HUMAN')
             ->assertJsonPath('conversation.handoff.reason', 'USER_REQUEST')
             ->assertJsonPath('conversation.handoff.summary', 'Quiere financiación del 12A; tel 3885550101');
-        $this->assertTrue($this->list($t['tenant'], '?state=WAITING_HUMAN')[0]['out_of_hours']);
+        $thread($b, $idB)->assertOk()->assertJsonPath('conversation.handoff.summary', 'Resumen de B');
         $this->flushHeaders();
 
-        // Another tenant: the conversation does not exist for it and its queue is empty.
-        $other = $this->tenant();
-        $this->actingAs($this->user($other['tenant'], RoleCode::TENANT_ADMIN))->withHeaders($this->tenantHeaders($other['tenant']))
-            ->getJson("/api/v1/admin/conversations/{$id}/messages")->assertNotFound();
+        // Each queue holds only its own conversation, with its own wait and classification.
+        $queueA = $this->list($a['tenant'], '?state=WAITING_HUMAN');
+        $queueB = $this->list($b['tenant'], '?state=WAITING_HUMAN');
+        $this->assertSame([$idA], array_column($queueA, 'id'));
+        $this->assertSame([$idB], array_column($queueB, 'id'));
+        $this->assertSame(CarbonImmutable::parse('2026-10-10 14:00', 'America/Argentina/Salta')->utc()->toISOString(), $queueA[0]['waiting_since']);
+        $this->assertTrue($queueA[0]['out_of_hours']);
+        $this->assertSame(CarbonImmutable::parse('2026-10-09 10:00', 'America/Argentina/Salta')->utc()->toISOString(), $queueB[0]['waiting_since']);
+        $this->assertFalse($queueB[0]['out_of_hours']);
+
+        // The other tenant's thread does not exist for them.
+        $thread($b, $idA)->assertNotFound();
         $this->flushHeaders();
-        $this->assertSame([], $this->list($other['tenant'], '?state=WAITING_HUMAN'));
     }
 }
