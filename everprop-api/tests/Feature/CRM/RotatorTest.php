@@ -7,6 +7,7 @@ use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class RotatorTest extends TestCase
@@ -24,7 +25,7 @@ final class RotatorTest extends TestCase
         DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'Nuevo', 'category' => 'OPEN', 'position' => 1]);
         $this->actingAs($admin)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
         $lead = $this->postJson('/api/v1/admin/leads', ['name' => 'Lead para rotar'])->assertCreated()->json('data.id');
-        $property = (string) \Illuminate\Support\Str::uuid();
+        $property = (string) Str::uuid();
         DB::table('properties')->insert([
             'tenant_id' => $tenant->id, 'public_id' => $property, 'title' => 'Casa de interés',
             'operation' => 'SALE', 'category' => 'HOUSE', 'status' => 'AVAILABLE',
@@ -61,7 +62,7 @@ final class RotatorTest extends TestCase
         $paused = User::factory()->for($tenant)->create(['role_code' => RoleCode::SALES_ADVISOR, 'status' => 'PAUSED']);
         $foreign = User::factory()->create(['role_code' => RoleCode::SALES_ADVISOR]);
         $stageId = DB::table('pipeline_stages')->insertGetId(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'Nuevo', 'category' => 'OPEN', 'position' => 1]);
-        $property = (string) \Illuminate\Support\Str::uuid();
+        $property = (string) Str::uuid();
         DB::table('properties')->insert([
             'tenant_id' => $tenant->id, 'public_id' => $property, 'title' => 'Depto Centro',
             'operation' => 'SALE', 'category' => 'APARTMENT', 'status' => 'AVAILABLE',
