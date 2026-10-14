@@ -39,11 +39,10 @@ final class RotatorTest extends TestCase
         $this->assertDatabaseHas('leads', ['public_id' => $lead, 'assigned_user_id' => $advisor->id, 'notes' => 'Notas del rotador']);
 
         // Rotator can read catalog
-        $this->getJson('/api/v1/admin/projects')->assertOk();
         $this->getJson('/api/v1/admin/properties')->assertOk();
 
-        // Rotator cannot manage administrative modules
-        foreach (['users', 'installments'] as $module) {
+        // Rotator cannot manage administrative or inventory modules
+        foreach (['projects', 'users', 'installments'] as $module) {
             $this->getJson('/api/v1/admin/'.$module)->assertForbidden();
         }
 
