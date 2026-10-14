@@ -51,7 +51,8 @@ El ticket anterior es el del último informe en `docs/tickets/`.
 - **Nunca push a `main` ni a `develop`.** Tampoco formas equivalentes: `git push origin <rama>:develop`, `--force` sobre esas ramas, merge desde la interfaz o la API de GitHub.
 - Push solo a la rama del ticket, y solo con autorización expresa del usuario (`CLAUDE.md`, invariante 11).
 - Lo integra a `develop` una persona, por PR, después de revisar el código y el informe del ticket.
-- `main` es lo que ve el cliente: entra solo por PR revisado. El módulo de IA y conversaciones no va nunca a `main`.
+- `main` es lo que ve el cliente: entra solo por PR revisado desde `release/*` o `hotfix/*`; se rechaza `develop` directo. El módulo de IA y conversaciones no va nunca a `main`: el check `Ticket branch / name` revisa el árbol completo del PR y las referencias en código compartido, no solo el diff. Una rama de release derivada de `develop` debe excluir esos módulos y referencias antes de presentarse.
+- El administrador debe exigir ese check y revisión humana en la protección de `main` y proteger los cambios al workflow/política mediante revisores obligatorios o un required workflow de un ruleset administrado. Un archivo de CI por sí solo no impide push directo, bypass administrativo ni que un PR modifique su propio check.
 
 ## 4. Informe por ticket
 
@@ -98,3 +99,7 @@ Reglas del informe:
 - [ ] Informe en `docs/tickets/` con las cinco secciones.
 - [ ] Commits en la rama del ticket; nada en `main` ni en `develop`.
 - [ ] Al usuario: resumen del ticket, rama, commits y enlace al informe. El push y el PR, solo si los autoriza.
+
+Para PR hacia main, la política de CI se carga desde `develop` en un checkout separado del PR y registra su SHA. EVP-17 debe integrarse primero a `develop`. Proteger esa rama y el workflow sigue siendo necesario: modificar el YAML podría omitir la comprobación.
+
+Bootstrap: los PR hacia `develop` ejecutan y prueban los scripts propuestos, conservando el flujo existente y permitiendo integrar EVP-17 por primera vez. Solo los PR hacia `main` usan la política confiable de `develop`; esta debe existir allí antes de abrir una release. La revisión y protección de develop siguen siendo necesarias.
