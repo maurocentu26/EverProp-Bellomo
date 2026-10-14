@@ -3,6 +3,7 @@
 namespace Tests\Feature\Conversations;
 
 use App\Domain\Conversations\Services\ConversationControl;
+use App\Domain\Conversations\Services\OutboundDispatcher;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
@@ -98,6 +99,21 @@ final class ConversationAttachmentsTest extends TestCase
         $this->flushHeaders();
         $this->actingAs($this->user($otherTenant, RoleCode::TENANT_ADMIN))->withHeaders($this->tenantHeaders($otherTenant))
             ->get($url)->assertNotFound();
+    }
+
+    public function test_a_worker_that_cannot_see_the_file_fails_the_send_instead_of_sending_an_empty_one(): void
+    {
+        $f = $this->inControl();
+        $this->attach($f['advisor'], $f['tenant'], $f['conversation'], $this->file('plano.pdf', self::PDF))->assertStatus(202);
+        $message = DB::table('messages')->where('conversation_id', $f['id'])->where('direction', 'OUTBOUND')->sole();
+        $job = DB::table('outbound_jobs')->where('message_id', $message->id)->sole();
+        // EVP-19: the API stored it, but this worker's disk does not have it (separate Railway volumes).
+        Storage::disk('local')->delete(json_decode((string) $message->media_json, true)['path']);
+        DB::table('outbound_jobs')->where('id', $job->id)->update(['status' => 'PENDING']);
+
+        $this->assertSame('FAILED', app(OutboundDispatcher::class)->dispatch((int) $f['tenant']->id, (int) $job->id));
+        $this->assertSame('ATTACHMENT_MISSING', DB::table('outbound_jobs')->where('id', $job->id)->value('last_error_code'));
+        $this->assertSame('FAILED', DB::table('messages')->where('id', $message->id)->value('delivery_status'));
     }
 
     public function test_a_pdf_downloads_and_retries_are_idempotent(): void

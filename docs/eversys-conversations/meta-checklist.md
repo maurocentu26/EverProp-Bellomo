@@ -65,9 +65,13 @@ Notas: el intercambio del código no envía `redirect_uri` (`WhatsAppOnboarding:
 | Texto `whatsapp_business_messaging` | Bandeja, ventana de 24 h, envío de texto/foto/PDF/plantilla | Redactado; **sumar** fotos/PDF y plantillas aprobadas |
 | Texto `whatsapp_business_management` | Suscribir webhooks, registrar número, leer números, **leer plantillas aprobadas** | Redactado; **sumar** la lectura de plantillas (`message_templates`) |
 
-## 6. Casos de evaluación sin commitear (otra sesión)
+## 6. Casos de evaluación
 
-`evals/cases/failures.jsonl` (+7), `rioplatense.jsonl` (+8), `security.jsonl` (+15): 30 casos, **validan** (`node evals/validate.mjs`: 80 válidos). Hoy en git hay 50. Propuesta: commitearlos tal cual en un commit aparte que diga que vienen de otra sesión, después de que el dueño confirme que no siguen en edición. No se descartan.
+Los 30 casos de la otra sesión están commiteados (`16d75b6`): 80 válidos con `node evals/validate.mjs`.
+
+## 6b. Adjuntos en staging (EVP-19, 2026-10-14)
+
+La API guarda el adjunto del asesor y el worker lo lee para subirlo a Meta; en Railway no comparten volumen. Desde EVP-19 el envío falla visible (`ATTACHMENT_MISSING`) en vez de mandar un archivo vacío. **Pendiente del dueño:** bucket S3 privado y `PRIVATE_FILES_DISK=s3` + variables `AWS_*` en `api`, `worker` y `scheduler`. Detalle e informe para Codex: `handoff-codex-meta.md`.
 
 ## 7. Resumen por estado
 
@@ -75,7 +79,7 @@ Notas: el intercambio del código no envía `redirect_uri` (`WhatsAppOnboarding:
 |---|---|---|---|---|---|---|---|
 | Bandeja, widget, avisos, copiloto, lead y visita, fotos/PDF | ✓ | — | — | staging | — | — | Dueño: probar en iPhone |
 | WhatsApp: alta Embedded Signup | ✓ | ✓ | ✗ | — | ✗ | ✗ | Codex: config + sandbox |
-| WhatsApp: texto, fotos/PDF, plantillas | ✓ | ✓ | ✗ | — | ✗ | ✗ | Tras §3 |
+| WhatsApp: texto, fotos/PDF, plantillas | ✓ | ✓ | ✗ | — | ✗ | ✗ | Tras §3 y bucket S3 (§6b) |
 | Verificación del negocio | — | — | — | — | ✓ enviada | ✗ | Meta |
 | Dominio `eversyssolutions.com.ar` | — | — | — | ✓ verificado | — | — | — |
 | Páginas legales EverSys | ✗ | — | — | ✗ | — | — | Dueño + legal |

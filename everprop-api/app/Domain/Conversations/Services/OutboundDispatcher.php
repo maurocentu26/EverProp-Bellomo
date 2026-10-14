@@ -86,6 +86,12 @@ final class OutboundDispatcher
         $channel = (array) DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $job->channel_account_id)->first();
         $template = json_decode((string) $job->payload_json, true)['template'] ?? null;
         $blocked = $this->policy->check($tenantId, (int) $job->conversation_id, $channel, is_array($template) ? (string) $template['name'] : null);
+        // Read before PROCESSING: a missing file (e.g. API and worker on different volumes) fails visibly, never sends 0 bytes.
+        $media = $blocked === null ? $this->media($tenantId, (int) $job->conversation_id, (int) $job->message_id) : null;
+        if ($media !== null && $media['contents'] === null) {
+            report(new \RuntimeException("Attachment missing on disk for outbound job {$jobId}; check PRIVATE_FILES_DISK is shared by api and worker."));
+            $blocked = 'ATTACHMENT_MISSING';
+        }
         if ($blocked !== null) {
             $now = CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v');
             DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('id', $jobId)->update(['status' => 'FAILED', 'last_error_code' => $blocked]);
@@ -110,7 +116,7 @@ final class OutboundDispatcher
             'status' => 'PROCESSING', 'job_id' => $jobId, 'nonce' => $nonce, 'conversation_id' => (int) $job->conversation_id,
             'message_id' => (int) $job->message_id, 'channel' => $channel, 'recipient' => $recipient,
             'text' => (string) DB::table('messages')->where('tenant_id', $tenantId)->where('id', $job->message_id)->value('text_body'),
-            'media' => $this->media($tenantId, (int) $job->conversation_id, (int) $job->message_id),
+            'media' => $media,
             'template' => is_array($template) ? ['name' => (string) $template['name'], 'language' => (string) $template['language'],
                 'params' => array_values(array_map('strval', (array) ($template['params'] ?? [])))] : null,
             'attempt' => (int) $job->attempt_count + 1, 'max_attempts' => (int) $job->max_attempts,
@@ -120,7 +126,7 @@ final class OutboundDispatcher
     /**
      * The attachment of the message, with its bytes, for transports that upload it (WhatsApp).
      *
-     * @return array{kind: string, mime: string, name: string, contents: string}|null
+     * @return array{kind: string, mime: string, name: string, contents: ?string}|null contents null = file missing
      */
     private function media(int $tenantId, int $conversationId, int $messageId): ?array
     {
