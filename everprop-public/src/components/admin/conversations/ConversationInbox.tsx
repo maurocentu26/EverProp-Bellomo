@@ -41,6 +41,8 @@ import {
   type ConversationMessage,
   type ConversationState,
   type ConversationSummary,
+  HANDOFF_REASONS,
+  type HandoffSummary,
 } from "@/lib/conversations-api";
 
 const FILTERS: [ConversationFilter, string][] = [
@@ -192,6 +194,7 @@ export function ConversationInbox() {
   const [suggestion, setSuggestion] = useState<{ id: string; text: string } | null>(null);
   // WhatsApp only: when the 24 h service window closes (null closes_at = already closed).
   const [replyWindow, setReplyWindow] = useState<{ closes_at: string | null } | null>(null);
+  const [handoff, setHandoff] = useState<HandoffSummary | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const messagesRef = useRef<ConversationMessage[]>([]);
   const [threadError, setThreadError] = useState("");
@@ -258,6 +261,7 @@ export function ConversationInbox() {
       setAiEnabled(response.conversation.ai_enabled);
       setCopilotEnabled(response.conversation.copilot_enabled === true);
       setReplyWindow(response.conversation.reply_window ?? null);
+      setHandoff(response.conversation.handoff ?? null);
       setThreadError("");
     } catch {
       setThreadError("No pudimos cargar los mensajes. Reintentamos en unos segundos.");
@@ -529,6 +533,11 @@ export function ConversationInbox() {
                         <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_STYLES[item.state]}`}>{STATE_LABELS[item.state]}</span>
                         <span>{CHANNEL_LABELS[item.channel] ?? item.channel}</span>
                         {item.assigned_user && <span className="truncate">· {item.assigned_user.name}</span>}
+                        {item.out_of_hours && item.waiting_since && (
+                          <span className="rounded-full bg-indigo-100 px-2 py-0.5 font-semibold text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-100">
+                            Llegó fuera de horario · {sameDay(item.waiting_since, new Date().toISOString()) ? clockTime(item.waiting_since) : `${dayLabel(item.waiting_since)} ${clockTime(item.waiting_since)}`}
+                          </span>
+                        )}
                       </span>
                     </span>
                   </button>
@@ -583,6 +592,17 @@ export function ConversationInbox() {
                   </button>
                 )}
               </div>
+
+              {handoff && (state === "WAITING_HUMAN" || state === "HUMAN_ACTIVE") && (
+                // Model-written: plain text only (React escapes it), for the team, never sent to the visitor.
+                <section aria-label="Resumen del asistente" className="m-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-950 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-50">
+                  <p className="font-semibold">
+                    Resumen del asistente · {HANDOFF_REASONS[handoff.reason] ?? "Derivación"}
+                    <span className="font-normal text-muted-foreground"> · {dayLabel(handoff.at)} {clockTime(handoff.at)}</span>
+                  </p>
+                  {handoff.summary && <p className="mt-1 whitespace-pre-wrap break-words">{handoff.summary}</p>}
+                </section>
+              )}
 
               {state === "TRANSITION_PENDING" && (
                 <div role="status" className="m-3 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100">
