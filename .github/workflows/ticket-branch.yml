@@ -1,26 +1,45 @@
 name: Ticket branch
 
-# TICKETS.md: every change to develop comes from ticket/EVP-<key>-<slug> (Jira key like EVP-14, or a local EVP-L01).
-# Only exception: main, merged back into develop after each release (CLAUDE.md).
+# TICKETS.md: develop takes ticket branches; main takes clean release/hotfix branches.
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, main]
     types: [opened, reopened, edited, synchronize]
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   name:
     runs-on: ubuntu-24.04
-    timeout-minutes: 1
+    timeout-minutes: 2
     steps:
-      - name: Branch carries an EVP ticket key
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          path: proposed
+      - name: Load policy from protected develop
+        if: github.base_ref == 'main'
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          persist-credentials: false
+          path: trusted-policy
+          sparse-checkout: .github/scripts
+      - name: Branch and production tree respect ticket policy
+        working-directory: proposed
         env:
+          BASE: ${{ github.base_ref }}
           HEAD: ${{ github.head_ref }}
+          PR_TREE: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [[ "$HEAD" == main || "$HEAD" =~ ^ticket/EVP-(L[0-9]+|[0-9]+(\.[0-9]+)?)-[a-z0-9][a-z0-9-]*$ ]]; then
-            echo "OK: $HEAD"
+          if [ "$BASE" = "main" ]; then
+            echo "Policy SHA: $(git -C ../trusted-policy rev-parse HEAD)"
+            node ../trusted-policy/.github/scripts/check-pr-policy.mjs
           else
-            echo "::error::La rama '$HEAD' no sigue TICKETS.md: tiene que ser ticket/EVP-XX-descripcion (o ticket/EVP-LXX-... local)."
-            exit 1
+            node .github/scripts/check-pr-policy.mjs
           fi
+      - name: Policy regression tests
+        working-directory: ${{ github.base_ref == 'main' && 'trusted-policy' || 'proposed' }}
+        run: node --test .github/scripts/check-pr-policy.test.mjs

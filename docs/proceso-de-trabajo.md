@@ -88,7 +88,7 @@ Están escritas en `TICKETS.md` en el repo, y los agentes las leen solos.
 **Para Producto:** un pedido entra al desarrollo cuando tiene su ticket En curso. Si no está en Jira, no se trabaja.
 
 1. Una rama por ticket, desde `develop`: `ticket/EVP-XX-descripcion-corta`.
-2. **Nadie hace push a `main` ni a `develop`.** Todo entra por PR revisado por una persona.
+2. **Nadie hace push a `main` ni a `develop`.** Todo entra por PR revisado por una persona. A `main` llegan únicamente ramas `release/*` o `hotfix/*`, nunca `develop` directamente. El árbol de la release no puede contener IA/conversaciones ni referencias a esos módulos; apagar flags no alcanza. El administrador debe exigir el check `Ticket branch / name` y revisión humana en la protección de ramas, y controlar cambios a esa política.
 3. Antes de empezar un ticket nuevo, el agente pregunta si el anterior ya fue revisado.
 4. Cada ticket deja un informe en `docs/tickets/` con cinco secciones:
    - qué pedía el ticket;
@@ -182,3 +182,7 @@ Usá el puente oficial `mcp-remote`, que corre en tu PC:
 - Un ticket se da por hecho cuando está probado donde corresponde, con evidencia en su informe. Un PR abierto o un checklist completo no alcanzan.
 
 Fuentes del conector: [Atlassian Rovo MCP server](https://support.atlassian.com/rovo/docs/getting-started-with-the-atlassian-remote-mcp-server/), [control de dominios para administradores](https://support.atlassian.com/security-and-access-policies/docs/control-atlassian-mcp-server-settings/), [configuración MCP de Antigravity](https://medium.com/google-cloud/configuring-mcp-servers-and-skills-for-antigravity-cli-and-ide-a938c7eebb78).
+
+Para PR hacia main, la política de CI se carga desde `develop` en un checkout separado del PR y registra su SHA. EVP-17 debe integrarse primero a `develop`. Proteger esa rama y el workflow sigue siendo necesario: modificar el YAML podría omitir la comprobación.
+
+Bootstrap: los PR hacia `develop` ejecutan y prueban los scripts propuestos, conservando el flujo existente y permitiendo integrar EVP-17 por primera vez. Solo los PR hacia `main` usan la política confiable de `develop`; esta debe existir allí antes de abrir una release. La revisión y protección de develop siguen siendo necesarias.
