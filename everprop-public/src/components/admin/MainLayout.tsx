@@ -21,7 +21,6 @@ export default function MainLayout({ children }: Props) {
     const router = useRouter();
     const { currentUser, isLoaded, invalidateSession } = useAuth();
     const currentUserId = currentUser?.id;
-    const rotatorRouteAllowed = /^\/admin\/leads(?:\/[^/]+)?$/.test(pathname);
 
     useEffect(() => {
         if (!isLoaded) return;
@@ -36,6 +35,8 @@ export default function MainLayout({ children }: Props) {
             router.replace("/login");
         }
     }, [currentUser, invalidateSession, isLoaded, router]);
+
+    const rotatorRouteAllowed = pathname.startsWith("/admin/leads") || pathname.startsWith("/admin/properties") || pathname.startsWith("/admin/projects");
 
     useEffect(() => {
         if (currentUser?.role === "ROTATOR" && !rotatorRouteAllowed) router.replace("/admin/leads");

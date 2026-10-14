@@ -258,7 +258,8 @@ final class InventoryAccess
     {
         $setting = $this->setting($user);
 
-        if ($this->isTenantAdministrator($user) || $user->role() === RoleCode::SALES_MANAGER) {
+        // ponytail: el rol rotador tiene visibilidad de catálogo completa provisoriamente (EVP-21)
+        if ($this->isTenantAdministrator($user) || in_array($user->role(), [RoleCode::SALES_MANAGER, RoleCode::ROTATOR], true)) {
             return $setting instanceof UserInventorySetting ? $setting->visibility_mode : 'ALL';
         }
 
