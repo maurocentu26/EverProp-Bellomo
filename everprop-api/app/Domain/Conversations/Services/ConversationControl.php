@@ -42,7 +42,7 @@ final class ConversationControl
             $state = $inFlight ? 'TRANSITION_PENDING' : 'HUMAN_ACTIVE';
 
             $this->write($tenantId, $conversationId, [
-                'control_state' => $state,
+                'control_state' => $state, 'waiting_out_of_hours' => false,
                 'control_epoch' => $epoch,
                 'controlled_by_user_id' => $user->id,
                 'assigned_user_id' => $user->id,
@@ -73,7 +73,7 @@ final class ConversationControl
             }
             $epoch = (int) $conversation->control_epoch + 1;
             $this->write($tenantId, $conversationId, [
-                'control_state' => 'AI_ACTIVE', 'control_epoch' => $epoch, 'controlled_by_user_id' => null, 'bot_mode' => 'BOT_FIRST',
+                'control_state' => 'AI_ACTIVE', 'waiting_out_of_hours' => false, 'control_epoch' => $epoch, 'controlled_by_user_id' => null, 'bot_mode' => 'BOT_FIRST',
             ]);
             $this->outbox($tenantId, $conversationId, 'CONVERSATION_AI_RESUMED', ['epoch' => $epoch, 'user_id' => $user->id, 'reason' => mb_substr($reason, 0, 500)]);
 
@@ -96,7 +96,7 @@ final class ConversationControl
             $this->assertBotControl($conversation, $expectedEpoch);
             $epoch = (int) $conversation->control_epoch + 1;
             $this->cancelPendingBotSends($tenantId, $conversationId, $epoch);
-            $changes = ['control_state' => 'WAITING_HUMAN', 'control_epoch' => $epoch, 'bot_mode' => 'HUMAN_FIRST'];
+            $changes = ['control_state' => 'WAITING_HUMAN', 'waiting_out_of_hours' => rescue(fn () => ! app(BusinessHours::class)->isOpen($tenantId), false, false), 'control_epoch' => $epoch, 'bot_mode' => 'HUMAN_FIRST'];
             // The suggestion comes from CRM data: only an active user of this tenant who can attend is assigned.
             if ($conversation->assigned_user_id === null && $suggestedAssigneeId !== null && DB::table('users')->where('tenant_id', $tenantId)
                 ->where('id', $suggestedAssigneeId)->where('status', 'ACTIVE')->whereIn('role_code', ['TENANT_ADMIN', 'SALES_MANAGER', 'SALES_ADVISOR'])->exists()) {
@@ -128,7 +128,7 @@ final class ConversationControl
             $conversation = $this->lock($tenantId, $conversationId);
             $epoch = (int) $conversation->control_epoch + 1;
             $this->cancelPendingBotSends($tenantId, $conversationId, $epoch);
-            $this->write($tenantId, $conversationId, ['control_state' => 'CLOSED', 'control_epoch' => $epoch, 'status' => 'RESOLVED', 'closed_at' => now()]);
+            $this->write($tenantId, $conversationId, ['control_state' => 'CLOSED', 'waiting_out_of_hours' => false, 'control_epoch' => $epoch, 'status' => 'RESOLVED', 'closed_at' => now()]);
             $this->outbox($tenantId, $conversationId, 'CONVERSATION_CLOSED', ['epoch' => $epoch, 'user_id' => $user->id]);
         }, 3);
     }

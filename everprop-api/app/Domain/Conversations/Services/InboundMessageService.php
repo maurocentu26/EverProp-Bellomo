@@ -109,6 +109,9 @@ final class InboundMessageService
             'last_inbound_at' => $now->format('Y-m-d H:i:s.v'),
             'last_activity_at' => $now->format('Y-m-d H:i:s.v'),
             'control_state' => $state,
+            // Preserve the arrival classification until a person takes control, even after daytime follow-ups.
+            'waiting_out_of_hours' => $state === 'WAITING_HUMAN' && ((! $reopen && (bool) $conversation->waiting_out_of_hours)
+                || rescue(fn () => ! app(BusinessHours::class)->isOpen($message->tenantId, $now), false, false)),
             'control_epoch' => $reopen ? DB::raw('control_epoch + 1') : $conversation->control_epoch,
             'state_version' => DB::raw('state_version + 1'),
             'status' => 'OPEN',

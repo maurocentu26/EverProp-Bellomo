@@ -5,6 +5,7 @@ namespace App\Domain\Conversations\Http\Controllers;
 use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
 use App\Domain\AgentRuntime\Coordinator\CopilotFailure;
 use App\Domain\Conversations\Jobs\DispatchOutboundJob;
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Conversations\Services\ChannelPolicy;
 use App\Domain\Conversations\Services\ConversationAttachments;
 use App\Domain\Conversations\Services\ConversationControl;
@@ -58,18 +59,26 @@ final class AdminConversationController extends Controller
             ->leftJoin('contacts as ct', fn ($j) => $j->on('ct.id', '=', 'c.contact_id')->on('ct.tenant_id', '=', 'c.tenant_id'))
             ->join('channel_accounts as ca', fn ($j) => $j->on('ca.id', '=', 'c.channel_account_id')->on('ca.tenant_id', '=', 'c.tenant_id'))
             ->leftJoin('users as u', fn ($j) => $j->on('u.id', '=', 'c.assigned_user_id')->on('u.tenant_id', '=', 'c.tenant_id'))
+            // Sort in SQL before pagination; never promote conversations beyond the viewer's existing scope.
+            ->when(app(BusinessHours::class)->isOpen($this->tenantId()), fn ($q) => $q->orderByRaw("(c.control_state = 'WAITING_HUMAN' AND c.waiting_out_of_hours = 1) DESC"))
             ->orderByDesc('c.last_activity_at')->orderByDesc('c.id')
-            ->select(['c.public_id', 'c.control_state', 'c.control_epoch', 'c.unread_count', 'c.last_activity_at', 'c.status',
+            ->select(['c.public_id', 'c.waiting_out_of_hours', 'c.control_state', 'c.control_epoch', 'c.unread_count', 'c.last_activity_at', 'c.status',
                 'ca.channel_type', 'ct.display_name', 'u.public_id as assigned_user_id', 'u.display_name as assigned_user_name'])
             // Last message preview: one row per conversation through uq_messages_sequence.
             ->selectSub($this->lastMessage('LEFT(m.text_body, 140)'), 'preview_text')
             ->selectSub($this->lastMessage('m.sender_type'), 'preview_sender')
             ->selectSub($this->lastMessage('m.message_type'), 'preview_type')
+            ->selectSub(DB::table('domain_outbox as ho')->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(ho.payload_json, '$.reason'))")
+                ->whereColumn('ho.tenant_id', 'c.tenant_id')->whereColumn('ho.aggregate_id', 'c.id')
+                ->where('ho.aggregate_type', 'CONVERSATION')->where('ho.event_type', 'CONVERSATION_HANDOFF_REQUESTED')
+                ->whereRaw("JSON_EXTRACT(ho.payload_json, '$.epoch') = c.control_epoch")->orderByDesc('ho.id')->limit(1), 'handoff_summary')
             ->simplePaginate(50);
 
         return response()->json([
             'meta' => ['next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null],
             'data' => collect($page->items())->map(fn ($c) => [
+                'arrived_out_of_hours' => $c->control_state === 'WAITING_HUMAN' && (bool) $c->waiting_out_of_hours,
+                'handoff_summary' => $c->control_state === 'WAITING_HUMAN' ? $c->handoff_summary : null,
                 'id' => $c->public_id, 'state' => $c->control_state, 'epoch' => (int) $c->control_epoch,
                 'channel' => $c->channel_type, 'contact_name' => $c->display_name, 'unread' => (int) $c->unread_count,
                 'assigned_user' => $c->assigned_user_id ? ['id' => $c->assigned_user_id, 'name' => $c->assigned_user_name] : null,

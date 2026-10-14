@@ -17,11 +17,11 @@ final class ReleaseSchemaTest extends TestCase
         $database = DB::connection()->getDatabaseName();
         $this->assertStringContainsString('test', strtolower($database));
         $before = [];
-        foreach (['visits', 'lead_follow_ups', 'web_push_subscriptions', 'projects', 'properties', 'legacy_property_types', 'legacy_property_statuses', 'legacy_localities', 'inventory_source_imports'] as $table) {
+        foreach (['domain_outbox', 'conversations', 'visits', 'lead_follow_ups', 'web_push_subscriptions', 'projects', 'properties', 'legacy_property_types', 'legacy_property_statuses', 'legacy_localities', 'inventory_source_imports'] as $table) {
             $before[$table] = DB::table($table)->orderBy(Schema::hasColumn($table, 'id') ? 'id' : 'tenant_id')->get()->toJson();
         }
         foreach (range(1, 2) as $attempt) {
-            foreach (['2026-09-15.001_real_inventory_source.sql', '2026-09-15.002_real_inventory_relations.sql', '2026-10-11.001_web_push_out_of_hours.sql'] as $migration) {
+            foreach (['2026-09-15.001_real_inventory_source.sql', '2026-09-15.002_real_inventory_relations.sql', '2026-10-11.001_web_push_out_of_hours.sql', '2026-10-13.001_conversation_morning_inbox.sql'] as $migration) {
                 DB::unprepared(file_get_contents(database_path('schema/forward/'.$migration)));
             }
             foreach (['apply-visit-extension.php', 'apply-web-push.php'] as $script) {
@@ -31,6 +31,8 @@ final class ReleaseSchemaTest extends TestCase
                 $process->mustRun();
             }
         }
+        $this->assertTrue(Schema::hasColumn('conversations', 'waiting_out_of_hours'));
+        $this->assertTrue(Schema::hasIndex('domain_outbox', 'ix_domain_outbox_conversation_handoff'));
         $this->assertTrue(Schema::hasColumns('visits', ['follow_up_id', 'guest_name', 'guest_phone', 'guest_email']));
         foreach ($before as $table => $snapshot) {
             $this->assertSame($snapshot, DB::table($table)->orderBy(Schema::hasColumn($table, 'id') ? 'id' : 'tenant_id')->get()->toJson(), $table);

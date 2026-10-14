@@ -17,6 +17,8 @@ export type ConversationSummary = {
   unread: number;
   assigned_user: { id: string; name: string } | null;
   last_activity_at: string;
+  arrived_out_of_hours?: boolean;
+  handoff_summary?: string | null;
   last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string; type?: string | null } | null;
 };
 

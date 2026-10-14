@@ -527,9 +527,11 @@ export function ConversationInbox() {
                       </span>
                       <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_STYLES[item.state]}`}>{STATE_LABELS[item.state]}</span>
+                        {item.arrived_out_of_hours && <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">Llegó fuera de horario</span>}
                         <span>{CHANNEL_LABELS[item.channel] ?? item.channel}</span>
                         {item.assigned_user && <span className="truncate">· {item.assigned_user.name}</span>}
                       </span>
+                      {item.handoff_summary && <span className="line-clamp-2 text-xs text-muted-foreground">Resumen del asistente: {item.handoff_summary}</span>}
                     </span>
                   </button>
                 </li>
