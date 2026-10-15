@@ -68,10 +68,11 @@ El recordatorio de cuota vencida sigue siendo manual, cuota por cuota. El aviso 
 - el aviso "si ya pagaste, no tenés que hacer nada".
 
 **Reglas:**
-- **Una sola vez por cuota:** el aviso queda en `collection_email_attempts` con `kind = UPCOMING`, y nunca se repite, aunque haya fallado.
+- **Una sola vez por cuota:** el aviso queda en `collection_email_attempts` con `kind = UPCOMING`, y nunca se repite, aunque haya fallado. Lo garantiza la base: hay un índice único `uq_collection_email_upcoming` sobre una columna generada.
+- **Bloqueo cruzado:** un intento `SENDING` o `UNKNOWN` de cualquier tipo bloquea los avisos siguientes de esa cuota hasta que una persona lo revise. El día del vencimiento, si ya salió el aviso de cuota próxima, un recordatorio manual de deuda se saltea.
 - **No se avisan:** las cuotas pagadas, canceladas o de acuerdos inactivos, ni a contactos sin email válido.
 - **Cuándo corre:** el scheduler lo ejecuta cada hora (`everprop:collections:notify-upcoming`), y el comando no envía antes de `COLLECTIONS_UPCOMING_HOUR` (las 9, hora del cliente). Si una corrida falla, la siguiente toma lo pendiente.
-- **Tope:** `COLLECTIONS_MAIL_MAX_PER_RUN` (200) envíos por corrida.
+- **Tope:** `COLLECTIONS_MAIL_MAX_PER_RUN` (200) envíos por corrida. Solo entran como candidatas las cuotas con saldo y con un email cargado. Si una corrida saltea tantas como el tope, el comando falla en voz alta.
 - **Mismo camino seguro que el envío manual** (`CollectionMailer`):
   - se vuelven a verificar el saldo y el estado bajo bloqueo;
   - el registro `SENDING` se guarda antes de contactar al SMTP;

@@ -38,13 +38,17 @@ final class NotifyUpcomingInstallments extends Command
         if (! $dryRun && $now->hour < (int) config('collections_mail.upcoming_hour')) {
             return self::SUCCESS;
         }
+        $limit = max(1, (int) config('collections_mail.max_per_run'));
         $until = $now->addDays(max(0, (int) config('collections_mail.upcoming_days')))->toDateString();
-        // Candidates only; eligibility (balance, state, email) is decided again under lock when claiming.
+        // Candidates only; eligibility (balance, state, email) is decided again under lock when claiming. Paid
+        // installments and contacts without an email are filtered here too: skipped rows leave no audit trail, so
+        // they would come back first on every run and use up the cap ahead of installments that do need a notice.
         $ids = $email->query($tenant->id)->whereNull('i.cancelled_at')->where('a.status', 'ACTIVE')
+            ->whereRaw('i.amount_expected > COALESCE(p.paid, 0)')->whereNotNull('c.email')->where('c.email', '<>', '')
             ->whereBetween('i.due_date', [$now->toDateString(), $until])
             ->whereNotExists(fn ($q) => $q->from('collection_email_attempts as e')->whereColumn('e.tenant_id', 'i.tenant_id')
                 ->whereColumn('e.installment_id', 'i.id')->where('e.kind', CollectionEmail::UPCOMING))
-            ->orderBy('i.due_date')->orderBy('i.id')->limit(max(1, (int) config('collections_mail.max_per_run')))
+            ->orderBy('i.due_date')->orderBy('i.id')->limit($limit)
             ->pluck('i.id');
 
         $counts = [CollectionMailer::SENT => 0, CollectionMailer::UNKNOWN => 0, CollectionMailer::SKIPPED => 0];
@@ -60,6 +64,13 @@ final class NotifyUpcomingInstallments extends Command
         }
         $this->info(sprintf('Upcoming notices: %d sent, %d unknown, %d skipped.', $counts[CollectionMailer::SENT],
             $counts[CollectionMailer::UNKNOWN], $counts[CollectionMailer::SKIPPED]));
+
+        if (! $dryRun && $counts[CollectionMailer::SKIPPED] >= $limit) {
+            // A whole run of rows that cannot be sent would starve the ones behind them: make it visible.
+            $this->error('Every candidate in this run was skipped: review unresolved attempts and contact emails.');
+
+            return self::FAILURE;
+        }
 
         return $counts[CollectionMailer::UNKNOWN] > 0 ? self::FAILURE : self::SUCCESS;
     }

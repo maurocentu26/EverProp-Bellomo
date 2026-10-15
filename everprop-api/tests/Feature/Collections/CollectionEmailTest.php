@@ -6,6 +6,7 @@ use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\DB;
@@ -261,21 +262,91 @@ final class CollectionEmailTest extends TestCase
         self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $other->id)->count());
     }
 
-    public function test_nothing_is_sent_without_approved_payment_instructions_or_for_another_tenant(): void
+    public function test_nothing_is_sent_without_approved_payment_instructions(): void
     {
         Mail::shouldReceive('mailer')->never();
         [$tenant, $admin, $id] = $this->fixture();
-        [$other, $otherAdmin, $otherId] = $this->fixture();
         $this->provision($tenant);
         config(['collections_mail.payment_instructions' => '   ']);
         $this->at($tenant, '2026-02-06 10:00');
         $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful()->expectsOutputToContain('Faltan los datos de pago');
         $this->artisan('everprop:collections:email', ['tenant' => $tenant->slug, 'installment' => $id, '--send' => true])->assertFailed();
+        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->count());
+    }
 
-        // Provisioned for this tenant only: the other tenant's due installment is never touched.
-        config(['collections_mail.payment_instructions' => 'Transferencia al alias BELLOMO.PRUEBA', 'collections_mail.enabled' => false]);
+    public function test_only_the_provisioned_tenant_is_notified_even_with_the_same_client_email(): void
+    {
+        // Both tenants have an unpaid installment due in the window, for a contact with the same email address.
+        [$other, $otherAdmin, $otherId] = $this->fixture();
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        $sent = [];
+        $mailer = Mockery::mock();
+        Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
+        /** @var Expectation $raw */
+        $raw = $mailer->shouldReceive('raw');
+        $raw->once()->andReturnUsing(function ($body, $callback) use (&$sent) {
+            $message = new Email;
+            $callback(new Message($message));
+            $sent[] = (string) $message->getSubject();
+
+            return new \stdClass;
+        });
+        $this->at($tenant, '2026-02-06 10:00');
         $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
-        self::assertSame(0, DB::table('collection_email_attempts')->whereIn('tenant_id', [$tenant->id, $other->id])->count());
+
+        self::assertCount(1, $sent);
+        self::assertStringContainsString($tenant->name, $sent[0]);
+        self::assertSame(1, DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->count());
+        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $other->id)->count());
+    }
+
+    public function test_installments_that_cannot_be_sent_never_use_up_the_cap(): void
+    {
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        config(['collections_mail.max_per_run' => 1]);
+        // A second agreement, due earlier in the window (06/02) and already paid: it must not take the only slot.
+        $lead = (string) DB::table('leads')->where('tenant_id', $tenant->id)->value('public_id');
+        $this->postJson('/api/v1/admin/payment-agreements', [
+            'leadId' => $lead, 'currency' => 'ARS', 'modality' => 'FIXED', 'totalPrice' => '50.00',
+            'downPayment' => '0.00', 'totalInstallments' => 1, 'dayOfMonthDue' => 6,
+            'startDate' => '2026-01-01', 'idempotencyKey' => (string) Str::uuid(),
+        ])->assertCreated();
+        $paid = (string) DB::table('installments')->where('tenant_id', $tenant->id)->where('due_date', '2026-02-06')->value('public_id');
+        $this->postJson("/api/v1/admin/installments/{$paid}/payments", [
+            'amountPaid' => '50.00', 'paymentMethod' => 'CASH', 'paymentReceiptNumber' => 'TEST',
+            'paidAt' => '2026-02-01', 'idempotencyKey' => (string) Str::uuid(),
+        ])->assertCreated();
+        $mailer = Mockery::mock();
+        Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
+        /** @var Expectation $raw */
+        $raw = $mailer->shouldReceive('raw');
+        $raw->once()->andReturn(new \stdClass);
+
+        $this->at($tenant, '2026-02-06 10:00');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        $installment = (int) DB::table('installments')->where('public_id', $id)->value('id');
+        self::assertSame('SENT', DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->where('installment_id', $installment)->value('status'));
+    }
+
+    public function test_an_unresolved_attempt_blocks_the_notice_and_the_database_rejects_a_second_upcoming_row(): void
+    {
+        Mail::shouldReceive('mailer')->never();
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        $installment = (int) DB::table('installments')->where('public_id', $id)->value('id');
+        $row = ['tenant_id' => $tenant->id, 'installment_id' => $installment, 'recipient' => 'client@example.test',
+            'sender' => 'billing@example.test', 'remaining_amount' => '100.00'];
+        DB::table('collection_email_attempts')->insert($row + ['kind' => 'OVERDUE', 'business_date' => '2026-02-01', 'status' => 'SENDING']);
+        $this->at($tenant, '2026-02-06 10:00');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->where('kind', 'UPCOMING')->count());
+
+        // Once-per-installment is enforced by the schema too, not only by the code.
+        DB::table('collection_email_attempts')->insert($row + ['kind' => 'UPCOMING', 'business_date' => '2026-02-02', 'status' => 'SENT']);
+        $this->expectException(QueryException::class);
+        DB::table('collection_email_attempts')->insert($row + ['kind' => 'UPCOMING', 'business_date' => '2026-02-03', 'status' => 'SENT']);
     }
 
     public function test_dry_run_lists_without_sending_and_an_unknown_outcome_is_never_retried(): void
