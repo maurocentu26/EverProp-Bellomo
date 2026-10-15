@@ -26,6 +26,7 @@ final class LeadAccessPolicy
 
     public function update(User $user, int $tenantId, object $lead): bool
     {
+        // ponytail: rol rotador tiene permiso provisorio de gestión comercial sobre el lead (EVP-21)
         return $this->view($user, $tenantId, $lead) && $user->role() !== RoleCode::READ_ONLY;
     }
 }

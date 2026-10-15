@@ -37,7 +37,7 @@ export function RotatorLeadQueue() {
     {error && <p role="alert" className="text-red-600">{error}</p>}
     {loading ? <p role="status">Cargando leads…</p> : <div className="overflow-x-auto rounded-xl border"><table className="w-full text-left text-sm">
       <thead><tr>{["Lead", "Contacto", "Asesor", "Acción"].map(label => <th key={label} className="p-4">{label}</th>)}</tr></thead>
-      <tbody>{visible.map(lead => <tr key={lead.id} className="border-t"><td className="p-4">{lead.name}</td><td className="p-4">{lead.email}<br />{lead.phone}</td><td className="p-4">{lead.agentName || "Sin asignar"}</td><td className="p-4"><button type="button" className="font-semibold text-blue-600 underline" onClick={() => setSelected(lead)}>{lead.agentId ? "Cambiar asesor" : "Asignar asesor"}</button></td></tr>)}</tbody>
+      <tbody>{visible.map(lead => <tr key={lead.id} className="border-t"><td className="p-4">{lead.name}</td><td className="p-4">{lead.email}<br />{lead.phone}</td><td className="p-4">{lead.agentName || "Sin asignar"}</td><td className="p-4"><Link href={`/admin/leads/${lead.id}`} className="mr-4 font-semibold text-blue-600 underline">Ver ficha</Link><button type="button" className="font-semibold text-blue-600 underline" onClick={() => setSelected(lead)}>{lead.agentId ? "Cambiar asesor" : "Asignar asesor"}</button></td></tr>)}</tbody>
     </table>{visible.length === 0 && <p className="p-4">No hay leads para estos filtros.</p>}</div>}
     {selected && <LeadAdvisorEditor key={selected.id} leadName={selected.name} currentAgentId={selected.agentId} onClose={() => setSelected(null)} onSave={async agentId => {
       await updateEverpropLead(selected.id, { agentId: agentId || null });

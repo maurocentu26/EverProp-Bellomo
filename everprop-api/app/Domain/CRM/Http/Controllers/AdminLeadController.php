@@ -93,8 +93,11 @@ final class AdminLeadController extends Controller
             if (! empty($leadIds)) {
                 $linkedProps = DB::table('lead_properties')
                     ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
-                    ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
+                    ->leftJoin('projects', function ($join) {
+                        $join->on('projects.id', '=', 'properties.project_id')->on('projects.tenant_id', '=', 'properties.tenant_id');
+                    })
                     ->where('lead_properties.tenant_id', $tenantId)
+                    ->where('properties.tenant_id', $tenantId)
                     ->whereIn('lead_properties.lead_id', $leadIds)
                     ->select([
                         'lead_properties.lead_id',
@@ -113,7 +116,7 @@ final class AdminLeadController extends Controller
                     ])
                     ->get();
 
-                $canViewPrices = $this->inventoryAccess->mayViewPriceFields($user);
+                $canViewPrices = $user->role() === RoleCode::ROTATOR || $this->inventoryAccess->mayViewPriceFields($user);
                 foreach ($linkedProps as $prop) {
                     $linkedPropertyIds[$prop->lead_id][] = $prop->property_public_id;
                     $linkedPropertiesMap[$prop->lead_id][] = [
@@ -193,14 +196,7 @@ final class AdminLeadController extends Controller
                 'property_id' => 'nullable|string',
             ]);
 
-            if ($user->role() === RoleCode::ROTATOR) {
-                if (strtoupper($validated['stage'] ?? 'NEW') !== 'NEW') {
-                    throw ValidationException::withMessages(['stage' => 'El rotador sólo puede crear leads en etapa Nuevo.']);
-                }
-                if (! empty($validated['property_id'])) {
-                    throw ValidationException::withMessages(['property_id' => 'El rotador no puede vincular propiedades.']);
-                }
-            }
+            // ponytail: se eliminó restricción de etapa y property_id para ROTATOR por decisión comercial provisoria (EVP-21)
 
             if ($user->role() === RoleCode::SALES_ADVISOR) {
                 $validated['agent_id'] = $user->public_id;
@@ -343,6 +339,7 @@ final class AdminLeadController extends Controller
         try {
             $tenantId = $this->tenantContext->id();
             $user = $request->user();
+            abort_unless($user && (new LeadAccessPolicy)->viewAny($user, $tenantId), 403);
 
             $query = DB::table('leads')
                 ->join('contacts', 'contacts.id', '=', 'leads.contact_id')
@@ -353,6 +350,8 @@ final class AdminLeadController extends Controller
                 ->whereNull('leads.deleted_at')
                 ->select([
                     'leads.id',
+                    'leads.tenant_id',
+                    'leads.assigned_user_id as assigned_user_db_id',
                     'leads.public_id',
                     'leads.title',
                     'leads.source_channel',
@@ -387,10 +386,17 @@ final class AdminLeadController extends Controller
                 return response()->json(['error' => 'Lead not found'], 404);
             }
 
+            abort_unless((new LeadAccessPolicy)->view($user, $tenantId, (object) [
+                'tenant_id' => $lead->tenant_id, 'assigned_user_id' => $lead->assigned_user_db_id,
+            ]), 403);
+
             $linkedProps = DB::table('lead_properties')
                 ->join('properties', 'properties.id', '=', 'lead_properties.property_id')
-                ->leftJoin('projects', 'projects.id', '=', 'properties.project_id')
+                ->leftJoin('projects', function ($join) {
+                    $join->on('projects.id', '=', 'properties.project_id')->on('projects.tenant_id', '=', 'properties.tenant_id');
+                })
                 ->where('lead_properties.tenant_id', $tenantId)
+                ->where('properties.tenant_id', $tenantId)
                 ->where('lead_properties.lead_id', $lead->id)
                 ->select([
                     'lead_properties.interest_level',
@@ -409,7 +415,7 @@ final class AdminLeadController extends Controller
                 ->get();
 
             $propertyIds = $linkedProps->pluck('property_public_id')->all();
-            $canViewPrices = $this->inventoryAccess->mayViewPriceFields($request->user());
+            $canViewPrices = $user->role() === RoleCode::ROTATOR || $this->inventoryAccess->mayViewPriceFields($user);
             $propertiesList = $linkedProps->map(function ($prop) use ($canViewPrices) {
                 return [
                     'id' => $prop->property_public_id,
@@ -496,10 +502,7 @@ final class AdminLeadController extends Controller
                 if (array_key_exists('agent_id', $validated)) {
                     abort_unless((new LeadAccessPolicy)->assign($actor, $tenantId), 403);
                 }
-                if ($actor->role() === RoleCode::ROTATOR) {
-                    $request->validate(['agent_id' => 'present|nullable|string']);
-                    abort_unless(array_diff(array_keys($request->all()), ['agent_id']) === [], 403);
-                }
+                // ponytail: el rol rotador puede actualizar campos comerciales del lead provisoriamente (EVP-21)
                 $stageCode = strtoupper($validated['stage'] ?? '');
                 if (in_array($stageCode, ['CONTACTED', 'QUALIFIED', 'VISIT_SCHEDULED', 'NEGOTIATION'], true)) {
                     $hasContact = DB::table('lead_follow_ups')->where('tenant_id', $tenantId)

@@ -36,9 +36,11 @@ export default function MainLayout({ children }: Props) {
         }
     }, [currentUser, invalidateSession, isLoaded, router]);
 
+    const rotatorRouteAllowed = pathname.startsWith("/admin/leads") || pathname.startsWith("/admin/properties") || pathname.startsWith("/admin/projects");
+
     useEffect(() => {
-        if (currentUser?.role === "ROTATOR" && !["/admin/leads", "/admin/leads/new"].includes(pathname)) router.replace("/admin/leads");
-    }, [currentUser, pathname, router]);
+        if (currentUser?.role === "ROTATOR" && !rotatorRouteAllowed) router.replace("/admin/leads");
+    }, [currentUser, rotatorRouteAllowed, router]);
 
     useEffect(() => {
         if (!currentUserId) return;
@@ -137,7 +139,7 @@ export default function MainLayout({ children }: Props) {
                                     </div>
                                 )}
 
-                                {currentUser.role === "ROTATOR" && !["/admin/leads", "/admin/leads/new"].includes(pathname) ? <p>Abriendo asignación de leads…</p> : children}
+                                {currentUser.role === "ROTATOR" && !rotatorRouteAllowed ? <p>Abriendo asignación de leads…</p> : children}
                             </div>
                         </main>
                     </div>
