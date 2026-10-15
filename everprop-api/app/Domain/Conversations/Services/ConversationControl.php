@@ -4,6 +4,7 @@ namespace App\Domain\Conversations\Services;
 
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Notifications\ConversationNeedsAttention;
+use App\Domain\Identity\Enums\RoleCode;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -131,6 +132,76 @@ final class ConversationControl
             $this->write($tenantId, $conversationId, ['control_state' => 'CLOSED', 'control_epoch' => $epoch, 'status' => 'RESOLVED', 'closed_at' => now()]);
             $this->outbox($tenantId, $conversationId, 'CONVERSATION_CLOSED', ['epoch' => $epoch, 'user_id' => $user->id]);
         }, 3);
+    }
+
+    /** @return array{state: string, epoch: int, replayed: bool} */
+    public function reopen(int $tenantId, int $conversationId, User $user, int $expectedEpoch): array
+    {
+        return DB::transaction(function () use ($tenantId, $conversationId, $user, $expectedEpoch): array {
+            $conversation = $this->lock($tenantId, $conversationId);
+            // Recheck permissions under the same lock as the transition, including reassignment races.
+            abort_unless($user->isActive() && (int) $user->tenant_id === $tenantId
+                && in_array($user->role(), [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR], true), 403);
+            abort_if($user->role() === RoleCode::SALES_ADVISOR && (int) $conversation->assigned_user_id !== (int) $user->id, 403);
+            $key = 'conversation-reopen:'.$conversationId.':'.$expectedEpoch;
+            $previous = DB::table('domain_outbox')->where('tenant_id', $tenantId)->where('idempotency_key', $key)->first();
+            if ($previous !== null) {
+                $payload = json_decode($previous->payload_json, true, flags: JSON_THROW_ON_ERROR);
+
+                return ['state' => $payload['state'], 'epoch' => $payload['epoch'], 'replayed' => true];
+            }
+            if ($conversation->control_state !== 'CLOSED' || (int) $conversation->control_epoch !== $expectedEpoch) {
+                throw new ConversationConflict('STALE_CONTROL', 'La conversación cambió. Actualizá la bandeja antes de reabrirla.');
+            }
+
+            $result = $this->reopenLocked($conversation, $user, (int) $conversation->next_sequence, $key);
+            if ($result['state'] === 'WAITING_HUMAN') {
+                ConversationNeedsAttention::sendFor((object) ['tenant_id' => $tenantId, 'public_id' => $conversation->public_id,
+                    'controlled_by_user_id' => null, 'assigned_user_id' => $conversation->assigned_user_id]);
+            }
+
+            return $result;
+        }, 3);
+    }
+
+    /** Called inside inbound's transaction after locking the thread and storing its new message. */
+    public function reopenFromInbound(object $conversation, int $sequence): void
+    {
+        if ($conversation->control_state === 'CLOSED') {
+            $this->reopenLocked($conversation, null, $sequence, 'conversation-recontact:'.$conversation->id.':'.$conversation->control_epoch);
+        }
+    }
+
+    /** @return array{state: string, epoch: int, replayed: bool} */
+    private function reopenLocked(object $conversation, ?User $actor, int $sequence, string $key): array
+    {
+        $tenantId = (int) $conversation->tenant_id;
+        $id = (int) $conversation->id;
+        $epoch = (int) $conversation->control_epoch + 1;
+        $assignee = $actor === null ? null : DB::table('users')->where('tenant_id', $tenantId)
+            ->where('id', $conversation->assigned_user_id)->where('status', 'ACTIVE')->whereNull('deleted_at')
+            ->whereIn('role_code', ['TENANT_ADMIN', 'SALES_MANAGER', 'SALES_ADVISOR'])->value('id');
+        $this->cancelPendingBotSends($tenantId, $id, $epoch);
+        $pending = $assignee !== null && DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('conversation_id', $id)
+            ->whereNotNull('control_epoch')->whereIn('status', ['PROCESSING', 'UNKNOWN'])->exists();
+        $state = $assignee === null ? 'WAITING_HUMAN' : ($pending ? 'TRANSITION_PENDING' : 'HUMAN_ACTIVE');
+        $this->write($tenantId, $id, ['control_state' => $state, 'control_epoch' => $epoch,
+            'controlled_by_user_id' => $assignee, 'status' => 'OPEN', 'closed_at' => null, 'bot_mode' => 'HUMAN_ONLY']);
+        DB::table('domain_outbox')->insert([
+            'tenant_id' => $tenantId, 'aggregate_type' => 'CONVERSATION', 'aggregate_id' => $id,
+            'event_type' => 'CONVERSATION_REOPENED', 'idempotency_key' => $key,
+            'payload_json' => json_encode(['schema_version' => 1, 'conversation_id' => $id, 'epoch' => $epoch,
+                'state' => $state, 'sequence' => $sequence, 'user_id' => $actor?->id, 'reason' => $actor === null ? 'RECONTACT' : 'MANUAL'], JSON_THROW_ON_ERROR),
+            'status' => 'PENDING', 'available_at' => now(),
+        ]);
+        DB::table('audit_logs')->insert([
+            'tenant_id' => $tenantId, 'actor_user_id' => $actor?->id, 'actor_type' => $actor === null ? 'SYSTEM' : 'USER',
+            'action_code' => 'CONVERSATION_REOPENED', 'entity_type' => 'CONVERSATION', 'entity_id' => $id,
+            'before_json' => json_encode(['state' => 'CLOSED', 'epoch' => (int) $conversation->control_epoch], JSON_THROW_ON_ERROR),
+            'after_json' => json_encode(['state' => $state, 'epoch' => $epoch, 'sequence' => $sequence], JSON_THROW_ON_ERROR), 'occurred_at' => now(),
+        ]);
+
+        return ['state' => $state, 'epoch' => $epoch, 'replayed' => false];
     }
 
     /**

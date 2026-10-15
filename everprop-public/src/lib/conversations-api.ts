@@ -199,6 +199,13 @@ export async function closeConversation(id: string) {
   return apiFetch(`/api/v1/admin/conversations/${encodeURIComponent(id)}/close`, { method: "POST" });
 }
 
+/** Bound to the closure the advisor saw: a retry never reopens a later episode. */
+export async function reopenConversation(id: string, expectedEpoch: number) {
+  return apiFetch(`/api/v1/admin/conversations/${encodeURIComponent(id)}/reopen`, {
+    method: "POST", body: JSON.stringify({ expected_epoch: expectedEpoch }),
+  });
+}
+
 export async function resolveUnknownSends(id: string) {
   return apiFetch<{ data: { resolved: number; warning: string } }>(
     `/api/v1/admin/conversations/${encodeURIComponent(id)}/resolve-unknown`,

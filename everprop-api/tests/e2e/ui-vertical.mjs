@@ -118,6 +118,14 @@ try {
   check("U8", "la respuesta queda 'Enviado' (entregada por el worker)", sql(`SELECT delivery_status FROM messages WHERE text_body='${answer}'`) === "SENT");
   await shot(vp, "03-visitante-recibe");
 
+  await pp.getByRole("button", { name: "Cerrar", exact: true }).click();
+  const reopen = pp.getByRole("button", { name: "Reabrir", exact: true });
+  await reopen.waitFor({ timeout: 15000 });
+  check("U8a", "un cierre conserva el hilo y ofrece Reabrir", await pp.getByText(answer).isVisible() && await reopen.isEnabled());
+  await reopen.click();
+  await reply.waitFor({ timeout: 15000 });
+  check("U8b", "Reabrir restaura la respuesta humana sin borrar el historial", await reply.isVisible() && await pp.getByText(answer).isVisible());
+
   // ---------- mobile ----------
   const mp = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: await panel.storageState() })).newPage();
   await mp.goto(`${PANEL}/admin/conversaciones`);
@@ -144,4 +152,4 @@ try {
 
 const passed = results.filter((r) => r.ok).length;
 console.log(`\n${passed}/${results.length} PASS`);
-process.exit(passed === results.length && results.length === 9 ? 0 : 1);
+process.exit(passed === results.length && results.length === 11 ? 0 : 1);

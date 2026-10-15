@@ -113,6 +113,8 @@ final class AdminConversationController extends Controller
     {
         return DB::table('messages as w')->selectRaw('MIN(w.occurred_at)')
             ->whereColumn('w.tenant_id', 'c.tenant_id')->whereColumn('w.conversation_id', 'c.id')->where('w.direction', 'INBOUND')
+            // A reopened episode starts at its own sequence, not at an unanswered message from years ago.
+            ->whereRaw("w.sequence >= COALESCE((SELECT MAX(CAST(JSON_UNQUOTE(JSON_EXTRACT(r.after_json, '$.sequence')) AS UNSIGNED)) FROM audit_logs r WHERE r.tenant_id = c.tenant_id AND r.entity_type = 'CONVERSATION' AND r.entity_id = c.id AND r.action_code = 'CONVERSATION_REOPENED'), 0)")
             ->whereRaw("w.sequence > COALESCE((SELECT MAX(h.sequence) FROM messages h WHERE h.tenant_id = c.tenant_id AND h.conversation_id = c.id AND h.direction = 'OUTBOUND' AND h.sender_type = 'USER'), 0)");
     }
 
@@ -416,6 +418,15 @@ final class AdminConversationController extends Controller
         $this->control->close((int) $row->tenant_id, (int) $row->id, $user);
 
         return response()->json(['data' => ['state' => 'CLOSED']]);
+    }
+
+    public function reopen(Request $request, string $conversation): JsonResponse
+    {
+        $user = $this->writer($request);
+        $row = $this->find($user, $conversation);
+        $data = $request->validate(['expected_epoch' => 'required|integer|min:1']);
+
+        return response()->json(['data' => $this->control->reopen((int) $row->tenant_id, (int) $row->id, $user, (int) $data['expected_epoch'])]);
     }
 
     /** Manual, audited UNKNOWN_FINAL: frees a pending takeover without resending. */

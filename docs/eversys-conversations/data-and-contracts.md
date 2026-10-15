@@ -138,3 +138,9 @@ Offboarding: suspender ingestión/envío, cancelar pendientes/leases, revocar co
 - Solicitud de visita retorna REQUESTED, nunca CONFIRMED sin confirmación externa persistida/asesor autorizado.
 - Toda FK, cache key, documento, job y herramienta falla cerrado en prueba cruzada de dos tenants; usuario READ_ONLY no escribe.
 - Cero fugas/escrituras no autorizadas en el conjunto de pruebas es gate, no prueba de riesgo cero universal.
+
+### EVP-33: reapertura reversible (2026-10-15)
+
+`POST /api/v1/admin/conversations/{uuid}/reopen` recibe `{expected_epoch: entero positivo}`. Permisos existentes: gerente/admin del tenant o asesor asignado. Una clave durable por hilo y epoch cerrado hace idempotentes solicitudes concurrentes y reintentos atrasados. Devuelve `{data:{state,epoch,replayed}}`; el cliente refresca el estado vigente después de un replay. Un recontacto reabre el mismo hilo en `WAITING_HUMAN`; la reapertura manual devuelve control al asignado activo, o espera asesor si no existe uno disponible. Un envío IA incierto mantiene `TRANSITION_PENDING` hasta su resolución. No hay reactivación de IA por tiempo ni autocierre.
+
+Evento y auditoría `CONVERSATION_REOPENED` se escriben junto a la transición: payload `{schema_version,conversation_id,epoch,state,sequence,user_id,reason}` con reason `RECONTACT` o `MANUAL`. `sequence` delimita el nuevo episodio para `waiting_since`, conservando historial, notas, lead, asignación y no leídos existentes. Inbound suma exactamente un no leído por mensaje único y avisa al responsable mediante la notificación existente.

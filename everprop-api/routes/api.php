@@ -94,6 +94,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/conversations/{conversation}/media/{sequence}', [AdminConversationController::class, 'media'])->whereUuid('conversation')->whereNumber('sequence')->middleware('throttle:120,1');
         Route::post('/conversations/{conversation}/lead', [AdminConversationController::class, 'lead'])->whereUuid('conversation')->middleware('throttle:30,1');
         Route::post('/conversations/{conversation}/suggestion', [AdminConversationController::class, 'suggest'])->whereUuid('conversation')->middleware('throttle:copilot');
+        Route::post('/conversations/{conversation}/reopen', [AdminConversationController::class, 'reopen'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/close', [AdminConversationController::class, 'close'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resolve-unknown', [AdminConversationController::class, 'resolveUnknown'])->whereUuid('conversation');
 

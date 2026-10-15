@@ -100,8 +100,8 @@ final class InboundMessageService
         ]);
 
         $reopen = $conversation->control_state === 'CLOSED';
-        // A new message reopens a closed conversation with a fresh epoch; AI stays off if a human owned it.
-        $state = $reopen ? ($conversation->controlled_by_user_id || ! self::aiEnabled($message->tenantId) ? 'WAITING_HUMAN' : 'AI_ACTIVE') : $conversation->control_state;
+        app(ConversationControl::class)->reopenFromInbound($conversation, $sequence);
+        $state = $reopen ? 'WAITING_HUMAN' : $conversation->control_state;
         DB::table('conversations')->where('tenant_id', $message->tenantId)->where('id', $conversation->id)->update([
             'next_sequence' => $sequence + 1,
             'unread_count' => DB::raw('unread_count + 1'),
@@ -109,7 +109,6 @@ final class InboundMessageService
             'last_inbound_at' => $now->format('Y-m-d H:i:s.v'),
             'last_activity_at' => $now->format('Y-m-d H:i:s.v'),
             'control_state' => $state,
-            'control_epoch' => $reopen ? DB::raw('control_epoch + 1') : $conversation->control_epoch,
             'state_version' => DB::raw('state_version + 1'),
             'status' => 'OPEN',
             'closed_at' => null,
@@ -119,7 +118,10 @@ final class InboundMessageService
         // unread_count only resets when the assignee reads, so follow-ups before that don't repeat it.
         $newEpisode = in_array($state, ['WAITING_HUMAN', 'HUMAN_ACTIVE'], true) && ($reopen || (int) $conversation->unread_count === 0);
         if ($newEpisode) {
-            ConversationNeedsAttention::sendFor($conversation);
+            ConversationNeedsAttention::sendFor($reopen ? (object) [
+                'tenant_id' => $message->tenantId, 'public_id' => $conversation->public_id,
+                'controlled_by_user_id' => null, 'assigned_user_id' => $conversation->assigned_user_id,
+            ] : $conversation);
         }
 
         DB::table('domain_outbox')->insert([
