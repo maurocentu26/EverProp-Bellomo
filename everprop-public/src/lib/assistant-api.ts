@@ -83,7 +83,7 @@ export type AssistantUsage = {
   open_reservations_usd: number;
   by_day: { date: string; usd: number }[];
   assistant: AssistantUsageKind;
-  copilot: AssistantUsageKind & { spent_usd: number; cap_usd: number };
+  copilot: Omit<AssistantUsageKind, "blocked_by_cap"> & { spent_usd: number; cap_usd: number };
 };
 
 export const getAssistantUsage = (period?: string) =>

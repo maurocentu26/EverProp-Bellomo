@@ -72,8 +72,8 @@ export function AssistantUsagePanel() {
             </div>
             <div className="rounded-2xl border border-border bg-card p-4">
               <p className="text-sm text-muted-foreground">Respuestas frenadas por el tope</p>
-              <p className="mt-1 text-3xl font-bold tabular-nums">{int(data.assistant.blocked_by_cap + data.copilot.blocked_by_cap)}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Se derivaron a un asesor.</p>
+              <p className="mt-1 text-3xl font-bold tabular-nums">{int(data.assistant.blocked_by_cap)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Del asistente; se derivaron a un asesor.</p>
             </div>
           </section>
 
@@ -121,7 +121,7 @@ export function AssistantUsagePanel() {
   );
 }
 
-function UsageCard({ title, kind, extra }: { title: string; kind: AssistantUsage["assistant"]; extra?: string }) {
+function UsageCard({ title, kind, extra }: { title: string; kind: Omit<AssistantUsage["assistant"], "blocked_by_cap">; extra?: string }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 text-sm">
       <h2 className="font-semibold">{title}</h2>

@@ -33,6 +33,11 @@ test('checks the full tree: inherited modules and dangling imports fail, clean r
     rmSync(join(cwd, module));
     add('everprop-api/routes/api.php', '<?php use App\\Domain\\Conversations\\Http\\Controllers\\PublicChatController;');
     assert.throws(() => checkMainTree(commit(), cwd), /referencias/);
+    // EVP-23: the AI usage panel's controller import and route are module code too.
+    add('everprop-api/routes/api.php', '<?php use App\\Domain\\Usage\\Http\\AdminUsageController;');
+    assert.throws(() => checkMainTree(commit(), cwd), /referencias/);
+    add('everprop-api/routes/api.php', "<?php Route::get('/assistant/usage', 'x');");
+    assert.throws(() => checkMainTree(commit(), cwd), /referencias/);
     add('everprop-api/routes/api.php', '<?php // CRM only');
     add('everprop-public/src/app/manifest.ts', 'export default { start_url: "/admin/conversaciones" };');
     assert.throws(() => checkMainTree(commit(), cwd), /referencias/);

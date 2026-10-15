@@ -70,7 +70,8 @@ final class AdminUsageController extends Controller
                 ->whereIn('status', ['RESERVED', 'UNKNOWN'])->sum('reserved_micros') / 1_000_000, 4),
             'by_day' => array_map(fn (string $day, int $micros) => ['date' => $day, 'usd' => round($micros / 1_000_000, 4)], array_keys($days), $days),
             'assistant' => $kind('assistant'),
-            'copilot' => $kind('copilot') + [
+            // A copilot draft stopped by its cap fails before any run is stored, so only assistant turns count as blocked.
+            'copilot' => array_diff_key($kind('copilot'), ['blocked_by_cap' => true]) + [
                 'spent_usd' => round((float) ($runs['copilot']->cost ?? 0), 4),
                 'cap_usd' => (float) config('conversations.copilot_monthly_usd'),
             ],

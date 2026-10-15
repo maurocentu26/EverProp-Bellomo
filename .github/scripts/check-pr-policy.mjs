@@ -18,7 +18,7 @@ export function checkMainTree(tree, cwd = process.cwd()) {
   if (forbidden.length) throw new Error(`main no admite IA/conversaciones, aunque ya estuvieran en la rama:\n${forbidden.join('\n')}`);
 
   // Mixed files can retain imports/routes after the module directories were removed.
-  const fingerprints = 'AgentRuntime|Domain\\\\Conversations|conversations-api|assistant-api|ChatWidget|AiSettings|BusinessHoursSettings|/admin/conversaciones|/admin/conocimiento|/widget/';
+  const fingerprints = 'AgentRuntime|Domain\\\\Conversations|Domain\\\\Usage|/assistant/usage|conversations-api|assistant-api|ChatWidget|AiSettings|BusinessHoursSettings|/admin/conversaciones|/admin/conocimiento|/widget/';
   try {
     const matches = execFileSync('git', ['grep', '-n', '-I', '-E', fingerprints, tree, '--', 'everprop-api/app', 'everprop-api/bootstrap', 'everprop-api/config', 'everprop-api/routes', 'everprop-public/src'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     throw new Error(`Quedaron referencias a IA/conversaciones en archivos compartidos:\n${matches}`);

@@ -124,5 +124,41 @@ final class AssistantUsageTest extends TestCase
         $this->visitor($broke, 'hola');
         $this->usage($broke['tenant'])->assertOk()->assertJsonPath('data.assistant.blocked_by_cap', 1);
         $this->assertSame('WAITING_HUMAN', DB::table('conversations')->where('tenant_id', $broke['tenant']->id)->value('control_state'));
+        $this->usage($broke['tenant'])->assertJsonMissingPath('data.copilot.blocked_by_cap');
+    }
+
+    /** A run on the tenant's first assistant session (a real turn creates the agent, session and conversation). */
+    private function addRun(Tenant $tenant, string $ref, string $startedUtc, float $cost, int $in = 1000, int $out = 100): void
+    {
+        $session = DB::table('chatbot_sessions')->where('tenant_id', $tenant->id)->orderBy('id')->first(['id', 'conversation_id']);
+        DB::table('chatbot_runs')->insert(['tenant_id' => $tenant->id, 'session_id' => $session->id, 'conversation_id' => $session->conversation_id,
+            'provider_run_id' => $ref, 'decision' => 'REPLY', 'status' => 'SUCCEEDED', 'input_tokens' => $in, 'output_tokens' => $out,
+            'estimated_cost' => $cost, 'started_at' => $startedUtc]);
+    }
+
+    public function test_copilot_spend_month_edges_and_a_super_admin_stay_inside_the_resolved_tenant(): void
+    {
+        [$a, $b] = [$this->tenant(), $this->tenant()];
+        foreach ([$a, $b] as $t) {
+            $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('Hola')]));
+            $this->travelTo(CarbonImmutable::parse('2026-09-15 12:00', 'UTC'));
+            $this->visitor($t, 'hola'); // September run: outside October
+        }
+        $this->addRun($a['tenant'], 'suggest:a1', '2026-10-01 00:00:00.000', 0.25, 2000, 200);
+        $this->addRun($a['tenant'], 'suggest:a2', '2026-10-31 23:59:59.999', 0.5);
+        $this->addRun($a['tenant'], 'suggest:a3', '2026-11-01 00:00:00.000', 4.0); // next month
+        $this->addRun($b['tenant'], 'suggest:b1', '2026-10-10 12:00:00.000', 3.0); // another tenant
+
+        $this->travelTo(CarbonImmutable::parse('2026-10-20 12:00', 'UTC'));
+        $this->usage($a['tenant'])->assertOk()
+            ->assertJsonPath('data.copilot.runs', 2)
+            ->assertJsonPath('data.copilot.spent_usd', 0.75)
+            ->assertJsonPath('data.copilot.input_tokens', 3000)
+            ->assertJsonPath('data.copilot.cap_usd', 10)
+            ->assertJsonPath('data.assistant.runs', 0);
+        $this->usage($b['tenant'])->assertOk()->assertJsonPath('data.copilot.spent_usd', 3);
+
+        // A platform admin sees the tenant the host resolves, never a sum across tenants.
+        $this->usage($a['tenant'], RoleCode::SUPER_ADMIN)->assertOk()->assertJsonPath('data.copilot.spent_usd', 0.75);
     }
 }
