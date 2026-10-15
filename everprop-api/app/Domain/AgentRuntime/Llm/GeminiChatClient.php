@@ -42,12 +42,18 @@ final class GeminiChatClient implements LlmClient
                     $parts[] = ['text' => $block['text']];
                 } elseif ($block['type'] === 'tool_use') {
                     $toolNamesById[$block['id']] = $block['name'];
-                    $parts[] = [
-                        'functionCall' => [
-                            'name' => $block['name'],
-                            'args' => (object) ($block['input'] ?? []),
-                        ],
+                    $functionCall = [
+                        'name' => $block['name'],
+                        'args' => (object) ($block['input'] ?? []),
                     ];
+                    if (isset($block['call_id'])) {
+                        $functionCall['id'] = $block['call_id'];
+                    }
+                    $part = ['functionCall' => $functionCall];
+                    if (isset($block['thoughtSignature'])) {
+                        $part['thoughtSignature'] = $block['thoughtSignature'];
+                    }
+                    $parts[] = $part;
                 } elseif ($block['type'] === 'tool_result') {
                     $toolName = $toolNamesById[$block['tool_use_id']] ?? 'tool';
                     $decoded = json_decode((string) $block['content'], true);
@@ -85,7 +91,7 @@ final class GeminiChatClient implements LlmClient
 
         if ($tools !== []) {
             $functionDeclarations = array_map(function (array $t): array {
-                $parameters = $t['input_schema'] ?? ['type' => 'object'];
+                $parameters = $this->cleanSchema($t['input_schema'] ?? ['type' => 'object']);
 
                 return [
                     'name' => $t['name'],
@@ -148,12 +154,19 @@ final class GeminiChatClient implements LlmClient
                     throw new LlmFailure('INVALID_RESPONSE', retryable: false, billable: true);
                 }
 
-                $content[] = [
+                $item = [
                     'type' => 'tool_use',
                     'id' => (string) Str::uuid(),
                     'name' => $part['functionCall']['name'],
                     'input' => (array) ($part['functionCall']['args'] ?? []),
                 ];
+                if (isset($part['thoughtSignature'])) {
+                    $item['thoughtSignature'] = $part['thoughtSignature'];
+                }
+                if (isset($part['functionCall']['id'])) {
+                    $item['call_id'] = $part['functionCall']['id'];
+                }
+                $content[] = $item;
                 $hasToolCalls = true;
             }
         }
@@ -178,5 +191,21 @@ final class GeminiChatClient implements LlmClient
     public function model(): string
     {
         return $this->modelName;
+    }
+
+    /** Recursively removes schema keywords unsupported by Google Gemini function declarations. */
+    private function cleanSchema(mixed $schema): mixed
+    {
+        if (! is_array($schema)) {
+            return $schema;
+        }
+
+        unset($schema['additionalProperties']);
+
+        foreach ($schema as $key => $value) {
+            $schema[$key] = $this->cleanSchema($value);
+        }
+
+        return $schema;
     }
 }
