@@ -52,6 +52,13 @@ return [
         'local_budget_usd' => env('OPENAI_LOCAL_BUDGET_USD'),
     ],
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'input_rate' => env('GEMINI_INPUT_MICROS_PER_TOKEN', 0),
+        'output_rate' => env('GEMINI_OUTPUT_MICROS_PER_TOKEN', 0),
+        'local_budget_usd' => env('GEMINI_LOCAL_BUDGET_USD', 10),
+    ],
+
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),

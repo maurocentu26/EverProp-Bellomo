@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domain\AgentRuntime\Llm\AnthropicMessagesClient;
 use App\Domain\AgentRuntime\Llm\DisabledLlmClient;
+use App\Domain\AgentRuntime\Llm\GeminiChatClient;
 use App\Domain\AgentRuntime\Llm\LlmClient;
 use App\Domain\AgentRuntime\Llm\OpenAiChatClient;
 use App\Domain\Conversations\Transports\TransportRegistry;
@@ -41,7 +42,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TransportRegistry::class);
-        // EVP-18: personal key is local-only; explicit rates and budget are required before enabling it.
+        // EVP-18/EVP-27: local-only copilot providers; explicit rates and budget are required before enabling.
         if (config('agent.llm_provider') === 'openai') {
             config(['agent.input_micros_per_token' => (float) config('services.openai.input_rate'),
                 'agent.output_micros_per_token' => (float) config('services.openai.output_rate')]);
@@ -49,19 +50,33 @@ class AppServiceProvider extends ServiceProvider
             config(['usage.global_cap_micros' => min((int) config('usage.global_cap_micros'), $cap),
                 'usage.default_tenant_cap_micros' => min((int) config('usage.default_tenant_cap_micros'), $cap),
                 'conversations.copilot_monthly_usd' => min((float) config('conversations.copilot_monthly_usd'), $cap / 1_000_000)]);
+        } elseif (config('agent.llm_provider') === 'gemini') {
+            config(['agent.input_micros_per_token' => (float) config('services.gemini.input_rate'),
+                'agent.output_micros_per_token' => (float) config('services.gemini.output_rate')]);
+            $cap = max(0, (int) floor((float) config('services.gemini.local_budget_usd') * 1_000_000));
+            config(['usage.global_cap_micros' => min((int) config('usage.global_cap_micros'), $cap),
+                'usage.default_tenant_cap_micros' => min((int) config('usage.default_tenant_cap_micros'), $cap),
+                'conversations.copilot_monthly_usd' => min((float) config('conversations.copilot_monthly_usd'), $cap / 1_000_000)]);
         }
-        $this->app->bind(LlmClient::class, fn (): LlmClient => config('agent.llm_provider') === 'openai'
-            ? (app()->environment('local') && ! config('conversations.ai_enabled')
+        $this->app->bind(LlmClient::class, fn (): LlmClient => match (config('agent.llm_provider')) {
+            'gemini' => (app()->environment('local') && ! config('conversations.ai_enabled')
+                && filled(config('services.gemini.key')) && filled(config('agent.llm_model'))
+                && (float) config('services.gemini.input_rate') >= 0 && (float) config('services.gemini.output_rate') >= 0
+                && (float) config('services.gemini.local_budget_usd') > 0
+                ? new GeminiChatClient((string) config('services.gemini.key'), (string) config('agent.llm_model'), (int) config('agent.timeout_seconds'))
+                : new DisabledLlmClient),
+            'openai' => (app()->environment('local') && ! config('conversations.ai_enabled')
                 && filled(config('services.openai.key')) && filled(config('agent.llm_model'))
                 && (float) config('services.openai.input_rate') > 0 && (float) config('services.openai.output_rate') > 0
                 && (float) config('services.openai.local_budget_usd') > 0
                 ? new OpenAiChatClient((string) config('services.openai.key'), (string) config('agent.llm_model'), (int) config('agent.timeout_seconds'))
-                : new DisabledLlmClient)
-            : (config('agent.llm_provider') === 'anthropic'
-            && filled(config('services.anthropic.key')) && filled(config('agent.llm_model'))
-            ? new AnthropicMessagesClient((string) config('services.anthropic.key'), (string) config('agent.llm_model'),
-                (string) config('services.anthropic.base_url'), (string) config('services.anthropic.version'), (int) config('agent.timeout_seconds'))
-            : new DisabledLlmClient));
+                : new DisabledLlmClient),
+            'anthropic' => (filled(config('services.anthropic.key')) && filled(config('agent.llm_model'))
+                ? new AnthropicMessagesClient((string) config('services.anthropic.key'), (string) config('agent.llm_model'),
+                    (string) config('services.anthropic.base_url'), (string) config('services.anthropic.version'), (int) config('agent.timeout_seconds'))
+                : new DisabledLlmClient),
+            default => new DisabledLlmClient,
+        });
         $this->app->bind(WebPush::class, fn () => new WebPush(['VAPID' => ['subject' => config('webpush.subject'), 'publicKey' => config('webpush.public_key'), 'privateKey' => config('webpush.private_key')]], ['TTL' => 3600], new Client(['timeout' => 10, 'connect_timeout' => 5, 'allow_redirects' => false])));
         $this->app->bind(TenantResolver::class, TrustedTenantResolver::class);
         $this->app->scoped(
