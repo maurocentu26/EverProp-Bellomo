@@ -60,8 +60,6 @@ final class AssistantUsageTest extends TestCase
     /** @param array{tenant: Tenant, widget: string} $t */
     private function visitor(array $t, string $text): void
     {
-        // A visitor is anonymous: drop the admin a previous usage() call left authenticated.
-        $this->app['auth']->forgetGuards();
         $token = (string) $this->withHeaders($this->tenantHeaders($t['tenant']))
             ->postJson('/api/v1/public/chat/sessions', ['widget_id' => $t['widget']])->assertCreated()->json('data.token');
         $this->withToken($token)->postJson('/api/v1/public/chat/messages', ['client_message_id' => (string) Str::uuid(), 'text' => $text])->assertCreated();
@@ -115,16 +113,16 @@ final class AssistantUsageTest extends TestCase
 
     public function test_assistant_replies_and_replies_stopped_by_the_cap_are_counted(): void
     {
+        // Visitors first, then the platform admin reads: the tests never mix a visitor's request with an admin session.
         $open = $this->tenant();
+        // A tenant whose cap cannot cover a single call: the turn is stopped before the model and handed to a person.
+        $broke = $this->tenant(capMicros: 1);
         $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('Hola, ¿en qué te ayudo?')]));
         $this->visitor($open, 'hola');
+        $this->visitor($broke, 'hola');
+
         $this->usage($open['tenant'])->assertOk()->assertJsonPath('data.assistant.runs', 1)
             ->assertJsonPath('data.assistant.blocked_by_cap', 0)->assertJsonPath('data.copilot.runs', 0);
-
-        // A tenant whose cap cannot cover a single call: the turn is stopped and handed to a person.
-        $broke = $this->tenant(capMicros: 1);
-        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('no debería salir')]));
-        $this->visitor($broke, 'hola');
         $this->usage($broke['tenant'])->assertOk()->assertJsonPath('data.assistant.blocked_by_cap', 1);
         $this->assertSame('WAITING_HUMAN', DB::table('conversations')->where('tenant_id', $broke['tenant']->id)->value('control_state'));
         $this->usage($broke['tenant'])->assertJsonMissingPath('data.copilot.blocked_by_cap');
