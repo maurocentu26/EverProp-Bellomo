@@ -4,6 +4,7 @@ namespace Tests\Feature\Conversations;
 
 use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
 use App\Domain\AgentRuntime\Coordinator\CopilotFailure;
+use App\Domain\AgentRuntime\Jobs\RunAgentJob;
 use App\Domain\AgentRuntime\Tools\ToolContext;
 use App\Domain\AgentRuntime\Tools\ToolError;
 use App\Domain\AgentRuntime\Tools\ToolExecutions;
@@ -57,6 +58,62 @@ final class AiSettingsTest extends TestCase
     private function on(): array
     {
         return ['conversations' => ['ai_enabled' => true, 'copilot_enabled' => true]];
+    }
+
+    public function test_mode_changes_are_atomic_audited_and_preserve_unrelated_settings(): void
+    {
+        $tenant = $this->tenant(['branding' => ['name' => 'Demo'], 'conversations' => ['other' => 'keep']]);
+        $admin = $this->user($tenant, RoleCode::TENANT_ADMIN);
+        foreach (['AUTONOMOUS' => [true, true], 'COPILOT' => [false, true], 'DISABLED' => [false, false]] as $mode => [$ai, $copilot]) {
+            $this->actingAs($admin)->withHeaders($this->tenantHeaders($tenant))
+                ->putJson('/api/v1/admin/conversations-ai', ['mode' => $mode])->assertOk()
+                ->assertJsonPath('data.mode', $mode)->assertJsonPath('data.ai_enabled', $ai)->assertJsonPath('data.copilot_enabled', $copilot);
+            $settings = json_decode(DB::table('tenants')->where('id', $tenant->id)->value('settings_json'), true);
+            $this->assertSame('Demo', $settings['branding']['name']);
+            $this->assertSame('keep', $settings['conversations']['other']);
+        }
+        $this->assertSame(3, DB::table('audit_logs')->where('tenant_id', $tenant->id)->where('action_code', 'CONVERSATIONS_AI_SETTINGS_UPDATED')->count());
+    }
+
+    public function test_copilot_mode_never_dispatches_an_autonomous_turn_and_keeps_the_inbound_message(): void
+    {
+        $tenant = $this->tenant($this->on());
+        $this->actingAs($this->user($tenant, RoleCode::TENANT_ADMIN))->withHeaders($this->tenantHeaders($tenant))
+            ->putJson('/api/v1/admin/conversations-ai', ['mode' => 'COPILOT'])->assertOk();
+        $this->webConversation($tenant);
+        $this->assertSame('WAITING_HUMAN', DB::table('conversations')->where('tenant_id', $tenant->id)->value('control_state'));
+        $this->assertSame(1, DB::table('messages')->where('tenant_id', $tenant->id)->where('direction', 'INBOUND')->count());
+        $this->assertTrue(InboundMessageService::copilotEnabled($tenant->id));
+        Queue::assertNotPushed(RunAgentJob::class);
+    }
+
+    public function test_autonomous_mode_dispatches_a_turn_but_copilot_switch_fences_a_queued_turn(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->user($tenant, RoleCode::TENANT_ADMIN);
+        $this->actingAs($admin)->withHeaders($this->tenantHeaders($tenant))
+            ->putJson('/api/v1/admin/conversations-ai', ['mode' => 'AUTONOMOUS'])->assertOk();
+        $this->webConversation($tenant);
+        Queue::assertPushed(RunAgentJob::class, fn ($job) => $job->tenantId === $tenant->id);
+        $row = DB::table('conversations')->where('tenant_id', $tenant->id)->first(['id', 'next_sequence']);
+        $this->actingAs($admin)->withHeaders($this->tenantHeaders($tenant))
+            ->putJson('/api/v1/admin/conversations-ai', ['mode' => 'COPILOT'])->assertOk();
+        $this->assertSame('SKIPPED_NOT_BOT', app(AgentCoordinator::class)->handle($tenant->id, (int) $row->id, (int) $row->next_sequence - 1));
+        $this->assertSame(0, DB::table('chatbot_runs')->where('tenant_id', $tenant->id)->count());
+    }
+
+    public function test_invalid_or_ambiguous_mode_and_cross_tenant_changes_are_rejected(): void
+    {
+        [$a, $b] = [$this->tenant(), $this->tenant()];
+        $admin = $this->user($a, RoleCode::TENANT_ADMIN);
+        foreach ([['mode' => 'invalid'], ['mode' => 'COPILOT', 'ai_enabled' => true], ['mode' => 'AUTONOMOUS', 'copilot_enabled' => false]] as $payload) {
+            $this->actingAs($admin)->withHeaders($this->tenantHeaders($a))
+                ->putJson('/api/v1/admin/conversations-ai', $payload)->assertUnprocessable();
+        }
+        $this->actingAs($admin)->withHeaders($this->tenantHeaders($b))
+            ->putJson('/api/v1/admin/conversations-ai', ['mode' => 'AUTONOMOUS'])->assertNotFound();
+        $this->assertFalse(InboundMessageService::aiEnabled($a->id));
+        $this->assertFalse(InboundMessageService::aiEnabled($b->id));
     }
 
     public function test_a_tenant_without_settings_has_the_assistant_and_copilot_off(): void
