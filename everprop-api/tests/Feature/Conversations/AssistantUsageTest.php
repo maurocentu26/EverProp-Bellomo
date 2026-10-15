@@ -69,7 +69,7 @@ final class AssistantUsageTest extends TestCase
     }
 
     /** @return TestResponse<Response> */
-    private function usage(Tenant $tenant, RoleCode $role = RoleCode::TENANT_ADMIN, string $query = '', ?Tenant $host = null): TestResponse
+    private function usage(Tenant $tenant, RoleCode $role = RoleCode::SUPER_ADMIN, string $query = '', ?Tenant $host = null): TestResponse
     {
         $response = $this->actingAs($this->user($tenant, $role))->withHeaders($this->tenantHeaders($host ?? $tenant))
             ->getJson('/api/v1/admin/assistant/usage'.$query);
@@ -101,10 +101,11 @@ final class AssistantUsageTest extends TestCase
         $this->usage($b)->assertOk()->assertJsonPath('data.spent_usd', 9)->assertJsonPath('data.used_pct', 90);
     }
 
-    public function test_only_admins_read_it_and_never_through_another_tenant(): void
+    public function test_only_the_platform_team_reads_it_and_never_through_another_tenant(): void
     {
         [$a, $b] = [$this->tenant()['tenant'], $this->tenant()['tenant']];
-        foreach ([RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY, RoleCode::ROTATOR, RoleCode::BOT_OPERATOR] as $role) {
+        // Model cost is the platform's: even the tenant's own admin does not see it.
+        foreach ([RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY, RoleCode::ROTATOR, RoleCode::BOT_OPERATOR] as $role) {
             $this->usage($a, $role)->assertForbidden();
         }
         $this->usage($a, query: '?period=2026-13')->assertStatus(422);
@@ -160,7 +161,7 @@ final class AssistantUsageTest extends TestCase
             ->assertJsonPath('data.assistant.runs', 0);
         $this->usage($b['tenant'])->assertOk()->assertJsonPath('data.copilot.spent_usd', 3);
 
-        // A platform admin sees the tenant the host resolves, never a sum across tenants.
-        $this->usage($a['tenant'], RoleCode::SUPER_ADMIN)->assertOk()->assertJsonPath('data.copilot.spent_usd', 0.75);
+        // The tenant's own admin cannot read the platform's model cost.
+        $this->usage($a['tenant'], RoleCode::TENANT_ADMIN)->assertForbidden();
     }
 }

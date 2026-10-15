@@ -8,7 +8,7 @@ const usd = (n: number) => n.toLocaleString("es-AR", { style: "currency", curren
 const int = (n: number) => n.toLocaleString("es-AR");
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
-/** EVP-23: how much the AI spends this month against the tenant's own cap. Tenant admins only. */
+/** EVP-23: how much the AI spends this month against the tenant's cap. Eversys team (SUPER_ADMIN) only. */
 export function AssistantUsagePanel() {
   const [period, setPeriod] = useState(thisMonth());
   const [data, setData] = useState<AssistantUsage | null>(null);
@@ -21,7 +21,7 @@ export function AssistantUsagePanel() {
       .catch((e) => {
         if (!alive) return;
         setData(null);
-        setError(e instanceof EverpropApiError && e.status === 403 ? "Solo el administrador ve el uso de la IA." : "No pudimos cargar el uso. Recargá la página.");
+        setError(e instanceof EverpropApiError && e.status === 403 ? "El uso de la IA lo ve solo el equipo de Eversys." : "No pudimos cargar el uso. Recargá la página.");
       });
     return () => { alive = false; };
   }, [period]);
@@ -35,7 +35,7 @@ export function AssistantUsagePanel() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Uso de la IA</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Gasto del asistente y del copiloto contra el tope de tu empresa. Al llegar al tope, la IA deriva a un asesor en lugar de responder.
+            Vista interna del equipo Eversys: gasto del asistente y del copiloto de este cliente contra su tope. Al llegar al tope, la IA deriva a un asesor en lugar de responder.
           </p>
         </div>
         <label className="grid gap-1 text-sm font-medium">

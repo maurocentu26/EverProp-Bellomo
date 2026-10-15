@@ -3,6 +3,17 @@
 Rama `ticket/EVP-23-panel-uso-gasto` (desde `develop`) · fecha 2026-10-15 · Claude Code con Ramiro Ruggeri
 Ticket Jira [EVP-23](https://eversys.atlassian.net/browse/EVP-23). Es la primera vista del módulo "Panel del asistente"; las siguientes son EVP-24, EVP-25 y EVP-26.
 
+## 0. Decisión de público (Ramiro, 2026-10-15)
+
+**El panel de uso y gasto es solo para el equipo Eversys (`SUPER_ADMIN`), no para el administrador del cliente.** El costo del modelo lo paga la plataforma: al cliente no le aporta ver dólares ni tokens, y le mostraría márgenes internos.
+
+El módulo queda repartido así:
+- **EVP-23 (uso y gasto) y EVP-24 (trazas):** equipo Eversys.
+- **EVP-25 (preguntas sin respuesta):** administrador del cliente.
+- **EVP-26 (actividad):** los dos, con distinto detalle.
+
+Una vista **global** con todos los clientes juntos requiere `PlatformAccess` y va en otro ticket. Hoy, el `SUPER_ADMIN` ve el cliente del dominio por el que entra.
+
 ## 1. Qué pedía el ticket
 
 Que el administrador de cada cliente vea cuánto consume la IA antes de encenderla con saldo real (EVP-22):
@@ -21,7 +32,7 @@ Solo el administrador, y solo los datos de su cliente.
 - **Asistente y copiloto por separado:** respuestas generadas y tokens leídos y escritos.
   - Asistente: también las respuestas frenadas por el tope (`QUOTA_EXCEEDED`).
   - Copiloto: su gasto contra su tope propio. No informa respuestas frenadas, porque un borrador frenado por su tope falla antes de registrarse como corrida.
-- **Permiso:** `MANAGE_INTEGRATIONS`, que tienen `TENANT_ADMIN` y `SUPER_ADMIN`. Es el mismo que el de la configuración de IA.
+- **Permiso:** solo `SUPER_ADMIN` (`isPlatformAdministrator`). El administrador del cliente recibe 403.
 - **`period` validado:** formato `AAAA-MM`, con mes del 01 al 12.
 
 **Índice:** [2026-10-15.001_chatbot_runs_tenant_started.sql](../../everprop-api/database/schema/forward/2026-10-15.001_chatbot_runs_tenant_started.sql)
@@ -38,11 +49,11 @@ Solo el administrador, y solo los datos de su cliente.
   - respuestas frenadas por el tope.
 - Gasto por día: gráfico de barras de una sola serie, con el monto al pasar el mouse y una tabla equivalente ("Ver como tabla").
 - Detalle del asistente y del copiloto, y selector de mes.
-- Acceso "Uso de la IA" desde **Conocimiento IA**, visible solo para quien tiene el permiso.
+- Acceso "Uso de la IA" desde **Conocimiento IA**, visible solo para `SUPER_ADMIN`.
 
 ## 3. Por qué esta solución
 
-- **El administrador ve solo su gasto y su tope:** el tope global de la plataforma es compartido por todos los clientes, y mostrar ese total dejaría ver el consumo de los demás.
+- **Solo el cliente que corresponde al dominio:** el tope global es compartido por todos los clientes y no se muestra en esta vista. La vista global va en otro ticket, con `PlatformAccess`.
 - **Reutiliza `UsageLedger::spent` y `tenantCap`:** el panel y el freno nunca muestran cifras distintas.
 - **No hay tablas nuevas:** usa `usage_ledger` y `chatbot_runs`. Solo se suma un índice.
 - **El módulo de IA no se cuela a producción:** los archivos nuevos están en rutas que la política de releases (EVP-17) ya excluye. Para el único archivo compartido, `routes/api.php`, se sumaron las huellas.
@@ -53,7 +64,7 @@ Solo el administrador, y solo los datos de su cliente.
 | Comprobación | Resultado |
 |---|---|
 | `AssistantUsageTest` (4 tests) | Escritos. Se corren en el CI del PR (ver abajo) |
-| Qué cubren | Gasto, tope, % y reservas, agrupados por día local; el mes anterior; otro tenant que no se mezcla. Roles sin permiso dan 403, un `period` inválido da 422 y el host de otro tenant da 404. Respuesta real del asistente y una frenada por el tope, que deriva a un asesor. Gasto del copiloto separado por tenant, con los límites exactos del mes (00:00:00.000 y 23:59:59.999) y la corrida del mes siguiente excluida. `SUPER_ADMIN` ve solo el tenant que resuelve el host |
+| Qué cubren | Gasto, tope, % y reservas, agrupados por día local; el mes anterior; otro tenant que no se mezcla. Todos los roles salvo `SUPER_ADMIN`, incluido `TENANT_ADMIN`, dan 403; un `period` inválido da 422 y el host de otro tenant da 404. Respuesta real del asistente y una frenada por el tope, que deriva a un asesor. Gasto del copiloto separado por tenant, con los límites exactos del mes (00:00:00.000 y 23:59:59.999) y la corrida del mes siguiente excluida. el `TENANT_ADMIN` del cliente no ve el costo |
 | Forward 2026-10-15.001 | Aplicado dos veces sobre la base sintética de pruebas sin error; índice verificado y versión registrada. `ForwardScriptsTest` OK |
 | Política de releases | 4 tests OK. Prueba de mutación: sin las huellas nuevas, el test falla |
 | Pint y PHPStan | OK, en un contenedor sin red ni base de datos. PHPStan detectó que el helper del test pisaba `TestCase::run()`; se renombró |

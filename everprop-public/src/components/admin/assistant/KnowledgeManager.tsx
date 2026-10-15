@@ -80,7 +80,7 @@ export function KnowledgeManager() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {["TENANT_ADMIN", "SUPER_ADMIN"].includes(user?.apiRole ?? "") && (
+          {user?.apiRole === "SUPER_ADMIN" && (
             <Link href="/admin/conocimiento/uso" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold">
               <Gauge className="h-4 w-4" aria-hidden /> Uso de la IA
             </Link>

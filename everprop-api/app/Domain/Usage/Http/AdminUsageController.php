@@ -3,8 +3,6 @@
 namespace App\Domain\Usage\Http;
 
 use App\Domain\Conversations\Services\BusinessHours;
-use App\Domain\Identity\Enums\Capability;
-use App\Domain\Identity\Services\AuthorizationService;
 use App\Domain\Tenancy\TenantContext;
 use App\Domain\Usage\UsageLedger;
 use App\Http\Controllers\Controller;
@@ -15,8 +13,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * EVP-23: the tenant admin sees how much the AI spends this month against the tenant's own cap. Only this tenant's
- * numbers: the platform cap is shared by every tenant, so its total would leak other tenants' usage.
+ * EVP-23: the Eversys team (SUPER_ADMIN) sees how much the AI spends this month for the tenant it is in, against that
+ * tenant's cap. Model cost is the platform's, not the client's: tenant admins don't see it (decision 2026-10-15).
+ * Only this tenant's numbers; a cross-tenant view would go through PlatformAccess (separate ticket).
  */
 final class AdminUsageController extends Controller
 {
@@ -24,7 +23,7 @@ final class AdminUsageController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        abort_unless(app(AuthorizationService::class)->allows($user, Capability::MANAGE_INTEGRATIONS), 403);
+        abort_unless($user->role()->isPlatformAdministrator(), 403);
         $data = $request->validate(['period' => ['nullable', 'regex:/\A\d{4}-(0[1-9]|1[0-2])\z/']]);
         $tenantId = app(TenantContext::class)->id();
         $period = $data['period'] ?? CarbonImmutable::now('UTC')->format('Y-m');
