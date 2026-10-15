@@ -60,6 +60,8 @@ final class AssistantUsageTest extends TestCase
     /** @param array{tenant: Tenant, widget: string} $t */
     private function visitor(array $t, string $text): void
     {
+        // A visitor is anonymous: drop the admin a previous usage() call left authenticated.
+        $this->app['auth']->forgetGuards();
         $token = (string) $this->withHeaders($this->tenantHeaders($t['tenant']))
             ->postJson('/api/v1/public/chat/sessions', ['widget_id' => $t['widget']])->assertCreated()->json('data.token');
         $this->withToken($token)->postJson('/api/v1/public/chat/messages', ['client_message_id' => (string) Str::uuid(), 'text' => $text])->assertCreated();
