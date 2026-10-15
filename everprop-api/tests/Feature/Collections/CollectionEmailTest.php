@@ -193,6 +193,30 @@ final class CollectionEmailTest extends TestCase
         $this->travelTo(CarbonImmutable::parse($local, $tenant->timezone));
     }
 
+    /**
+     * An unpaid installment due 2026-02-10 for another tenant, written straight to the database: a second fixture()
+     * would go through the API in the same test and reuse the first tenant's request context.
+     */
+    private function seedOtherTenantDue(string $email): Tenant
+    {
+        $tenant = Tenant::factory()->create();
+        $user = User::factory()->for($tenant)->create(['role_code' => RoleCode::TENANT_ADMIN->value]);
+        $contact = DB::table('contacts')->insertGetId(['tenant_id' => $tenant->id, 'public_id' => (string) Str::uuid(),
+            'display_name' => 'Cliente de otra empresa', 'email' => $email, 'first_seen_at' => now(), 'last_seen_at' => now()]);
+        $stage = DB::table('pipeline_stages')->insertGetId(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'New', 'category' => 'OPEN', 'position' => 1]);
+        $lead = DB::table('leads')->insertGetId(['tenant_id' => $tenant->id, 'public_id' => (string) Str::uuid(), 'contact_id' => $contact,
+            'stage_id' => $stage, 'assigned_user_id' => $user->id, 'source_channel' => 'WEB_FORM', 'source_kind' => 'CONTACT_FORM',
+            'title' => 'Otra empresa', 'first_touch_at' => now(), 'last_touch_at' => now()]);
+        $agreement = DB::table('payment_agreements')->insertGetId(['tenant_id' => $tenant->id, 'public_id' => (string) Str::uuid(),
+            'lead_id' => $lead, 'created_by' => $user->id, 'currency' => 'ARS', 'total_price' => '100.00', 'down_payment' => '0.00',
+            'financed_balance' => '100.00', 'total_installments' => 1, 'day_of_month_due' => 10, 'start_date' => '2026-01-01',
+            'idempotency_key' => (string) Str::uuid(), 'request_hash' => str_repeat('0', 64)]);
+        DB::table('installments')->insert(['tenant_id' => $tenant->id, 'public_id' => (string) Str::uuid(), 'agreement_id' => $agreement,
+            'installment_number' => 1, 'due_date' => '2026-02-10', 'amount_expected' => '100.00']);
+
+        return $tenant;
+    }
+
     public function test_upcoming_notice_goes_out_once_within_the_window_with_amount_due_date_and_how_to_pay(): void
     {
         [$tenant, $admin, $id] = $this->fixture();
@@ -250,16 +274,20 @@ final class CollectionEmailTest extends TestCase
         $this->at($tenant, '2026-02-06 10:00');
         $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
         self::assertStringContainsString('ARS 60.00', $sent[0]);
+    }
 
-        // A fully paid installment is never notified.
-        [$other, $otherAdmin, $otherId] = $this->fixture();
-        $this->provision($other);
-        $this->postJson("/api/v1/admin/installments/{$otherId}/payments", [
+    public function test_a_fully_paid_installment_is_never_notified(): void
+    {
+        Mail::shouldReceive('mailer')->never();
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        $this->postJson("/api/v1/admin/installments/{$id}/payments", [
             'amountPaid' => '100.00', 'paymentMethod' => 'CASH', 'paymentReceiptNumber' => 'TEST',
             'paidAt' => '2026-02-01', 'idempotencyKey' => (string) Str::uuid(),
         ])->assertCreated();
+        $this->at($tenant, '2026-02-06 10:00');
         $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
-        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $other->id)->count());
+        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->count());
     }
 
     public function test_nothing_is_sent_without_approved_payment_instructions(): void
@@ -277,7 +305,7 @@ final class CollectionEmailTest extends TestCase
     public function test_only_the_provisioned_tenant_is_notified_even_with_the_same_client_email(): void
     {
         // Both tenants have an unpaid installment due in the window, for a contact with the same email address.
-        [$other, $otherAdmin, $otherId] = $this->fixture();
+        $other = $this->seedOtherTenantDue('client@example.test');
         [$tenant, $admin, $id] = $this->fixture();
         $this->provision($tenant);
         $sent = [];

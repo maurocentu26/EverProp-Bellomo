@@ -57,7 +57,7 @@ Que Bellomo lleve el control de las cobranzas "como Ecogas": el cliente recibe p
 |---|---|
 | Pint y PHPStan | OK, en un contenedor sin red ni base de datos |
 | `ForwardScriptsTest` | OK |
-| `CollectionEmailTest` (13 tests, 7 nuevos) | Escritos. Corren en el CI del PR |
+| `CollectionEmailTest` (14 tests, 8 nuevos) | Escritos. Corren en el CI del PR |
 | Qué cubren los nuevos | El aviso sale una vez dentro de la ventana, no antes de la hora y no se repite; lleva importe, fecha y datos de pago. Usa el saldo y saltea cuotas pagadas. Sin datos de pago no sale nada, ni el automático ni el manual. Solo se avisa al tenant habilitado, aunque otro tenant tenga un contacto con el mismo email. El tope no se agota con cuotas pagadas. Un intento sin resolver bloquea el aviso, y la base rechaza un segundo `UPCOMING`. `--dry-run` no envía, y `UNKNOWN` no se reintenta |
 | Revisión `tenant-isolation-reviewer` | Sin fugas entre clientes, envíos dobles ni reintentos de `UNKNOWN`. Se corrigió su hallazgo alto (cuotas que nunca se avisaban por el tope) y se agregaron los tests que pidió |
 | Revisión `schema-migration-guardian` | Sin bloqueantes. Se documentó el COPY del CHECK y se agregó la unicidad en la base que sugirió |
