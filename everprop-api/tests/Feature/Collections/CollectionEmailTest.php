@@ -5,6 +5,7 @@ namespace Tests\Feature\Collections;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\DB;
@@ -59,7 +60,9 @@ final class CollectionEmailTest extends TestCase
     {
         config(['collections_mail.enabled' => true, 'collections_mail.tenant' => $tenant->slug,
             'collections_mail.from_address' => 'billing@example.test', 'collections_mail.reply_to' => 'billing@example.test',
-            'mail.mailers.collections.host' => 'smtp.example.test']);
+            'mail.mailers.collections.host' => 'smtp.example.test',
+            'collections_mail.payment_instructions' => 'Transferencia al alias BELLOMO.PRUEBA',
+            'collections_mail.upcoming_days' => 5, 'collections_mail.upcoming_hour' => 9]);
     }
 
     public function test_billing_export_preserves_payment_history_and_denies_advisors_and_other_tenants(): void
@@ -180,6 +183,117 @@ final class CollectionEmailTest extends TestCase
         $this->artisan('everprop:collections:email', $args)->assertSuccessful();
         $this->travel(1)->days();
         $this->artisan('everprop:collections:email', $args)->assertSuccessful();
+        self::assertSame('UNKNOWN', DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->value('status'));
+    }
+
+    /** The fixture's only installment falls due on 2026-02-10; this sets the clock in the tenant's own zone. */
+    private function at(Tenant $tenant, string $local): void
+    {
+        $this->travelTo(CarbonImmutable::parse($local, $tenant->timezone));
+    }
+
+    public function test_upcoming_notice_goes_out_once_within_the_window_with_amount_due_date_and_how_to_pay(): void
+    {
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        $sent = [];
+        $mailer = Mockery::mock();
+        Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
+        /** @var Expectation $raw */
+        $raw = $mailer->shouldReceive('raw');
+        $raw->once()->andReturnUsing(function ($body, $callback) use (&$sent) {
+            $message = new Email;
+            $callback(new Message($message));
+            $sent[] = ['to' => $message->getTo()[0]->getAddress(), 'subject' => (string) $message->getSubject(), 'body' => $body];
+
+            return new \stdClass;
+        });
+
+        $this->at($tenant, '2026-02-04 10:00'); // six days before: not yet
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        $this->at($tenant, '2026-02-05 08:00'); // inside the window but before the sending hour
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        $this->at($tenant, '2026-02-05 09:30');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        $this->at($tenant, '2026-02-08 09:30'); // later runs never repeat it
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+
+        self::assertCount(1, $sent);
+        self::assertSame('client@example.test', $sent[0]['to']);
+        self::assertStringContainsString('cuota 1 de 1 vence el 10/02/2026', $sent[0]['subject']);
+        self::assertStringContainsString('ARS 100.00', $sent[0]['body']);
+        self::assertStringContainsString('Transferencia al alias BELLOMO.PRUEBA', $sent[0]['body']);
+        $attempt = DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->first();
+        self::assertSame(['UPCOMING', 'SENT'], [$attempt->kind, $attempt->status]);
+    }
+
+    public function test_upcoming_notice_uses_the_remaining_balance_and_skips_paid_installments(): void
+    {
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        $sent = [];
+        $mailer = Mockery::mock();
+        Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
+        /** @var Expectation $raw */
+        $raw = $mailer->shouldReceive('raw');
+        $raw->once()->andReturnUsing(function ($body) use (&$sent) {
+            $sent[] = $body;
+
+            return new \stdClass;
+        });
+        $pay = fn (string $amount) => $this->postJson("/api/v1/admin/installments/{$id}/payments", [
+            'amountPaid' => $amount, 'paymentMethod' => 'CASH', 'paymentReceiptNumber' => 'TEST',
+            'paidAt' => '2026-02-01', 'idempotencyKey' => (string) Str::uuid(),
+        ])->assertCreated();
+        $pay('40.00');
+        $this->at($tenant, '2026-02-06 10:00');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        self::assertStringContainsString('ARS 60.00', $sent[0]);
+
+        // A fully paid installment is never notified.
+        [$other, $otherAdmin, $otherId] = $this->fixture();
+        $this->provision($other);
+        $this->postJson("/api/v1/admin/installments/{$otherId}/payments", [
+            'amountPaid' => '100.00', 'paymentMethod' => 'CASH', 'paymentReceiptNumber' => 'TEST',
+            'paidAt' => '2026-02-01', 'idempotencyKey' => (string) Str::uuid(),
+        ])->assertCreated();
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $other->id)->count());
+    }
+
+    public function test_nothing_is_sent_without_approved_payment_instructions_or_for_another_tenant(): void
+    {
+        Mail::shouldReceive('mailer')->never();
+        [$tenant, $admin, $id] = $this->fixture();
+        [$other, $otherAdmin, $otherId] = $this->fixture();
+        $this->provision($tenant);
+        config(['collections_mail.payment_instructions' => '   ']);
+        $this->at($tenant, '2026-02-06 10:00');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful()->expectsOutputToContain('Faltan los datos de pago');
+        $this->artisan('everprop:collections:email', ['tenant' => $tenant->slug, 'installment' => $id, '--send' => true])->assertFailed();
+
+        // Provisioned for this tenant only: the other tenant's due installment is never touched.
+        config(['collections_mail.payment_instructions' => 'Transferencia al alias BELLOMO.PRUEBA', 'collections_mail.enabled' => false]);
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        self::assertSame(0, DB::table('collection_email_attempts')->whereIn('tenant_id', [$tenant->id, $other->id])->count());
+    }
+
+    public function test_dry_run_lists_without_sending_and_an_unknown_outcome_is_never_retried(): void
+    {
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        $this->at($tenant, '2026-02-06 10:00');
+        $mailer = Mockery::mock();
+        Mail::shouldReceive('mailer')->with('collections')->once()->andReturn($mailer);
+        /** @var Expectation $raw */
+        $raw = $mailer->shouldReceive('raw');
+        $raw->once()->andThrow(new \RuntimeException('Timeout'));
+
+        $this->artisan('everprop:collections:notify-upcoming', ['--dry-run' => true])->assertSuccessful()->expectsOutputToContain('would send');
+        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->count());
+        $this->artisan('everprop:collections:notify-upcoming')->assertFailed();
+        $this->at($tenant, '2026-02-07 10:00');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
         self::assertSame('UNKNOWN', DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->value('status'));
     }
 }
