@@ -99,6 +99,7 @@ type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInter
 
 export default function LeadDetailView({ leadId }: { leadId: string }) {
   const { currentUser } = useAuth();
+  const canAssign = currentUser?.role === "ADMIN" || currentUser?.role === "ROTATOR";
   const router = useRouter();
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [lead, setLead] = useState<Lead | null>(null);
@@ -539,6 +540,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </div>
             </div>
 
+            <dl className="mt-4 space-y-2 text-xs">
+              <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Presupuesto</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{lead.budget != null ? `${lead.currency || "USD"} ${lead.budget.toLocaleString("es-AR")}` : "Sin informar"}</dd></div>
+              <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Prioridad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{({ low: "Baja", normal: "Normal", high: "Alta", urgent: "Urgente" } as Record<string, string>)[lead.priority?.toLowerCase() || ""] || lead.priority || "Sin informar"}</dd></div>
+            </dl>
+
             <Link href={`/admin/leads/${lead.id}/edit`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm">
               <Edit3 className="size-3.5" aria-hidden="true" /> Completar ficha
             </Link>
@@ -558,7 +564,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             <p id="lead-advisor-title" className="text-xs font-semibold text-slate-500 dark:text-slate-400">Asesor responsable</p>
             <p className="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">{assignedAgent?.name ?? "Sin asignar"}</p>
             <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{assignedAgent?.role ?? "Cada lead conserva un único asesor responsable."}</p>
-            {currentUser?.role === "ADMIN" && (
+            {canAssign && (
               <Button variant="outline" onClick={() => setAdvisorEditorOpen(true)} className="mt-3 h-8 w-full px-3 text-xs font-semibold dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
                 Cambiar asesor
               </Button>
@@ -667,7 +673,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           </section>
 
           {/* Financing Agreements & Installment Tracking */}
-          {FINAL_DELIVERY_ENABLED && (
+          {FINAL_DELIVERY_ENABLED && currentUser?.role !== "ROTATOR" && (
             <div id="financing-agreements">
               <LeadFinancingAgreements
                 leadId={lead.id}
@@ -723,9 +729,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                         </span>
                       </div>
                       <dl className="mt-3.5 space-y-2 text-xs">
-                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Proyecto</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{project?.name || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Proyecto</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{project?.name || interest.projectName || "Sin informar"}</dd></div>
                         <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Activo</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{property?.title || interest.propertyTitle || "Sin informar"}</dd></div>
-                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Unidad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Unidad</dt><dd className="font-bold text-slate-900 dark:text-slate-100">{unit ? `${unit.unitNumber || unit.title}${unit.sectorName ? ` · ${unit.sectorName}` : ""}` : [interest.unitNumber, interest.sectorName].filter(Boolean).join(" · ") || "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Precio</dt><dd>{interest.price != null ? `${interest.currency || "USD"} ${interest.price.toLocaleString("es-AR")}` : "Sin informar"}</dd></div>
+                        <div><dt className="font-semibold text-slate-500 dark:text-slate-400">Estado / interés</dt><dd>{STAGE_LABELS[interest.status as keyof typeof STAGE_LABELS] || interest.status || "Sin informar"} · {({ LOW: "Bajo", MEDIUM: "Medio", HIGH: "Alto" } as Record<string, string>)[interest.interestLevel || ""] || interest.interestLevel || "Sin informar"}</dd></div>
                       </dl>
                       <div className="mt-3.5 space-y-2 border-t border-slate-200 dark:border-slate-800 pt-3 text-xs">
                         <div><p className="font-semibold text-slate-500 dark:text-slate-400">Preferencias</p><p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">{interest.preferences || "Sin informar"}</p></div>
@@ -797,7 +805,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           onConfirm={handleConfirmStageUpdate}
         />
       )}
-      {advisorEditorOpen && currentUser?.role === "ADMIN" && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
+      {advisorEditorOpen && canAssign && <LeadAdvisorEditor leadName={lead.name} currentAgentId={lead.agentId} onClose={() => setAdvisorEditorOpen(false)} onSave={handleReassignAgentConfirmed} />}
 
       <Dialog open={Boolean(interestToDelete)} onOpenChange={(open) => !open && setInterestToDelete(null)}>
         <DialogContent className="sm:max-w-md dark:border-slate-800 dark:bg-slate-900"><DialogHeader><DialogTitle className="dark:text-slate-100">Eliminar este interés</DialogTitle><DialogDescription className="dark:text-slate-400">Se quitará solamente esta ficha. El cliente y sus demás intereses no serán eliminados.</DialogDescription></DialogHeader><DialogFooter className="mt-4 gap-2"><Button variant="outline" onClick={() => setInterestToDelete(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</Button><Button variant="destructive" onClick={handleDeleteInterest}>Eliminar interés</Button></DialogFooter></DialogContent>

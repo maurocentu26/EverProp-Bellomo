@@ -80,7 +80,7 @@ export function normalizeLeadInterests(lead: Lead, properties: Property[]): Lead
           propertyId: resolvedPropertyId,
           unitId: resolvedUnitId,
           propertyTitle: resolvedTitle,
-          price: interest.price || prop?.price,
+          price: interest.price ?? prop?.price,
           currency: interest.currency || prop?.currency,
           preferences: optionalText(interest.preferences),
           notes: optionalText(interest.notes),

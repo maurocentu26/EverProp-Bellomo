@@ -135,7 +135,6 @@ type Props = {
 export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing = false }: Props) {
   const router = useRouter();
   const { user, isAdvisor } = useCurrentSession();
-  const isRotator = user?.role === "ROTATOR";
   const [loadError, setLoadError] = useState("");
   const [activeLead, setActiveLead] = useState<Lead | null>(initialLead ?? null);
   const [isLoadingLead, setIsLoadingLead] = useState(Boolean(leadId && !initialLead));
@@ -182,7 +181,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
   useEffect(() => {
     let active = true;
-    if (isRotator) return;
+    // ponytail: el rol rotador carga el catálogo provisoriamente para vincular inmuebles (EVP-21)
     async function loadData() {
       if (!isMockDataMode) {
         try {
@@ -204,7 +203,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     return () => {
       active = false;
     };
-  }, [companyId, isRotator]);
+  }, [companyId]);
 
   useEffect(() => {
     let active = true;
@@ -517,11 +516,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           origin: nextLead.origin,
           email: nextLead.email,
           phone: nextLead.phone,
-          stage: isRotator ? "NEW" : stageApiMap[nextLead.stage] || "NEW",
-          ...(isRotator ? { priority: data.priority, budget: data.budget ? Number(data.budget) : undefined, currency: data.currency } : {}),
+          stage: stageApiMap[nextLead.stage] || "NEW",
+          priority: data.priority,
+          budget: data.budget ? Number(data.budget) : undefined,
+          currency: data.currency,
           notes: nextLead.notes,
           agentId: nextLead.agentId,
-          propertyId: isRotator ? null : selectedAsset?.id || null,
+          propertyId: selectedAsset?.id || null,
         });
         nextLead.id = created.id;
       } catch (e: any) {
@@ -595,7 +596,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               <CardDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {isEditing
                   ? "Actualizá los datos de contacto, requerimientos comerciales y activos de interés del prospecto."
-                  : isRotator ? "Registrá sus datos de contacto y asigná un asesor si corresponde." : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
+                  : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
               </CardDescription>
             </div>
           </div>
@@ -754,7 +755,6 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                         <select
                           {...field}
                           id="lead-stage"
-                          disabled={isRotator}
                           className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                         >
                           <option value="new">Nuevo</option>
@@ -770,7 +770,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   />
                 </div>
 
-                {isRotator && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field>
                     <FieldLabel htmlFor="lead-priority">Prioridad</FieldLabel>
                     <select id="lead-priority" {...form.register("priority")} className="h-10 rounded-lg border bg-background px-3">
@@ -786,7 +786,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     <FieldLabel htmlFor="lead-currency">Moneda</FieldLabel>
                     <select id="lead-currency" {...form.register("currency")} className="h-10 rounded-lg border bg-background px-3"><option value="USD">USD</option><option value="ARS">ARS</option></select>
                   </Field>
-                </div>}
+                </div>
 
                 <Controller
                   name="notes"
@@ -835,7 +835,6 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               </section>
 
               {/* ── Seccion 2: Interes inmobiliario (Opcional) ── */}
-              {!isRotator && (
               <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-interest-data">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
@@ -978,7 +977,6 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   </div>
                 </Field>
               </section>
-              )}
             </div>
           </CardContent>
 

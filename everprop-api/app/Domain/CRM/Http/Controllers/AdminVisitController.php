@@ -21,7 +21,7 @@ final class AdminVisitController extends Controller
     public function today(Request $request, TenantContext $context, VisitPolicy $policy): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user && $policy->viewAny($user, $context->id()), 403);
+        abort_unless($user && $policy->viewAny($user, $context->id()) && $user->role() !== RoleCode::ROTATOR, 403);
         $start = Carbon::now('America/Argentina/Buenos_Aires')->startOfDay();
         $end = $start->copy()->addDay();
         $query = $this->query($request, $context, $policy)
