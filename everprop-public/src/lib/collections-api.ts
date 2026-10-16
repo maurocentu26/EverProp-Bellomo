@@ -4,7 +4,39 @@ import { apiFetch } from "@/lib/everprop-api";
 import { isMockDataMode } from "@/lib/data-mode";
 
 const root = "/api/v1/admin";
+export type CollectionEmailPreview = {
+  eligible: boolean; reason: string | null; recipient: string | null; subject: string; body: string;
+  amountRemaining: string; currency: string; businessDate: string; sender: string | null; deliveryEnabled: boolean;
+};
+
+export async function loadCollectionEmailPreview(installmentId: string): Promise<CollectionEmailPreview> {
+  if (isMockDataMode) throw new Error("La vista previa de correo requiere una cuota guardada en el servidor.");
+  return (await apiFetch<{ data: CollectionEmailPreview }>(`${root}/installments/${encodeURIComponent(installmentId)}/email-preview`)).data;
+}
+
 type Page<T> = { data: T[]; meta: { last_page: number } };
+
+export type BillingPayment = {
+  paymentId: string; paidAt: string; amount: string; currency: string; method: string;
+  receiptReference: string; status: "RECORDED" | "REVERSED"; reversedAt: string | null; reversalReason: string | null;
+  installmentId: string; installmentNumber: number; agreementId: string; projectName: string | null;
+  customerId: string; customerName: string | null; legacyProjectId: number | null; legacyFloor: string | null; legacyUnit: string | null;
+};
+export async function loadBillingExport(paidFrom: string, paidTo: string) {
+  if (isMockDataMode) throw new Error("La exportación requiere pagos guardados en el servidor.");
+  return apiFetch<{ data: BillingPayment[]; meta: { count: number; exportedAt: string } }>(
+    `${root}/collections/billing-export?paidFrom=${encodeURIComponent(paidFrom)}&paidTo=${encodeURIComponent(paidTo)}`,
+  );
+}
+export function billingExportCsv(rows: BillingPayment[]) {
+  const fields: (keyof BillingPayment)[] = ["paymentId", "paidAt", "customerId", "customerName", "agreementId", "installmentId", "installmentNumber", "amount", "currency", "method", "receiptReference", "status", "reversedAt", "reversalReason", "projectName", "legacyProjectId", "legacyFloor", "legacyUnit"];
+  const cell = (value: unknown) => {
+    const text = String(value ?? "");
+    const safe = /^[=+\-@]/.test(text.trimStart()) || /^[\t\r\n]/.test(text) ? `'${text}` : text;
+    return `"${safe.replaceAll('"', '""')}"`;
+  };
+  return "\uFEFF" + [fields.map(cell).join(","), ...rows.map(row => fields.map(field => cell(row[field])).join(","))].join("\r\n");
+}
 
 async function allPages<T>(path: string): Promise<T[]> {
   const rows: T[] = [];

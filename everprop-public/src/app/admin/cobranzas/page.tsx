@@ -1,5 +1,7 @@
 "use client";
 import { CollectionsLoading } from "@/components/admin/CollectionsLoading";
+import { CollectionEmailPreview } from "@/components/admin/CollectionEmailPreview";
+import { ExportBillingPayments } from "@/components/admin/ExportBillingPayments";
 import { InstallmentPaymentHistory } from "@/components/admin/InstallmentPaymentHistory";
 import { ExportLocalCollections } from "@/components/admin/ExportLocalCollections";
 import { loadCollectionLeads } from "@/lib/collections-api";
@@ -461,8 +463,9 @@ export default function CobranzasPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ExportLocalCollections />
+          <ExportBillingPayments />
           <button
             type="button"
             disabled={!canWrite}
@@ -830,6 +833,7 @@ export default function CobranzasPage() {
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <InstallmentPaymentHistory installment={inst} />
+                            <CollectionEmailPreview installment={inst} canWrite={canWrite} />
                             {/* WhatsApp Button */}
                             {whatsappUrl && inst.status !== "PAID" ? (
                               <a
@@ -946,6 +950,7 @@ export default function CobranzasPage() {
 
                       <div className="flex items-center gap-1.5">
                         <InstallmentPaymentHistory installment={inst} />
+                        <CollectionEmailPreview installment={inst} canWrite={canWrite} />
                         {whatsappUrl && inst.status !== "PAID" && (
                           <a
                             href={whatsappUrl}

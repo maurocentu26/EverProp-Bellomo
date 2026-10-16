@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('everprop:collections:notify')
     ->hourly()->withoutOverlapping();
 
+// EVP-31: upcoming-installment emails. Hourly; the command itself waits for the tenant's local hour and notifies
+// each installment once, so a missed run is caught up by the next one.
+Schedule::command('everprop:collections:notify-upcoming')->hourly()->withoutOverlapping();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

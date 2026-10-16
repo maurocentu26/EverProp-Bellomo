@@ -37,6 +37,16 @@ return [
 
     'mailers' => [
 
+        'collections' => [
+            'transport' => 'smtp',
+            'scheme' => env('COLLECTIONS_MAIL_SCHEME', 'smtp'),
+            'host' => env('COLLECTIONS_MAIL_HOST'),
+            'port' => env('COLLECTIONS_MAIL_PORT', 587),
+            'username' => env('COLLECTIONS_MAIL_USERNAME'),
+            'password' => env('COLLECTIONS_MAIL_PASSWORD'),
+            'timeout' => 20,
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
