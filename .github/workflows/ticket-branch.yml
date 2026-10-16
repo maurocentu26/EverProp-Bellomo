@@ -1,6 +1,8 @@
 name: Ticket branch
 
 # TICKETS.md: develop takes ticket branches; main takes clean release/hotfix branches.
+# EVP-30: the decision always comes from the policy on protected develop, never from the PR's own copy (a PR could
+# otherwise rewrite its own check, and main -> develop syncs carry no .github/scripts at all).
 on:
   pull_request:
     branches: [develop, main]
@@ -20,7 +22,6 @@ jobs:
           persist-credentials: false
           path: proposed
       - name: Load policy from protected develop
-        if: github.base_ref == 'main'
         uses: actions/checkout@v4
         with:
           ref: develop
@@ -34,12 +35,17 @@ jobs:
           HEAD: ${{ github.head_ref }}
           PR_TREE: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [ "$BASE" = "main" ]; then
-            echo "Policy SHA: $(git -C ../trusted-policy rev-parse HEAD)"
-            node ../trusted-policy/.github/scripts/check-pr-policy.mjs
-          else
-            node .github/scripts/check-pr-policy.mjs
-          fi
-      - name: Policy regression tests
-        working-directory: ${{ github.base_ref == 'main' && 'trusted-policy' || 'proposed' }}
+          echo "Policy SHA: $(git -C ../trusted-policy rev-parse HEAD)"
+          node ../trusted-policy/.github/scripts/check-pr-policy.mjs
+      - name: Policy regression tests (trusted)
+        working-directory: trusted-policy
         run: node --test .github/scripts/check-pr-policy.test.mjs
+      # A PR that changes the policy proves its own version here; it never decides the check above.
+      - name: Policy regression tests (proposed change)
+        working-directory: proposed
+        run: |
+          if [ -f .github/scripts/check-pr-policy.test.mjs ]; then
+            node --test .github/scripts/check-pr-policy.test.mjs
+          else
+            echo "No policy scripts on this branch (for example a main -> develop sync)."
+          fi
