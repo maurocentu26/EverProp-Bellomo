@@ -7,6 +7,7 @@ use App\Domain\AgentRuntime\Llm\DisabledLlmClient;
 use App\Domain\AgentRuntime\Llm\LlmClient;
 use App\Domain\AgentRuntime\Llm\OpenAiChatClient;
 use App\Domain\Conversations\Transports\TransportRegistry;
+use App\Domain\Identity\Http\Middleware\StartRevocableSession;
 use App\Domain\Identity\Policies\UserPolicy;
 use App\Domain\Inventory\Models\Project;
 use App\Domain\Inventory\Models\Property;
@@ -26,6 +27,7 @@ use GuzzleHttp\Client;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(StartSession::class, StartRevocableSession::class);
         $this->app->singleton(TransportRegistry::class);
         // EVP-18: personal key is local-only; explicit rates and budget are required before enabling it.
         if (config('agent.llm_provider') === 'openai') {
