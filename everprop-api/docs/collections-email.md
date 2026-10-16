@@ -50,7 +50,49 @@ Después de aprobar texto/destinatario, aprovisionar SMTP, aplicar el forward y 
 php artisan everprop:collections:email bellomo UUID_DE_CUOTA --send
 ```
 
-No existe envío masivo ni tarea programada nueva. La frecuencia de contacto y automatización deben acordarse con Bellomo antes de incorporarlas al scheduler. No se ejecutó un envío real durante el desarrollo.
+El recordatorio de cuota vencida sigue siendo manual, cuota por cuota. El aviso automático de cuota próxima (EVP-31) se describe en la sección siguiente. No se ejecutó un envío real durante el desarrollo.
+
+## Aviso automático de cuota próxima (EVP-31)
+
+**Decisión de Ramiro (2026-10-15):**
+- se manda un aviso como la factura digital de Ecogas;
+- es automático desde el primer día;
+- sale por un proveedor transaccional usado por SMTP;
+- los datos de pago los aprueba Bellomo.
+
+**Qué recibe el cliente:** `COLLECTIONS_UPCOMING_DAYS` días antes del vencimiento (5 por defecto), un email con:
+- la cuota n.º sobre el total;
+- la fecha de vencimiento;
+- el importe pendiente, ya descontados los pagos parciales;
+- los datos de pago aprobados;
+- el aviso "si ya pagaste, no tenés que hacer nada".
+
+**Reglas:**
+- **Una sola vez por cuota:** el aviso queda en `collection_email_attempts` con `kind = UPCOMING`, y nunca se repite, aunque haya fallado. Lo garantiza la base: hay un índice único `uq_collection_email_upcoming` sobre una columna generada.
+- **Bloqueo cruzado:** un intento `SENDING` o `UNKNOWN` de cualquier tipo bloquea los avisos siguientes de esa cuota hasta que una persona lo revise. El día del vencimiento, si ya salió el aviso de cuota próxima, un recordatorio manual de deuda se saltea.
+- **No se avisan:** las cuotas pagadas, canceladas o de acuerdos inactivos, ni a contactos sin email válido.
+- **Cuándo corre:** el scheduler lo ejecuta cada hora (`everprop:collections:notify-upcoming`), y el comando no envía antes de `COLLECTIONS_UPCOMING_HOUR` (las 9, hora del cliente). Si una corrida falla, la siguiente toma lo pendiente.
+- **Tope:** `COLLECTIONS_MAIL_MAX_PER_RUN` (200) envíos por corrida. Solo entran como candidatas las cuotas con saldo y con un email cargado. Si una corrida saltea tantas como el tope, el comando falla en voz alta.
+- **Mismo camino seguro que el envío manual** (`CollectionMailer`):
+  - se vuelven a verificar el saldo y el estado bajo bloqueo;
+  - el registro `SENDING` se guarda antes de contactar al SMTP;
+  - un `UNKNOWN` bloquea todo envío posterior de esa cuota hasta que una persona lo revise.
+
+**Candado:** **sin `COLLECTIONS_MAIL_PAYMENT_INSTRUCTIONS` no sale ningún email**, ni el automático ni el manual. Lo mismo vale si está deshabilitado o faltan el SMTP, el remitente, el reply-to o la columna `kind`.
+
+**Prueba sin enviar:** `php artisan everprop:collections:notify-upcoming --dry-run` lista qué saldría y no envía ni guarda nada.
+
+**Proveedor transaccional (Postmark, Amazon SES o Resend) por SMTP:**
+1. Crear la cuenta y **verificar el dominio de Bellomo** con SPF, DKIM y, recomendado, DMARC.
+2. Crear credenciales SMTP y cargarlas como secretos del deploy:
+   - `COLLECTIONS_MAIL_HOST` (por ejemplo `smtp.postmarkapp.com`, `email-smtp.<región>.amazonaws.com` o `smtp.resend.com`);
+   - `COLLECTIONS_MAIL_PORT` (587);
+   - `COLLECTIONS_MAIL_USERNAME`;
+   - `COLLECTIONS_MAIL_PASSWORD`.
+3. Configurar el remitente y el reply-to en el dominio verificado, y los datos de pago aprobados.
+4. Mandar un envío de prueba a un destinatario controlado. Recién después, `COLLECTIONS_MAIL_ENABLED=true`.
+
+**Reversión:** `COLLECTIONS_MAIL_ENABLED=false` detiene todo envío nuevo. No borrar la auditoría.
 
 ## Auditoría y fallos
 
