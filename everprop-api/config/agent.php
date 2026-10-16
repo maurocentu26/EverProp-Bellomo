@@ -5,7 +5,7 @@ return [
     'llm_provider' => env('AGENT_LLM_PROVIDER', 'disabled'),
     // No default model on purpose: pick it explicitly (economics D13 anchors cost on Haiku-class).
     'llm_model' => env('AGENT_LLM_MODEL'),
-    'prompt_version' => 'coordinator-2026-10-11.1',
+    'prompt_version' => 'coordinator-2026-10-16.1',
     // Per-turn limits (ADR D13/D14).
     'max_llm_calls' => 2,
     'max_retries' => 1,

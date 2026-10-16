@@ -4,6 +4,7 @@ namespace App\Domain\Conversations\Services;
 
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Notifications\ConversationNeedsAttention;
+use App\Domain\CRM\Notifications\LeadAssignedNotification;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -99,8 +100,7 @@ final class ConversationControl
             $this->cancelPendingBotSends($tenantId, $conversationId, $epoch);
             $changes = ['control_state' => 'WAITING_HUMAN', 'control_epoch' => $epoch, 'bot_mode' => 'HUMAN_FIRST'];
             // The suggestion comes from CRM data: only an active user of this tenant who can attend is assigned.
-            if ($conversation->assigned_user_id === null && $suggestedAssigneeId !== null && DB::table('users')->where('tenant_id', $tenantId)
-                ->where('id', $suggestedAssigneeId)->where('status', 'ACTIVE')->whereIn('role_code', ['TENANT_ADMIN', 'SALES_MANAGER', 'SALES_ADVISOR'])->exists()) {
+            if ($conversation->assigned_user_id === null && $suggestedAssigneeId !== null && $this->isEligibleAssignee($tenantId, $suggestedAssigneeId)) {
                 $changes['assigned_user_id'] = $suggestedAssigneeId;
             }
             $this->write($tenantId, $conversationId, $changes);
@@ -121,6 +121,64 @@ final class ConversationControl
 
             return ['state' => 'WAITING_HUMAN', 'epoch' => $epoch, 'notice_job_id' => $noticeJobId];
         }, 3);
+    }
+
+    /**
+     * Associates the lead's owner with the conversation if unassigned, without changing the control state.
+     * When a new lead was created, notifies the assigned advisor.
+     *
+     * @param  array{lead_id: int, assigned_user_id: ?int, created: bool}  $lead
+     */
+    public function assignLead(int $tenantId, int $conversationId, array $lead): ?int
+    {
+        $assigneeId = $lead['assigned_user_id'] ?? null;
+        if ($assigneeId === null) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($tenantId, $conversationId, $lead, $assigneeId): ?int {
+            $conversation = $this->lock($tenantId, $conversationId);
+            if ($conversation->assigned_user_id !== null || ! $this->isEligibleAssignee($tenantId, (int) $assigneeId)) {
+                return $conversation->assigned_user_id ? (int) $conversation->assigned_user_id : null;
+            }
+
+            $this->write($tenantId, $conversationId, ['assigned_user_id' => $assigneeId]);
+            $this->outbox($tenantId, $conversationId, 'CONVERSATION_LEAD_ASSIGNED', [
+                'assigned_user_id' => $assigneeId,
+                'lead_id' => $lead['lead_id'],
+                'lead_created' => $lead['created'],
+            ]);
+
+            if ($lead['created']) {
+                rescue(function () use ($tenantId, $conversation, $lead, $assigneeId): void {
+                    $user = User::find($assigneeId);
+                    if ($user) {
+                        $contactName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $conversation->contact_id)->value('display_name') ?? 'Nuevo Contacto';
+                        $leadPublicId = (string) DB::table('leads')->where('tenant_id', $tenantId)->where('id', $lead['lead_id'])->value('public_id');
+                        $user->notify(new LeadAssignedNotification(
+                            leadPublicId: $leadPublicId,
+                            leadName: $contactName,
+                            eventType: 'LEAD_CREATED',
+                            title: 'Nuevo lead de chat asignado',
+                            message: "Ha ingresado un nuevo lead desde el chat: '{$contactName}'",
+                            actionUrl: "/admin/conversaciones/{$conversation->public_id}"
+                        ));
+                    }
+                });
+            }
+
+            return (int) $assigneeId;
+        }, 3);
+    }
+
+    public function isEligibleAssignee(int $tenantId, int $userId): bool
+    {
+        return DB::table('users')->where('tenant_id', $tenantId)
+            ->where('id', $userId)
+            ->where('status', 'ACTIVE')
+            ->whereNull('deleted_at')
+            ->whereIn('role_code', ['TENANT_ADMIN', 'SALES_MANAGER', 'SALES_ADVISOR'])
+            ->exists();
     }
 
     public function close(int $tenantId, int $conversationId, User $user): void

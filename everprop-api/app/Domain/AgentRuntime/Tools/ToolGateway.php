@@ -24,10 +24,11 @@ final class ToolGateway
         BuscarPropiedades $buscar,
         ConsultarPropiedad $consultar,
         RegistrarInteres $interes,
+        RegistrarContacto $contacto,
         SolicitarVisita $visita,
         DerivarAAsesor $derivar,
     ) {
-        foreach ([$buscar, $consultar, $interes, $visita, $derivar] as $tool) {
+        foreach ([$buscar, $consultar, $interes, $contacto, $visita, $derivar] as $tool) {
             $this->tools[$tool->name()] = $tool;
         }
     }

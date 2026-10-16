@@ -2,6 +2,7 @@
 
 namespace App\Domain\AgentRuntime\Tools;
 
+use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\CRM\Services\CreateOrGetOpenLeadProcedure;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ final class RegistrarInteres implements AgentTool
         private readonly PublicInventory $inventory,
         private readonly CreateOrGetOpenLeadProcedure $leads,
         private readonly ContactDetails $contacts,
+        private readonly ConversationControl $control,
     ) {}
 
     public function name(): string
@@ -66,6 +68,7 @@ final class RegistrarInteres implements AgentTool
         return $executions->once($context, $this->name(), $arguments, function () use ($context, $arguments, $propertyId, $lead, $key): array {
             $now = CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v');
             $this->contacts->fill($context, $arguments, $now);
+            $this->control->assignLead($context->tenantId, $context->conversationId, $lead);
             $existing = DB::table('lead_properties')->where('tenant_id', $context->tenantId)->where('lead_id', $lead['lead_id'])
                 ->where('property_id', $propertyId)->lockForUpdate()->first(['interest_level']);
             if ($existing === null) {
