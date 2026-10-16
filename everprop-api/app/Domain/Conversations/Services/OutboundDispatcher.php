@@ -104,9 +104,7 @@ final class OutboundDispatcher
         ]);
 
         // Reply to the exact identity of this thread, never to "the contact's latest number".
-        $recipient = str_starts_with((string) $conversation->provider_thread_id, 'wa:')
-            ? substr((string) $conversation->provider_thread_id, 3)
-            : (string) $conversation->provider_thread_id;
+        $recipient = (string) preg_replace('/\A(wa|ig|fb):/', '', (string) $conversation->provider_thread_id);
 
         return [
             'status' => 'PROCESSING', 'job_id' => $jobId, 'nonce' => $nonce, 'conversation_id' => (int) $job->conversation_id,

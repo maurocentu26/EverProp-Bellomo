@@ -58,6 +58,83 @@ final class MetaWebhookProcessor
             ->first(['ca.id', 'ca.tenant_id', 'ca.integration_id', 'ca.status', 'ca.metadata_json', 'ic.provider', 'ic.status as integration_status']);
     }
 
+    /**
+     * Channel for a Messenger Page ID or Instagram professional account ID, or null when unmapped or ambiguous.
+     *
+     * @return object{id: int|string, tenant_id: int|string, integration_id: int|string, status: string, provider: string, integration_status: string}|null
+     */
+    public function socialChannelFor(string $channelType, string $accountId): ?object
+    {
+        if ($accountId === '' || ! in_array($channelType, ['INSTAGRAM_DM', 'FACEBOOK_MESSENGER'], true)) {
+            return null;
+        }
+        // ponytail: unicidad por consulta; columna generada + índice único (como whatsapp_phone_number_id) si un Page llega a conectarse a dos tenants.
+        $rows = DB::table('channel_accounts as ca')
+            ->join('integration_connections as ic', fn ($j) => $j->on('ic.id', '=', 'ca.integration_id')->on('ic.tenant_id', '=', 'ca.tenant_id'))
+            ->where('ca.channel_type', $channelType)
+            ->where('ca.provider_account_id', $accountId)
+            ->where('ca.status', 'ACTIVE')
+            ->where('ic.provider', 'META')
+            ->where('ic.status', 'ACTIVE')
+            ->limit(2)
+            ->get(['ca.id', 'ca.tenant_id', 'ca.integration_id', 'ca.status', 'ic.provider', 'ic.status as integration_status']);
+
+        return $rows->count() === 1 ? $rows->first() : null;
+    }
+
+    /** @param list<array<string, mixed>> $messaging */
+    public function social(string $object, string $accountId, array $messaging, int $tenantId, int $integrationId): bool
+    {
+        $channelType = $object === 'instagram' ? 'INSTAGRAM_DM' : ($object === 'page' ? 'FACEBOOK_MESSENGER' : '');
+        $channel = $this->socialChannelFor($channelType, $accountId);
+        if ($channel === null || (int) $channel->tenant_id !== $tenantId || (int) $channel->integration_id !== $integrationId) {
+            Log::warning('meta.webhook.unmapped_social_account', ['channel_type' => $channelType, 'mapped' => $channel !== null]);
+
+            return false;
+        }
+
+        $identityType = $object === 'instagram' ? 'INSTAGRAM' : 'FACEBOOK';
+        $prefix = $object === 'instagram' ? 'ig:' : 'fb:';
+
+        foreach ($this->arrays($messaging) as $event) {
+            $msg = is_array($event['message'] ?? null) ? $event['message'] : null;
+            if ($msg === null || ($msg['is_echo'] ?? false) === true) {
+                continue;
+            }
+            $senderId = is_scalar($event['sender']['id'] ?? null) ? trim((string) $event['sender']['id']) : '';
+            $mid = is_scalar($msg['mid'] ?? null) ? trim((string) $msg['mid']) : '';
+            if ($senderId === '' || $mid === '' || $senderId === $accountId || preg_match('/\A[0-9A-Za-z_.-]{1,128}\z/', $senderId) !== 1) {
+                continue;
+            }
+            $text = is_string($msg['text'] ?? null) ? mb_substr($msg['text'], 0, 4096) : null;
+            $ts = $event['timestamp'] ?? null;
+            $occurredAt = is_numeric($ts)
+                ? CarbonImmutable::createFromTimestampUTC((int) ((int) $ts > 9_999_999_999 ? intdiv((int) $ts, 1000) : (int) $ts))
+                : CarbonImmutable::now('UTC');
+
+            $this->inbound->accept(new InboundMessage(
+                tenantId: (int) $channel->tenant_id,
+                channelAccountId: (int) $channel->id,
+                identityChannelType: $identityType,
+                senderProviderId: $senderId,
+                threadId: $prefix.$senderId,
+                providerMessageId: mb_substr($mid, 0, 191),
+                type: $text !== null ? 'TEXT' : 'SYSTEM',
+                text: $text,
+                media: null,
+                occurredAt: $occurredAt,
+                senderDisplayName: null,
+                senderPhoneE164: null,
+                metadata: array_filter([
+                    'native_object' => $object,
+                    'reply_to_mid' => is_scalar($msg['reply_to']['mid'] ?? null) ? (string) $msg['reply_to']['mid'] : null,
+                ]),
+            ));
+        }
+
+        return true;
+    }
+
     /** @param array<string, mixed> $value */
     public function messages(array $value, ?string $wabaId, int $tenantId, int $integrationId): bool
     {

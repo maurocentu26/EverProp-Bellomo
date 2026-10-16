@@ -155,8 +155,10 @@ Route::middleware('tenant')->group(function (): void {
 });
 
 // Meta app-level webhook (every tenant). No tenant middleware: the tenant is derived from the
-// signed payload's phone_number_id mapping inside the controller.
+// signed payload's channel account mapping inside the controller.
 Route::middleware('throttle:meta-webhooks')->group(function (): void {
+    Route::get('/webhooks/meta', [MetaWhatsAppWebhookController::class, 'verify']);
+    Route::post('/webhooks/meta', [MetaWhatsAppWebhookController::class, 'receive']);
     Route::get('/webhooks/meta/whatsapp', [MetaWhatsAppWebhookController::class, 'verify']);
     Route::post('/webhooks/meta/whatsapp', [MetaWhatsAppWebhookController::class, 'receive']);
 });

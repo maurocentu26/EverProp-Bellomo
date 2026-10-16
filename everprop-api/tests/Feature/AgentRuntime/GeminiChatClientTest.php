@@ -167,12 +167,11 @@ final class GeminiChatClientTest extends TestCase
         $this->assertSame('gemini', $resolved->provider());
         $this->assertSame('gemini-3.8-flash', $resolved->model());
 
-        // Disables if conversations.ai_enabled is true (automatic AI forbidden with local key)
+        // Remains enabled in local when conversations.ai_enabled is true (autonomous AI testing in local)
         config(['conversations.ai_enabled' => true]);
-        $this->assertInstanceOf(DisabledLlmClient::class, app(LlmClient::class));
+        $this->assertInstanceOf(GeminiChatClient::class, app(LlmClient::class));
 
         // Disables if outside local
-        config(['conversations.ai_enabled' => false]);
         $this->app['env'] = 'production';
         $this->assertInstanceOf(DisabledLlmClient::class, app(LlmClient::class));
     }

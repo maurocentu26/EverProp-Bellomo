@@ -39,9 +39,10 @@ final class ReconcileConversations extends Command
             DispatchOutboundJob::dispatch((int) $job->tenant_id, (int) $job->id);
         }
 
-        // WhatsApp webhook receipts stored before the 200 whose job was lost, is due for retry, or whose worker died
+        // Meta webhook receipts stored before the 200 whose job was lost, is due for retry, or whose worker died
         // (PROCESSING lease in next_attempt_at expired). Processing is idempotent; after 10 attempts → DEAD_LETTER.
-        $whatsapp = fn () => DB::table('webhook_receipts')->where('provider', 'META')->where('provider_object', 'whatsapp_messages');
+        $whatsapp = fn () => DB::table('webhook_receipts')->where('provider', 'META')
+            ->whereIn('provider_object', ['whatsapp_messages', 'messenger_messages', 'instagram_messages']);
         $whatsapp()->whereIn('processing_status', ['RECEIVED', 'RETRY', 'PROCESSING'])->where('attempt_count', '>=', 10)
             ->update(['processing_status' => 'DEAD_LETTER', 'last_error_code' => 'MAX_ATTEMPTS']);
         $whatsapp()->where('processing_status', 'PROCESSING')->where('next_attempt_at', '<', now())
