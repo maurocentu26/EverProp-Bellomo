@@ -1,8 +1,15 @@
 <?php
 
+use App\Domain\AgentRuntime\Knowledge\Http\AdminKnowledgeController;
+use App\Domain\AgentRuntime\VisitRequests\AdminVisitRequestController;
 use App\Domain\Collections\CollectionBillingController;
 use App\Domain\Collections\CollectionEmailController;
 use App\Domain\Collections\CollectionsController;
+use App\Domain\Conversations\Http\Controllers\AdminAiSettingsController;
+use App\Domain\Conversations\Http\Controllers\AdminBusinessHoursController;
+use App\Domain\Conversations\Http\Controllers\AdminConversationController;
+use App\Domain\Conversations\Http\Controllers\MetaWhatsAppWebhookController;
+use App\Domain\Conversations\Http\Controllers\PublicChatController;
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
 use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
 use App\Domain\CRM\Http\Controllers\AdminVisitController;
@@ -13,12 +20,14 @@ use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Identity\Http\Controllers\WebPushController;
 use App\Domain\Identity\RotatorRoleBoundary;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
+use App\Domain\Integrations\Http\Controllers\WhatsAppConnectionController;
 use App\Domain\Inventory\Http\Controllers\AdminProjectController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyFeatureController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyMediaController;
 use App\Domain\Inventory\Http\Controllers\PublicProjectController;
 use App\Domain\Inventory\Http\Controllers\PublicPropertyController;
+use App\Domain\Usage\Http\AdminUsageController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['tenant', 'throttle:login'])->group(function (): void {
@@ -74,9 +83,46 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'index'])->name('leads.follow-ups.index');
         Route::post('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'store'])->name('leads.follow-ups.store');
 
+        Route::get('/conversations', [AdminConversationController::class, 'index'])->middleware('throttle:120,1');
+        Route::get('/conversations/{conversation}/messages', [AdminConversationController::class, 'messages'])->whereUuid('conversation');
+        Route::post('/conversations/{conversation}/takeover', [AdminConversationController::class, 'takeover'])->whereUuid('conversation');
+        Route::post('/conversations/{conversation}/resume', [AdminConversationController::class, 'resume'])->whereUuid('conversation');
+        Route::post('/conversations/{conversation}/messages', [AdminConversationController::class, 'reply'])->whereUuid('conversation');
+        Route::post('/conversations/{conversation}/notes', [AdminConversationController::class, 'note'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::get('/conversations/{conversation}/templates', [AdminConversationController::class, 'templates'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::post('/conversations/{conversation}/template', [AdminConversationController::class, 'sendTemplate'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::post('/conversations/{conversation}/attachments', [AdminConversationController::class, 'attach'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::get('/conversations/{conversation}/media/{sequence}', [AdminConversationController::class, 'media'])->whereUuid('conversation')->whereNumber('sequence')->middleware('throttle:120,1');
+        Route::post('/conversations/{conversation}/lead', [AdminConversationController::class, 'lead'])->whereUuid('conversation')->middleware('throttle:30,1');
+        Route::post('/conversations/{conversation}/suggestion', [AdminConversationController::class, 'suggest'])->whereUuid('conversation')->middleware('throttle:copilot');
+        Route::post('/conversations/{conversation}/reopen', [AdminConversationController::class, 'reopen'])->whereUuid('conversation');
+        Route::post('/conversations/{conversation}/close', [AdminConversationController::class, 'close'])->whereUuid('conversation');
+        Route::post('/conversations/{conversation}/resolve-unknown', [AdminConversationController::class, 'resolveUnknown'])->whereUuid('conversation');
+
+        Route::get('/conversations-ai', [AdminAiSettingsController::class, 'show']);
+        Route::put('/conversations-ai', [AdminAiSettingsController::class, 'update'])->middleware('throttle:30,1');
+        Route::get('/business-hours', [AdminBusinessHoursController::class, 'show']);
+        Route::put('/business-hours', [AdminBusinessHoursController::class, 'update'])->middleware('throttle:30,1');
+
+        Route::get('/assistant/usage', [AdminUsageController::class, 'show']);
+        Route::get('/knowledge', [AdminKnowledgeController::class, 'index']);
+        Route::post('/knowledge', [AdminKnowledgeController::class, 'store']);
+        Route::post('/knowledge/{document}/approve', [AdminKnowledgeController::class, 'approve'])->whereUuid('document');
+        Route::post('/knowledge/{document}/revoke', [AdminKnowledgeController::class, 'revoke'])->whereUuid('document');
+
+        Route::get('/visit-requests', [AdminVisitRequestController::class, 'index']);
+        Route::post('/visit-requests/{visitRequest}/confirm', [AdminVisitRequestController::class, 'confirm'])->whereUuid('visitRequest');
+        Route::post('/visit-requests/{visitRequest}/decline', [AdminVisitRequestController::class, 'decline'])->whereUuid('visitRequest');
+
+        Route::get('/integrations/whatsapp/config', [WhatsAppConnectionController::class, 'config']);
+        Route::post('/integrations/whatsapp/connect', [WhatsAppConnectionController::class, 'connect'])->middleware('throttle:6,1');
+        Route::post('/integrations/whatsapp/{integration}/disconnect', [WhatsAppConnectionController::class, 'disconnect'])
+            ->whereUuid('integration')->middleware('throttle:6,1');
+
         Route::get('/push/config', [WebPushController::class, 'config']);
         Route::post('/push/subscriptions', [WebPushController::class, 'store'])->middleware('throttle:30,1');
         Route::delete('/push/subscriptions', [WebPushController::class, 'destroy']);
+        Route::put('/push/subscriptions/preferences', [WebPushController::class, 'preferences'])->middleware('throttle:30,1');
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
         Route::get('/notifications/count', [AdminNotificationController::class, 'count'])->name('notifications.count');
         Route::post('/notifications/mark-all-read', [AdminNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
@@ -91,6 +137,13 @@ Route::middleware('tenant')->group(function (): void {
     Route::get('/public/properties', [PublicPropertyController::class, 'index'])->name('public.properties.index');
     Route::get('/public/properties/{property}', [PublicPropertyController::class, 'show'])->name('public.properties.show');
 
+    Route::middleware('throttle:public-chat')->group(function (): void {
+        Route::post('/public/chat/sessions', [PublicChatController::class, 'start']);
+        Route::post('/public/chat/messages', [PublicChatController::class, 'send']);
+    });
+    Route::get('/public/chat/messages', [PublicChatController::class, 'messages'])->middleware('throttle:public-chat-read');
+    Route::get('/public/chat/media/{sequence}', [PublicChatController::class, 'media'])->whereNumber('sequence')->middleware('throttle:public-chat-read');
+
     Route::post('/public/leads', PublicLeadController::class)
         ->middleware('throttle:public-leads')
         ->name('public.leads.store');
@@ -99,6 +152,13 @@ Route::middleware('tenant')->group(function (): void {
         ->whereUuid('integrationPublicId')
         ->middleware('throttle:webhooks')
         ->name('webhooks.receive');
+});
+
+// Meta app-level webhook (every tenant). No tenant middleware: the tenant is derived from the
+// signed payload's phone_number_id mapping inside the controller.
+Route::middleware('throttle:meta-webhooks')->group(function (): void {
+    Route::get('/webhooks/meta/whatsapp', [MetaWhatsAppWebhookController::class, 'verify']);
+    Route::post('/webhooks/meta/whatsapp', [MetaWhatsAppWebhookController::class, 'receive']);
 });
 
 Route::fallback(static fn () => response()->json([

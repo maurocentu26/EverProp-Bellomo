@@ -35,7 +35,7 @@ services:
   everprop-api-nginx:
     image: nginxinc/nginx-unprivileged:1.28-alpine
     container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-nginx
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       everprop-api-php:
         condition: service_healthy
@@ -76,7 +76,7 @@ services:
       target: development
     image: ${EVERPROP_PHP_IMAGE:-everprop-api-php:local}
     container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-php
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       everprop-api-init:
         condition: service_completed_successfully
@@ -113,7 +113,7 @@ services:
   everprop-api-worker:
     image: ${EVERPROP_PHP_IMAGE:-everprop-api-php:local}
     container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-worker
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       everprop-api-php:
         condition: service_healthy
@@ -155,7 +155,7 @@ services:
   everprop-api-mysql:
     image: mysql:8.4
     container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-mysql
-    restart: unless-stopped
+    restart: "no"
     environment:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
       TZ: UTC
@@ -190,7 +190,7 @@ services:
   everprop-api-redis:
     image: redis:8.2-alpine
     container_name: ${EVERPROP_RESOURCE_PREFIX:-everprop-api}-redis
-    restart: unless-stopped
+    restart: "no"
     command: ["redis-server", "--aclfile", "/run/secrets/redis_acl", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     volumes:
       - everprop-api-redis-data:/data

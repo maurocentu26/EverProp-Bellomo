@@ -2,6 +2,7 @@
 
 namespace App\Domain\Identity\Http\Controllers;
 
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Identity\Policies\WebPushPolicy;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
@@ -26,9 +27,13 @@ final class WebPushController extends Controller
     public function config(Request $request): JsonResponse
     {
         $user = $this->owner($request);
-        $hashes = DB::table('web_push_subscriptions')->where('tenant_id', $this->tenantContext->id())->where('user_id', $user->id)->pluck('endpoint_hash');
+        $rows = DB::table('web_push_subscriptions')->where('tenant_id', $this->tenantContext->id())->where('user_id', $user->id)->get(['endpoint_hash', 'out_of_hours']);
 
-        return response()->json(['subscriptionHashes' => $hashes, 'publicKey' => config('webpush.public_key'), 'enabled' => (bool) (config('webpush.public_key') && config('webpush.private_key') && config('webpush.subject'))]);
+        return response()->json(['subscriptionHashes' => $rows->pluck('endpoint_hash'),
+            // EVP-L02: per device, whether alerts still arrive outside the tenant's business hours.
+            'outOfHours' => $rows->mapWithKeys(fn ($r) => [$r->endpoint_hash => (bool) $r->out_of_hours]),
+            'businessHoursConfigured' => app(BusinessHours::class)->settings($this->tenantContext->id())['schedule'] !== null,
+            'publicKey' => config('webpush.public_key'), 'enabled' => (bool) (config('webpush.public_key') && config('webpush.private_key') && config('webpush.subject'))]);
     }
 
     public function store(Request $request): JsonResponse
@@ -49,6 +54,19 @@ final class WebPushController extends Controller
         DB::table('web_push_subscriptions')->updateOrInsert(['tenant_id' => $this->tenantContext->id(), 'user_id' => $user->id, 'endpoint_hash' => $hash], ['subscription' => Crypt::encryptString(json_encode($data)), 'created_at' => now(), 'updated_at' => now()]);
 
         return response()->json(['status' => 'subscribed']);
+    }
+
+    /** EVP-L02: this device's choice to receive alerts outside business hours. Only the device's own owner. */
+    public function preferences(Request $request): JsonResponse
+    {
+        $user = $this->owner($request);
+        $data = $request->validate(['endpoint' => 'required|string|max:2048', 'out_of_hours' => 'required|boolean']);
+        $updated = DB::table('web_push_subscriptions')->where('tenant_id', $this->tenantContext->id())->where('user_id', $user->id)
+            ->where('endpoint_hash', hash('sha256', $data['endpoint']))->update(['out_of_hours' => $data['out_of_hours'] ? 1 : 0, 'updated_at' => now()]);
+        abort_if($updated === 0 && ! DB::table('web_push_subscriptions')->where('tenant_id', $this->tenantContext->id())
+            ->where('user_id', $user->id)->where('endpoint_hash', hash('sha256', $data['endpoint']))->exists(), 404);
+
+        return response()->json(['out_of_hours' => (bool) $data['out_of_hours']]);
     }
 
     public function destroy(Request $request): JsonResponse

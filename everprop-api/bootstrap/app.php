@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        // The chat widget is served from the panel origin (a Sanctum stateful domain) but authenticates with
+        // a bearer session token and sends no cookies (credentials: omit); CSRF protects cookie sessions only.
+        // Without this, every widget POST from the panel origin gets 419 outside tests.
+        $middleware->validateCsrfTokens(except: ['api/v1/public/chat/sessions', 'api/v1/public/chat/messages']);
         $middleware->trustProxies(
             headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO,
         );

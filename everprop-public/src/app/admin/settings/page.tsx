@@ -4,6 +4,9 @@ import { useCurrentSession } from "@/hooks/use-current-session";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { PanelTextSizeControl } from "@/components/theme/PanelTextSize";
 import { PushPreferences } from "@/components/admin/PushPreferences";
+import { WhatsAppConnect } from "@/components/admin/WhatsAppConnect";
+import { AiSettings } from "@/components/admin/AiSettings";
+import { BusinessHoursSettings } from "@/components/admin/BusinessHoursSettings";
 export default function SettingsPage() {
   const { user } = useCurrentSession();
   return <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
@@ -18,6 +21,9 @@ export default function SettingsPage() {
       <div className="flex items-center justify-between gap-4 pt-4"><div><h3 className="text-sm font-medium">Tamaño del texto</h3><p className="mt-1 text-sm text-muted-foreground">Actual o Grande, un 20 % mayor.</p></div><PanelTextSizeControl /></div>
     </section>
     <PushPreferences />
+    <WhatsAppConnect />
+    <AiSettings />
+    <BusinessHoursSettings />
     <Link href="/admin/notifications" className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold hover:bg-muted">Ver mis notificaciones</Link>
   </div>;
 }

@@ -10,4 +10,8 @@ return [
         explode(',', (string) env('TRUSTED_HOSTS', '')),
     ))),
     'local_header' => 'X-Everprop-Tenant',
+    // Signed channel from the panel (S02): the panel proxy asserts the host the user typed, signed with this
+    // shared secret, so one API serves many tenant domains. Empty = signed hosts are rejected.
+    'panel_signing_key' => (string) env('TENANT_PANEL_SIGNING_KEY', ''),
+    'panel_signature_ttl' => (int) env('TENANT_PANEL_SIGNATURE_TTL', 60),
 ];

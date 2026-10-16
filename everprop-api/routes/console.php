@@ -12,6 +12,8 @@ Schedule::command('everprop:collections:notify')
 // each installment once, so a missed run is caught up by the next one.
 Schedule::command('everprop:collections:notify-upcoming')->hourly()->withoutOverlapping();
 
+Schedule::command('everprop:conversations:reconcile')->everyMinute()->withoutOverlapping();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

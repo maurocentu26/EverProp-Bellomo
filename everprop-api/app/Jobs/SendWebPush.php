@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Identity\Policies\WebPushPolicy;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Domain\Tenancy\TenantContext;
@@ -45,7 +46,9 @@ final class SendWebPush implements ShouldQueue
             return;
         }
         $sender = app(WebPush::class);
-        $rows = DB::table('web_push_subscriptions')->where('tenant_id', $context->id())->where('user_id', $user->id)->get();
+        $rows = DB::table('web_push_subscriptions')->where('tenant_id', $context->id())->where('user_id', $user->id)
+            // EVP-L02: outside business hours only devices that chose to keep receiving; the bell still has it.
+            ->when(! app(BusinessHours::class)->isOpen($context->id()), fn ($q) => $q->where('out_of_hours', 1))->get();
         foreach ($rows as $row) {
             $subscription = Subscription::create(json_decode(Crypt::decryptString($row->subscription), true));
             // Lock-screen payload deliberately excludes client names and contact details.
@@ -60,11 +63,24 @@ final class SendWebPush implements ShouldQueue
     }
 
     /**
+     * Conversation alerts open that chat and share a tag per conversation, so a device shows one
+     * pending alert per client instead of a pile. Only same-origin /admin paths are honored.
+     *
      * @param  array<string, mixed>  $data
      * @return array{title: string, body: string, tag: string, url: string}
      */
     public function payload(string $title, string $notificationId, array $data): array
     {
+        if (($data['event_type'] ?? null) === 'CONVERSATION_NEEDS_ATTENTION' && is_string($data['conversation_id'] ?? null)
+            && preg_match('/^[0-9a-f-]{36}$/i', $data['conversation_id']) === 1) {
+            return ['title' => $title, 'body' => 'Un cliente espera respuesta. Abrí la conversación para atenderlo.',
+                'tag' => 'conversation-'.$data['conversation_id'], 'url' => '/admin/conversaciones?c='.$data['conversation_id']];
+        }
+
+        if (($data['event_type'] ?? null) === 'INTEGRATION_REVOKED') {
+            return ['title' => $title, 'body' => 'WhatsApp se desconectó. Volvé a conectarlo en Configuración.', 'tag' => 'integration-revoked', 'url' => '/admin/settings#whatsapp'];
+        }
+
         return ['title' => $title, 'body' => 'Tenés una nueva notificación comercial. Abrí el panel para verla.', 'tag' => $notificationId, 'url' => '/admin/notifications'];
     }
 }

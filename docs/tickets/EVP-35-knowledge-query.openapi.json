@@ -1,0 +1,275 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "EVP-35 — consulta de conocimiento (propuesta, no implementada)",
+    "version": "0.1.0",
+    "description": "Endpoint servidor a servidor. Tenant resuelto por credencial dedicada; PUBLIC fijo. No genera texto ni ejecuta acciones."
+  },
+  "paths": {
+    "/api/v1/public/knowledge/query": {
+      "post": {
+        "operationId": "queryPublicKnowledge",
+        "security": [
+          {
+            "KnowledgeServiceToken": []
+          }
+        ],
+        "description": "JSON máximo8192 bytes. Tenant, aprobación, PUBLIC, vigencia y revocación filtrados antes/después de recuperar. Proyecto validado dentro del tenant. Rechazar campos adicionales. No habilitar sin middleware de credential binding. Si project_id existe, devolver solo ese proyecto y documentos generales del tenant; un proyecto ajeno/inexistente devuelve el mismo404. Contenido requiere curación pública previa, PUBLIC no es un detector de PII.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  },
+                  "project_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "top_k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4,
+                    "default": 4
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Consulta válida; no_match tiene sources vacío.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Credencial sin alcance permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Cuerpo mayor a8192 bytes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validación fallida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Cuota excedida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Recuperación no disponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Proyecto inexistente o ajeno al tenant; respuesta indistinguible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "KnowledgeServiceToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token dedicado read:public-knowledge limitado a tenant en servidor; hash, rotación/revocación. Nunca NEXT_PUBLIC ni token admin."
+      }
+    },
+    "schemas": {
+      "Source": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "document_id",
+          "version",
+          "title",
+          "excerpt",
+          "valid_until"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "document_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 1500
+          },
+          "valid_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "QueryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "mode",
+          "status",
+          "sources"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "lexical",
+              "hybrid",
+              "lexical_fallback"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "no_match"
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error",
+          "request_id"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "unauthorized",
+              "forbidden",
+              "invalid_request",
+              "rate_limited",
+              "unavailable",
+              "not_found"
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "maxLength": 100
+          }
+        }
+      }
+    }
+  }
+}
