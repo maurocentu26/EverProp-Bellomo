@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BookOpenCheck, Plus, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { BookOpenCheck, Gauge, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import {
@@ -78,9 +79,16 @@ export function KnowledgeManager() {
             Preguntas frecuentes, financiación y promociones. El asistente solo usa lo aprobado y vigente, y nunca saca de acá precios ni disponibilidad: eso lo lee del inventario.
           </p>
         </div>
-        <button type="button" onClick={() => void refresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold">
-          <RefreshCw className="h-4 w-4" aria-hidden /> Actualizar
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {user?.apiRole === "SUPER_ADMIN" && (
+            <Link href="/admin/conocimiento/uso" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold">
+              <Gauge className="h-4 w-4" aria-hidden /> Uso de la IA
+            </Link>
+          )}
+          <button type="button" onClick={() => void refresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold">
+            <RefreshCw className="h-4 w-4" aria-hidden /> Actualizar
+          </button>
+        </div>
       </header>
 
       {canWrite && (

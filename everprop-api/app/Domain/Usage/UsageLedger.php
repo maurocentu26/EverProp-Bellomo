@@ -71,7 +71,7 @@ final class UsageLedger
             ->sum(DB::raw("CASE WHEN status = 'COMMITTED' THEN actual_micros ELSE reserved_micros END"));
     }
 
-    private function tenantCap(int $tenantId): int
+    public function tenantCap(int $tenantId): int
     {
         $settings = json_decode((string) DB::table('tenants')->where('id', $tenantId)->value('settings_json'), true) ?: [];
 

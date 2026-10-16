@@ -27,6 +27,7 @@ use App\Domain\Inventory\Http\Controllers\AdminPropertyFeatureController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyMediaController;
 use App\Domain\Inventory\Http\Controllers\PublicProjectController;
 use App\Domain\Inventory\Http\Controllers\PublicPropertyController;
+use App\Domain\Usage\Http\AdminUsageController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['tenant', 'throttle:login'])->group(function (): void {
@@ -103,6 +104,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
         Route::get('/business-hours', [AdminBusinessHoursController::class, 'show']);
         Route::put('/business-hours', [AdminBusinessHoursController::class, 'update'])->middleware('throttle:30,1');
 
+        Route::get('/assistant/usage', [AdminUsageController::class, 'show']);
         Route::get('/knowledge', [AdminKnowledgeController::class, 'index']);
         Route::post('/knowledge', [AdminKnowledgeController::class, 'store']);
         Route::post('/knowledge/{document}/approve', [AdminKnowledgeController::class, 'approve'])->whereUuid('document');

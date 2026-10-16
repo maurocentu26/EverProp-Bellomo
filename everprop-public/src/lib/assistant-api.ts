@@ -71,3 +71,20 @@ export const confirmVisitRequest = (id: string, scheduledAtIso: string, notes?: 
 
 export const declineVisitRequest = (id: string) =>
   apiFetch(`/api/v1/admin/visit-requests/${encodeURIComponent(id)}/decline`, { method: "POST" });
+
+/** EVP-23: this tenant's AI spend for a month (never other tenants' or the platform total). */
+export type AssistantUsageKind = { runs: number; input_tokens: number; output_tokens: number; blocked_by_cap: number };
+export type AssistantUsage = {
+  period: string;
+  timezone: string;
+  spent_usd: number;
+  cap_usd: number;
+  used_pct: number | null;
+  open_reservations_usd: number;
+  by_day: { date: string; usd: number }[];
+  assistant: AssistantUsageKind;
+  copilot: Omit<AssistantUsageKind, "blocked_by_cap"> & { spent_usd: number; cap_usd: number };
+};
+
+export const getAssistantUsage = (period?: string) =>
+  apiFetch<{ data: AssistantUsage }>(`/api/v1/admin/assistant/usage${period ? `?period=${encodeURIComponent(period)}` : ""}`);
