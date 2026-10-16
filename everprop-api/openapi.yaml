@@ -2405,6 +2405,208 @@
                 }
             }
         },
+        "/api/v1/admin/conversations-ai": {
+            "get": {
+                "summary": "Read tenant conversation AI mode (tenant admin only)",
+                "operationId": "getConversationAiSettings",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Persisted tenant choice and effective platform gates. mode is derived from the existing flags.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "mode",
+                                                "ai_enabled",
+                                                "copilot_enabled",
+                                                "ai_available",
+                                                "copilot_available"
+                                            ],
+                                            "properties": {
+                                                "mode": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "AUTONOMOUS",
+                                                        "COPILOT",
+                                                        "DISABLED"
+                                                    ]
+                                                },
+                                                "ai_enabled": {
+                                                    "type": "boolean"
+                                                },
+                                                "copilot_enabled": {
+                                                    "type": "boolean"
+                                                },
+                                                "ai_available": {
+                                                    "type": "boolean"
+                                                },
+                                                "copilot_available": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Change tenant conversation AI mode atomically (tenant admin only)",
+                "operationId": "updateConversationAiSettings",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "description": "Tenant is resolved on the server. mode AUTONOMOUS sets ai_enabled=true and copilot_enabled=true; COPILOT sets false/true; DISABLED sets false/false. Platform gates still win. Switching automatic replies off hands recent bot-controlled conversations to a human and invalidates pending bot replies. Legacy flag-only updates remain supported. Mode cannot be combined with either legacy flag. Unrelated tenant settings are preserved; effective changes are audited.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "AUTONOMOUS",
+                                            "COPILOT",
+                                            "DISABLED"
+                                        ]
+                                    },
+                                    "ai_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "copilot_enabled": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "oneOf": [
+                                    {
+                                        "required": [
+                                            "mode"
+                                        ],
+                                        "not": {
+                                            "anyOf": [
+                                                {
+                                                    "required": [
+                                                        "ai_enabled"
+                                                    ]
+                                                },
+                                                {
+                                                    "required": [
+                                                        "copilot_enabled"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "not": {
+                                            "required": [
+                                                "mode"
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Persisted tenant choice and effective platform gates. mode is derived from the existing flags.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "mode",
+                                                "ai_enabled",
+                                                "copilot_enabled",
+                                                "ai_available",
+                                                "copilot_available"
+                                            ],
+                                            "properties": {
+                                                "mode": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "AUTONOMOUS",
+                                                        "COPILOT",
+                                                        "DISABLED"
+                                                    ]
+                                                },
+                                                "ai_enabled": {
+                                                    "type": "boolean"
+                                                },
+                                                "copilot_enabled": {
+                                                    "type": "boolean"
+                                                },
+                                                "ai_available": {
+                                                    "type": "boolean"
+                                                },
+                                                "copilot_available": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/CsrfMismatch"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ]
+            }
+        },
         "/api/v1/admin/users": {
             "get": {
                 "summary": "List tenant users",

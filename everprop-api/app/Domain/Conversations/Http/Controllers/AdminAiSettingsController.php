@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 /**
  * Per-tenant switch for the assistant and the copilot (EVP-L01): the tenant admin turns them on or off without a
@@ -29,7 +30,17 @@ final class AdminAiSettingsController extends Controller
     public function update(Request $request): JsonResponse
     {
         $user = $this->admin($request);
-        $data = $request->validate(['ai_enabled' => 'sometimes|boolean', 'copilot_enabled' => 'sometimes|boolean']);
+        $data = $request->validate([
+            'mode' => 'sometimes|required|in:AUTONOMOUS,COPILOT,DISABLED',
+            'ai_enabled' => ['sometimes', 'boolean', Rule::prohibitedIf($request->has('mode'))],
+            'copilot_enabled' => ['sometimes', 'boolean', Rule::prohibitedIf($request->has('mode'))],
+        ]);
+        if (isset($data['mode'])) {
+            $data = [
+                'ai_enabled' => $data['mode'] === 'AUTONOMOUS',
+                'copilot_enabled' => $data['mode'] !== 'DISABLED',
+            ];
+        }
         $tenantId = app(TenantContext::class)->id();
 
         $turnedOff = DB::transaction(function () use ($tenantId, $user, $data, $request): bool {
@@ -78,7 +89,7 @@ final class AdminAiSettingsController extends Controller
             ->each(fn ($id) => rescue(fn () => InboundMessageService::handOffOrphanedBotConversation($tenantId, (int) $id)));
     }
 
-    /** @return array{ai_enabled: bool, copilot_enabled: bool, ai_available: bool, copilot_available: bool} */
+    /** @return array{mode: string, ai_enabled: bool, copilot_enabled: bool, ai_available: bool, copilot_available: bool} */
     private function state(int $tenantId): array
     {
         $settings = json_decode((string) DB::table('tenants')->where('id', $tenantId)->value('settings_json'), true) ?: [];
@@ -86,6 +97,7 @@ final class AdminAiSettingsController extends Controller
 
         return [
             // What the tenant chose, and whether the platform lets it take effect.
+            'mode' => ($current['ai_enabled'] ?? false) === true ? 'AUTONOMOUS' : (($current['copilot_enabled'] ?? false) === true ? 'COPILOT' : 'DISABLED'),
             'ai_enabled' => ($current['ai_enabled'] ?? false) === true,
             'copilot_enabled' => ($current['copilot_enabled'] ?? false) === true,
             'ai_available' => InboundMessageService::aiAvailable(),
