@@ -2,6 +2,8 @@
 
 ## Implemented scope
 
+Collection email preview and an explicitly enabled, operator-triggered SMTP delivery command are described in [collections-email.md](collections-email.md). Internal notifications remain separate from client email delivery.
+
 Fixed payment agreements, monthly installment schedules, partial payments, immutable payment history with administrative reversals, tenant/advisor authorization, server-side balances and daily deduplicated notifications. All four consumers (collections page, lead financing section, calculator and advisor cockpit) use `/api/v1/admin` in API mode. Mock mode remains explicitly separate. Successful changes refresh other tabs immediately; other devices refresh every 30 seconds or on window focus.
 
 Tables: `payment_agreements`, `installments`, `installment_payments`. Composite tenant foreign keys prevent cross-tenant relationships. Money is stored as `DECIMAL(18,2)` and schedule/payment arithmetic uses integer cents. UI display numbers are never authoritative for writes. Tenant, current advisor and principal balance are derived on the server. Assignment follows the lead's current assigned user. The live schema contract includes the baseline and all current forward changes: 45 tables, 42 tenant tables and 105 foreign keys; the baseline file/hash is unchanged.

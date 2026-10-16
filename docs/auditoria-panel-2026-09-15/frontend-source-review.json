@@ -1,0 +1,3601 @@
+[
+  {
+    "file": "everprop-public/src/app/activar/page.tsx",
+    "symbols": [
+      "ActivatePage",
+      "submit"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "@/lib/everprop-api"
+    ],
+    "review": [
+      {
+        "line": 21,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 21,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 23,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/agenda/page.tsx",
+    "symbols": [
+      "AgendaPage"
+    ],
+    "imports": [
+      "@/hooks/use-current-session",
+      "@/components/admin/CalendarAgenda",
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 26,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/asesores/page.tsx",
+    "symbols": [
+      "Member",
+      "AdvisorsPage",
+      "submit"
+    ],
+    "imports": [
+      "react",
+      "@/hooks/use-current-session",
+      "@/lib/everprop-api",
+      "lucide-react"
+    ],
+    "review": [
+      {
+        "line": 45,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 46,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 47,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 48,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 49,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 57,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/cobranzas/layout.tsx",
+    "symbols": [
+      "CollectionsLayout"
+    ],
+    "imports": [
+      "next/navigation",
+      "@/lib/release-visibility"
+    ],
+    "review": [],
+    "lines": 8,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/cobranzas/page.tsx",
+    "symbols": [
+      "FilterStatus",
+      "CobranzasPage"
+    ],
+    "imports": [
+      "@/components/admin/CollectionsLoading",
+      "@/components/admin/InstallmentPaymentHistory",
+      "@/components/admin/ExportLocalCollections",
+      "@/lib/collections-api",
+      "@/lib/admin-storage",
+      "react",
+      "next/link",
+      "next/navigation",
+      "@/hooks/use-current-session",
+      "@/data/admin-sample",
+      "@/lib/collections-api",
+      "@/hooks/use-collections",
+      "@/hooks/use-collection-action",
+      "@/lib/data-mode",
+      "@/lib/installment-notifications",
+      "@/lib/notifications",
+      "sonner",
+      "lucide-react",
+      "@/components/ui/avatar"
+    ],
+    "review": [
+      {
+        "line": 608,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 617,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 968,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 981,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 998,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 1012,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 1064,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 1071,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 1092,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 1104,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 1120,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 1133,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 1153,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 1164,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 1190,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 1210,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 1226,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 1277,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/comercial/page.tsx",
+    "symbols": [
+      "CommercialAssetsPage",
+      "loadData"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "next/navigation",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/deferred-effect",
+      "@/lib/utils",
+      "@/components/ui/button",
+      "@/hooks/use-current-session"
+    ],
+    "review": [],
+    "lines": 228,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/desarrollos/page.tsx",
+    "symbols": [
+      "DataState",
+      "ProjectCard",
+      "DesarrollosPage",
+      "loadData"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/components/ui/button",
+      "@/data/admin-sample",
+      "@/lib/auth-context",
+      "@/lib/admin-storage",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/utils",
+      "@/hooks/use-bellomo-materials",
+      "@/lib/bellomo-policy"
+    ],
+    "review": [],
+    "lines": 214,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/desarrollos/[id]/page.tsx",
+    "symbols": [
+      "ProjectDetailView",
+      "fetchProject"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/utils",
+      "@/components/ui/button",
+      "@/components/admin/InventoryMatrix",
+      "@/components/admin/GenerateLotsModal",
+      "@/hooks/use-current-session",
+      "@/components/admin/BellomoResources"
+    ],
+    "review": [],
+    "lines": 217,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/inventory-matrix/page.tsx",
+    "symbols": [
+      "GlobalInventoryMatrixPage",
+      "loadData"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/deferred-effect",
+      "@/components/admin/InventoryMatrix",
+      "@/hooks/use-current-session",
+      "@/components/ui/button",
+      "@/components/admin/GenerateLotsModal"
+    ],
+    "review": [],
+    "lines": 150,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/layout.tsx",
+    "symbols": [
+      "AdminRootLayout"
+    ],
+    "imports": [
+      "@/components/admin/MainLayout",
+      "@/lib/dashboard-context"
+    ],
+    "review": [],
+    "lines": 11,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/leads/new/page.tsx",
+    "symbols": [
+      "NewLeadPage"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "next/link",
+      "lucide-react",
+      "sonner",
+      "@/components/admin/NewLeadForm",
+      "@/hooks/use-current-session",
+      "@/components/ui/button"
+    ],
+    "review": [],
+    "lines": 64,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/leads/page.tsx",
+    "symbols": [
+      "LeadStageFilter",
+      "AssetTypeFilter",
+      "FollowUpFilter",
+      "AllLeadsPage",
+      "fetchLeads",
+      "handleStageChange",
+      "handleConfirmFollowUp",
+      "handleConfirmStageUpdate"
+    ],
+    "imports": [
+      "@/lib/commercial-queue",
+      "@/lib/lead-follow-up",
+      "react",
+      "@/components/admin/LeadTable",
+      "@/components/ui/button",
+      "lucide-react",
+      "next/link",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/lead-follow-up",
+      "@/lib/deferred-effect",
+      "@/components/ui/input-group",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/utils",
+      "sonner",
+      "@/lib/dashboard-context",
+      "@/hooks/use-current-session",
+      "@/components/admin/LeadFollowUpEditor",
+      "@/components/admin/LeadStageUpdateModal"
+    ],
+    "review": [],
+    "lines": 477,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/leads/[id]/edit/page.tsx",
+    "symbols": [
+      "Props",
+      "LeadEditPage"
+    ],
+    "imports": [
+      "react",
+      "@/components/admin/NewLeadForm"
+    ],
+    "review": [],
+    "lines": 19,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/leads/[id]/page.tsx",
+    "symbols": [
+      "Props",
+      "LeadDetailPage"
+    ],
+    "imports": [
+      "@/components/admin/LeadDetailView"
+    ],
+    "review": [],
+    "lines": 12,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/materiales/page.tsx",
+    "symbols": [
+      "MaterialesRedirect"
+    ],
+    "imports": [
+      "next/navigation"
+    ],
+    "review": [],
+    "lines": 7,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/notifications/page.tsx",
+    "symbols": [
+      "NotificationsPage",
+      "update"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "@/components/admin/PushPreferences",
+      "lucide-react",
+      "@/hooks/use-current-session",
+      "@/lib/notifications"
+    ],
+    "review": [],
+    "lines": 55,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/page.tsx",
+    "symbols": [
+      "AdminPage"
+    ],
+    "imports": [
+      "next/link",
+      "@/components/admin/DashboardStats",
+      "@/components/admin/EnterpriseDashboard",
+      "@/data/admin-sample",
+      "@/components/admin/LeadKanban",
+      "@/components/admin/PropertyList",
+      "@/components/admin/MonthlyAgendaSummary",
+      "@/components/admin/dashboard-widgets/QuickStatsBanner",
+      "@/components/admin/dashboard-widgets/PipelineFunnelWidget",
+      "@/components/admin/dashboard-widgets/NextVisitCountdown",
+      "lucide-react",
+      "@/lib/utils",
+      "@/lib/dashboard-context",
+      "@/hooks/use-current-session",
+      "framer-motion",
+      "@/components/admin/ApiIntegrationStatus",
+      "@/lib/data-mode",
+      "react",
+      "@/components/admin/AdvisorFollowUpPriority",
+      "@/lib/everprop-api",
+      "@/components/admin/advisor/AdvisorCockpit"
+    ],
+    "review": [],
+    "lines": 178,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/properties/new/page.tsx",
+    "symbols": [
+      "NewPropertyPage"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "next/link",
+      "lucide-react",
+      "sonner",
+      "@/components/admin/NewPropertyForm",
+      "@/hooks/use-current-session",
+      "@/components/ui/button"
+    ],
+    "review": [],
+    "lines": 62,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/properties/page.tsx",
+    "symbols": [
+      "DataState",
+      "AllPropertiesPage",
+      "handleClickOutside",
+      "loadData"
+    ],
+    "imports": [
+      "react",
+      "@/components/admin/PropertyList",
+      "@/components/ui/button",
+      "lucide-react",
+      "next/link",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/utils",
+      "@/lib/everprop-api",
+      "@/lib/auth-context",
+      "@/lib/data-mode",
+      "@/hooks/use-current-session"
+    ],
+    "review": [],
+    "lines": 394,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/properties/[id]/page.tsx",
+    "symbols": [
+      "Props",
+      "PropertyDetailPage"
+    ],
+    "imports": [
+      "@/components/admin/PropertyDetailView"
+    ],
+    "review": [],
+    "lines": 12,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/settings/layout.tsx",
+    "symbols": [
+      "SettingsLayout"
+    ],
+    "imports": [
+      "next/navigation",
+      "@/lib/release-visibility"
+    ],
+    "review": [],
+    "lines": 8,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin/settings/page.tsx",
+    "symbols": [
+      "SettingsPage"
+    ],
+    "imports": [
+      "next/link",
+      "@/hooks/use-current-session",
+      "@/components/theme/ThemeToggle",
+      "@/components/theme/PanelTextSize",
+      "@/components/admin/PushPreferences"
+    ],
+    "review": [],
+    "lines": 24,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/admin-design.css",
+    "symbols": [],
+    "imports": [],
+    "review": [],
+    "lines": 277,
+    "reachableFromNextEntry": null
+  },
+  {
+    "file": "everprop-public/src/app/api/bellomo/assets/[id]/route.ts",
+    "symbols": [
+      "GET"
+    ],
+    "imports": [
+      "node:fs/promises",
+      "node:path",
+      "@/lib/server/bellomo-materials",
+      "@/lib/bellomo-policy"
+    ],
+    "review": [],
+    "lines": 25,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/api/bellomo/materials/route.ts",
+    "symbols": [
+      "GET"
+    ],
+    "imports": [
+      "@/lib/server/bellomo-materials"
+    ],
+    "review": [],
+    "lines": 8,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/api/notifications/route.ts",
+    "symbols": [
+      "GET",
+      "POST",
+      "PATCH",
+      "DELETE"
+    ],
+    "imports": [
+      "next/server",
+      "@/lib/server/notification-emitter"
+    ],
+    "review": [],
+    "lines": 68,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/api/notifications/stream/route.ts",
+    "symbols": [
+      "GET"
+    ],
+    "imports": [
+      "@/lib/server/notification-emitter"
+    ],
+    "review": [],
+    "lines": 78,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/globals.css",
+    "symbols": [],
+    "imports": [],
+    "review": [],
+    "lines": 325,
+    "reachableFromNextEntry": null
+  },
+  {
+    "file": "everprop-public/src/app/layout.tsx",
+    "symbols": [
+      "RootLayout"
+    ],
+    "imports": [
+      "next",
+      "./globals.css",
+      "./admin-design.css",
+      "./panel-text-size.css",
+      "next/font/local",
+      "@/lib/utils",
+      "@/lib/auth-context",
+      "@/components/theme/ThemeProvider"
+    ],
+    "review": [],
+    "lines": 54,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/login/page.tsx",
+    "symbols": [
+      "LoginPage"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "lucide-react",
+      "@/data/auth-sample",
+      "@/lib/auth-context",
+      "@/lib/data-mode",
+      "@/lib/utils"
+    ],
+    "review": [
+      {
+        "line": 192,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 203,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 233,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/manifest.ts",
+    "symbols": [
+      "manifest"
+    ],
+    "imports": [
+      "next"
+    ],
+    "review": [],
+    "lines": 5,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/page.tsx",
+    "symbols": [
+      "Home"
+    ],
+    "imports": [
+      "next/navigation"
+    ],
+    "review": [],
+    "lines": 6,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/app/panel-text-size.css",
+    "symbols": [],
+    "imports": [],
+    "review": [],
+    "lines": 149,
+    "reachableFromNextEntry": null
+  },
+  {
+    "file": "everprop-public/src/App.tsx",
+    "symbols": [
+      "App"
+    ],
+    "imports": [
+      "react-router-dom",
+      "./layouts/MainLayout"
+    ],
+    "review": [],
+    "lines": 38,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminFullscreenMenu.tsx",
+    "symbols": [
+      "AdminFullscreenMenuProps",
+      "AdminFullscreenMenu"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/components/admin/AdminMenuAccount",
+      "@/components/admin/AdminMenuBrand",
+      "@/components/admin/AdminNavigationMenu",
+      "@/components/theme/ThemeToggle",
+      "@/components/ui/button",
+      "@/components/ui/dialog"
+    ],
+    "review": [],
+    "lines": 67,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminMenuAccount.tsx",
+    "symbols": [
+      "AdminMenuAccountProps",
+      "AdminMenuAccount"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/components/ui/avatar",
+      "@/components/ui/button",
+      "@/lib/auth-context",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 76,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminMenuBrand.tsx",
+    "symbols": [
+      "AdminMenuBrandProps",
+      "AdminMenuBrand"
+    ],
+    "imports": [
+      "next/link",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 39,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminNavbar.tsx",
+    "symbols": [
+      "Props",
+      "AdminNavbar"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "framer-motion",
+      "lucide-react",
+      "sonner",
+      "@/components/ui/avatar",
+      "@/components/ui/button",
+      "@/components/ui/sheet",
+      "@/components/admin/AdminFullscreenMenu",
+      "@/components/admin/navbar/GlobalSearch",
+      "@/hooks/use-current-session",
+      "@/hooks/use-mobile",
+      "@/lib/notifications",
+      "@/lib/everprop-api",
+      "@/lib/data-mode",
+      "@/lib/utils",
+      "@/components/ui/sidebar",
+      "@/components/theme/ThemeToggle",
+      "@/components/theme/PanelTextSize",
+      "@/components/admin/NotificationPermissionPrompt",
+      "@/lib/notification-audio"
+    ],
+    "review": [],
+    "lines": 433,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdminNavigationMenu.tsx",
+    "symbols": [
+      "AdminNavigationMenuProps",
+      "AdminNavigationMenu"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/hooks/use-current-session",
+      "@/lib/data-mode",
+      "@/lib/utils",
+      "@/components/sidebar/navigation",
+      "@/components/sidebar/quick-actions",
+      "@/components/sidebar/use-sidebar-active"
+    ],
+    "review": [],
+    "lines": 168,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/advisor/AdminMonthBalanceWidget.tsx",
+    "symbols": [
+      "AdminMonthBalanceWidgetProps",
+      "AdminMonthBalanceWidget"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/lead-follow-up",
+      "@/lib/utils",
+      "@/components/ui/button"
+    ],
+    "review": [
+      {
+        "line": 270,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 281,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 427,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/advisor/AdvisorCockpit.tsx",
+    "symbols": [
+      "AdvisorCockpit",
+      "loadData",
+      "handleStageChange",
+      "handleConfirmFollowUp",
+      "handleConfirmStageUpdate"
+    ],
+    "imports": [
+      "@/lib/release-visibility",
+      "@/hooks/use-collections",
+      "react",
+      "next/link",
+      "next/navigation",
+      "lucide-react",
+      "sonner",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/installment-notifications",
+      "@/lib/notifications",
+      "@/lib/commercial-queue",
+      "@/lib/lead-follow-up",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/hooks/use-current-session",
+      "@/components/admin/LeadFollowUpEditor",
+      "@/components/admin/LeadStageUpdateModal",
+      "@/components/admin/advisor/AdminMonthBalanceWidget",
+      "@/components/ui/avatar",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/lib/utils"
+    ],
+    "review": [
+      {
+        "line": 769,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 857,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 1104,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/AdvisorFollowUpPriority.tsx",
+    "symbols": [
+      "AdvisorFollowUpPriority"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/lead-follow-up",
+      "@/lib/auth-context",
+      "@/lib/deferred-effect"
+    ],
+    "review": [],
+    "lines": 77,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/AgendaView.tsx",
+    "symbols": [
+      "AgendaView"
+    ],
+    "imports": [
+      "@/components/admin/CalendarAgenda"
+    ],
+    "review": [],
+    "lines": 8,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/admin/ApiIntegrationStatus.tsx",
+    "symbols": [
+      "IntegrationState",
+      "ApiIntegrationStatus",
+      "inspectIntegration"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/ui/button",
+      "@/lib/auth-context",
+      "@/lib/everprop-api"
+    ],
+    "review": [],
+    "lines": 107,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/BellomoResources.tsx",
+    "symbols": [
+      "Resource",
+      "ResourceGrid",
+      "MaterialErrorNotice",
+      "ProjectMaterials"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/ui/dialog",
+      "@/hooks/use-bellomo-materials",
+      "@/lib/bellomo-policy"
+    ],
+    "review": [],
+    "lines": 80,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/CalendarAgenda.tsx",
+    "symbols": [
+      "AgendaItem",
+      "getMonthGrid",
+      "toKey",
+      "StatusBadge",
+      "PropertyTypeIcon",
+      "CalendarAgenda"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "framer-motion",
+      "lucide-react",
+      "@/components/ui/dialog",
+      "sonner",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/components/ui/button",
+      "@/hooks/use-current-session",
+      "@/lib/dashboard-context",
+      "@/data/admin-sample",
+      "@/data/auth-sample",
+      "@/lib/utils",
+      "@/lib/deferred-effect",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/lead-follow-up",
+      "@/components/admin/NewVisitModal"
+    ],
+    "review": [],
+    "lines": 783,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/CardLead.tsx",
+    "symbols": [
+      "PropertyLite",
+      "Props",
+      "getInitials",
+      "formatPrice",
+      "CardLead"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/lib/utils",
+      "@/components/ui/avatar",
+      "@/data/auth-sample",
+      "@/data/admin-sample",
+      "@/components/admin/LeadFollowUpStatus"
+    ],
+    "review": [],
+    "lines": 193,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/CollectionsLoading.tsx",
+    "symbols": [
+      "CollectionsLoading"
+    ],
+    "imports": [
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 11,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/CommercialHeatmapWidget.tsx",
+    "symbols": [
+      "Props",
+      "CommercialHeatmapWidget"
+    ],
+    "imports": [
+      "next/link",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 293,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/GlobalInventoryWidget.tsx",
+    "symbols": [
+      "Props",
+      "GlobalInventoryWidget"
+    ],
+    "imports": [
+      "next/link",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 88,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/NextVisitCountdown.tsx",
+    "symbols": [
+      "EnrichedVisit",
+      "useCountdown",
+      "TimeUnit",
+      "NextVisitCountdown"
+    ],
+    "imports": [
+      "react",
+      "framer-motion",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/hooks/use-current-session",
+      "@/lib/dashboard-context",
+      "lucide-react",
+      "@/lib/utils",
+      "next/link",
+      "@/lib/deferred-effect"
+    ],
+    "review": [],
+    "lines": 198,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/PipelineFunnelWidget.tsx",
+    "symbols": [
+      "Stage",
+      "PipelineFunnelWidget"
+    ],
+    "imports": [
+      "react",
+      "framer-motion",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/hooks/use-current-session",
+      "@/lib/dashboard-context",
+      "@/lib/utils",
+      "lucide-react",
+      "next/link",
+      "@/lib/deferred-effect"
+    ],
+    "review": [],
+    "lines": 121,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/ProjectsOverviewWidget.tsx",
+    "symbols": [
+      "Props",
+      "ProjectsOverviewWidget"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 56,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/dashboard-widgets/QuickStatsBanner.tsx",
+    "symbols": [
+      "AnimatedNumber",
+      "Stat",
+      "QuickStatsBanner"
+    ],
+    "imports": [
+      "react",
+      "framer-motion",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/hooks/use-current-session",
+      "@/lib/dashboard-context",
+      "lucide-react",
+      "@/lib/utils",
+      "@/lib/deferred-effect"
+    ],
+    "review": [],
+    "lines": 139,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/DashboardStats.tsx",
+    "symbols": [
+      "Props",
+      "DashboardStats"
+    ],
+    "imports": [
+      "react",
+      "@/components/admin/MetricCard",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/auth-context",
+      "@/lib/dashboard-context",
+      "@/data/auth-sample",
+      "@/lib/deferred-effect"
+    ],
+    "review": [
+      {
+        "line": 53,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 96,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/EditPropertyModal.tsx",
+    "symbols": [
+      "EditPropertyModalProps",
+      "EditPropertyModal"
+    ],
+    "imports": [
+      "react",
+      "@/components/ui/dialog",
+      "@/components/ui/button",
+      "@/components/ui/input",
+      "@/components/ui/textarea",
+      "@/components/ui/field",
+      "sonner",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/data-mode",
+      "@/lib/everprop-api"
+    ],
+    "review": [],
+    "lines": 293,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/EnterpriseDashboard.tsx",
+    "symbols": [
+      "EnterpriseDashboard",
+      "loadData"
+    ],
+    "imports": [
+      "react",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/deferred-effect",
+      "./dashboard-widgets/ProjectsOverviewWidget",
+      "./dashboard-widgets/GlobalInventoryWidget",
+      "./dashboard-widgets/CommercialHeatmapWidget"
+    ],
+    "review": [],
+    "lines": 87,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/ExportLocalCollections.tsx",
+    "symbols": [
+      "ExportLocalCollections",
+      "download"
+    ],
+    "imports": [
+      "sonner"
+    ],
+    "review": [],
+    "lines": 19,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/FinancingCalculator.tsx",
+    "symbols": [
+      "FinancingCalculatorProps",
+      "fmt",
+      "FinancingCalculator"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/lib/utils",
+      "@/lib/bellomo-financing",
+      "@/lib/collections-api",
+      "@/lib/data-mode",
+      "@/lib/installment-notifications",
+      "sonner"
+    ],
+    "review": [
+      {
+        "line": 399,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 419,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 778,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 794,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 807,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 840,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/GenerateLotsModal.tsx",
+    "symbols": [
+      "GenerateLotsModalProps",
+      "GenerateLotsModal",
+      "loadProjects"
+    ],
+    "imports": [
+      "react",
+      "@/components/ui/dialog",
+      "@/components/ui/button",
+      "@/components/ui/input",
+      "sonner",
+      "lucide-react",
+      "@/lib/everprop-api",
+      "@/lib/data-mode",
+      "@/data/admin-sample",
+      "@/data/admin-sample"
+    ],
+    "review": [
+      {
+        "line": 407,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 552,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/InstallmentPaymentHistory.tsx",
+    "symbols": [
+      "InstallmentPaymentHistory",
+      "refresh"
+    ],
+    "imports": [
+      "react",
+      "@/components/ui/dialog",
+      "@/lib/collections-api",
+      "@/hooks/use-collection-action",
+      "@/hooks/use-current-session",
+      "@/lib/installment-notifications",
+      "@/data/admin-sample"
+    ],
+    "review": [
+      {
+        "line": 47,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 55,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/InventoryMatrix.tsx",
+    "symbols": [
+      "InventoryMatrixProps",
+      "InventoryMatrix"
+    ],
+    "imports": [
+      "react",
+      "@/data/admin-sample",
+      "@/lib/utils",
+      "@/components/ui/sheet",
+      "@/components/ui/button",
+      "@/components/ui/badge",
+      "@/hooks/use-current-session",
+      "lucide-react",
+      "next/link"
+    ],
+    "review": [],
+    "lines": 231,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/kanban/KanbanCard.tsx",
+    "symbols": [
+      "KanbanCard"
+    ],
+    "imports": [
+      "react",
+      "@dnd-kit/sortable",
+      "@dnd-kit/utilities",
+      "@/data/admin-sample",
+      "@/components/admin/CardLead",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 49,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/kanban/KanbanColumn.tsx",
+    "symbols": [
+      "KanbanColumn"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@/lib/utils",
+      "./types"
+    ],
+    "review": [],
+    "lines": 64,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/kanban/types.ts",
+    "symbols": [
+      "Stage"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 13,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadAdvisorEditor.tsx",
+    "symbols": [
+      "LeadAdvisorEditorProps",
+      "LeadAdvisorEditor"
+    ],
+    "imports": [
+      "@/hooks/use-lead-advisors",
+      "react",
+      "lucide-react",
+      "@/components/ui/button",
+      "@/components/ui/dialog"
+    ],
+    "review": [
+      {
+        "line": 73,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 106,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadDetailView.tsx",
+    "symbols": [
+      "InterestEditorState",
+      "LeadDetailView",
+      "loadData",
+      "updateLeadData",
+      "handleSaveProfile",
+      "handleSaveInterest",
+      "handleDeleteInterest",
+      "handleScheduleVisit",
+      "handleReassignAgentConfirmed",
+      "handleSaveFollowUp",
+      "handleConfirmStageUpdate"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "sonner",
+      "@/data/admin-sample",
+      "@/data/auth-sample",
+      "@/lib/admin-storage",
+      "@/lib/lead-interests",
+      "@/lib/auth-context",
+      "@/lib/notifications",
+      "@/lib/lead-follow-up",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/deferred-effect",
+      "@/lib/utils",
+      "@/components/ui/button",
+      "@/components/ui/badge",
+      "@/components/ui/avatar",
+      "@/components/ui/dialog",
+      "@/components/admin/VisitManager",
+      "@/components/admin/FinancingCalculator",
+      "@/components/admin/LeadInterestEditor",
+      "@/components/admin/LeadProfileEditor",
+      "@/components/admin/LeadAdvisorEditor",
+      "@/components/admin/LeadFollowUpEditor",
+      "@/components/admin/LeadFollowUpStatus",
+      "@/components/admin/LeadFollowUpTimeline",
+      "@/components/admin/LeadStageUpdateModal",
+      "@/lib/release-visibility",
+      "@/components/admin/LeadFinancingAgreements"
+    ],
+    "review": [],
+    "lines": 768,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadFinancingAgreements.tsx",
+    "symbols": [
+      "LeadFinancingAgreementsProps",
+      "LeadFinancingAgreements"
+    ],
+    "imports": [
+      "@/components/admin/CollectionsLoading",
+      "@/components/admin/InstallmentPaymentHistory",
+      "react",
+      "next/link",
+      "@/data/admin-sample",
+      "@/lib/collections-api",
+      "@/hooks/use-collections",
+      "@/hooks/use-collection-action",
+      "@/lib/data-mode",
+      "@/lib/installment-notifications",
+      "sonner",
+      "lucide-react",
+      "@/components/ui/button"
+    ],
+    "review": [
+      {
+        "line": 425,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 437,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 453,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 501,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 502,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 509,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 520,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 533,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 546,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 565,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 576,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 590,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 605,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 656,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadFollowUpEditor.tsx",
+    "symbols": [
+      "LeadFollowUpEditorProps",
+      "LeadFollowUpEditor",
+      "handleSubmit"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/data/auth-sample",
+      "@/lib/data-mode",
+      "@/lib/auth-context",
+      "@/lib/lead-follow-up",
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/date-time-fields",
+      "@/components/ui/textarea",
+      "@/components/admin/QuickScheduleButtons"
+    ],
+    "review": [
+      {
+        "line": 159,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 190,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 308,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadFollowUpStatus.tsx",
+    "symbols": [
+      "LeadFollowUpStatusProps",
+      "LeadFollowUpStatus"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/lib/lead-follow-up",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 224,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadFollowUpTimeline.tsx",
+    "symbols": [
+      "LeadFollowUpTimelineProps",
+      "LeadFollowUpTimeline"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/data/auth-sample",
+      "@/lib/lead-follow-up",
+      "@/components/ui/dialog",
+      "@/components/ui/button",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 362,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadInterestEditor.tsx",
+    "symbols": [
+      "LeadInterestEditorProps",
+      "DraftInterest",
+      "LeadInterestEditor",
+      "handleSubmit"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "@/lib/data-mode",
+      "@/components/ui/textarea"
+    ],
+    "review": [
+      {
+        "line": 194,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 224,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 250,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 275,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 353,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadKanban.tsx",
+    "symbols": [
+      "LeadKanban",
+      "loadData"
+    ],
+    "imports": [
+      "react",
+      "@/data/admin-sample",
+      "@/components/admin/CardLead",
+      "@/lib/admin-storage",
+      "@/lib/lead-follow-up",
+      "@/hooks/use-current-session",
+      "@/lib/dashboard-context",
+      "./kanban/KanbanColumn",
+      "./kanban/KanbanCard",
+      "./kanban/types",
+      "@dnd-kit/core",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/deferred-effect"
+    ],
+    "review": [
+      {
+        "line": 200,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 220,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 308,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadProfileEditor.tsx",
+    "symbols": [
+      "LeadProfileEditorProps",
+      "LeadProfileEditor"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/textarea",
+      "@/data/admin-sample"
+    ],
+    "review": [
+      {
+        "line": 102,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      },
+      {
+        "line": 113,
+        "type": "control_requires_label_review",
+        "tag": "select"
+      }
+    ],
+    "lines": 161,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadStageUpdateModal.tsx",
+    "symbols": [
+      "StageOption",
+      "LeadStageUpdateModalProps",
+      "LeadStageUpdateModal"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "@/data/admin-sample",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 210,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/LeadTable.tsx",
+    "symbols": [
+      "LeadActionsProps",
+      "LeadActions",
+      "LeadTableProps",
+      "LeadTable"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/components/ui/button",
+      "@/components/ui/avatar",
+      "next/navigation",
+      "@/lib/utils",
+      "@/components/admin/LeadFollowUpStatus"
+    ],
+    "review": [],
+    "lines": 324,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/MainLayout.tsx",
+    "symbols": [
+      "Props",
+      "MainLayout"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "sonner",
+      "@/lib/auth-context",
+      "@/lib/data-mode",
+      "lucide-react",
+      "../ui/sidebar",
+      "@/components/sidebar/Sidebar",
+      "@/components/admin/AdminNavbar",
+      "@/components/theme/PanelTextSize"
+    ],
+    "review": [],
+    "lines": 140,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/MetricCard.tsx",
+    "symbols": [
+      "IconProps",
+      "Props",
+      "MetricCard"
+    ],
+    "imports": [
+      "@/components/ui/card",
+      "@/components/ui/badge",
+      "node_modules/@base-ui/react/floating-ui-react"
+    ],
+    "review": [],
+    "lines": 35,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/MonthlyAgendaSummary.tsx",
+    "symbols": [
+      "TimelineVisit",
+      "TabKey",
+      "AnimatedCount",
+      "MonthlyAgendaSummary"
+    ],
+    "imports": [
+      "next/link",
+      "react",
+      "framer-motion",
+      "@/lib/admin-storage",
+      "@/data/admin-sample",
+      "@/components/ui/button",
+      "lucide-react",
+      "@/lib/utils",
+      "@/hooks/use-current-session",
+      "@/lib/dashboard-context",
+      "@/lib/deferred-effect"
+    ],
+    "review": [],
+    "lines": 380,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/navbar/GlobalSearch.tsx",
+    "symbols": [
+      "GlobalSearch"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/navigation",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "../SearchPropertyItem",
+      "../SearchLeadItem",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/hooks/use-current-session",
+      "@/components/ui/dialog",
+      "@/components/ui/input-group"
+    ],
+    "review": [],
+    "lines": 238,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/NewLeadDrawer.tsx",
+    "symbols": [
+      "AssetCategory",
+      "AssetCategoryOption",
+      "FormValues",
+      "NewLeadDrawerProps",
+      "NewLeadDrawer",
+      "handleReset"
+    ],
+    "imports": [
+      "@/hooks/use-lead-advisors",
+      "react",
+      "@hookform/resolvers/zod",
+      "react-hook-form",
+      "sonner",
+      "zod",
+      "lucide-react",
+      "@/components/ui/button",
+      "@/components/ui/input",
+      "@/components/ui/textarea",
+      "@/components/ui/sheet",
+      "@/components/ui/field",
+      "@/data/admin-sample",
+      "@/data/auth-sample",
+      "@/lib/admin-storage",
+      "@/lib/auth-context",
+      "@/lib/deferred-effect",
+      "@/lib/lead-interests",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/notifications",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 864,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/admin/NewLeadForm.tsx",
+    "symbols": [
+      "AssetCategory",
+      "AssetCategoryOption",
+      "FormValues",
+      "Props",
+      "NewLeadForm",
+      "fetchLead",
+      "loadData"
+    ],
+    "imports": [
+      "@/hooks/use-lead-advisors",
+      "react",
+      "next/navigation",
+      "next/link",
+      "@hookform/resolvers/zod",
+      "react-hook-form",
+      "sonner",
+      "zod",
+      "lucide-react",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/field",
+      "@/components/ui/input",
+      "@/components/ui/textarea",
+      "@/data/admin-sample",
+      "@/data/auth-sample",
+      "@/lib/admin-storage",
+      "@/hooks/use-current-session",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/lead-interests",
+      "@/lib/notifications",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 973,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/NewPropertyForm.tsx",
+    "symbols": [
+      "Props",
+      "NewPropertyForm"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "react-hook-form",
+      "@hookform/resolvers/zod",
+      "zod",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/field",
+      "@/components/ui/input",
+      "@/components/ui/textarea",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "lucide-react",
+      "@/lib/utils",
+      "@/lib/deferred-effect",
+      "./property-form/CategorySelector",
+      "./property-form/TraditionalFields",
+      "./property-form/LoteFields",
+      "./property-form/CommercialFields",
+      "./property-form/types",
+      "./GenerateLotsModal",
+      "@/hooks/use-current-session",
+      "sonner"
+    ],
+    "review": [],
+    "lines": 368,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/NewVisitModal.tsx",
+    "symbols": [
+      "NewVisitModalProps",
+      "NewVisitModal"
+    ],
+    "imports": [
+      "@/hooks/use-lead-advisors",
+      "react",
+      "lucide-react",
+      "@/components/ui/dialog",
+      "@/components/ui/button",
+      "@/components/ui/input",
+      "@/components/ui/date-time-fields",
+      "@/components/ui/textarea",
+      "sonner",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/hooks/use-current-session",
+      "@/data/auth-sample",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/lead-follow-up",
+      "@/components/admin/QuickScheduleButtons"
+    ],
+    "review": [],
+    "lines": 359,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/NotificationPermissionPrompt.tsx",
+    "symbols": [
+      "NotificationPermissionPrompt",
+      "dismiss"
+    ],
+    "imports": [
+      "react",
+      "@/lib/notifications"
+    ],
+    "review": [],
+    "lines": 38,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/CategorySelector.tsx",
+    "symbols": [
+      "Props",
+      "CategorySelector"
+    ],
+    "imports": [
+      "lucide-react",
+      "./types"
+    ],
+    "review": [],
+    "lines": 44,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/CommercialFields.tsx",
+    "symbols": [
+      "Props",
+      "CommercialFields"
+    ],
+    "imports": [
+      "@/components/ui/field",
+      "@/components/ui/input",
+      "./types"
+    ],
+    "review": [],
+    "lines": 29,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/LoteFields.tsx",
+    "symbols": [
+      "LoteFields"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/components/ui/field",
+      "@/components/ui/input",
+      "./types"
+    ],
+    "review": [
+      {
+        "line": 60,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 64,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 68,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 72,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 76,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      },
+      {
+        "line": 80,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 88,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/TraditionalFields.tsx",
+    "symbols": [
+      "TraditionalFields"
+    ],
+    "imports": [
+      "@/components/ui/field",
+      "@/components/ui/input",
+      "./types"
+    ],
+    "review": [],
+    "lines": 35,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/property-form/types.ts",
+    "symbols": [
+      "Category",
+      "FormData",
+      "FieldProps"
+    ],
+    "imports": [
+      "react-hook-form",
+      "zod"
+    ],
+    "review": [],
+    "lines": 51,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/PropertyCard.tsx",
+    "symbols": [
+      "formatPropertyPrice",
+      "getOperationLabel",
+      "Props",
+      "PropertyCard"
+    ],
+    "imports": [
+      "next/navigation",
+      "@/components/ui/badge",
+      "@/data/admin-sample",
+      "lucide-react",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 117,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/PropertyCardAdmin.tsx",
+    "symbols": [
+      "Props",
+      "PropertyCardAdmin"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/lib/utils",
+      "@/components/ui/button",
+      "@/components/ui/badge",
+      "@/components/ui/dialog",
+      "@/data/admin-sample",
+      "next/link"
+    ],
+    "review": [],
+    "lines": 162,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/admin/PropertyDetailView.tsx",
+    "symbols": [
+      "Props",
+      "PropertyDetailView",
+      "loadData",
+      "handleScheduleVisit",
+      "handleDeleteVisit"
+    ],
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/lead-interests",
+      "@/components/ui/button",
+      "@/components/ui/badge",
+      "@/hooks/use-current-session",
+      "@/components/ui/avatar",
+      "@/components/admin/VisitManager",
+      "@/components/admin/EditPropertyModal",
+      "@/lib/utils",
+      "sonner",
+      "@/lib/deferred-effect"
+    ],
+    "review": [],
+    "lines": 406,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/PropertyList.tsx",
+    "symbols": [
+      "Props",
+      "PropertyList"
+    ],
+    "imports": [
+      "next/link",
+      "@/data/admin-sample",
+      "@/components/admin/PropertyCard",
+      "@/lib/data-mode"
+    ],
+    "review": [],
+    "lines": 70,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/PushPreferences.tsx",
+    "symbols": [
+      "PushPreferences",
+      "load",
+      "toggle"
+    ],
+    "imports": [
+      "react",
+      "@/lib/everprop-api",
+      "@/lib/push-registration"
+    ],
+    "review": [],
+    "lines": 61,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/QuickScheduleButtons.tsx",
+    "symbols": [
+      "QuickScheduleButtonsProps",
+      "QuickOption",
+      "QuickScheduleButtons"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/lib/utils",
+      "@/lib/lead-follow-up"
+    ],
+    "review": [],
+    "lines": 110,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/SearchLeadItem.tsx",
+    "symbols": [
+      "Props",
+      "SearchLeadItem"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/components/ui/highlighted-text",
+      "@/components/ui/avatar",
+      "@/data/admin-sample"
+    ],
+    "review": [],
+    "lines": 43,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/SearchPropertyItem.tsx",
+    "symbols": [
+      "Props",
+      "SearchPropertyItem"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/components/ui/highlighted-text",
+      "@/data/admin-sample"
+    ],
+    "review": [],
+    "lines": 37,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/admin/SuccessModal.tsx",
+    "symbols": [
+      "SuccessModalProps",
+      "SuccessModal"
+    ],
+    "imports": [
+      "@/components/ui/dialog",
+      "@/components/ui/button",
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 48,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/admin/VisitManager.tsx",
+    "symbols": [
+      "Props",
+      "formatVisitDate",
+      "VisitManager",
+      "handleClickOutside",
+      "handleSelectLead",
+      "handleClearLeadSelection",
+      "handleSubmit"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/data/admin-sample",
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "sonner",
+      "@/components/ui/input",
+      "@/components/ui/date-time-fields",
+      "@/components/ui/textarea",
+      "@/components/ui/badge",
+      "@/lib/deferred-effect",
+      "@/lib/utils",
+      "@/components/admin/QuickScheduleButtons"
+    ],
+    "review": [],
+    "lines": 502,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/icons/cuida-building-outline.tsx",
+    "symbols": [
+      "BuildingOutlineIcon"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 32,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/icons/fa6-regular-user.tsx",
+    "symbols": [
+      "UserIcon"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 32,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/icons/grommet-icons-group.tsx",
+    "symbols": [
+      "GroupIcon"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 32,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/icons/material-symbols-attach-money-rounded.tsx",
+    "symbols": [
+      "AttachMoneyRoundedIcon"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 32,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/icons/uil-arrow-growth.tsx",
+    "symbols": [
+      "ArrowGrowthIcon"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 32,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/public/layout/Footer.tsx",
+    "symbols": [
+      "FooterLink",
+      "FooterColumn",
+      "FooterProps",
+      "Footer"
+    ],
+    "imports": [
+      "next/link",
+      "lucide-react",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 128,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/public/layout/Navbar.tsx",
+    "symbols": [
+      "NavItem",
+      "NavbarProps",
+      "Navbar"
+    ],
+    "imports": [
+      "next/link",
+      "react",
+      "lucide-react",
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "@/lib/utils",
+      "@/components/theme/ThemeToggle"
+    ],
+    "review": [],
+    "lines": 191,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/public/PublicLayout.tsx",
+    "symbols": [
+      "PublicLayout"
+    ],
+    "imports": [
+      "react",
+      "@/components/public/layout/Navbar",
+      "@/components/public/layout/Footer"
+    ],
+    "review": [],
+    "lines": 14,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/navigation.ts",
+    "symbols": [
+      "NavChild",
+      "NavItem",
+      "NavGroup",
+      "NavigationAccess",
+      "getAvailableNavigationGroups"
+    ],
+    "imports": [
+      "@/lib/release-visibility",
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 138,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/quick-actions.ts",
+    "symbols": [
+      "QuickAction",
+      "getAvailableQuickActions"
+    ],
+    "imports": [
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 82,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/sidebar-brand.tsx",
+    "symbols": [
+      "SidebarBrand"
+    ],
+    "imports": [
+      "@/components/admin/AdminMenuBrand",
+      "@/components/ui/sidebar"
+    ],
+    "review": [],
+    "lines": 15,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/sidebar-nav.tsx",
+    "symbols": [
+      "SidebarNav"
+    ],
+    "imports": [
+      "@/components/admin/AdminNavigationMenu",
+      "@/components/ui/sidebar"
+    ],
+    "review": [],
+    "lines": 15,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/sidebar-simulations.tsx",
+    "symbols": [
+      "SidebarSimulations"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "sonner",
+      "@/components/ui/button",
+      "@/components/ui/input",
+      "@/components/ui/dialog",
+      "@/components/ui/sidebar",
+      "@/hooks/use-current-session",
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/notifications",
+      "@/lib/data-mode",
+      "@/lib/everprop-api",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 609,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/sidebar-user.tsx",
+    "symbols": [
+      "SidebarUser"
+    ],
+    "imports": [
+      "@/components/admin/AdminMenuAccount",
+      "@/components/ui/sidebar"
+    ],
+    "review": [],
+    "lines": 11,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/Sidebar.tsx",
+    "symbols": [
+      "AppSidebar"
+    ],
+    "imports": [
+      "react",
+      "@/components/ui/sidebar",
+      "./sidebar-brand",
+      "./sidebar-nav",
+      "./sidebar-user",
+      "@/hooks/use-mobile"
+    ],
+    "review": [],
+    "lines": 32,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/sidebar/use-sidebar-active.ts",
+    "symbols": [
+      "useSidebarActive"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "./navigation"
+    ],
+    "review": [],
+    "lines": 47,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/theme/PanelTextSize.tsx",
+    "symbols": [
+      "PanelTextSizeProvider",
+      "PanelTextSizeControl"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/ui/popover",
+      "@/lib/text-size-preference",
+      "@/lib/utils"
+    ],
+    "review": [
+      {
+        "line": 63,
+        "type": "control_requires_label_review",
+        "tag": "input"
+      }
+    ],
+    "lines": 76,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/theme/ThemeProvider.tsx",
+    "symbols": [
+      "ColorTheme",
+      "ThemeContextValue",
+      "getThemeSnapshot",
+      "getServerThemeSnapshot",
+      "applyTheme",
+      "subscribeToTheme",
+      "ThemeProvider",
+      "useTheme"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 73,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/theme/ThemeToggle.tsx",
+    "symbols": [
+      "ThemeToggleProps",
+      "ThemeToggle"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/components/ui/button",
+      "@/components/theme/ThemeProvider",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 37,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/avatar.tsx",
+    "symbols": [
+      "Avatar",
+      "AvatarImage",
+      "AvatarFallback",
+      "AvatarBadge",
+      "AvatarGroup",
+      "AvatarGroupCount"
+    ],
+    "imports": [
+      "react",
+      "@base-ui/react/avatar",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 110,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/badge.tsx",
+    "symbols": [
+      "Props",
+      "Badge"
+    ],
+    "imports": [
+      "react",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 21,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/button.tsx",
+    "symbols": [
+      "Button"
+    ],
+    "imports": [
+      "@base-ui/react/button",
+      "class-variance-authority",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 59,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/card.tsx",
+    "symbols": [
+      "Card",
+      "CardHeader",
+      "CardTitle",
+      "CardDescription",
+      "CardAction",
+      "CardContent",
+      "CardFooter"
+    ],
+    "imports": [
+      "react",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 104,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/date-time-fields.tsx",
+    "symbols": [
+      "Props",
+      "DateTimeFields"
+    ],
+    "imports": [
+      "react",
+      "@/components/ui/input"
+    ],
+    "review": [],
+    "lines": 34,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/dialog.tsx",
+    "symbols": [
+      "Dialog",
+      "DialogTrigger",
+      "DialogPortal",
+      "DialogClose",
+      "DialogOverlay",
+      "DialogContent",
+      "DialogHeader",
+      "DialogFooter",
+      "DialogTitle",
+      "DialogDescription"
+    ],
+    "imports": [
+      "react",
+      "@base-ui/react/dialog",
+      "@/lib/utils",
+      "@/components/ui/button",
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 169,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/dropdown-menu.tsx",
+    "symbols": [
+      "DropdownMenu",
+      "DropdownMenuPortal",
+      "DropdownMenuTrigger",
+      "DropdownMenuContent",
+      "DropdownMenuGroup",
+      "DropdownMenuLabel",
+      "DropdownMenuItem",
+      "DropdownMenuSub",
+      "DropdownMenuSubTrigger",
+      "DropdownMenuSubContent",
+      "DropdownMenuCheckboxItem",
+      "DropdownMenuRadioGroup",
+      "DropdownMenuRadioItem",
+      "DropdownMenuSeparator",
+      "DropdownMenuShortcut"
+    ],
+    "imports": [
+      "react",
+      "@base-ui/react/menu",
+      "@/lib/utils",
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 269,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/ui/field.tsx",
+    "symbols": [
+      "FieldSet",
+      "FieldLegend",
+      "FieldGroup",
+      "Field",
+      "FieldContent",
+      "FieldLabel",
+      "FieldTitle",
+      "FieldDescription",
+      "FieldSeparator",
+      "FieldError"
+    ],
+    "imports": [
+      "react",
+      "class-variance-authority",
+      "@/lib/utils",
+      "@/components/ui/label",
+      "@/components/ui/separator"
+    ],
+    "review": [],
+    "lines": 239,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/form.tsx",
+    "symbols": [
+      "Form",
+      "FormField",
+      "FormLabel",
+      "FormControl",
+      "FormDescription",
+      "FormMessage"
+    ],
+    "imports": [
+      "react",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 29,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/ui/highlighted-text.tsx",
+    "symbols": [
+      "Props",
+      "HighlightedText"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 29,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/input-group.tsx",
+    "symbols": [
+      "InputGroup",
+      "InputGroupAddon",
+      "InputGroupButton",
+      "InputGroupText",
+      "InputGroupInput",
+      "InputGroupTextarea"
+    ],
+    "imports": [
+      "react",
+      "class-variance-authority",
+      "@/lib/utils",
+      "@/components/ui/button",
+      "@/components/ui/input",
+      "@/components/ui/textarea"
+    ],
+    "review": [],
+    "lines": 159,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/input.tsx",
+    "symbols": [
+      "Input"
+    ],
+    "imports": [
+      "react",
+      "@base-ui/react/input",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 21,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/label.tsx",
+    "symbols": [
+      "Label"
+    ],
+    "imports": [
+      "react",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 21,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/popover.tsx",
+    "symbols": [
+      "Popover",
+      "PopoverTrigger",
+      "PopoverContent"
+    ],
+    "imports": [
+      "react",
+      "@base-ui/react/popover",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 39,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/search-form.tsx",
+    "symbols": [
+      "SearchForm"
+    ],
+    "imports": [
+      "lucide-react",
+      "@/components/ui/label",
+      "@/components/ui/sidebar"
+    ],
+    "review": [],
+    "lines": 29,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/components/ui/separator.tsx",
+    "symbols": [
+      "Separator"
+    ],
+    "imports": [
+      "@base-ui/react/separator",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 26,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/sheet.tsx",
+    "symbols": [
+      "Sheet",
+      "SheetTrigger",
+      "SheetClose",
+      "SheetPortal",
+      "SheetOverlay",
+      "SheetContent",
+      "SheetHeader",
+      "SheetFooter",
+      "SheetTitle",
+      "SheetDescription"
+    ],
+    "imports": [
+      "react",
+      "@base-ui/react/dialog",
+      "@/lib/utils",
+      "@/components/ui/button",
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 139,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/sidebar.tsx",
+    "symbols": [
+      "SidebarContextProps",
+      "useSidebar",
+      "SidebarProvider",
+      "Sidebar",
+      "SidebarTrigger",
+      "SidebarRail",
+      "SidebarInset",
+      "SidebarInput",
+      "SidebarHeader",
+      "SidebarFooter",
+      "SidebarSeparator",
+      "SidebarContent",
+      "SidebarGroup",
+      "SidebarGroupLabel",
+      "SidebarGroupAction",
+      "SidebarGroupContent",
+      "SidebarMenu",
+      "SidebarMenuItem",
+      "SidebarMenuButton",
+      "SidebarMenuAction",
+      "SidebarMenuBadge",
+      "SidebarMenuSkeleton",
+      "SidebarMenuSub",
+      "SidebarMenuSubItem",
+      "SidebarMenuSubButton"
+    ],
+    "imports": [
+      "react",
+      "@base-ui/react/merge-props",
+      "@base-ui/react/use-render",
+      "class-variance-authority",
+      "@/hooks/use-mobile",
+      "@/lib/utils",
+      "@/components/ui/button",
+      "@/components/ui/input",
+      "@/components/ui/separator",
+      "@/components/ui/sheet",
+      "@/components/ui/skeleton",
+      "@/components/ui/tooltip",
+      "lucide-react"
+    ],
+    "review": [],
+    "lines": 764,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/skeleton.tsx",
+    "symbols": [
+      "Skeleton"
+    ],
+    "imports": [
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 14,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/textarea.tsx",
+    "symbols": [
+      "Textarea"
+    ],
+    "imports": [
+      "react",
+      "@/lib/utils"
+    ],
+    "review": [
+      {
+        "line": 7,
+        "type": "control_requires_label_review",
+        "tag": "textarea"
+      }
+    ],
+    "lines": 19,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/tooltip.tsx",
+    "symbols": [
+      "TooltipProvider",
+      "Tooltip",
+      "TooltipTrigger",
+      "TooltipContent"
+    ],
+    "imports": [
+      "@base-ui/react/tooltip",
+      "@/lib/utils"
+    ],
+    "review": [],
+    "lines": 67,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/components/ui/version-switcher.tsx",
+    "symbols": [
+      "VersionSwitcher"
+    ],
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/ui/dropdown-menu",
+      "@/components/ui/sidebar"
+    ],
+    "review": [],
+    "lines": 65,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/data/admin-sample.ts",
+    "symbols": [
+      "Company",
+      "ProjectType",
+      "ProjectStatus",
+      "LeadInterestCategory",
+      "LeadInterest",
+      "LeadFollowUpType",
+      "LeadFollowUp",
+      "JujuyCity",
+      "Project",
+      "Visit",
+      "Property",
+      "Lead",
+      "PaymentAgreementModality",
+      "PaymentAgreementStatus",
+      "PaymentAgreement",
+      "InstallmentStatus",
+      "InstallmentPaymentMethod",
+      "Installment",
+      "inferLeadInterestCategory",
+      "getRelativeDateStr"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 2243,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/data/auth-sample.ts",
+    "symbols": [
+      "UserRole",
+      "UserProfile",
+      "AdvisorInfo",
+      "getAdvisor",
+      "getAdvisorName"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 130,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/hooks/use-bellomo-materials.ts",
+    "symbols": [
+      "useBellomoMaterials"
+    ],
+    "imports": [
+      "react",
+      "@/lib/auth-context",
+      "@/lib/bellomo-policy"
+    ],
+    "review": [],
+    "lines": 27,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/hooks/use-collection-action.ts",
+    "symbols": [
+      "useCollectionAction",
+      "run"
+    ],
+    "imports": [
+      "react",
+      "sonner"
+    ],
+    "review": [],
+    "lines": 18,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/hooks/use-collections.ts",
+    "symbols": [
+      "useCollections"
+    ],
+    "imports": [
+      "react",
+      "@/data/admin-sample",
+      "@/lib/collections-api",
+      "@/lib/deferred-effect",
+      "@/lib/auth-context",
+      "@/lib/data-mode",
+      "@/lib/release-visibility"
+    ],
+    "review": [],
+    "lines": 68,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/hooks/use-current-session.ts",
+    "symbols": [
+      "useCurrentSession"
+    ],
+    "imports": [
+      "react",
+      "next/navigation",
+      "@/lib/auth-context"
+    ],
+    "review": [],
+    "lines": 31,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/hooks/use-lead-advisors.ts",
+    "symbols": [
+      "useLeadAdvisors"
+    ],
+    "imports": [
+      "react",
+      "@/lib/everprop-api",
+      "@/lib/data-mode",
+      "@/data/auth-sample"
+    ],
+    "review": [],
+    "lines": 19,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/hooks/use-mobile.ts",
+    "symbols": [
+      "subscribe",
+      "getSnapshot",
+      "getServerSnapshot",
+      "useIsMobile"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 23,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/layouts/MainLayout.tsx",
+    "symbols": [
+      "Props",
+      "MainLayout"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 20,
+    "reachableFromNextEntry": false
+  },
+  {
+    "file": "everprop-public/src/lib/admin-storage.ts",
+    "symbols": [
+      "readList",
+      "loadLeadList",
+      "loadPropertyList",
+      "loadProjectList",
+      "appendLeadToStorage",
+      "appendPropertyToStorage",
+      "loadLeadFollowUpList",
+      "appendProjectToStorage",
+      "appendLeadFollowUpToStorage",
+      "updateLeadAgent",
+      "saveLeadList",
+      "savePropertyList",
+      "saveProjectList",
+      "removeVisitById",
+      "loadPaymentAgreementList",
+      "savePaymentAgreementList",
+      "appendPaymentAgreementToStorage",
+      "loadInstallmentList",
+      "saveInstallmentList",
+      "appendInstallmentsToStorage",
+      "recordInstallmentPayment",
+      "createAgreementWithInstallments",
+      "evaluateInstallmentsAndNotify"
+    ],
+    "imports": [
+      "@/data/admin-sample",
+      "@/lib/installment-notifications",
+      "@/lib/notifications"
+    ],
+    "review": [],
+    "lines": 461,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/auth-context.tsx",
+    "symbols": [
+      "AuthContextType",
+      "AuthProvider",
+      "restoreSession",
+      "useAuth"
+    ],
+    "imports": [
+      "react",
+      "@/data/auth-sample",
+      "@/lib/everprop-api",
+      "@/lib/data-mode"
+    ],
+    "review": [],
+    "lines": 116,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/bellomo-financing.ts",
+    "symbols": [
+      "FinancingPlan",
+      "findFinancingPlan",
+      "financingSummary",
+      "cacPayment",
+      "fixedPayment"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 125,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/bellomo-policy.ts",
+    "symbols": [
+      "MaterialKind",
+      "MaterialAsset",
+      "MaterialProject",
+      "MaterialAccess",
+      "PublicMaterialProject",
+      "MaterialResponse",
+      "normalizedProjectName",
+      "matchesMaterialProject",
+      "isMaterialAdministrator",
+      "canReadMaterial"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 39,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/collections-api.ts",
+    "symbols": [
+      "Page",
+      "allPages",
+      "loadPaymentAgreementList",
+      "loadInstallmentList",
+      "loadCollectionLeads",
+      "collectionsUpdated",
+      "mutationKey",
+      "AgreementInput",
+      "createAgreementWithInstallments",
+      "recordInstallmentPayment",
+      "CollectionPayment",
+      "loadPayments",
+      "reversePayment"
+    ],
+    "imports": [
+      "@/data/admin-sample",
+      "@/lib/admin-storage",
+      "@/lib/everprop-api",
+      "@/lib/data-mode"
+    ],
+    "review": [],
+    "lines": 97,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/commercial-queue.ts",
+    "symbols": [
+      "commercialDay",
+      "hasRecordedContact",
+      "commercialQueueItem",
+      "commercialQueueGroups"
+    ],
+    "imports": [
+      "@/data/admin-sample",
+      "./lead-follow-up"
+    ],
+    "review": [],
+    "lines": 41,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/dashboard-context.tsx",
+    "symbols": [
+      "DashboardMode",
+      "DashboardModeContextType",
+      "DashboardModeProvider",
+      "useDashboardMode"
+    ],
+    "imports": [
+      "react"
+    ],
+    "review": [],
+    "lines": 34,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/data-mode.ts",
+    "symbols": [
+      "DataMode"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 7,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/deferred-effect.ts",
+    "symbols": [
+      "deferEffectUpdate"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 12,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/everprop-api.ts",
+    "symbols": [
+      "resolveApiUrl",
+      "ApiEnvelope",
+      "ApiPage",
+      "ApiUser",
+      "ApiProject",
+      "ApiProperty",
+      "EverpropApiError",
+      "isInvalidEverpropSession",
+      "xsrfToken",
+      "apiFetch",
+      "mapRole",
+      "mapUser",
+      "cleanText",
+      "mapProject",
+      "mapProperty",
+      "loginEverprop",
+      "currentEverpropUser",
+      "finishBrowserCleanup",
+      "logoutEverprop",
+      "loadCatalogPages",
+      "catalogFrom",
+      "loadEverpropCatalog",
+      "everpropHealth",
+      "CreatePropertyPayload",
+      "createEverpropProperty",
+      "updateEverpropPropertyStatus",
+      "CreateProjectPayload",
+      "createEverpropProject",
+      "ApiLead",
+      "mapLead",
+      "loadAllCrmPages",
+      "loadEverpropLeads",
+      "createEverpropLead",
+      "updateEverpropLead",
+      "loadEverpropLeadById",
+      "ApiLeadFollowUp",
+      "loadEverpropLeadFollowUps",
+      "notifyCrmUpdated",
+      "createEverpropLeadFollowUp",
+      "loadEverpropAllFollowUps",
+      "attachEverpropLeadProperty",
+      "updateEverpropLeadProperty",
+      "detachEverpropLeadProperty",
+      "UpdatePropertyPayload",
+      "updateEverpropProperty",
+      "GenerateLotsPayload",
+      "generateLotsBatch",
+      "ApiNotification",
+      "loadEverpropNotifications",
+      "markEverpropNotificationRead",
+      "markAllEverpropNotificationsRead",
+      "clearAllEverpropNotifications",
+      "updateEverpropLeadStage",
+      "updateEverpropLeadPropertyStatus",
+      "TodayVisits",
+      "loadEverpropTodayVisits",
+      "loadEverpropVisits",
+      "createEverpropVisit",
+      "cancelEverpropVisit"
+    ],
+    "imports": [
+      "@/data/admin-sample",
+      "@/data/auth-sample"
+    ],
+    "review": [],
+    "lines": 1031,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/installment-notifications.ts",
+    "symbols": [
+      "getTodayDateString",
+      "formatInstallmentAmount",
+      "formatDueDate",
+      "evaluateInstallmentStatus",
+      "cleanPhoneNumber",
+      "buildInstallmentWhatsAppMessage",
+      "buildWhatsAppReminderUrl"
+    ],
+    "imports": [
+      "@/data/admin-sample"
+    ],
+    "review": [],
+    "lines": 120,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/lead-follow-up.ts",
+    "symbols": [
+      "LeadFollowUpState",
+      "isCommercialContact",
+      "parseArgentinaDate",
+      "formatArgentinaDateTime",
+      "toArgentinaDateTimeInputValue",
+      "argentinaDateTimeInputToIso",
+      "getLeadFollowUps",
+      "getLastCommercialContactAt",
+      "getLeadFollowUpState"
+    ],
+    "imports": [
+      "@/data/admin-sample"
+    ],
+    "review": [],
+    "lines": 190,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/lead-interests.ts",
+    "symbols": [
+      "InterestDraft",
+      "optionalText",
+      "unique",
+      "findProperty",
+      "isProjectUnit",
+      "createLeadInterest",
+      "createInterestForProperty",
+      "normalizeLeadInterests",
+      "syncLeadWithInterests",
+      "getInterestAssetIds",
+      "getInterestPendingFields"
+    ],
+    "imports": [
+      "@/data/admin-sample"
+    ],
+    "review": [],
+    "lines": 178,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/notification-audio.ts",
+    "symbols": [
+      "playCorporateNotificationChime",
+      "playChime"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 51,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/notifications.ts",
+    "symbols": [
+      "AppNotification",
+      "UserIdentifier",
+      "isNotificationForUser",
+      "loadNotifications",
+      "saveNotifications",
+      "fetchNotifications",
+      "markAllNotificationsAsRead",
+      "markNotificationAsRead",
+      "createNotification",
+      "markAllAsRead",
+      "clearAllNotifications",
+      "requestDesktopNotificationPermission",
+      "showDesktopNotification"
+    ],
+    "imports": [
+      "./data-mode",
+      "./everprop-api"
+    ],
+    "review": [],
+    "lines": 232,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/push-registration.ts",
+    "symbols": [
+      "registerNotificationWorker"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 22,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/release-visibility.ts",
+    "symbols": [
+      "isReleaseRouteVisible"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 7,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/server/bellomo-materials.ts",
+    "symbols": [
+      "MaterialError",
+      "materialSession",
+      "read",
+      "visibleMaterials",
+      "materialFailure"
+    ],
+    "imports": [
+      "server-only",
+      "../../../content/bellomo/catalog.json",
+      "@/lib/bellomo-policy"
+    ],
+    "review": [],
+    "lines": 59,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/server/notification-emitter.ts",
+    "symbols": [],
+    "imports": [
+      "events"
+    ],
+    "review": [],
+    "lines": 18,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/text-size-preference.ts",
+    "symbols": [
+      "PanelTextSize",
+      "StorageAccess",
+      "createTextSizePreferences"
+    ],
+    "imports": [],
+    "review": [],
+    "lines": 31,
+    "reachableFromNextEntry": true
+  },
+  {
+    "file": "everprop-public/src/lib/utils.ts",
+    "symbols": [
+      "cn"
+    ],
+    "imports": [
+      "clsx",
+      "tailwind-merge"
+    ],
+    "review": [],
+    "lines": 7,
+    "reachableFromNextEntry": true
+  }
+]
