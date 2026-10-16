@@ -39,6 +39,10 @@ Mientras falte cualquier dato, el envío queda bloqueado por el código (`Collec
 - **Datos de pago** aprobados por Bellomo.
 - **Política de retención** de la auditoría.
 
+## Contrato de esquema
+
+`config/database-contract.php`: +1 tabla, +1 tabla de tenant y +1 FK, por `collection_email_attempts`.
+
 ## Evidencia
 
 - Policy check local (`check-pr-policy.mjs` de `develop`, BASE=main): ver commit.
