@@ -32,7 +32,7 @@ final class RegistrarContactoTest extends TestCase
         parent::tearDown();
     }
 
-    /** @return array{tenant: Tenant, advisor: User, conversation_id: int, contact_id: int, channel_id: int, public_id: string} */
+    /** @return array{tenant: Tenant, advisor: User, conversation_id: int, contact_id: int, channel_id: int, public_id: string, run_id: int} */
     private function setupConversation(): array
     {
         ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration('WEB');
