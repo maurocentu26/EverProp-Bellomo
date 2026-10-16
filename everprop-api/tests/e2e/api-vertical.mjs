@@ -129,6 +129,12 @@ compose("exec", "-T", "everprop-api-php", "php", "artisan", "everprop:conversati
 check("S10", "mensaje UNKNOWN: el reconciliador no lo reenvía", sql(`SELECT j.status FROM outbound_jobs j JOIN messages m ON m.id=j.message_id WHERE m.text_body='${ANSWER}'`) === "UNKNOWN");
 
 const close = await winner.post(`/api/v1/admin/conversations/${conv}/close`);
+const closedEpoch = Number(sql(`SELECT control_epoch FROM conversations WHERE public_id='${conv}'`));
+const reopenedPair = await Promise.all(Array.from({ length: 2 }, () => winner.post(`/api/v1/admin/conversations/${conv}/reopen`, { expected_epoch: closedEpoch })));
+const reopenedBodies = await Promise.all(reopenedPair.map((r) => r.json()));
+check("S11a", "reapertura manual idempotente conserva hilo y asesor", reopenedPair.every((r) => r.ok()) && reopenedBodies.filter((r) => r.data?.replayed === true).length === 1
+  && sql(`SELECT control_state FROM conversations WHERE public_id='${conv}'`) === "HUMAN_ACTIVE");
+await winner.post(`/api/v1/admin/conversations/${conv}/close`);
 await a.send("Una pregunta más");
 check("S11", "cierre por quien controla; nuevo mensaje reabre como 'Espera asesor' (IA apagada)", close.ok() && sql(`SELECT control_state FROM conversations WHERE public_id='${conv}'`) === "WAITING_HUMAN");
 check("S12", "tenants E2E: sin leads ni runs de IA", runs() === "0" && sql(`SELECT COUNT(*) FROM leads WHERE tenant_id IN (${TENANTS})`) === "0");

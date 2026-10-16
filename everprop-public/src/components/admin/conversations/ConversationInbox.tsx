@@ -12,6 +12,7 @@ import {
   addNote,
   clockTime,
   closeConversation,
+  reopenConversation,
   dayLabel,
   deliveryLabel,
   initials,
@@ -188,6 +189,7 @@ export function ConversationInbox() {
   // Kept when the conversation leaves the current filter (e.g. after taking control).
   const [openedSummary, setOpenedSummary] = useState<ConversationSummary | null>(null);
   const [state, setState] = useState<ConversationState | null>(null);
+  const [epoch, setEpoch] = useState(0);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [copilotEnabled, setCopilotEnabled] = useState(false);
   // The copilot draft currently in the composer (to report whether it was sent as is or edited).
@@ -258,6 +260,7 @@ export function ConversationInbox() {
       messagesRef.current = merged;
       setMessages(merged);
       setState(response.conversation.state);
+      setEpoch(response.conversation.epoch);
       setAiEnabled(response.conversation.ai_enabled);
       setCopilotEnabled(response.conversation.copilot_enabled === true);
       setReplyWindow(response.conversation.reply_window ?? null);
@@ -583,6 +586,12 @@ export function ConversationInbox() {
                     })}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold disabled:opacity-60">
                     <UserPlus className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Lead y visita</span>
+                  </button>
+                )}
+                {!readOnly && state === "CLOSED" && (
+                  <button type="button" disabled={busy !== null} onClick={() => void run("reopen", () => reopenConversation(selected, epoch), "Conversación reabierta.")}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-60">
+                    <RefreshCw className="h-4 w-4" aria-hidden /> Reabrir
                   </button>
                 )}
                 {!readOnly && humanInControl && (

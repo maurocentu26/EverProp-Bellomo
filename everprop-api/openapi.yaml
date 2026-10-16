@@ -47,6 +47,119 @@
     ],
     "security": [],
     "paths": {
+        "/api/v1/admin/conversations/{conversation}/reopen": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "name": "conversation",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Conversations"
+                ],
+                "operationId": "reopenConversation",
+                "summary": "Reopen the observed closed conversation without restarting AI",
+                "description": "Managers/admins may reopen visible tenant conversations; advisors only their assigned conversations. The expected closed epoch generates a durable idempotency key on the server. Replays return the original transition without reopening a later closure. Preserves assignee, history, notes and linked lead.",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "expected_epoch"
+                                ],
+                                "properties": {
+                                    "expected_epoch": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Reopened, or the original result of an idempotent replay. Refresh the thread for its current state.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "required": [
+                                                "state",
+                                                "epoch",
+                                                "replayed"
+                                            ],
+                                            "properties": {
+                                                "state": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "HUMAN_ACTIVE",
+                                                        "WAITING_HUMAN",
+                                                        "TRANSITION_PENDING"
+                                                    ]
+                                                },
+                                                "epoch": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "replayed": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "description": "Conversation does not exist or is not visible to this actor."
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "419": {
+                        "description": "CSRF token expired or missing."
+                    }
+                }
+            }
+        },
         "/healthz": {
             "get": {
                 "tags": [

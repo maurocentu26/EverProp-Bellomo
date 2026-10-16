@@ -92,3 +92,9 @@ test('incremental reads pass the cursor and the list preview names who spoke', a
   assert.equal(api.fileSize(2621440), '2,5 MB');
   assert.equal(api.renderTemplate('Hola {{1}}, el lote {{2}}', ['Ana ', '']), 'Hola Ana, el lote {{2}}');
 });
+
+test('reopen sends the observed closed epoch so delayed retries cannot reopen a later closure', async () => {
+  await api.reopenConversation('abc/..', 7);
+  assert.equal(calls.at(-1).path, '/api/v1/admin/conversations/abc%2F../reopen');
+  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { expected_epoch: 7 });
+});
