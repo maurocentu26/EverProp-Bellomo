@@ -4,15 +4,18 @@ namespace Tests\Feature\Conversations;
 
 use App\Domain\AgentRuntime\Jobs\RunAgentJob;
 use App\Domain\Conversations\Contracts\ChannelTransport;
+use App\Domain\Conversations\Data\InboundMessage;
 use App\Domain\Conversations\Data\SendResult;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Exceptions\DeliveryAmbiguous;
 use App\Domain\Conversations\Services\ConversationControl;
+use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Conversations\Services\OutboundDispatcher;
 use App\Domain\Conversations\Transports\TransportRegistry;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -180,8 +183,30 @@ final class HandoffAndDispatchTest extends TestCase
         $this->assertSame(1, DB::table('outbound_jobs')->where('tenant_id', $tenant->id)->where('conversation_id', $conversation)->count());
         $this->assertDatabaseHas('messages', ['conversation_id' => $conversation, 'sender_type' => 'USER', 'delivery_status' => 'SENT']);
 
+        Queue::fake([RunAgentJob::class]);
         $this->postJson("/api/v1/admin/conversations/$publicId/resume", ['reason' => 'Consulta resuelta'])->assertOk()->assertJsonPath('data.state', 'AI_ACTIVE');
         $this->assertDatabaseHas('conversations', ['id' => $conversation, 'control_epoch' => 3, 'controlled_by_user_id' => null]);
+        Queue::assertNothingPushed();
+
+        // When the advisor delegates while the latest non-internal message is from the lead, the AI answers it immediately.
+        $this->postJson("/api/v1/admin/conversations/$publicId/takeover")->assertOk();
+        $convRow = DB::table('conversations')->where('id', $conversation)->first(['channel_account_id', 'provider_thread_id']);
+        $inbound = app(InboundMessageService::class)->accept(new InboundMessage(
+            tenantId: $tenant->id,
+            channelAccountId: (int) $convRow->channel_account_id,
+            identityChannelType: 'WEB_CHAT',
+            senderProviderId: 'visitor-1',
+            threadId: (string) $convRow->provider_thread_id,
+            providerMessageId: 'msg-pending-lead',
+            type: 'TEXT',
+            text: '¿Tienen departamentos de 2 dormitorios?',
+            occurredAt: CarbonImmutable::now('UTC'),
+        ));
+        $this->postJson("/api/v1/admin/conversations/$publicId/notes", ['text' => 'Nota interna antes de delegar', 'idempotency_key' => 'note-0001-abcdefgh'])->assertStatus(201);
+        Queue::fake([RunAgentJob::class]);
+
+        $this->postJson("/api/v1/admin/conversations/$publicId/resume", ['reason' => 'Que responda la IA'])->assertOk()->assertJsonPath('data.state', 'AI_ACTIVE');
+        Queue::assertPushed(RunAgentJob::class, fn (RunAgentJob $job): bool => $job->conversationId === $conversation && $job->inputSequence === $inbound['sequence']);
     }
 
     public function test_advisor_cannot_close_or_resume_conversations_they_do_not_control(): void
