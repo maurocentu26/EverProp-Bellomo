@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Bot, FileText, Paperclip, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bot, ChevronDown, ChevronUp, FileText, Paperclip, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -209,6 +209,9 @@ export function ConversationInbox() {
   const listRequest = useRef(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [resumeReason, setResumeReason] = useState("");
+  const [showResume, setShowResume] = useState(false);
+  const [handoffDismissed, setHandoffDismissed] = useState(false);
+  const [handoffExpanded, setHandoffExpanded] = useState(false);
   const [note, setNote] = useState("");
   // One composer, two modes: reply to the client or a note only the team sees.
   const [noteMode, setNoteMode] = useState(false);
@@ -322,6 +325,10 @@ export function ConversationInbox() {
     setUnseen(0);
     atBottom.current = true;
     setShowQuick(false);
+    setShowResume(false);
+    setResumeReason("");
+    setHandoffDismissed(false);
+    setHandoffExpanded(false);
     setDraft(drafts.current.get(id) ?? "");
     draftKey.current = { key: newKey(), text: "" };
     setSuggestion(null);
@@ -594,6 +601,13 @@ export function ConversationInbox() {
                     <RefreshCw className="h-4 w-4" aria-hidden /> Reabrir
                   </button>
                 )}
+                {!readOnly && humanInControl && aiEnabled && (
+                  <button type="button" disabled={busy !== null} aria-expanded={showResume} aria-label="Devolver la conversación a la IA"
+                    onClick={() => setShowResume((open) => !open)}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors disabled:opacity-60 ${showResume ? "border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-100" : "border-border hover:bg-muted/60"}`}>
+                    <Bot className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Pasar a IA</span>
+                  </button>
+                )}
                 {!readOnly && humanInControl && (
                   <button type="button" disabled={busy !== null} onClick={() => void run("close", () => closeConversation(selected), "Conversación cerrada.")}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-60">
@@ -602,14 +616,55 @@ export function ConversationInbox() {
                 )}
               </div>
 
-              {handoff && (state === "WAITING_HUMAN" || state === "HUMAN_ACTIVE") && (
+              {!readOnly && humanInControl && aiEnabled && showResume && (
+                <form onSubmit={(event) => {
+                  event.preventDefault();
+                  if (resumeReason.trim().length < 3) return;
+                  void run("resume", async () => {
+                    await resumeAi(selected, resumeReason.trim());
+                    setResumeReason("");
+                    setShowResume(false);
+                  }, "La IA retomó la conversación.");
+                }} className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-sm">
+                  <label htmlFor="resume-reason" className="text-xs font-semibold text-muted-foreground">Motivo (queda registrado):</label>
+                  <input id="resume-reason" value={resumeReason} onChange={(event) => setResumeReason(event.target.value)} maxLength={500}
+                    placeholder="Ej.: Consulta respondida, continúa seguimiento automático"
+                    className="min-h-10 min-w-52 flex-1 rounded-lg border border-border bg-background px-3 text-sm" autoFocus />
+                  <button type="submit" disabled={busy !== null || resumeReason.trim().length < 3}
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                    <Bot className="h-4 w-4" aria-hidden /> Reanudar IA
+                  </button>
+                  <button type="button" onClick={() => setShowResume(false)} aria-label="Cancelar" title="Cancelar"
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:bg-muted">
+                    <X className="h-4 w-4" aria-hidden />
+                  </button>
+                </form>
+              )}
+
+              {handoff && !handoffDismissed && (state === "WAITING_HUMAN" || state === "HUMAN_ACTIVE") && (
                 // Model-written: plain text only (React escapes it), for the team, never sent to the visitor.
-                <section aria-label="Resumen del asistente" className="m-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-950 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-50">
-                  <p className="font-semibold">
-                    Resumen del asistente · {HANDOFF_REASONS[handoff.reason] ?? "Derivación"}
-                    <span className="font-normal text-muted-foreground"> · {dayLabel(handoff.at)} {clockTime(handoff.at)}</span>
-                  </p>
-                  {handoff.summary && <p className="mt-1 whitespace-pre-wrap break-words">{handoff.summary}</p>}
+                <section aria-label="Resumen del asistente" className="mx-3 mt-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-950 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-50">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 truncate font-semibold">
+                      Resumen del asistente · {HANDOFF_REASONS[handoff.reason] ?? "Derivación"}
+                      <span className="font-normal text-muted-foreground"> · {dayLabel(handoff.at)} {clockTime(handoff.at)}</span>
+                    </p>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {handoff.summary && (handoff.summary.length > 90 || handoff.summary.includes("\n")) && (
+                        <button type="button" onClick={() => setHandoffExpanded((open) => !open)} aria-expanded={handoffExpanded}
+                          className="inline-flex min-h-7 items-center gap-1 rounded-md px-2 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 dark:text-indigo-200 dark:hover:bg-indigo-500/20">
+                          {handoffExpanded ? <><ChevronUp className="h-3.5 w-3.5" aria-hidden /> Contraer</> : <><ChevronDown className="h-3.5 w-3.5" aria-hidden /> Ampliar</>}
+                        </button>
+                      )}
+                      <button type="button" onClick={() => setHandoffDismissed(true)} aria-label="Cerrar resumen del asistente" title="Cerrar resumen"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-indigo-700 hover:bg-indigo-100 dark:text-indigo-200 dark:hover:bg-indigo-500/20">
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </div>
+                  </div>
+                  {handoff.summary && (
+                    <p className={`mt-1 break-words ${handoffExpanded ? "whitespace-pre-wrap" : "line-clamp-1"}`}>{handoff.summary}</p>
+                  )}
                 </section>
               )}
 
@@ -825,22 +880,6 @@ export function ConversationInbox() {
                     </>
                   )}
                 </div>
-              )}
-              {!readOnly && humanInControl && aiEnabled && (
-                <details className="border-t border-border px-3 py-2 text-sm">
-                  <summary className="cursor-pointer font-semibold text-muted-foreground">Devolver la conversación a la IA</summary>
-                  <div className="mt-2 flex flex-wrap items-end gap-2">
-                    <label className="flex min-w-60 flex-1 flex-col gap-1 text-xs font-semibold">Motivo (queda registrado)
-                      <input value={resumeReason} onChange={(event) => setResumeReason(event.target.value)} maxLength={500}
-                        className="min-h-10 rounded-lg border border-border bg-background px-3 text-sm font-normal" />
-                    </label>
-                    <button type="button" disabled={busy !== null || resumeReason.trim().length < 3}
-                      onClick={() => void run("resume", async () => { await resumeAi(selected, resumeReason.trim()); setResumeReason(""); }, "La IA retomó la conversación.")}
-                      className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 font-semibold disabled:opacity-60">
-                      <Bot className="h-4 w-4" aria-hidden /> Reanudar IA
-                    </button>
-                  </div>
-                </details>
               )}
             </>
           )}
