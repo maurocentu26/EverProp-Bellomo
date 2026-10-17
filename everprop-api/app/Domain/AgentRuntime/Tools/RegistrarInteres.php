@@ -30,8 +30,9 @@ final class RegistrarInteres implements AgentTool
 
     public function description(): string
     {
-        return 'Registra el interés del visitante en una propiedad para que un asesor lo contacte. En el chat web pedí antes un teléfono o email '
-            .'y pasalo en contact_phone o contact_email. No inventes datos de contacto.'.PublicInventory::PROPERTY_REF_HINT;
+        return 'Registra el interés del visitante en una propiedad y da de alta el lead para que un asesor lo contacte. '
+            .'IMPORTANTE: Invocá esta herramienta ÚNICAMENTE después de haberle mostrado al visitante en el chat los datos que se van a ingresar (nombre, teléfono/email y propiedad) y de que el visitante haya confirmado explícitamente que son correctos. '
+            .'En el chat web pedí antes un teléfono o email y pasalo en contact_phone o contact_email. No inventes datos de contacto.'.PublicInventory::PROPERTY_REF_HINT;
     }
 
     public function schema(): array

@@ -26,7 +26,8 @@ final class RegistrarContacto implements AgentTool
 
     public function description(): string
     {
-        return 'Registra los datos de contacto del visitante (nombre, teléfono o email) para crear un lead y que un asesor comercial pueda contactarlo. '
+        return 'Registra los datos de contacto del visitante (nombre, teléfono o email) para dar de alta el lead y que un asesor comercial pueda contactarlo. '
+            .'IMPORTANTE: Invocá esta herramienta ÚNICAMENTE después de haberle mostrado al visitante en el chat los datos que se van a ingresar y de que el visitante haya confirmado explícitamente que son correctos. '
             .'En el chat web pedí antes un teléfono o email y pasalo en contact_phone o contact_email. No inventes datos de contacto.';
     }
 
