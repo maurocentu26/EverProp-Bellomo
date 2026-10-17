@@ -2,6 +2,7 @@
 
 namespace App\Domain\Conversations\Services;
 
+use App\Domain\AgentRuntime\Jobs\RunAgentJob;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
 use App\Domain\Conversations\Notifications\ConversationNeedsAttention;
 use App\Domain\CRM\Notifications\LeadAssignedNotification;
@@ -60,12 +61,16 @@ final class ConversationControl
 
     /**
      * Explicit, audited resume. Never happens by timeout.
+     * If the latest non-internal, non-cancelled message is an inbound text from the lead,
+     * dispatches an AI turn so the lead is answered right away; otherwise waits for the lead.
      *
      * @return array{state: string, epoch: int}
      */
     public function resume(int $tenantId, int $conversationId, User $user, string $reason): array
     {
-        return DB::transaction(function () use ($tenantId, $conversationId, $user, $reason): array {
+        $pendingSequence = null;
+
+        $result = DB::transaction(function () use ($tenantId, $conversationId, $user, $reason, &$pendingSequence): array {
             if (! InboundMessageService::aiEnabled($tenantId)) {
                 throw new ConversationConflict('AI_DISABLED', 'La IA todavía no está habilitada para responder.');
             }
@@ -79,8 +84,26 @@ final class ConversationControl
             ]);
             $this->outbox($tenantId, $conversationId, 'CONVERSATION_AI_RESUMED', ['epoch' => $epoch, 'user_id' => $user->id, 'reason' => mb_substr($reason, 0, 500)]);
 
+            $last = DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
+                ->where(fn ($q) => $q->where('direction', 'INBOUND')->orWhere(fn ($o) => $o->where('direction', 'OUTBOUND')
+                    ->where('delivery_status', '!=', 'CANCELLED')))
+                ->orderByDesc('sequence')->first(['sequence', 'direction', 'message_type', 'text_body']);
+
+            if ($last !== null && $last->direction === 'INBOUND' && $last->message_type === 'TEXT' && trim((string) $last->text_body) !== '') {
+                $pendingSequence = (int) $last->sequence;
+                DB::table('chatbot_runs')->where('tenant_id', $tenantId)
+                    ->where('provider_run_id', 'turn:'.$conversationId.':'.$pendingSequence)
+                    ->update(['provider_run_id' => DB::raw("CONCAT(provider_run_id, ':e', COALESCE(control_epoch, 0))")]);
+            }
+
             return ['state' => 'AI_ACTIVE', 'epoch' => $epoch];
         }, 3);
+
+        if ($pendingSequence !== null) {
+            RunAgentJob::dispatch($tenantId, $conversationId, $pendingSequence);
+        }
+
+        return $result;
     }
 
     /**
