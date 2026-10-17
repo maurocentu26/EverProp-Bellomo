@@ -11,6 +11,12 @@ const backendUrl = (
 const widgetFrameAncestors = process.env.EVERSYS_WIDGET_FRAME_ANCESTORS?.trim() || "'self'";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: [
+    "localhost:3000",
+    "127.0.0.1:3000",
+    "*.trycloudflare.com",
+    "sale-cannon-boost-arranged.trycloudflare.com",
+  ],
   devIndicators: false,
   async headers() {
     return [

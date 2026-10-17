@@ -44,3 +44,11 @@ Extender el motor omnicanal de conversaciones y la IA (`Bellomito`) para operar 
 - **PHPStan (`vendor/bin/phpstan analyse --memory-limit=1G`):** 0 errores.
 - **Laravel Pint (`vendor/bin/pint --test`):** 100% aprobado (305 archivos).
 - **TypeScript (`npx tsc --noEmit` en `everprop-public`):** 0 errores.
+- **Verificación real end-to-end con Meta Messenger Platform:**
+  - App Meta: "EverSys Conversations" (`App ID: 1746788663096007`), Fanpage vinculada (`315324955008533`).
+  - Webhook expuesto mediante túnel Cloudflare seguro: `/api/v1/webhooks/meta` con verificación HMAC-SHA256 (`META_APP_SECRET`).
+  - Inbound real verificado: mensaje entrante desde la app Facebook Messenger, recepción durable en `webhook_receipts` (#83), creación de conversación y deduplicación.
+  - Outbound real verificado: `AgentCoordinator` ejecutó Gemini 3.8 Flash con RAG y herramientas de inventario, despachó respuesta vía Graph API `POST /me/messages` (`provider_message_id: m_4f85Rk4i1...`), recibida exitosamente en tiempo real en Messenger móvil.
+  - Ajuste en `PromptBuilder`: instrucción explícita e imperativa al modelo para invocar la herramienta `registrar_contacto` inmediatamente en cuanto el usuario suministre o confirme nombre, teléfono o email.
+  - PWA y Web Push: configuración de llaves VAPID en backend, registro de suscripción push en `web_push_subscriptions` y habilitación de orígenes en `next.config.ts` (`allowedDevOrigins`) para pruebas móviles seguras.
+
