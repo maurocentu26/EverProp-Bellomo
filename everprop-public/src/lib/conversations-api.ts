@@ -70,7 +70,12 @@ export const STATE_LABELS: Record<ConversationState, string> = {
   CLOSED: "Cerrada",
 };
 
-export const CHANNEL_LABELS: Record<string, string> = { WHATSAPP: "WhatsApp", WEB_CHAT: "Chat web" };
+export const CHANNEL_LABELS: Record<string, string> = {
+  WHATSAPP: "WhatsApp",
+  WEB_CHAT: "Chat web",
+  INSTAGRAM_DM: "Instagram",
+  FACEBOOK_MESSENGER: "Messenger",
+};
 
 /** Search terms shorter than this are ignored (the API rejects them). */
 export const MIN_SEARCH = 2;

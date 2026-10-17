@@ -17,7 +17,7 @@ final class GeminiChatClient implements LlmClient
 
     public function complete(string $system, array $messages, array $tools, int $maxOutputTokens, bool $allowTools): LlmResponse
     {
-        if (! app()->environment('local') || config('conversations.ai_enabled')) {
+        if (! app()->environment('local')) {
             throw new LlmFailure('LOCAL_COPILOT_ONLY', retryable: false, billable: false);
         }
 

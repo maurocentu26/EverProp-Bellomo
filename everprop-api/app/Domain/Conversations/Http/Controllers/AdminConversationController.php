@@ -171,15 +171,15 @@ final class AdminConversationController extends Controller
         if ($user->role() !== RoleCode::READ_ONLY && (int) $row->assigned_user_id === (int) $user->id) {
             DB::table('conversations')->where('tenant_id', $row->tenant_id)->where('id', $row->id)->update(['unread_count' => 0]);
         }
-        // WhatsApp's 24 h service window (Plan W2), so the advisor knows before writing. null = the channel has none.
-        $isWhatsApp = DB::table('channel_accounts')->where('tenant_id', $row->tenant_id)->where('id', $row->channel_account_id)->value('channel_type') === 'WHATSAPP';
+        // Meta's 24 h service window (Plan W2), so the advisor knows before writing. null = the channel has none.
+        $hasWindow = in_array(DB::table('channel_accounts')->where('tenant_id', $row->tenant_id)->where('id', $row->channel_account_id)->value('channel_type'), ['WHATSAPP', 'INSTAGRAM_DM', 'FACEBOOK_MESSENGER'], true);
 
         return response()->json([
             'conversation' => ['id' => $row->public_id, 'state' => $row->control_state, 'epoch' => (int) $row->control_epoch,
                 'ai_enabled' => InboundMessageService::aiEnabled((int) $row->tenant_id),
                 'handoff' => $this->lastHandoff((int) $row->tenant_id, (int) $row->id),
                 'copilot_enabled' => InboundMessageService::copilotEnabled((int) $row->tenant_id),
-                'reply_window' => $isWhatsApp ? ['closes_at' => app(ChannelPolicy::class)
+                'reply_window' => $hasWindow ? ['closes_at' => app(ChannelPolicy::class)
                     ->windowClosesAt((int) $row->tenant_id, (int) $row->id, (int) $row->channel_account_id)?->toISOString()] : null],
             'data' => $messages->map(fn ($m) => [
                 'sequence' => (int) $m->sequence, 'direction' => $m->direction, 'sender' => $m->sender_type,
@@ -239,7 +239,7 @@ final class AdminConversationController extends Controller
         try {
             return response()->json(['data' => app(AgentCoordinator::class)->suggest((int) $row->tenant_id, (int) $row->id)]);
         } catch (CopilotFailure $e) {
-            $action = ['registrar_interes' => 'registrar el interés', 'solicitar_visita' => 'pedir la visita', 'derivar_a_asesor' => 'derivar la conversación'][$e->action ?? ''] ?? 'hacer esa acción';
+            $action = ['registrar_contacto' => 'registrar el contacto', 'registrar_interes' => 'registrar el interés', 'solicitar_visita' => 'pedir la visita', 'derivar_a_asesor' => 'derivar la conversación'][$e->action ?? ''] ?? 'hacer esa acción';
             [$status, $message] = match ($e->errorCode) {
                 'ACTION_NEEDED' => [422, "La IA sugiere {$action}: hacelo vos con «Lead y visita» y respondé al cliente."],
                 'TOO_MANY_DRAFTS' => [429, 'Ya pediste varias sugerencias para este mensaje. Escribí la respuesta vos.'],

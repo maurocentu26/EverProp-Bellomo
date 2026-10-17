@@ -62,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
                 'conversations.copilot_monthly_usd' => min((float) config('conversations.copilot_monthly_usd'), $cap / 1_000_000)]);
         }
         $this->app->bind(LlmClient::class, fn (): LlmClient => match (config('agent.llm_provider')) {
-            'gemini' => (app()->environment('local') && ! config('conversations.ai_enabled')
+            'gemini' => (app()->environment('local')
                 && filled(config('services.gemini.key')) && filled(config('agent.llm_model'))
                 && (float) config('services.gemini.input_rate') >= 0 && (float) config('services.gemini.output_rate') >= 0
                 && (float) config('services.gemini.local_budget_usd') > 0

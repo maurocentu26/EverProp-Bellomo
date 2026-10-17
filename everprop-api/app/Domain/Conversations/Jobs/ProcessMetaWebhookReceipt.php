@@ -39,7 +39,7 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
     {
         $receipt = DB::transaction(function (): ?object {
             $row = DB::table('webhook_receipts')->where('tenant_id', $this->tenantId)->where('id', $this->receiptId)
-                ->where('provider', 'META')->lockForUpdate()->first(['raw_payload', 'processing_status', 'integration_id']);
+                ->where('provider', 'META')->lockForUpdate()->first(['raw_payload', 'processing_status', 'integration_id', 'provider_object']);
             // Only RECEIVED/RETRY are claimable: a receipt another worker holds (PROCESSING) is left alone.
             if ($row === null || ! in_array($row->processing_status, ['RECEIVED', 'RETRY'], true)) {
                 return null;
@@ -57,22 +57,33 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
 
         try {
             $stored = json_decode((string) $receipt->raw_payload, true, 64, JSON_THROW_ON_ERROR);
-            // A receipt that is not what the controller stored must surface (RETRY → DEAD_LETTER), never "process" as empty.
-            if (! is_array($stored) || ! is_array($stored['value'] ?? null)) {
-                throw new \UnexpectedValueException('INVALID_RECEIPT');
-            }
-            // The number may have changed hands since the receipt was stored: never apply it to another tenant.
-            $phone = $stored['value']['metadata']['phone_number_id'] ?? null;
-            $channel = $processor->channelFor(is_scalar($phone) ? (string) $phone : '');
-            if ($channel === null || (int) $channel->tenant_id !== $this->tenantId || (int) $channel->integration_id !== (int) $receipt->integration_id) {
-                $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
+            if (in_array($receipt->provider_object, ['instagram_messages', 'messenger_messages'], true)) {
+                if (! is_array($stored) || ! is_string($stored['object'] ?? null) || ! is_string($stored['account_id'] ?? null) || ! is_array($stored['messaging'] ?? null)) {
+                    throw new \UnexpectedValueException('INVALID_RECEIPT');
+                }
+                if (! $processor->social($stored['object'], $stored['account_id'], $processor->arrays($stored['messaging']), $this->tenantId, (int) $receipt->integration_id)) {
+                    $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
 
-                return;
-            }
-            if (! $processor->messages($stored['value'], is_string($stored['waba_id'] ?? null) ? $stored['waba_id'] : null, $this->tenantId, (int) $receipt->integration_id)) {
-                $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
+                    return;
+                }
+            } else {
+                // A receipt that is not what the controller stored must surface (RETRY → DEAD_LETTER), never "process" as empty.
+                if (! is_array($stored) || ! is_array($stored['value'] ?? null)) {
+                    throw new \UnexpectedValueException('INVALID_RECEIPT');
+                }
+                // The number may have changed hands since the receipt was stored: never apply it to another tenant.
+                $phone = $stored['value']['metadata']['phone_number_id'] ?? null;
+                $channel = $processor->channelFor(is_scalar($phone) ? (string) $phone : '');
+                if ($channel === null || (int) $channel->tenant_id !== $this->tenantId || (int) $channel->integration_id !== (int) $receipt->integration_id) {
+                    $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
 
-                return;
+                    return;
+                }
+                if (! $processor->messages($stored['value'], is_string($stored['waba_id'] ?? null) ? $stored['waba_id'] : null, $this->tenantId, (int) $receipt->integration_id)) {
+                    $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
+
+                    return;
+                }
             }
         } catch (Throwable $error) {
             $this->mark('RETRY', class_basename($error), CarbonImmutable::now('UTC')->addSeconds($this->backoff()[min($this->attempts() - 1, 3)] ?? 300), ['PROCESSING']);

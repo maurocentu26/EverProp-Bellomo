@@ -63,22 +63,30 @@ final class MetaWhatsAppWebhookController extends Controller
         }
 
         $payload = json_decode($raw, true);
-        if (! is_array($payload) || ($payload['object'] ?? null) !== 'whatsapp_business_account') {
+        $object = is_array($payload) && is_string($payload['object'] ?? null) ? $payload['object'] : '';
+        if (! in_array($object, ['whatsapp_business_account', 'page', 'instagram'], true)) {
             return response('Ignored', 200);
         }
 
         // Malformed elements are skipped (a 500 would make Meta redeliver the batch forever);
         // database failures still bubble up so the delivery is retried.
         foreach ($processor->arrays($payload['entry'] ?? null) as $entry) {
-            $wabaId = is_scalar($entry['id'] ?? null) ? (string) $entry['id'] : null;
-            foreach ($processor->arrays($entry['changes'] ?? null) as $change) {
-                if (! is_array($change['value'] ?? null)) {
-                    continue;
+            $entryId = is_scalar($entry['id'] ?? null) ? (string) $entry['id'] : null;
+            if ($object === 'whatsapp_business_account') {
+                foreach ($processor->arrays($entry['changes'] ?? null) as $change) {
+                    if (! is_array($change['value'] ?? null)) {
+                        continue;
+                    }
+                    if (($change['field'] ?? null) === 'account_update' && $entryId !== null) {
+                        $processor->accountUpdate($entryId, $change['value']);
+                    } elseif (($change['field'] ?? null) === 'messages') {
+                        $this->store($processor, $change['value'], $entryId);
+                    }
                 }
-                if (($change['field'] ?? null) === 'account_update' && $wabaId !== null) {
-                    $processor->accountUpdate($wabaId, $change['value']);
-                } elseif (($change['field'] ?? null) === 'messages') {
-                    $this->store($processor, $change['value'], $wabaId);
+            } else {
+                $messaging = $processor->arrays($entry['messaging'] ?? null);
+                if ($entryId !== null && $entryId !== '' && $messaging !== []) {
+                    $this->storeSocial($processor, $object, $entryId, $messaging);
                 }
             }
         }
@@ -100,21 +108,42 @@ final class MetaWhatsAppWebhookController extends Controller
             return;
         }
         $json = json_encode(['waba_id' => $wabaId, 'value' => $value], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $this->persistReceipt($channel, 'wa-change:', 'whatsapp_messages', $phoneNumberId, $json);
+    }
+
+    /** @param list<array<string, mixed>> $messaging */
+    private function storeSocial(MetaWebhookProcessor $processor, string $object, string $accountId, array $messaging): void
+    {
+        $channelType = $object === 'instagram' ? 'INSTAGRAM_DM' : 'FACEBOOK_MESSENGER';
+        $channel = $processor->socialChannelFor($channelType, $accountId);
+        if ($channel === null) {
+            Log::warning('meta.webhook.unmapped_social_account', ['channel_type' => $channelType, 'mapped' => false]);
+
+            return;
+        }
+        $providerObject = $object === 'instagram' ? 'instagram_messages' : 'messenger_messages';
+        $json = json_encode(['object' => $object, 'account_id' => $accountId, 'messaging' => $messaging], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $this->persistReceipt($channel, 'meta-social:', $providerObject, $accountId, $json);
+    }
+
+    private function persistReceipt(object $channel, string $prefix, string $providerObject, string $objectId, string $json): void
+    {
         $digest = hash('sha256', $json, true);
+        $key = $prefix.bin2hex($digest);
         // An identical redelivery maps to the same receipt (unique per integration + digest).
         DB::table('webhook_receipts')->insertOrIgnore([
             'tenant_id' => $channel->tenant_id, 'integration_id' => $channel->integration_id, 'provider' => 'META',
-            'idempotency_key' => 'wa-change:'.bin2hex($digest), 'provider_object' => 'whatsapp_messages',
-            'provider_object_id' => mb_substr($phoneNumberId, 0, 191), 'signature_algorithm' => 'HMAC-SHA256', 'signature_valid' => 1,
+            'idempotency_key' => $key, 'provider_object' => $providerObject,
+            'provider_object_id' => mb_substr($objectId, 0, 191), 'signature_algorithm' => 'HMAC-SHA256', 'signature_valid' => 1,
             'payload_sha256' => $digest, 'raw_payload' => $json, 'processing_status' => 'RECEIVED',
             // Client text is dropped once processed; failed receipts keep it this long for review, then the reconciler redacts it.
             'expires_at' => now()->addDays(30),
         ]);
         $receipt = DB::table('webhook_receipts')->where('integration_id', $channel->integration_id)
-            ->where('idempotency_key', 'wa-change:'.bin2hex($digest))->first(['id', 'processing_status']);
+            ->where('idempotency_key', $key)->first(['id', 'processing_status']);
         if ($receipt === null) {
             // INSERT IGNORE turned an error into a warning: never acknowledge a change that is not stored.
-            throw new \RuntimeException('WhatsApp webhook receipt was not stored.');
+            throw new \RuntimeException('Meta webhook receipt was not stored.');
         }
         if (! in_array($receipt->processing_status, ['RECEIVED', 'RETRY'], true)) {
             return;

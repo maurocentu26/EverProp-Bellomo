@@ -36,12 +36,13 @@ final class ChannelPolicy
 
         return match ($channel['channel_type'] ?? null) {
             'WEB_CHAT' => null, // our own widget: no provider window
-            'WHATSAPP' => $template === null ? $this->whatsappWindow($tenantId, $conversationId, (int) $channel['id']) : $this->approvedTemplate($channel, $template),
+            'WHATSAPP' => $template === null ? $this->serviceWindow($tenantId, $conversationId, (int) $channel['id']) : $this->approvedTemplate($channel, $template),
+            'INSTAGRAM_DM', 'FACEBOOK_MESSENGER' => $template === null ? $this->serviceWindow($tenantId, $conversationId, (int) $channel['id']) : 'TEMPLATE_NOT_APPROVED',
             default => 'CHANNEL_UNSUPPORTED',
         };
     }
 
-    /** When the current WhatsApp service window closes, or null if it is closed / never opened. */
+    /** When the current Meta 24h service window closes, or null if it is closed / never opened. */
     public function windowClosesAt(int $tenantId, int $conversationId, int $channelId): ?CarbonImmutable
     {
         $last = DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
@@ -53,7 +54,7 @@ final class ChannelPolicy
         return $closes !== null && CarbonImmutable::now('UTC')->lessThan($closes) ? $closes : null;
     }
 
-    private function whatsappWindow(int $tenantId, int $conversationId, int $channelId): ?string
+    private function serviceWindow(int $tenantId, int $conversationId, int $channelId): ?string
     {
         return $this->windowClosesAt($tenantId, $conversationId, $channelId) === null ? 'OUTSIDE_SERVICE_WINDOW' : null;
     }

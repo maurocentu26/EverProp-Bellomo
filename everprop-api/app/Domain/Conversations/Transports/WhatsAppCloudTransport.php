@@ -23,13 +23,17 @@ final class WhatsAppCloudTransport implements ChannelTransport
 
     public function send(array $channel, string $recipientProviderId, string $text, string $dispatchNonce, ?array $media = null, ?array $template = null): SendResult
     {
-        if (! config('services.meta.send_enabled')) {
-            return SendResult::rejected('CHANNEL_SEND_DISABLED', false);
-        }
-
         // A paused or disconnected number never sends, even if its integration is still ACTIVE.
         if (($channel['status'] ?? null) !== 'ACTIVE') {
             return SendResult::rejected('CHANNEL_INACTIVE', false);
+        }
+
+        if (! app()->isProduction() && (bool) config('services.meta.send_fake')) {
+            return SendResult::accepted('fake:'.$dispatchNonce);
+        }
+
+        if (! config('services.meta.send_enabled')) {
+            return SendResult::rejected('CHANNEL_SEND_DISABLED', false);
         }
 
         $token = $this->tokens->forSending((int) $channel['tenant_id'], (int) $channel['integration_id']);
