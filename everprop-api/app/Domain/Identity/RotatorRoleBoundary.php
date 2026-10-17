@@ -24,6 +24,8 @@ final class RotatorRoleBoundary
             );
 
             $isCatalogRead = $request->isMethod('GET') && $request->is(
+                'api/v1/admin/projects',
+                'api/v1/admin/projects/*',
                 'api/v1/admin/properties',
                 'api/v1/admin/properties/*'
             );
