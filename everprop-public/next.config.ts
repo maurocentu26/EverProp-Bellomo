@@ -15,7 +15,6 @@ const nextConfig: NextConfig = {
     "localhost:3000",
     "127.0.0.1:3000",
     "*.trycloudflare.com",
-    "sale-cannon-boost-arranged.trycloudflare.com",
   ],
   devIndicators: false,
   async headers() {
