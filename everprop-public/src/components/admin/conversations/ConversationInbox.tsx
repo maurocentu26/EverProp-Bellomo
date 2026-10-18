@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, Bot, ChevronDown, ChevronUp, FileText, Paperclip, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
+import { ArrowDown, ArrowLeft, Bot, ChevronDown, ChevronUp, FileText, Paperclip, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, MoreVertical, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -208,6 +208,7 @@ export function ConversationInbox() {
   const selectedRef = useRef<string | null>(null);
   const listRequest = useRef(0);
   const [busy, setBusy] = useState<string | null>(null);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [resumeReason, setResumeReason] = useState("");
   const [showResume, setShowResume] = useState(false);
   const [handoffDismissed, setHandoffDismissed] = useState(false);
@@ -325,6 +326,7 @@ export function ConversationInbox() {
     setUnseen(0);
     atBottom.current = true;
     setShowQuick(false);
+    setShowActionsMenu(false);
     setShowResume(false);
     setResumeReason("");
     setHandoffDismissed(false);
@@ -582,64 +584,8 @@ export function ConversationInbox() {
                     {replyWindow?.closes_at ? ` · podés responder hasta ${dayLabel(replyWindow.closes_at).toLowerCase()} ${clockTime(replyWindow.closes_at)}` : ""}
                   </p>
                 </div>
-                {state && <span className={`hidden shrink-0 rounded-full px-3 py-1 text-xs font-semibold sm:inline ${STATE_STYLES[state]}`}>{STATE_LABELS[state]}</span>}
-                {!readOnly && (
-                  // Lead and visit live on the lead page: this opens (or creates) the conversation's one open lead.
-                  <button type="button" disabled={busy !== null} aria-label="Lead y visita de este cliente"
-                    onClick={() => void run("lead", async () => {
-                      const { data } = await openConversationLead(selected);
-                      toast.success(data.created ? "Lead creado. Cargá la propiedad y agendá la visita." : "Abriendo el lead del cliente.");
-                      router.push(`/admin/leads/${data.lead_id}`);
-                    })}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold disabled:opacity-60">
-                    <UserPlus className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Lead y visita</span>
-                  </button>
-                )}
-                {!readOnly && state === "CLOSED" && (
-                  <button type="button" disabled={busy !== null} onClick={() => void run("reopen", () => reopenConversation(selected, epoch), "Conversación reabierta.")}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-60">
-                    <RefreshCw className="h-4 w-4" aria-hidden /> Reabrir
-                  </button>
-                )}
-                {!readOnly && humanInControl && aiEnabled && (
-                  <button type="button" disabled={busy !== null} aria-expanded={showResume} aria-label="Devolver la conversación a la IA"
-                    onClick={() => setShowResume((open) => !open)}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors disabled:opacity-60 ${showResume ? "border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-500/40 dark:bg-violet-500/20 dark:text-violet-100" : "border-border hover:bg-muted/60"}`}>
-                    <Bot className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Pasar a IA</span>
-                  </button>
-                )}
-                {!readOnly && humanInControl && (
-                  <button type="button" disabled={busy !== null} onClick={() => void run("close", () => closeConversation(selected), "Conversación cerrada.")}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-60">
-                    <CheckCircle2 className="h-4 w-4" aria-hidden /> <span className="sr-only sm:not-sr-only">Cerrar</span>
-                  </button>
-                )}
+                {state && <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${STATE_STYLES[state]}`}>{STATE_LABELS[state]}</span>}
               </div>
-
-              {!readOnly && humanInControl && aiEnabled && showResume && (
-                <form onSubmit={(event) => {
-                  event.preventDefault();
-                  if (resumeReason.trim().length < 3) return;
-                  void run("resume", async () => {
-                    await resumeAi(selected, resumeReason.trim());
-                    setResumeReason("");
-                    setShowResume(false);
-                  }, "La IA retomó la conversación.");
-                }} className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-sm">
-                  <label htmlFor="resume-reason" className="text-xs font-semibold text-muted-foreground">Motivo (queda registrado):</label>
-                  <input id="resume-reason" value={resumeReason} onChange={(event) => setResumeReason(event.target.value)} maxLength={500}
-                    placeholder="Ej.: Consulta respondida, continúa seguimiento automático"
-                    className="min-h-10 min-w-52 flex-1 rounded-lg border border-border bg-background px-3 text-sm" autoFocus />
-                  <button type="submit" disabled={busy !== null || resumeReason.trim().length < 3}
-                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-                    <Bot className="h-4 w-4" aria-hidden /> Reanudar IA
-                  </button>
-                  <button type="button" onClick={() => setShowResume(false)} aria-label="Cancelar" title="Cancelar"
-                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:bg-muted">
-                    <X className="h-4 w-4" aria-hidden />
-                  </button>
-                </form>
-              )}
 
               {handoff && !handoffDismissed && (state === "WAITING_HUMAN" || state === "HUMAN_ACTIVE") && (
                 // Model-written: plain text only (React escapes it), for the team, never sent to the visitor.
@@ -827,6 +773,13 @@ export function ConversationInbox() {
                       ) : (
                         <p className="flex-1 text-center text-sm text-muted-foreground">{state === "CLOSED" ? "Conversación cerrada." : "Cargando…"}</p>
                       )}
+                      {!readOnly && (
+                        <button type="button" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
+                          onClick={() => setShowActionsMenu((open) => !open)}
+                          className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border transition-colors ${showActionsMenu ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                          {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -876,9 +829,148 @@ export function ConversationInbox() {
                         className="wa-accent inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50">
                         {noteMode ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
                       </button>
+
+                      {/* Botón Flotante de Acciones (FAB) */}
+                      {!readOnly && (
+                        <button type="button" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
+                          onClick={() => setShowActionsMenu((open) => !open)}
+                          className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border transition-colors ${showActionsMenu ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                          {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />}
+                        </button>
+                      )}
                     </form>
                     </>
                   )}
+                </div>
+              )}
+
+              {/* Menú Contextual Desplegable del FAB */}
+              {!readOnly && showActionsMenu && (
+                <div role="menu" aria-label="Acciones disponibles"
+                  className="absolute bottom-18 right-3 z-30 w-64 rounded-2xl border border-border bg-card p-1.5 shadow-xl transition-all">
+                  <div className="border-b border-border px-3 py-1.5">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Acciones del chat</p>
+                  </div>
+                  <div className="space-y-0.5 py-1">
+                    {/* Lead y visita */}
+                    <button type="button" role="menuitem" disabled={busy !== null}
+                      onClick={() => {
+                        setShowActionsMenu(false);
+                        void run("lead", async () => {
+                          const { data } = await openConversationLead(selected);
+                          toast.success(data.created ? "Lead creado. Cargá la propiedad y agendá la visita." : "Abriendo el lead del cliente.");
+                          router.push(`/admin/leads/${data.lead_id}`);
+                        });
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
+                      <UserPlus className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+                      <div>
+                        <span className="block">Lead y visita</span>
+                        <span className="block text-[11px] font-normal text-muted-foreground">Gestionar o crear lead comercial</span>
+                      </div>
+                    </button>
+
+                    {/* Pasar a IA (si está en control humano y la IA está habilitada) */}
+                    {humanInControl && aiEnabled && (
+                      <button type="button" role="menuitem" disabled={busy !== null}
+                        onClick={() => {
+                          setShowActionsMenu(false);
+                          setShowResume(true);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-violet-50 hover:text-violet-900 disabled:opacity-60 dark:hover:bg-violet-500/20 dark:hover:text-violet-100">
+                        <Bot className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
+                        <div>
+                          <span className="block">Pasar a IA</span>
+                          <span className="block text-[11px] font-normal text-muted-foreground">Reanudar atención automática</span>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Tomar control (cuando no está en control humano y no está cerrada) */}
+                    {!humanInControl && state && state !== "CLOSED" && (
+                      <button type="button" role="menuitem" disabled={busy !== null || state === "TRANSITION_PENDING"}
+                        onClick={() => {
+                          setShowActionsMenu(false);
+                          void run("takeover", async () => {
+                            await takeOver(selected);
+                            window.setTimeout(focusComposer, 300);
+                          }, "Tomaste el control. La IA dejó de responder.");
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-emerald-50 hover:text-emerald-900 disabled:opacity-60 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-100">
+                        <Hand className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                        <div>
+                          <span className="block">Tomar control</span>
+                          <span className="block text-[11px] font-normal text-muted-foreground">Pausar la IA y responder</span>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Reabrir conversación (cuando está cerrada) */}
+                    {state === "CLOSED" && (
+                      <button type="button" role="menuitem" disabled={busy !== null}
+                        onClick={() => {
+                          setShowActionsMenu(false);
+                          void run("reopen", () => reopenConversation(selected, epoch), "Conversación reabierta.");
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
+                        <RefreshCw className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+                        <div>
+                          <span className="block">Reabrir conversación</span>
+                          <span className="block text-[11px] font-normal text-muted-foreground">Habilitar respuestas en este chat</span>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Cerrar conversación (cuando está en control humano) */}
+                    {humanInControl && (
+                      <button type="button" role="menuitem" disabled={busy !== null}
+                        onClick={() => {
+                          setShowActionsMenu(false);
+                          void run("close", () => closeConversation(selected), "Conversación cerrada.");
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl border-t border-border px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-500/20">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
+                        <div>
+                          <span className="block">Cerrar conversación</span>
+                          <span className="block text-[11px] font-normal text-rose-500/80 dark:text-rose-400/80">Marcar como finalizada</span>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Formulario / Diálogo Inline para Reanudar IA */}
+              {!readOnly && showResume && (
+                <div role="dialog" aria-labelledby="resume-title"
+                  className="absolute bottom-18 left-3 right-3 z-30 rounded-2xl border border-border bg-card p-3 shadow-xl">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span id="resume-title" className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                      <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden /> Reanudar Asistente IA
+                    </span>
+                    <button type="button" onClick={() => setShowResume(false)} aria-label="Cancelar" title="Cancelar"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+                      <X className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                  <form onSubmit={(event) => {
+                    event.preventDefault();
+                    if (resumeReason.trim().length < 3) return;
+                    void run("resume", async () => {
+                      await resumeAi(selected, resumeReason.trim());
+                      setResumeReason("");
+                      setShowResume(false);
+                    }, "La IA retomó la conversación.");
+                  }} className="flex flex-wrap items-center gap-2">
+                    <label htmlFor="resume-reason" className="sr-only">Motivo</label>
+                    <input id="resume-reason" value={resumeReason} onChange={(event) => setResumeReason(event.target.value)} maxLength={500}
+                      placeholder="Motivo: ej. Consulta respondida, continúa seguimiento..."
+                      className="min-h-10 min-w-52 flex-1 rounded-lg border border-border bg-background px-3 text-xs" autoFocus />
+                    <button type="submit" disabled={busy !== null || resumeReason.trim().length < 3}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                      <Bot className="h-4 w-4" aria-hidden /> Confirmar
+                    </button>
+                  </form>
                 </div>
               )}
             </>
