@@ -480,8 +480,8 @@ export function ConversationInbox() {
   const windowClosed = replyWindow !== null && replyWindow.closes_at === null;
 
   return (
-    <section className="wa-inbox mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 pb-6">
-      <header className={`${selected ? "hidden lg:flex" : "flex"} flex-wrap items-end justify-between gap-3`}>
+    <section className="wa-inbox mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 pb-6 lg:min-h-0 lg:flex-1 lg:pb-0">
+      <header className={`${selected ? "hidden lg:flex" : "flex"} shrink-0 flex-wrap items-end justify-between gap-3`}>
         <div>
           <h1 className="text-2xl font-bold">Conversaciones</h1>
           <p className="mt-1 hidden text-sm text-muted-foreground sm:block">WhatsApp y chat web en una sola bandeja. La IA se detiene cuando tomás el control.</p>
@@ -495,8 +495,8 @@ export function ConversationInbox() {
         </p>
       </header>
 
-      <div className="grid gap-4 lg:min-h-[70vh] lg:grid-cols-[minmax(280px,360px)_1fr]">
-        <aside className={`${selected ? "hidden lg:flex" : "flex"} min-w-0 flex-col rounded-2xl border border-border bg-card`} aria-label="Listado de conversaciones">
+      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+        <aside className={`${selected ? "hidden lg:flex" : "flex"} min-w-0 flex-col rounded-2xl border border-border bg-card lg:min-h-0 lg:overflow-hidden`} aria-label="Listado de conversaciones">
           <div role="search" className="p-2">
             <label htmlFor="inbox-search" className="sr-only">Buscar conversaciones</label>
             <div className="relative">
@@ -559,7 +559,7 @@ export function ConversationInbox() {
           </ul>
         </aside>
 
-        <div className={`${selected ? "wa-fullscreen flex lg:h-auto" : "hidden lg:flex"} relative min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card`}>
+        <div className={`${selected ? "wa-fullscreen flex lg:h-auto" : "hidden lg:flex"} relative min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card lg:min-h-0`}>
           {!selected ? (
             <div className="m-auto flex max-w-sm flex-col items-center gap-3 p-8 text-center text-muted-foreground">
               <MessageSquare className="h-8 w-8" aria-hidden />

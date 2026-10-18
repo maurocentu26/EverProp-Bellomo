@@ -127,8 +127,8 @@ export default function MainLayout({ children }: Props) {
                     <AppSidebar />
                     <div className="flex min-w-0 flex-1 flex-col">
                         <AdminNavbar />
-                        <main id="admin-content" tabIndex={-1} data-admin-scroll-container="true" className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
-                            <div className="mx-auto w-full max-w-[100rem] space-y-6">
+                        <main id="admin-content" tabIndex={-1} data-admin-scroll-container="true" className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 ${pathname === "/admin/conversaciones" ? "lg:overflow-hidden" : ""}`}>
+                            <div className={`mx-auto w-full max-w-[100rem] space-y-6 ${pathname === "/admin/conversaciones" ? "lg:flex lg:h-full lg:min-h-0 lg:flex-col" : ""}`}>
                                 {isMockDataMode && (
                                     <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="note">
                                         <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
