@@ -1,8 +1,8 @@
 <?php
 
+use App\Domain\Identity\Http\Middleware\VerifyPasswordSession;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
-use App\Domain\Identity\Http\Middleware\VerifyPasswordSession;
 use Laravel\Sanctum\Sanctum;
 
 return [

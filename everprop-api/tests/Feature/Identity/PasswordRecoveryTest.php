@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Identity;
 
-use App\Domain\Tenancy\Models\Tenant;
 use App\Domain\Identity\Http\Middleware\VerifyPasswordSession;
+use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cache\ArrayStore;
