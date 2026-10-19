@@ -19,7 +19,7 @@ Se reutilizan React, lucide-react y el patrón de prueba Node/TypeScript existen
 - `npm run build`: aprobado (compilación, TypeScript y generación).
 - `npm run lint`: falló por archivos de skills Remotion locales sin seguimiento ajenos al cambio (92 errores y 161 avisos en total). No se modificaron.
 - Sin cambios de queries, aislamiento de tenant ni IA: revisores especializados no aplican.
-- Pendiente verificación visual y publicación. La prueba simula hooks, no sustituye un navegador real.
+- Hotfix sobre main: prueba Node aprobada y build con webpack aprobado; Turbopack rechazó el enlace local a node_modules fuera de su raíz. Navegador real sobre el build del hotfix: control presente, alternancia Mostrar/Ocultar correcta sin enviar formulario. Vista previa de Vercel desplegada correctamente. Pendiente publicación en producción y verificación CI.
 
 ## 5. Riesgos y entrega
 El botón muestra únicamente lo escrito en el navegador. No prueba que las credenciales sean válidas ni soluciona por sí solo el HTTP 422. Preparar hotfix desde `main` con solo estos archivos, sin trasladar IA/conversaciones desde `develop`. Dejar PR abierto según política de merges del repositorio.
