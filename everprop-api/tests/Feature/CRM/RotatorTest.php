@@ -40,14 +40,16 @@ final class RotatorTest extends TestCase
 
         // Rotator can read catalog
         $this->getJson('/api/v1/admin/properties')->assertOk();
+        $this->getJson('/api/v1/admin/projects')->assertOk();
 
         // Rotator cannot manage administrative or inventory modules
-        foreach (['projects', 'users', 'installments'] as $module) {
+        foreach (['users', 'installments', 'payment-agreements'] as $module) {
             $this->getJson('/api/v1/admin/'.$module)->assertForbidden();
         }
 
-        // Rotator can manage lead properties and visits
+        // Existing lead-property and visit permissions remain unchanged.
         $this->postJson('/api/v1/admin/leads/'.$lead.'/properties', ['property_id' => $property, 'notes' => 'Interés agregado por rotador'])->assertOk();
+        $this->getJson('/api/v1/admin/visits')->assertOk();
         $this->postJson('/api/v1/admin/visits', ['lead_id' => $lead, 'scheduled_at' => now()->addDay()->toISOString()])->assertCreated();
 
         $this->withHeaders(['X-Everprop-Tenant' => $foreign->tenant->public_id])->getJson('/api/v1/admin/leads')->assertNotFound();
@@ -83,6 +85,14 @@ final class RotatorTest extends TestCase
         ]);
         $leadId = DB::table('leads')->where('public_id', $lead)->value('id');
         $this->assertDatabaseHas('lead_properties', ['lead_id' => $leadId]);
+        $this->getJson('/api/v1/admin/leads/'.$lead)->assertOk()
+            ->assertJsonPath('data.budget', 120000)
+            ->assertJsonPath('data.currency', 'USD')
+            ->assertJsonPath('data.priority', 'high')
+            ->assertJsonPath('data.notes', 'Busca vivienda céntrica')
+            ->assertJsonPath('data.agent_id', $advisor->public_id)
+            ->assertJsonPath('data.properties.0.id', $property)
+            ->assertJsonPath('data.properties.0.price', 95000);
 
         foreach ([$paused, $foreign, $rotator] as $invalid) {
             $this->postJson('/api/v1/admin/leads', ['name' => 'Inválido', 'agent_id' => $invalid->public_id])
@@ -90,5 +100,57 @@ final class RotatorTest extends TestCase
         }
         $this->withHeaders(['X-Everprop-Tenant' => $foreign->tenant->public_id])
             ->postJson('/api/v1/admin/leads', ['name' => 'Otro tenant'])->assertNotFound();
+    }
+
+    public function test_rotator_catalog_is_read_only_tenant_scoped_and_respects_price_permissions(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $foreign = Tenant::factory()->create();
+        $rotator = User::factory()->for($tenant)->create(['role_code' => RoleCode::ROTATOR]);
+        $projects = [];
+        $properties = [];
+        foreach ([$tenant, $foreign] as $owner) {
+            $project = (string) Str::uuid();
+            $projectId = DB::table('projects')->insertGetId([
+                'tenant_id' => $owner->id, 'public_id' => $project, 'code' => '12A', 'name' => 'Proyecto QA',
+                'project_type' => 'BUILDING', 'status' => 'PLANNING', 'city' => 'Salta', 'province' => 'Salta',
+            ]);
+            $property = (string) Str::uuid();
+            DB::table('properties')->insert([
+                'tenant_id' => $owner->id, 'public_id' => $property, 'project_id' => $projectId,
+                'code' => '12A', 'title' => 'Unidad QA', 'operation' => 'SALE', 'category' => 'APARTMENT',
+                'status' => 'AVAILABLE', 'price' => 95000, 'currency_code' => 'USD', 'city' => 'Salta', 'province' => 'Salta',
+            ]);
+            $projects[] = $project;
+            $properties[] = $property;
+        }
+        DB::table('user_inventory_settings')->insert([
+            'tenant_id' => $tenant->id, 'user_id' => $rotator->id, 'visibility_mode' => 'ALL',
+            'can_view_prices' => true, 'can_manage_inventory' => false, 'can_manage_prices' => false,
+        ]);
+        $this->actingAs($rotator)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
+        $this->getJson('/api/v1/admin/projects')->assertOk()
+            ->assertJsonFragment(['public_id' => $projects[0]])->assertJsonMissing(['public_id' => $projects[1]]);
+        $this->getJson('/api/v1/admin/projects/'.$projects[0])->assertOk();
+        $this->getJson('/api/v1/admin/projects/'.$projects[1])->assertNotFound();
+        $this->getJson('/api/v1/admin/properties')->assertOk()
+            ->assertJsonFragment(['public_id' => $properties[0]])->assertJsonMissing(['public_id' => $properties[1]])
+            ->assertJsonPath('data.0.price', '95000.00')->assertJsonPath('data.0.currency_code', 'USD');
+        $this->getJson('/api/v1/admin/properties/'.$properties[1])->assertNotFound();
+        foreach (['projects' => $projects[0], 'properties' => $properties[0]] as $module => $id) {
+            $this->postJson('/api/v1/admin/'.$module, [])->assertForbidden();
+            $this->patchJson('/api/v1/admin/'.$module.'/'.$id, [])->assertForbidden();
+            $this->putJson('/api/v1/admin/'.$module.'/'.$id, [])->assertForbidden();
+            $this->patchJson('/api/v1/admin/'.$module.'/'.$id.'/publish', [])->assertForbidden();
+            $this->deleteJson('/api/v1/admin/'.$module.'/'.$id)->assertForbidden();
+        }
+        $this->withHeaders(['X-Everprop-Tenant' => $foreign->public_id])
+            ->getJson('/api/v1/admin/projects')->assertNotFound();
+        $this->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
+        DB::table('user_inventory_settings')->where('user_id', $rotator->id)->update(['can_view_prices' => false]);
+        $this->getJson('/api/v1/admin/properties')->assertOk()
+            ->assertJsonMissingPath('data.0.price')->assertJsonMissingPath('data.0.currency_code');
+        $rotator->update(['status' => 'PAUSED']);
+        $this->getJson('/api/v1/admin/projects')->assertNotFound();
     }
 }
