@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Command, FlaskConical, Loader2 } from "lucide-react";
+import { AlertCircle, Command, Eye, EyeOff, FlaskConical, Loader2 } from "lucide-react";
 import { MOCK_USERS } from "@/data/auth-sample";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [selectedEmail, setSelectedEmail] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -198,17 +199,32 @@ export default function LoginPage() {
                     className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm font-normal normal-case tracking-normal text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
                   />
                 </label>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Contraseña
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    autoComplete="current-password"
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm font-normal normal-case tracking-normal text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
-                  />
-                </label>
+                <div>
+                  <label htmlFor="login-password" className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                    Contraseña
+                  </label>
+                  <div className="relative mt-2">
+                    <input
+                      id="login-password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      autoComplete="current-password"
+                      className="w-full rounded-xl border border-white/10 bg-slate-950/70 py-3 pl-4 pr-14 text-sm font-normal normal-case tracking-normal text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      aria-controls="login-password"
+                      aria-pressed={showPassword}
+                      className="absolute inset-y-0 right-0 flex min-h-11 w-12 items-center justify-center rounded-xl text-slate-300 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="submit"
                   className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
