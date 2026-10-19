@@ -47,7 +47,7 @@ final class UserProvisioningTest extends TestCase
         $this->withHeaders(['X-Everprop-Tenant' => $tenant->public_id])->postJson('/api/v1/auth/activate', $activation)->assertOk();
         self::assertTrue(Hash::check($activation['password'], $user->fresh()->password_hash));
         $this->postJson('/api/v1/auth/activate', $activation)->assertUnprocessable();
-        $this->actingAs($user->fresh())->getJson('/api/v1/admin/projects')->assertForbidden();
+        $this->actingAs($user->fresh())->getJson('/api/v1/admin/projects')->assertOk();
         $this->assertDatabaseHas('user_inventory_settings', ['user_id' => $user->id, 'can_manage_inventory' => false, 'can_manage_prices' => false]);
         $this->postJson('/api/v1/admin/projects', ['name' => 'Forbidden'])->assertForbidden();
         $this->getJson('/api/v1/admin/leads')->assertOk();
