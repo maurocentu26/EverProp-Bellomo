@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/everprop-api";
+import { OutOfHoursAlerts } from "@/components/admin/OutOfHoursAlerts";
 import { activatePush, currentPushState, deactivatePush, endpointHash, registerNotificationWorker, type PushDeps, type PushEnvironment, type PushState } from "@/lib/push-registration";
 
 type PushConfig = { enabled: boolean; publicKey: string; subscriptionHashes: string[] };
@@ -119,6 +120,7 @@ export function PushPreferences() {
       {state === "active" && (
         <button type="button" onClick={() => void deactivate()} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold">Desactivar en este dispositivo</button>
       )}
+      {state === "active" && <OutOfHoursAlerts />}
       <p className="text-xs text-muted-foreground">El sistema decide cómo se muestran: modos de concentración, ajustes de notificaciones o falta de señal pueden demorarlos u ocultarlos.</p>
     </section>
   );

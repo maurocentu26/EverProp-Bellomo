@@ -5,9 +5,9 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/admin",
     name: "Bellomo · Panel",
     short_name: "Bellomo",
-    description: "Gestión de leads, catálogo y visitas de Bellomo.",
+    description: "Bandeja de conversaciones, leads y visitas de Bellomo.",
     lang: "es-AR",
-    start_url: "/admin/leads",
+    start_url: "/admin/conversaciones",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
@@ -19,8 +19,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon/maskable", type: "image/png", sizes: "512x512", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Leads", url: "/admin/leads", icons: [{ src: "/icon/192", sizes: "192x192", type: "image/png" }] },
-      { name: "Propiedades", url: "/admin/properties", icons: [{ src: "/icon/192", sizes: "192x192", type: "image/png" }] },
+      { name: "Esperan asesor", url: "/admin/conversaciones", icons: [{ src: "/icon/192", sizes: "192x192", type: "image/png" }] },
+      { name: "Solicitudes de visita", url: "/admin/solicitudes-visita", icons: [{ src: "/icon/192", sizes: "192x192", type: "image/png" }] },
     ],
   };
 }

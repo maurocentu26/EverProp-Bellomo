@@ -10,6 +10,8 @@ API canónica multitenant construida con Laravel 13, PHP 8.4, MySQL 8.4 y Redis.
 
 ## Inicio local
 
+Docker local se usa bajo demanda: mantener **un solo stack** activo y no levantarlo para tareas exclusivamente sobre Railway. Los servicios locales tienen `restart: "no"`; si fallan, revisar el error antes de reiniciarlos. Al terminar, ejecutar `docker compose --project-name <proyecto-activo> stop`: conserva contenedores y volúmenes. No usar `down --volumes` ni `prune` para liberar RAM. El worker local usa `--max-time=3600`, por lo que termina después de una hora; reiniciarlo explícitamente si todavía se necesita.
+
 ```powershell
 .\scripts\bootstrap-local.ps1
 docker compose --project-name everprop-api build everprop-api-php

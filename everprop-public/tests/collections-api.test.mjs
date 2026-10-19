@@ -42,6 +42,33 @@ const agreement = { leadId: 'real-lead', advisorId: 'untrusted-advisor', totalPr
   financedBalance: 100, currency: 'ARS', modality: 'FIXED', monthlyRatePct: 3.5,
   totalInstallments: 3, dayOfMonthDue: 31, startDate: '2026-01-31' };
 
+test('email preview reads the server balance without sending or accepting a recipient override', async () => {
+  const calls = [];
+  const client = adapter(async (url, options) => {
+    calls.push({ url, options });
+    return { data: { eligible: true, amountRemaining: '60.00', recipient: 'test@example.test' } };
+  });
+  assert.equal((await client.loadCollectionEmailPreview('unit/id')).amountRemaining, '60.00');
+  assert.equal(calls[0].url, '/api/v1/admin/installments/unit%2Fid/email-preview');
+  assert.equal(calls[0].options, undefined);
+  const failed = adapter(async () => { throw Error('API unavailable'); });
+  await assert.rejects(failed.loadCollectionEmailPreview('id'), /API unavailable/);
+});
+
+test('billing export retains decimal amounts and reversals and neutralizes spreadsheet formulas', async () => {
+  const client = adapter(async () => ({ data: [{ paymentId: 'p1', amount: '40.00', status: 'REVERSED' }], meta: { count: 1 } }));
+  const result = await client.loadBillingExport('2026-02-01', '2026-02-28');
+  assert.equal(result.data[0].amount, '40.00');
+  assert.equal(result.data[0].status, 'REVERSED');
+  const csv = client.billingExportCsv([{ ...result.data[0], customerName: '=HYPERLINK("bad")', receiptReference: '  +cmd', projectName: 'A,"B"\nC' }]);
+  assert.ok(csv.startsWith('\uFEFF'));
+  assert.ok(csv.includes('"\'=HYPERLINK(""bad"")"'));
+  assert.ok(csv.includes('"\'  +cmd"'));
+  assert.ok(csv.includes('"A,""B""\nC"'));
+  assert.ok(csv.includes('"40.00"'));
+  assert.ok(csv.includes('"REVERSED"'));
+});
+
 test('agreement creation forwards the interest rate and lets the server own tenant, advisor and balance', async () => {
   let payload;
   const client = adapter(async (url, init) => {

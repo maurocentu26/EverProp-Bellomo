@@ -5,7 +5,10 @@ namespace Tests\Feature\Identity;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
@@ -77,6 +80,48 @@ final class AuthenticationTest extends TestCase
         $this->withHeaders($headers)->postJson('/api/v1/auth/logout')->assertNoContent();
         Auth::forgetGuards();
         $this->withHeaders($headers)->getJson('/api/v1/auth/me')->assertUnauthorized();
+    }
+
+    public function test_a_late_request_cannot_restore_a_logged_out_session(): void
+    {
+        $this->withCredentials();
+        [$tenant, $user] = $this->identity();
+        $headers = $this->tenantHeaders($tenant);
+        $this->withHeaders($headers)->postJson('/api/v1/auth/login', [
+            'email' => $user->email, 'password' => self::PASSWORD,
+        ])->assertOk();
+
+        // Capture exactly what a concurrent request read before logout. Redis storage is shared.
+        $lateRequest = clone app('session')->driver();
+        $oldId = $lateRequest->getId();
+        $cookieName = $lateRequest->getName();
+        $guard = Auth::guard('web');
+        $this->assertInstanceOf(SessionGuard::class, $guard);
+        $key = $guard->getName();
+        $this->assertTrue($lateRequest->has($key));
+        $this->withCookie($cookieName, $oldId)->withHeaders($headers)
+            ->postJson('/api/v1/auth/logout')->assertNoContent();
+        $lateRequest->save(); // Arrives after logout, without sleeps or scheduler assumptions.
+
+        Auth::forgetGuards();
+        app('session')->forgetDrivers();
+        $this->app->forgetInstance('session.store');
+        // StartSession receives decrypted cookies. Exercise that boundary directly as well
+        // as the HTTP endpoint, so the test cannot pass merely by rejecting a malformed cookie.
+        $request = Request::create('/', 'GET', [], [$cookieName => $oldId]);
+        $replayed = app(StartSession::class)->getSession($request);
+        $replayed->start();
+        $this->assertFalse($replayed->has($key), 'A late write must not restore authentication');
+        $this->withCookie($cookieName, $oldId)->withHeaders($headers)
+            ->getJson('/api/v1/auth/me')->assertUnauthorized();
+
+        // A fresh CSRF session can immediately log in again, including from an old-cookie tab.
+        $this->withHeaders($headers)->get('/sanctum/csrf-cookie')->assertNoContent();
+        Auth::forgetGuards();
+        $this->withHeaders($headers)->postJson('/api/v1/auth/login', [
+            'email' => $user->email, 'password' => self::PASSWORD,
+        ])->assertOk();
+        $lateRequest->getHandler()->destroy($oldId);
     }
 
     public function test_a_session_cannot_be_reused_for_another_tenant(): void

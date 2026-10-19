@@ -44,11 +44,48 @@ final class TrustedTenantResolver implements TenantResolver
             return null;
         }
 
-        $selector = $hosts[strtolower($request->getHost())] ?? null;
+        $panelHost = $this->panelHost($request);
+        $selector = $hosts[$panelHost ?? strtolower($request->getHost())] ?? null;
+        if ($panelHost !== null && (! is_string($selector) || $selector === '')) {
+            throw TenantNotResolved::forRequest(); // a signed host must map to a tenant, never fall back to the session
+        }
 
         return is_string($selector) && $selector !== ''
             ? $this->findActiveTenant($selector)
             : null;
+    }
+
+    /**
+     * Host asserted by the panel proxy over the signed channel (S02, ADR 0005): HMAC-SHA256 of
+     * "eversys-panel-host-v1\nhost\ntimestamp" with the shared panel key, fresh within the TTL. Null when the
+     * panel did not sign (direct API calls keep using the request host); any signed header that fails
+     * verification rejects the request instead of falling back. Outside local/testing a loopback name or an
+     * IP is never a tenant domain: it means the panel signed its own server hostname, so it is refused.
+     */
+    private function panelHost(Request $request): ?string
+    {
+        $host = $request->headers->get('X-Eversys-Panel-Host');
+        $timestamp = $request->headers->get('X-Eversys-Panel-Timestamp');
+        $signature = $request->headers->get('X-Eversys-Panel-Signature');
+        if ($host === null && $timestamp === null && $signature === null) {
+            return null;
+        }
+
+        $key = (string) config('tenancy.panel_signing_key', '');
+        $host = (string) $host;
+        // Verify exactly what was signed; normalize only afterwards, for the host map lookup.
+        if ($key === '' || preg_match('/\A[A-Za-z0-9.-]{1,253}\z/', $host) !== 1 || ! ctype_digit((string) $timestamp)
+            || abs(time() - (int) $timestamp) > (int) config('tenancy.panel_signature_ttl', 60)
+            || ! hash_equals(hash_hmac('sha256', "eversys-panel-host-v1\n".$host."\n".$timestamp, $key), (string) $signature)) {
+            throw TenantNotResolved::forRequest();
+        }
+        $host = strtolower($host);
+        if (! app()->environment(['local', 'testing']) && ($host === 'localhost' || str_ends_with($host, '.localhost')
+            || filter_var($host, FILTER_VALIDATE_IP) !== false)) {
+            throw TenantNotResolved::forRequest();
+        }
+
+        return $host;
     }
 
     private function resolveFromLocalOverride(Request $request): ?Tenant

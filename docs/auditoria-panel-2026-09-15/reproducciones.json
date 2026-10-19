@@ -1,0 +1,29 @@
+{
+  "commit": "cb95141",
+  "date": "2026-09-15",
+  "backend": {
+    "file": "everprop-api/docs/audit/PanelAuditTest.php",
+    "environment": "PHP 8.4.25, PHPUnit 12.5.33, MySQL testing, DatabaseTransactions",
+    "tests": 4,
+    "assertions": 17,
+    "failures": 4,
+    "results": [
+      {"finding": "A01", "expected": "No price in lead response when can_view_prices=false", "actual": "Lead response includes price 123456; inventory response hides it"},
+      {"finding": "A02", "expected": "Batch price creation returns 403, like individual creation", "actual": "Individual creation 403; batch creation 201"},
+      {"finding": "A03", "expected": "Attaching soft-deleted property returns 404", "actual": "200"},
+      {"finding": "A04", "expected": "Unsupported DELETE does not return a server error", "actual": "500: AdminLeadController::destroy does not exist"}
+    ]
+  },
+  "frontend": {
+    "file": "everprop-public/docs/audit/frontend-audit.cjs",
+    "environment": "Node test runner; real source functions transpiled in isolated VM with simulated dependencies",
+    "tests": 3,
+    "failures": 3,
+    "results": [
+      {"finding": "A05", "expected": "No full-success toast after failed property PATCH", "actual": "One success toast"},
+      {"finding": "A06", "expected": "READ_ONLY is not mapped to ADVISOR", "actual": "ADVISOR"},
+      {"finding": "A07", "expected": "Successful API login tolerates blocked storage", "actual": "Promise rejects with Storage unavailable"}
+    ]
+  },
+  "note": "These failures reproduce defects. They are not successful security checks and are not production data."
+}
