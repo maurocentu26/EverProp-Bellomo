@@ -22,6 +22,7 @@ test('password is hidden initially and toggles without changing its value or sub
         },
       };
       if (name === 'next/navigation') return { useRouter: () => ({}) };
+      if (name === 'next/link') return { default: 'a' };
       if (name === '@/lib/auth-context') return { useAuth: () => ({ isLoaded: true, currentUser: null, login: () => { submissions++; } }) };
       if (name === '@/lib/data-mode') return { isMockDataMode: false };
       if (name === '@/data/auth-sample') return { MOCK_USERS: [] };

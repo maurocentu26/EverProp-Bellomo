@@ -68,6 +68,8 @@ final class LoginRequest extends FormRequest
             ]);
         }
 
+        // Sanctum skips its session snapshot on an anonymous login request; record it before returning.
+        $this->session()->put('password_hash_web', $user->getAuthPassword());
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 
         return $user;
