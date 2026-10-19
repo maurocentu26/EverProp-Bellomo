@@ -2,7 +2,7 @@
 
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
-use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
+use App\Domain\Identity\Http\Middleware\VerifyPasswordSession;
 use Laravel\Sanctum\Sanctum;
 
 return [
@@ -15,7 +15,7 @@ return [
     'expiration' => null,
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
     'middleware' => [
-        'authenticate_session' => AuthenticateSession::class,
+        'authenticate_session' => VerifyPasswordSession::class,
         'encrypt_cookies' => EncryptCookies::class,
         'validate_csrf_token' => ValidateCsrfToken::class,
     ],

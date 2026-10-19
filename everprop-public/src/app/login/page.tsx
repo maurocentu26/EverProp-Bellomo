@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AlertCircle, Command, FlaskConical, Loader2 } from "lucide-react";
 import { MOCK_USERS } from "@/data/auth-sample";
 import { useAuth } from "@/lib/auth-context";
@@ -216,6 +217,10 @@ export default function LoginPage() {
                   Ingresar
                 </button>
               </form>
+
+              <Link href="/recuperar" className="mt-4 inline-flex min-h-11 items-center text-sm text-blue-300 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
+                Olvidé mi contraseña
+              </Link>
 
               {error && (
                 <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-100" role="alert">
