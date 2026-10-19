@@ -5,6 +5,7 @@ namespace App\Domain\Identity\Http\Controllers;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -86,7 +87,7 @@ final class PasswordRecoveryController
                 return Password::broker('recovery')->reset($data + ['tenant_id' => $tenant->id(), 'status' => 'ACTIVE'], function (User $user, string $password): void {
                     $previous = clone $user;
                     $user->forceFill(['password_hash' => $password])->save();
-                    /** @var \Illuminate\Auth\Passwords\PasswordBroker $broker */
+                    /** @var PasswordBroker $broker */
                     $broker = Password::broker('recovery');
                     $broker->deleteToken($previous);
                     event(new PasswordReset($user));
