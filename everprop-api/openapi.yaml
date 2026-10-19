@@ -60,7 +60,7 @@
                 "operationId": "requestPasswordRecovery",
                 "security": [],
                 "summary": "Request a password recovery email without revealing account existence",
-                "description": "The email contains a fragment URL, keeping the bearer token out of HTTP URL logs. Never returns the token. Requires an explicitly configured HTTPS frontend for the resolved tenant and an SMTP mailer.",
+                "description": "The email contains a fragment URL, keeping the bearer token out of HTTP URL logs. Never returns the token. Requires an explicitly configured HTTPS frontend for the resolved tenant and a Resend HTTPS API key.",
                 "parameters": [
                     {
                         "$ref": "#/components/parameters/XsrfHeader"
@@ -119,7 +119,7 @@
                         "$ref": "#/components/responses/TooManyRequests"
                     },
                     "503": {
-                        "description": "Recovery SMTP or trusted frontend origin is not configured."
+                        "description": "Recovery Resend API key, sender or trusted frontend origin is not configured."
                     }
                 }
             }

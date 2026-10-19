@@ -8,31 +8,28 @@ use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Request;
-use Illuminate\Mail\Transport\ArrayTransport;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
-use Symfony\Component\Mime\Email;
 use Tests\TestCase;
 
 final class PasswordRecoveryTest extends TestCase
 {
     use DatabaseTransactions;
 
-    private ArrayTransport $mail;
-
     protected function setUp(): void
     {
         parent::setUp();
-        config(['cache.default' => 'array', 'auth.password_reset_mailer' => 'smtp',
-            'mail.mailers.smtp.host' => 'smtp.example.test', 'mail.from.address' => 'access@example.test']);
-        $this->mail = new ArrayTransport;
-        Mail::mailer('smtp')->setSymfonyTransport($this->mail);
+        config(['auth.defaults.passwords' => 'recovery', 'cache.default' => 'array', 'services.resend.key' => 're_test_only',
+            'mail.from.address' => 'access@example.test', 'mail.from.name' => 'EverProp']);
+        Http::preventStrayRequests();
+        Http::fake(['https://api.resend.com/emails' => Http::response(['id' => 'test-email-id'])]);
         RateLimiter::clear(md5('login'.'login|127.0.0.1'));
     }
 
@@ -58,16 +55,19 @@ final class PasswordRecoveryTest extends TestCase
         return ['email' => $user->email, 'token' => $token, 'password' => 'ReplacementPassword456', 'password_confirmation' => 'ReplacementPassword456'];
     }
 
-    public function test_request_sends_real_single_use_link_without_enumerating_or_returning_token(): void
+    public function test_request_sends_single_use_link_over_https_without_enumerating_or_returning_token(): void
     {
         [$tenant, $user] = $this->identity();
         $response = $this->useTenant($tenant)->postJson('/api/v1/auth/forgot-password', ['email' => strtoupper($user->email)])->assertOk();
         $this->postJson('/api/v1/auth/forgot-password', ['email' => 'missing@example.test'])->assertOk()->assertExactJson($response->json());
-        self::assertCount(1, $this->mail->messages());
-        $email = $this->mail->messages()->first()->getOriginalMessage();
-        self::assertInstanceOf(Email::class, $email);
-        self::assertSame($user->email, $email->getTo()[0]->getAddress());
-        $body = $email->getTextBody();
+        Http::assertSentCount(1);
+        $request = Http::recorded()->first()[0];
+        self::assertSame('https://api.resend.com/emails', $request->url());
+        self::assertSame('POST', $request->method());
+        self::assertSame('Bearer re_test_only', $request->header('Authorization')[0]);
+        self::assertSame([$user->email], $request['to']);
+        self::assertSame('EverProp <access@example.test>', $request['from']);
+        $body = $request['text'];
         self::assertIsString($body);
         self::assertStringContainsString('https://'.$tenant->slug.'.example.test/recuperar#', $body);
         preg_match('/token=([a-f0-9]{64})/', $body, $match);
@@ -85,7 +85,7 @@ final class PasswordRecoveryTest extends TestCase
     {
         [$tenantA, $userA] = $this->identity();
         [$tenantB, $userB] = $this->identity();
-        $token = Password::broker('recovery')->createToken($userA);
+        $token = Password::createToken($userA);
         $this->useTenant($tenantB)->postJson('/api/v1/auth/reset-password', $this->resetData($userB, $token))->assertUnprocessable();
         self::assertTrue(Hash::check('OriginalPassword123', $userB->fresh()->password_hash));
         $this->useTenant($tenantA)->postJson('/api/v1/auth/reset-password', $this->resetData($userA, $token))->assertOk();
@@ -95,7 +95,7 @@ final class PasswordRecoveryTest extends TestCase
     {
         [$tenant, $user] = $this->identity();
         $this->useTenant($tenant);
-        $token = Password::broker('recovery')->createToken($user);
+        $token = Password::createToken($user);
         $this->postJson('/api/v1/auth/reset-password', array_replace($this->resetData($user, $token), ['password_confirmation' => 'different']))->assertUnprocessable();
         $this->postJson('/api/v1/auth/reset-password', $this->resetData($user, $token) + ['tenant_id' => $tenant->id])->assertUnprocessable();
         $this->travel(61)->minutes();
@@ -110,28 +110,43 @@ final class PasswordRecoveryTest extends TestCase
     {
         [$tenant, $user] = $this->identity();
         $user->forceFill(['status' => 'PAUSED'])->save();
-        $token = Password::broker('recovery')->createToken($user);
+        $token = Password::createToken($user);
         $response = $this->useTenant($tenant)->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])->assertOk();
-        self::assertCount(0, $this->mail->messages());
+        Http::assertNothingSent();
         $this->postJson('/api/v1/auth/reset-password', $this->resetData($user, $token))->assertUnprocessable();
         $user->forceFill(['status' => 'ACTIVE'])->save();
-        Password::broker('recovery')->deleteToken($user);
+        Password::deleteToken($user);
         Log::shouldReceive('warning')->once()->with('password_recovery_delivery_failed', ['tenant_id' => $tenant->id]);
-        Mail::shouldReceive('mailer')->with('smtp')->andThrow(new \RuntimeException('secret-provider-detail'));
+        Http::fake(fn () => throw new \RuntimeException('secret-provider-detail'));
         $this->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])->assertOk()->assertExactJson($response->json());
     }
 
-    public function test_unconfigured_or_log_mailer_fails_closed_and_requests_are_limited(): void
+    public function test_resend_rejection_or_missing_acknowledgement_is_logged_without_secrets(): void
+    {
+        [$tenant, $user] = $this->identity();
+        $this->useTenant($tenant);
+        Log::shouldReceive('warning')->twice()->with('password_recovery_delivery_failed', ['tenant_id' => $tenant->id]);
+        foreach ([Http::response(['name' => 'rate_limit_exceeded', 'message' => 'private-provider-detail'], 429), Http::response([])] as $response) {
+            Password::deleteToken($user);
+            Http::swap(new Factory);
+            Http::preventStrayRequests();
+            Http::fake(['https://api.resend.com/emails' => $response]);
+            $this->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])->assertOk()
+                ->assertJsonMissingPath('token');
+        }
+    }
+
+    public function test_missing_resend_key_fails_closed_and_requests_are_limited(): void
     {
         [$tenant] = $this->identity();
-        config(['auth.password_reset_mailer' => 'log']);
+        config(['services.resend.key' => null]);
         $this->useTenant($tenant)->postJson('/api/v1/auth/forgot-password', ['email' => 'missing@example.test'])->assertStatus(503);
-        config(['auth.password_reset_mailer' => 'smtp']);
+        config(['services.resend.key' => 're_test_only']);
         for ($attempt = 0; $attempt < 4; $attempt++) {
             $this->postJson('/api/v1/auth/forgot-password', ['email' => 'missing@example.test'])->assertOk();
         }
         $this->postJson('/api/v1/auth/forgot-password', ['email' => 'missing@example.test'])->assertTooManyRequests();
-        self::assertCount(0, $this->mail->messages());
+        Http::assertNothingSent();
     }
 
     public function test_old_session_is_rejected_after_password_reset(): void
@@ -140,7 +155,7 @@ final class PasswordRecoveryTest extends TestCase
         $this->useTenant($tenant)->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => 'OriginalPassword123'])->assertOk();
         $oldSession = clone app('session')->driver();
         self::assertTrue($oldSession->has('password_hash_web'));
-        $token = Password::broker('recovery')->createToken($user);
+        $token = Password::createToken($user);
         $this->postJson('/api/v1/auth/reset-password', $this->resetData($user, $token))->assertOk();
         $oldSession->save();
         Auth::forgetGuards();

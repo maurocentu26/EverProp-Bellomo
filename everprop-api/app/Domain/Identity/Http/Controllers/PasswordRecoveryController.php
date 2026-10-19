@@ -7,11 +7,10 @@ use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Throwable;
@@ -25,36 +24,38 @@ final class PasswordRecoveryController
         $data = $request->validate(['email' => 'required|string|email:rfc|max:320', 'tenant_id' => 'prohibited', 'tenant' => 'prohibited']);
         $frontends = config('auth.password_reset_frontends');
         $origin = is_array($frontends) ? ($frontends[$tenant->tenant()->slug] ?? '') : '';
-        $mailer = (string) config('auth.password_reset_mailer');
         abort_unless(is_string($origin) && filter_var($origin, FILTER_VALIDATE_URL)
             && parse_url($origin, PHP_URL_SCHEME) === 'https'
             && ! parse_url($origin, PHP_URL_USER) && ! parse_url($origin, PHP_URL_PASS)
             && ! parse_url($origin, PHP_URL_QUERY) && ! parse_url($origin, PHP_URL_FRAGMENT)
             && in_array(parse_url($origin, PHP_URL_PATH), [null, '', '/'], true)
-            && config("mail.mailers.{$mailer}.transport") === 'smtp'
-            && filled(config("mail.mailers.{$mailer}.host"))
+            && filled(config('services.resend.key'))
             && filter_var(config('mail.from.address'), FILTER_VALIDATE_EMAIL), 503, 'La recuperación no está disponible. Contactá a administración.');
 
         $tenantId = $tenant->id();
         $email = strtolower(trim($data['email']));
-        // Work runs after the response, so account existence and SMTP timing cannot change the public response.
-        defer(function () use ($tenantId, $email, $origin, $mailer): void {
+        // Work runs after the response, so account existence and provider timing cannot change the public response.
+        defer(function () use ($tenantId, $email, $origin): void {
             try {
-                Cache::lock($this->lockKey($tenantId, $email), 30)->block(3, function () use ($tenantId, $email, $origin, $mailer): void {
+                Cache::lock($this->lockKey($tenantId, $email), 30)->block(3, function () use ($tenantId, $email, $origin): void {
                     Password::broker('recovery')->sendResetLink(
                         ['tenant_id' => $tenantId, 'email' => $email, 'status' => 'ACTIVE'],
-                        function (User $user, string $token) use ($origin, $mailer): void {
+                        function (User $user, string $token) use ($origin): void {
                             if ($user->password_hash === null) {
                                 return;
                             }
                             $url = rtrim($origin, '/').'/recuperar#'.http_build_query(['token' => $token, 'email' => $user->email]);
                             $body = "Para elegir una nueva contraseña, abrí este enlace:\n\n{$url}\n\nVence en 60 minutos y puede usarse una sola vez. Si no lo solicitaste, ignorá este correo.";
-                            // Bound SMTP below the account lock lease; never fall back to the log mailer.
-                            config(["mail.mailers.{$mailer}.timeout" => 10]);
-                            $sent = Mail::mailer($mailer)->raw($body, function (Message $message) use ($user): void {
-                                $message->to($user->email)->subject('Recuperar acceso a EverProp');
-                            });
-                            if (! $sent) {
+                            // Bound HTTPS below the account lock lease; never fall back to a log mailer.
+                            $sent = Http::withToken((string) config('services.resend.key'))
+                                ->connectTimeout(5)->timeout(10)->withoutRedirecting()
+                                ->post('https://api.resend.com/emails', [
+                                    'from' => (string) config('mail.from.name').' <'.config('mail.from.address').'>',
+                                    'to' => [$user->email],
+                                    'subject' => 'Recuperar acceso a EverProp',
+                                    'text' => $body,
+                                ])->throw()->json('id');
+                            if (! is_string($sent) || $sent === '') {
                                 throw new \RuntimeException('Recovery delivery not acknowledged');
                             }
                         },
@@ -85,7 +86,9 @@ final class PasswordRecoveryController
                 return Password::broker('recovery')->reset($data + ['tenant_id' => $tenant->id(), 'status' => 'ACTIVE'], function (User $user, string $password): void {
                     $previous = clone $user;
                     $user->forceFill(['password_hash' => $password])->save();
-                    Password::broker('recovery')->deleteToken($previous);
+                    /** @var \Illuminate\Auth\Passwords\PasswordBroker $broker */
+                    $broker = Password::broker('recovery');
+                    $broker->deleteToken($previous);
                     event(new PasswordReset($user));
                 });
             });

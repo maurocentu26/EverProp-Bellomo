@@ -121,6 +121,5 @@ return [
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
     'password_reset_frontends' => json_decode((string) env('PASSWORD_RESET_FRONTENDS_JSON', '{}'), true) ?: [],
-    'password_reset_mailer' => env('PASSWORD_RESET_MAILER', 'smtp'),
 
 ];
