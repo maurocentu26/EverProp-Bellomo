@@ -26,8 +26,8 @@ export function AdminNavigationMenu({
   const { isItemActive, isChildActive } = useSidebarActive();
   const fullscreen = surface === "fullscreen";
   const groups = useMemo(
-    () => getAvailableNavigationGroups({ isEngineer, isAdvisor, isMockMode: isMockDataMode, isTenantAdmin: user?.apiRole === "TENANT_ADMIN" }),
-    [isEngineer, isAdvisor, user?.apiRole],
+    () => getAvailableNavigationGroups({ isEngineer, isAdvisor, isMockMode: isMockDataMode, isTenantAdmin: user?.apiRole === "TENANT_ADMIN", canViewCommercialStats: user?.source === "api" && ["TENANT_ADMIN", "SALES_MANAGER"].includes(user?.apiRole || "") }),
+    [isEngineer, isAdvisor, user?.apiRole, user?.source],
   );
   const quickActions = useMemo(
     () => getAvailableQuickActions({ isEngineer, isAdvisor }),

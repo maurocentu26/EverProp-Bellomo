@@ -13,6 +13,7 @@ use App\Domain\Conversations\Http\Controllers\PublicChatController;
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
 use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
 use App\Domain\CRM\Http\Controllers\AdminVisitController;
+use App\Domain\CRM\Http\Controllers\CommercialStatisticsController;
 use App\Domain\CRM\Http\Controllers\PublicLeadController;
 use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AdminUserController;
@@ -71,6 +72,7 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
         Route::apiResource('properties.media', AdminPropertyMediaController::class)
             ->parameters(['media' => 'media']);
 
+        Route::get('commercial-statistics', CommercialStatisticsController::class)->middleware('throttle:30,1');
         Route::get('lead-advisors', [AdminLeadController::class, 'advisors']);
         Route::apiResource('leads', AdminLeadController::class);
         Route::get('/visits', [AdminVisitController::class, 'index']);
