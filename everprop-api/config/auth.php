@@ -93,6 +93,12 @@ return [
     */
 
     'passwords' => [
+        'recovery' => [
+            'driver' => 'cache',
+            'provider' => 'users',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
@@ -113,5 +119,8 @@ return [
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+
+    'password_reset_frontends' => json_decode((string) env('PASSWORD_RESET_FRONTENDS_JSON', '{}'), true) ?: [],
+    'password_reset_mailer' => env('PASSWORD_RESET_MAILER', 'smtp'),
 
 ];

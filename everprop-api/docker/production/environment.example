@@ -51,6 +51,9 @@ AWS_BUCKET=REPLACE_WITH_PRIVATE_BUCKET
 AWS_ENDPOINT=https://REPLACE_WITH_STORAGE_ENDPOINT
 AWS_USE_PATH_STYLE_ENDPOINT=false
 MAIL_MAILER=log
+PASSWORD_RESET_MAILER=smtp
+PASSWORD_RESET_FRONTENDS_JSON={"bellomo":"https://app.example.com"}
+# Configure the chosen SMTP mailer and MAIL_FROM_ADDRESS before enabling recovery.
 MAIL_FROM_ADDRESS=noreply@example.com
 MAIL_FROM_NAME=EverProp
 
