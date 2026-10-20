@@ -481,102 +481,70 @@ export default function CobranzasPage() {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total en Mora */}
-        <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/20">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
-              Mora Total
-            </span>
-            <span className="flex size-7 items-center justify-center rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-300">
-              <AlertCircle className="size-4" />
-            </span>
+      <section aria-labelledby="collections-summary-title" className="space-y-4">
+        <div>
+          <h2 id="collections-summary-title" className="text-lg font-bold text-slate-900 dark:text-slate-100">Resumen de cobranzas</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Saldos por vencimiento y cobros del mes. Los importes se muestran por moneda.</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="min-w-0 rounded-xl border border-[var(--border)] border-t-4 border-t-rose-600 bg-white p-5 dark:border-t-rose-500 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Mora total</h3>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                <AlertCircle aria-hidden="true" className="size-5" />
+              </span>
+            </div>
+            <div className="mt-5 space-y-1 text-xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100">
+              <p className="break-words">{formatInstallmentAmount(metrics.overdueArs, "ARS")}</p>
+              <p className="break-words">{formatInstallmentAmount(metrics.overdueUsd, "USD")}</p>
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{metrics.overdueCount} cuotas · {metrics.overdueLeadsCount} clientes</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Cuotas vencidas con saldo pendiente</p>
           </div>
-          <div className="mt-2.5">
-            <p className="text-xl font-extrabold text-rose-900 dark:text-rose-200">
-              {metrics.overdueArs > 0 && formatInstallmentAmount(metrics.overdueArs, "ARS")}
-              {metrics.overdueArs > 0 && metrics.overdueUsd > 0 && " + "}
-              {metrics.overdueUsd > 0 && formatInstallmentAmount(metrics.overdueUsd, "USD")}
-              {metrics.overdueArs === 0 && metrics.overdueUsd === 0 && "$ 0"}
-            </p>
-            <p className="mt-1 flex items-center gap-2 text-xs text-rose-600 dark:text-rose-400">
-              <span className="font-semibold">{metrics.overdueCount} cuotas en mora</span>
-              <span>·</span>
-              <span>{metrics.overdueLeadsCount} clientes</span>
-            </p>
+          <div className="min-w-0 rounded-xl border border-[var(--border)] border-t-4 border-t-amber-600 bg-white p-5 dark:border-t-amber-500 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Vence hoy</h3>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                <Calendar aria-hidden="true" className="size-5" />
+              </span>
+            </div>
+            <div className="mt-5 space-y-1 text-xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100">
+              <p className="break-words">{formatInstallmentAmount(metrics.dueTodayArs, "ARS")}</p>
+              <p className="break-words">{formatInstallmentAmount(metrics.dueTodayUsd, "USD")}</p>
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{metrics.dueTodayCount} cuotas</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Saldo con vencimiento en la fecha</p>
+          </div>
+          <div className="min-w-0 rounded-xl border border-[var(--border)] border-t-4 border-t-amber-600 bg-white p-5 dark:border-t-amber-500 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Próximos 7 días</h3>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                <Clock aria-hidden="true" className="size-5" />
+              </span>
+            </div>
+            <div className="mt-5 space-y-1 text-xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100">
+              <p className="break-words">{formatInstallmentAmount(metrics.next7DaysArs, "ARS")}</p>
+              <p className="break-words">{formatInstallmentAmount(metrics.next7DaysUsd, "USD")}</p>
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{metrics.next7DaysCount} cuotas</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Saldo proyectado para los próximos días</p>
+          </div>
+          <div className="min-w-0 rounded-xl border border-[var(--border)] border-t-4 border-t-emerald-600 bg-white p-5 dark:border-t-emerald-500 dark:bg-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Cobrado este mes</h3>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                <CheckCircle2 aria-hidden="true" className="size-5" />
+              </span>
+            </div>
+            <div className="mt-5 space-y-1 text-xl font-bold tabular-nums tracking-tight text-slate-900 dark:text-slate-100">
+              <p className="break-words">{formatInstallmentAmount(metrics.paidThisMonthArs, "ARS")}</p>
+              <p className="break-words">{formatInstallmentAmount(metrics.paidThisMonthUsd, "USD")}</p>
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-300">{metrics.paidThisMonthCount} cuotas</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Importes acreditados durante el mes</p>
           </div>
         </div>
-
-        {/* Vencimientos de Hoy */}
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-              Vencimientos de Hoy
-            </span>
-            <span className="flex size-7 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300">
-              <Calendar className="size-4" />
-            </span>
-          </div>
-          <div className="mt-2.5">
-            <p className="text-xl font-extrabold text-amber-900 dark:text-amber-200">
-              {metrics.dueTodayArs > 0 && formatInstallmentAmount(metrics.dueTodayArs, "ARS")}
-              {metrics.dueTodayArs > 0 && metrics.dueTodayUsd > 0 && " + "}
-              {metrics.dueTodayUsd > 0 && formatInstallmentAmount(metrics.dueTodayUsd, "USD")}
-              {metrics.dueTodayArs === 0 && metrics.dueTodayUsd === 0 && "$ 0"}
-            </p>
-            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-              <span className="font-semibold">{metrics.dueTodayCount} cuotas</span> a vencer en la fecha
-            </p>
-          </div>
-        </div>
-
-        {/* Próximos 7 días */}
-        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
-              Próximos 7 Días
-            </span>
-            <span className="flex size-7 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300">
-              <Clock className="size-4" />
-            </span>
-          </div>
-          <div className="mt-2.5">
-            <p className="text-xl font-extrabold text-blue-900 dark:text-blue-200">
-              {metrics.next7DaysArs > 0 && formatInstallmentAmount(metrics.next7DaysArs, "ARS")}
-              {metrics.next7DaysArs > 0 && metrics.next7DaysUsd > 0 && " + "}
-              {metrics.next7DaysUsd > 0 && formatInstallmentAmount(metrics.next7DaysUsd, "USD")}
-              {metrics.next7DaysArs === 0 && metrics.next7DaysUsd === 0 && "$ 0"}
-            </p>
-            <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-              <span className="font-semibold">{metrics.next7DaysCount} cuotas</span> proyectadas a cobrar
-            </p>
-          </div>
-        </div>
-
-        {/* Cobrado en el Mes */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-              Cobrado este Mes
-            </span>
-            <span className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300">
-              <CheckCircle2 className="size-4" />
-            </span>
-          </div>
-          <div className="mt-2.5">
-            <p className="text-xl font-extrabold text-emerald-900 dark:text-emerald-200">
-              {metrics.paidThisMonthArs > 0 && formatInstallmentAmount(metrics.paidThisMonthArs, "ARS")}
-              {metrics.paidThisMonthArs > 0 && metrics.paidThisMonthUsd > 0 && " + "}
-              {metrics.paidThisMonthUsd > 0 && formatInstallmentAmount(metrics.paidThisMonthUsd, "USD")}
-              {metrics.paidThisMonthArs === 0 && metrics.paidThisMonthUsd === 0 && "$ 0"}
-            </p>
-            <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-              <span className="font-semibold">{metrics.paidThisMonthCount} cuotas</span> acreditadas
-            </p>
-          </div>
-        </div>
-      </div>
+      </section>
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
