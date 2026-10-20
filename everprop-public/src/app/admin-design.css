@@ -96,24 +96,28 @@
 .admin-sidebar nav a[aria-current="page"] svg { color: var(--primary) !important; }
 .advisor-heading > div { flex-wrap: wrap; row-gap: 20px; }
 .daily-metrics > :is(button, a) {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 16px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
   padding: 20px;
-  border-color: var(--border) !important;
-  background: var(--card) !important;
+  border-color: var(--border);
+  background: var(--card);
   border-radius: 12px;
-  box-shadow: 0 1px 2px #001c3010;
+  box-shadow: none;
 }
-.daily-metrics > :is(button, a):hover { border-color: var(--ring) !important; }
-.daily-metrics > :is(button, a) > div:first-child { flex-direction: column; gap: 8px; }
-.daily-metrics > :is(button, a) > div:first-child > span:last-child { font-size: 9px; letter-spacing: .05em; }
+.daily-metrics > :is(button, a):hover { background: var(--muted); }
+.daily-metrics > :is(button, a):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.daily-metrics > :is(button, a)[aria-pressed="true"] { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
+.daily-metrics [data-priority="overdue"] { color: #be123c; }
+.daily-metrics [data-priority="today"] { color: #92400e; }
+.daily-metrics [data-priority="new"] { color: #1d4ed8; }
+.daily-metrics > :is(button, a) > div:first-child { flex-direction: row; gap: 8px; }
+.daily-metrics > :is(button, a) > div:first-child > span:last-child { font-size: 12px; letter-spacing: .04em; }
 .daily-metrics > :is(button, a) > div:last-child { margin-top: 0; min-width: 0; }
-.admin-workspace .daily-metrics p { color: var(--foreground) !important; }
-.admin-workspace .daily-metrics p:first-child { font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.admin-workspace .daily-metrics p:nth-child(2) { margin-top: 5px; font-size: 12px; line-height: 1.4; }
-.admin-workspace .daily-metrics p:last-child { color: var(--muted-foreground) !important; font-size: 11px; }
+.admin-workspace .daily-metrics p:first-child { color: var(--foreground); font-size: 32px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.admin-workspace .daily-metrics p:nth-child(2) { color: var(--foreground); margin-top: 8px; font-size: 14px; line-height: 1.4; }
+.admin-workspace .daily-metrics p:last-child { color: var(--muted-foreground); margin-top: 6px; font-size: 12px; line-height: 1.5; }
 .advisor-workspace article { border-radius: 12px; box-shadow: 0 1px 2px #001c300a; }
 .advisor-workspace article :is(button, a):not([class*="truncate"]) { min-height: 36px; }
 .advisor-workspace article select { min-height: 34px; }
@@ -130,7 +134,6 @@
 .dark .theme-root .admin-workspace :is(.border-purple-200, .border-purple-200\/80) { border-color: #49395e !important; }
 .dark .theme-root .admin-workspace .daily-metrics p { color: var(--foreground) !important; }
 .dark .theme-root .admin-workspace .daily-metrics p:last-child { color: var(--muted-foreground) !important; }
-.dark .theme-root .admin-workspace .daily-metrics > :is(button, a) { border-color: var(--border) !important; }
 .dark .theme-root .admin-workspace .bellomo-brand-plate,
 .dark .theme-root .admin-workspace img[src*="/brand/bellomo/"],
 .dark .theme-root .admin-workspace img[alt^="Logo"] { background-color: #fff !important; }
@@ -150,85 +153,30 @@
   }
 }
 
-/* Local icon loops: transforms never change card size or move commercial data. */
-@media (prefers-reduced-motion: no-preference) {
-  .daily-metrics .metric-motion-check { animation: metric-check 3.6s ease-in-out infinite; transform-origin: center; }
-  .daily-metrics .metric-motion-alert { animation: metric-alert 3.6s ease-in-out infinite; transform-origin: center; }
-  .daily-metrics .metric-motion-clock > :is(path, polyline) { animation: metric-clock 12s linear infinite; transform-origin: 12px 12px; }
-  .daily-metrics .metric-motion-flame { animation: metric-flame 2.8s ease-in-out infinite; transform-origin: 50% 90%; }
-  .daily-metrics .metric-motion-calendar { animation: metric-calendar 4.8s ease-in-out infinite; transform-origin: 50% 20%; }
-}
-@keyframes metric-check {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.12); }
-}
-@keyframes metric-alert {
-  0%, 50%, 100% { transform: rotate(0); }
-  15% { transform: rotate(-8deg); }
-  30% { transform: rotate(8deg); }
-}
-@keyframes metric-clock { to { transform: rotate(360deg); } }
-@keyframes metric-flame {
-  0%, 100% { transform: rotate(-5deg) scale(1, 1); }
-  50% { transform: rotate(5deg) scale(.94, 1.1); }
-}
-@keyframes metric-calendar {
-  0%, 100% { transform: perspective(80px) rotateX(0) rotate(0); }
-  35% { transform: perspective(80px) rotateX(-16deg) rotate(-4deg); }
-  70% { transform: perspective(80px) rotateX(8deg) rotate(3deg); }
-}
-
 /* Fixed category colors: overdue, today, new leads, and appointments. */
 :is(.daily-metrics, .queue-filters) [data-priority] { --metric-ink: var(--metric-color); --metric-icon-ink: #fff; }
-:is(.daily-metrics, .queue-filters) [data-priority="overdue"] { --metric-color: #dc2626; --metric-tint: #fef2f2; --metric-dark: #351919; --metric-bright: #fca5a5; }
-:is(.daily-metrics, .queue-filters) [data-priority="today"] { --metric-color: #facc15; --metric-tint: #fefce8; --metric-dark: #332d15; --metric-bright: #fde047; --metric-ink: #713f12; --metric-icon-ink: #422006; }
+:is(.daily-metrics, .queue-filters) [data-priority="overdue"] { --metric-color: #be123c; --metric-tint: #fef2f2; --metric-dark: #351919; --metric-bright: #fca5a5; }
+:is(.daily-metrics, .queue-filters) [data-priority="today"] { --metric-color: #b45309; --metric-tint: #fefce8; --metric-dark: #332d15; --metric-bright: #fde047; --metric-ink: #713f12; --metric-icon-ink: #422006; }
 :is(.daily-metrics, .queue-filters) [data-priority="new"] { --metric-color: #1d4ed8; --metric-tint: #eff6ff; --metric-dark: #152744; --metric-bright: #93c5fd; }
-:is(.daily-metrics, .queue-filters) [data-priority="agenda"] { --metric-color: #047857; --metric-tint: #ecfdf5; --metric-dark: #102e29; --metric-bright: #6ee7b7; }
+:is(.daily-metrics, .queue-filters) [data-priority="agenda"] { --metric-color: #7e22ce; --metric-tint: #faf5ff; --metric-dark: #291c3a; --metric-bright: #d8b4fe; }
 .theme-root .admin-workspace .daily-metrics > :is(button, a)[data-priority] {
-  border-color: color-mix(in srgb, var(--metric-color) 48%, transparent) !important;
-  border-top: 4px solid var(--metric-color) !important;
-  background: var(--metric-tint) !important;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--metric-color);
+  background: var(--card);
 }
 .theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span:first-child {
-  background: var(--metric-color) !important;
-  color: var(--metric-icon-ink) !important;
+  background: var(--metric-tint);
+  color: var(--metric-color);
 }
-.theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span:last-child {
-  color: var(--metric-ink) !important;
-  font-weight: 800;
+.theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span:last-child { color: var(--metric-ink); }
+.theme-root .admin-workspace .daily-metrics > [data-priority][aria-pressed="true"] {
+  background: var(--metric-tint);
+  border-color: var(--metric-color);
+  box-shadow: inset 0 0 0 1px var(--metric-color);
 }
-.theme-root .admin-workspace .daily-metrics > [data-priority] > div:last-child > p:first-child {
-  color: var(--metric-ink) !important;
-}
-.dark .theme-root .admin-workspace .daily-metrics > :is(button, a)[data-priority] {
-  background: var(--metric-dark) !important;
-  border-color: color-mix(in srgb, var(--metric-bright) 45%, transparent) !important;
-  border-top-color: var(--metric-color) !important;
-}
-.dark .theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span:last-child,
-.dark .theme-root .admin-workspace .daily-metrics > [data-priority] > div:last-child > p:first-child {
-  color: var(--metric-bright) !important;
-}
-.theme-root .admin-workspace .daily-metrics > :is(button, a)[data-priority]:is(:hover, :focus-visible) {
-  outline: 2px solid var(--metric-color);
-  outline-offset: 3px;
-}
-
-/* Keep the explanation readable beside four metrics, including larger text. */
-.admin-workspace .daily-metrics > :is(button, a)[data-priority] {
-  grid-template-columns: minmax(0, 1fr);
-  align-content: start;
-}
-.admin-workspace .daily-metrics > [data-priority] > div:first-child {
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-.admin-workspace .daily-metrics > [data-priority] > div:last-child > p:last-child {
-  margin-top: 8px;
-  line-height: 1.5;
-}
-
-.admin-workspace .daily-metrics > [data-priority] > div:first-child { flex-direction: column; align-items: flex-start; }
+.dark .theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span:first-child,
+.dark .theme-root .admin-workspace .daily-metrics > [data-priority][aria-pressed="true"] { background: var(--metric-dark); }
+.dark .theme-root .admin-workspace .daily-metrics > [data-priority] > div:first-child > span { color: var(--metric-bright); }
 
 /* Persistent color markers connect queue filters to their matching metric cards. */
 .queue-filters .queue-color-dot { background: var(--metric-color); }
