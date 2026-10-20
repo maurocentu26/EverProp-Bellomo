@@ -18,6 +18,7 @@ use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AdminUserController;
 use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Identity\Http\Controllers\WebPushController;
+use App\Domain\Identity\Http\Middleware\TouchLastActive;
 use App\Domain\Identity\RotatorRoleBoundary;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
 use App\Domain\Integrations\Http\Controllers\WhatsAppConnectionController;
@@ -35,7 +36,7 @@ Route::middleware(['tenant', 'throttle:login'])->group(function (): void {
     Route::post('/auth/activate', [AdminUserController::class, 'activate']);
 });
 
-Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
+Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(function (): void {
     Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
 

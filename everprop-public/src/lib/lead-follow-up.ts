@@ -14,6 +14,8 @@ export type LeadFollowUpState = {
   lastContactAt?: string;
   elapsedDays?: number;
   remainingDays?: number;
+  /** EVP-50: still within the ten days but already 2+ days without contact; the advisor is alerted. */
+  attention?: boolean;
 };
 
 export function isCommercialContact(followUp: LeadFollowUp) {
@@ -174,9 +176,11 @@ export function getLeadFollowUpState(
     };
   }
 
+  const attention = elapsedDays >= FOLLOW_UP_WARNING_DAYS;
   return {
     kind: "current",
-    title: "Al día",
+    title: elapsedDays >= 5 ? "Enfriándose" : attention ? "Necesita contacto" : "Al día",
+    attention,
     detail: elapsedDays === 0
       ? "Último contacto hoy"
       : `Último contacto hace ${elapsedDays} ${elapsedDays === 1 ? "día" : "días"}`,
@@ -186,4 +190,9 @@ export function getLeadFollowUpState(
     elapsedDays,
     remainingDays,
   };
+}
+
+/** EVP-50: leads the follow-up alerts are about, from day 2 without contact up to overdue. */
+export function needsFollowUp(state: LeadFollowUpState) {
+  return state.kind === "overdue" || state.kind === "dueSoon" || state.kind === "none" || Boolean(state.attention);
 }

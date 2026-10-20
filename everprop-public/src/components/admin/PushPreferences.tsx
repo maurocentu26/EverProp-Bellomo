@@ -88,6 +88,18 @@ const STATUS: Record<PushState, string> = {
   error: "No se pudieron activar.",
 };
 
+/** EVP-50: where to re-enable notifications, in the words of the device the person is holding. */
+export function BlockedSteps() {
+  const env = typeof window === "undefined" ? null : environment();
+  const android = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+  const text = env?.appleMobile
+    ? "Abrí Configuración del iPhone → Notificaciones → Bellomo y activá Permitir notificaciones. Después volvé a abrir el panel."
+    : android
+      ? "Mantené apretado el ícono de Bellomo → Información de la app → Notificaciones, y activalas. Si usás el navegador, tocá el candado junto a la dirección → Permisos → Notificaciones."
+      : "Hacé clic en el candado junto a la dirección del sitio → Notificaciones → Permitir, y recargá la página.";
+  return <p className="text-sm text-muted-foreground">{text}</p>;
+}
+
 export function InstallSteps() {
   return (
     <ol className="list-decimal space-y-1 pl-5 text-sm">
@@ -105,12 +117,12 @@ export function PushPreferences() {
       <div>
         <h2 className="font-semibold">Avisos con el panel cerrado</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Te avisan en este dispositivo, aunque el panel esté cerrado, cuando un cliente espera respuesta. La campana y el sonido del panel funcionan solo mientras lo tenés abierto.
+          Te avisan en este dispositivo, aunque el panel esté cerrado, cuando un cliente espera respuesta o un lead lleva días sin seguimiento. La campana y el sonido del panel funcionan solo mientras lo tenés abierto.
         </p>
       </div>
       <p role="status" className="text-sm font-semibold">{STATUS[state]}</p>
       {state === "install" && <InstallSteps />}
-      {state === "blocked" && <p className="text-sm text-muted-foreground">Habilitalas en Configuración del dispositivo → Notificaciones → Bellomo (o en los permisos del sitio del navegador) y volvé a esta pantalla.</p>}
+      {state === "blocked" && <BlockedSteps />}
       {message && <p role="status" className="text-sm">{message}</p>}
       {(state === "inactive" || state === "error") && (
         <button type="button" onClick={activate} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white">

@@ -58,9 +58,10 @@ export function LeadFollowUpStatus({
   const overdue = state.kind === "overdue";
   const dueSoon = state.kind === "dueSoon";
   const empty = state.kind === "none";
-  const isCurrent = state.kind === "current";
+  const attention = state.kind === "current" && Boolean(state.attention);
+  const isCurrent = state.kind === "current" && !attention;
 
-  const StatusIcon = overdue ? CircleAlert : dueSoon ? TimerReset : empty ? Clock3 : CircleCheck;
+  const StatusIcon = overdue ? CircleAlert : dueSoon || attention ? TimerReset : empty ? Clock3 : CircleCheck;
 
   // Obtener el seguimiento más reciente para extraer canal y próxima acción
   const leadFollowUps = getLeadFollowUps(followUps, leadId, companyId);
@@ -77,6 +78,7 @@ export function LeadFollowUpStatus({
             dueSoon && "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300",
             empty && "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300",
             isCurrent && "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300",
+            attention && "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300",
           )}
         >
           <StatusIcon className="size-3.5 shrink-0" aria-hidden="true" />
@@ -102,6 +104,7 @@ export function LeadFollowUpStatus({
         dueSoon && "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/25",
         empty && "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/30",
         isCurrent && "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/25",
+        attention && "border-sky-200 bg-sky-50/60 dark:border-sky-900/50 dark:bg-sky-950/25",
         className,
       )}
       role="status"
@@ -116,6 +119,7 @@ export function LeadFollowUpStatus({
               dueSoon && "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
               empty && "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
               isCurrent && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300",
+              attention && "bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300",
             )}
           >
             <StatusIcon className="size-4" aria-hidden="true" />
@@ -127,6 +131,7 @@ export function LeadFollowUpStatus({
               dueSoon && "text-amber-950 dark:text-amber-200",
               empty && "text-slate-900 dark:text-slate-100",
               isCurrent && "text-emerald-950 dark:text-emerald-200",
+              attention && "text-sky-950 dark:text-sky-200",
             )}>
               {state.title}
             </p>

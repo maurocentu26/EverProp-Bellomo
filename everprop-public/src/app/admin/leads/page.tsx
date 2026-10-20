@@ -21,7 +21,7 @@ import {
   appendLeadFollowUpToStorage,
   saveLeadList
 } from "@/lib/admin-storage";
-import { getLeadFollowUpState } from "@/lib/lead-follow-up";
+import { getLeadFollowUpState, needsFollowUp, type LeadFollowUpState } from "@/lib/lead-follow-up";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -35,7 +35,7 @@ import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 
 type LeadStageFilter = "all" | "new" | "contacted" | "visiting" | "negotiation" | "closing" | "discarded";
 type AssetTypeFilter = "all" | "lote" | "departamento" | "comercial" | "tradicional";
-type FollowUpFilter = "all" | "dueSoon" | "overdue";
+type FollowUpFilter = "all" | "attention" | "dueSoon" | "overdue";
 
 const LEAD_STAGE_FILTERS: { id: LeadStageFilter; label: string }[] = [
   { id: "all", label: "Todos" },
@@ -47,8 +47,14 @@ const LEAD_STAGE_FILTERS: { id: LeadStageFilter; label: string }[] = [
   { id: "discarded", label: "Descartados" },
 ];
 
+// EVP-50: "attention" is what the follow-up alerts point at (/admin/leads?seguimiento=1).
+function followUpMatches(state: LeadFollowUpState, filter: FollowUpFilter) {
+  return filter === "attention" ? needsFollowUp(state) : state.kind === filter;
+}
+
 const FOLLOW_UP_FILTERS: { id: FollowUpFilter; label: string }[] = [
   { id: "all", label: "Todos" },
+  { id: "attention", label: "Necesitan seguimiento" },
   { id: "dueSoon", label: "Próximos a vencer" },
   { id: "overdue", label: "Vencidos" },
 ];
@@ -111,6 +117,11 @@ function AllLeadsPage() {
       active = false;
     };
   }, []);
+
+  // EVP-50: follow-up notifications link here with ?seguimiento=1.
+  useEffect(() => deferEffectUpdate(() => {
+    if (new URLSearchParams(window.location.search).has("seguimiento")) setFollowUpFilter("attention");
+  }), []);
 
   // Reset filters when switching workspace modes
   useEffect(() => {
@@ -193,13 +204,7 @@ function AllLeadsPage() {
     if (followUpFilter !== "all") {
       const now = new Date();
       filtered = filtered.filter((lead) => (
-        getLeadFollowUpState(
-          followUps,
-          lead.id,
-          lead.followUpUpdatedAt,
-          now,
-          lead.companyId,
-        ).kind === followUpFilter
+        followUpMatches(getLeadFollowUpState(followUps, lead.id, lead.followUpUpdatedAt, now, lead.companyId), followUpFilter)
       ));
     }
 
@@ -426,9 +431,7 @@ function AllLeadsPage() {
           value={followUpFilter}
           onChange={(e) => setFollowUpFilter(e.target.value as FollowUpFilter)}
         >
-          <option value="all">Todos</option>
-          <option value="dueSoon">Próximos a vencer</option>
-          <option value="overdue">Vencidos</option>
+          {FOLLOW_UP_FILTERS.map((filter) => <option key={filter.id} value={filter.id}>{filter.label}</option>)}
         </select>
 </label>
 
