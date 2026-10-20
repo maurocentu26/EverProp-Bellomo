@@ -20,6 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: "Esperan asesor", url: "/admin/conversaciones", icons: [{ src: "/icon/192", sizes: "192x192", type: "image/png" }] },
+      { name: "Leads para seguir", url: "/admin/leads?seguimiento=1", icons: [{ src: "/icon/192", sizes: "192x192", type: "image/png" }] },
       { name: "Solicitudes de visita", url: "/admin/solicitudes-visita", icons: [{ src: "/icon/192", sizes: "192x192", type: "image/png" }] },
     ],
   };

@@ -77,6 +77,17 @@ final class SendWebPush implements ShouldQueue
                 'tag' => 'conversation-'.$data['conversation_id'], 'url' => '/admin/conversaciones?c='.$data['conversation_id']];
         }
 
+        // EVP-50: follow-up alerts and nudges carry their own name-free push text and a same-origin /admin link.
+        if (is_string($data['push_body'] ?? null) && is_string($data['event_type'] ?? null)
+            && (str_starts_with($data['event_type'], 'FOLLOW_UP_') || $data['event_type'] === 'REENGAGE')) {
+            $url = is_string($data['action_url'] ?? null) && preg_match('#^/admin/[A-Za-z0-9/_?=&-]*$#', $data['action_url']) === 1
+                ? $data['action_url'] : '/admin/notifications';
+            $title = $data['event_type'] === 'REENGAGE' && is_string($data['title'] ?? null) ? $data['title'] : $title;
+
+            return ['title' => $title, 'body' => $data['push_body'],
+                'tag' => is_string($data['lead_id'] ?? null) ? 'follow-up-'.$data['lead_id'] : strtolower($data['event_type']), 'url' => $url];
+        }
+
         if (($data['event_type'] ?? null) === 'INTEGRATION_REVOKED') {
             return ['title' => $title, 'body' => 'WhatsApp se desconectó. Volvé a conectarlo en Configuración.', 'tag' => 'integration-revoked', 'url' => '/admin/settings#whatsapp'];
         }

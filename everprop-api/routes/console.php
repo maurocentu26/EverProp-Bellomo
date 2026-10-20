@@ -17,3 +17,6 @@ Schedule::command('everprop:conversations:reconcile')->everyMinute()->withoutOve
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// EVP-50: follow-up alerts and advisor nudges; claims are atomic, onOneServer keeps replicas from racing.
+Schedule::command('everprop:leads:follow-up-alerts')->hourly()->withoutOverlapping()->onOneServer();

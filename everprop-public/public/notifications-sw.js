@@ -19,6 +19,7 @@ function adminTarget(value) {
 }
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  self.navigator.clearAppBadge?.().catch(() => {});
   const target = adminTarget(event.notification.data?.url);
   event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
     const client = clients.find((item) => {
@@ -35,10 +36,15 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener("push", (event) => {
   let payload = {};
   try { payload = event.data?.json() || {}; } catch {}
-  event.waitUntil(self.registration.showNotification(payload.title || "Bellomo", {
-    body: payload.body || "Tenés una nueva notificación.",
-    icon: "/icon/192", tag: payload.tag, renotify: Boolean(payload.tag),
-    data: { url: payload.url || "/admin/notifications" },
-    requireInteraction: true, silent: false,
-  }));
+  // EVP-50: re-engagement nudges are an invitation, so they fade on their own; work alerts stay until seen.
+  const nudge = payload.tag === "reengage";
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(payload.title || "Bellomo", {
+      body: payload.body || "Tenés una nueva notificación.",
+      icon: "/icon/192", badge: "/icon/192", tag: payload.tag, renotify: Boolean(payload.tag) && !nudge,
+      data: { url: payload.url || "/admin/notifications" },
+      requireInteraction: !nudge, silent: false,
+    }),
+    self.navigator.setAppBadge?.().catch(() => {}),
+  ]));
 });
