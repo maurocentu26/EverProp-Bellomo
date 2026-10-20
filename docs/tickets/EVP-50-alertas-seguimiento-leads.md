@@ -57,7 +57,7 @@ Cómo se cuentan los días y se mandan los avisos:
 **PWA y permisos:**
 - La invitación a activar avisos explica para qué sirven.
 - «Ahora no» espera 3 días antes de volver a preguntar.
-- Si el permiso está bloqueado, se muestran los pasos para reactivarlo según el dispositivo: iPhone, Android o escritorio.
+- Si el permiso está bloqueado, la invitación no aparece (la persona ya dijo que no). Configuración muestra los pasos para reactivarlo según el dispositivo: iPhone, Android o escritorio.
 - El service worker pone una marca en el ícono de la app instalada y la borra al abrir la notificación o el panel.
 - Los mensajes de reenganche se cierran solos y no exigen interacción.
 - El manifest suma el acceso directo «Leads para seguir».
@@ -92,7 +92,7 @@ La deduplicación queda en la base, con una clave única y un UPDATE condicional
   - `node --test tests/lead-follow-up-alerts.test.mjs`: 1/1.
   - ESLint sin errores en los archivos tocados.
   - `tsc --noEmit` y `next build`: pasan.
-- **Navegador (build mock):** `/admin/leads?seguimiento=1` abre con el filtro «Necesitan seguimiento». Con el permiso bloqueado, la invitación muestra los pasos para escritorio.
+- **Navegador (build mock):** `/admin/leads?seguimiento=1` abre con el filtro «Necesitan seguimiento». Con el permiso bloqueado, la invitación no aparece. En el CI de #59 tapaba «Tomar control» y rompía el E2E del navegador; corregido.
 
 - **Revisión `tenant-isolation-reviewer`:** sin bloqueantes ni altos, y sin fuga entre tenants.
   - **Corregido:** el join con `lead_follow_ups` ahora filtra por tenant en los dos lados. Se agregó un test con un seguimiento de otro tenant apuntando al mismo id de lead.
