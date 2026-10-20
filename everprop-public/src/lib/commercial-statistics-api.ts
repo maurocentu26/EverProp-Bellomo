@@ -1,13 +1,15 @@
 import { apiFetch } from "@/lib/everprop-api";
 
 export type CommercialMetrics = {
-  leads: number; active: number; won: number; lost: number; attended: number;
+  simulated_leads: number; leads: number; active: number; won: number; lost: number; attended: number;
   period_won: number; undated_won: number; conversations: number; answered: number; resolved: number;
   conversion: number | null; close_rate: number | null;
   response_minutes: number | null; resolution_minutes: number | null;
 };
 export type CommercialStatistics = {
   total: CommercialMetrics;
+  has_simulated_data: boolean;
+  series: { date: string; leads: number; period_won: number }[];
   advisors: (CommercialMetrics & { id: string | null; name: string })[];
   advisor_options: { id: string; name: string }[];
   from: string; to: string; timezone: string;

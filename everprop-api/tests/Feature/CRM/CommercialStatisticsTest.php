@@ -40,7 +40,7 @@ final class CommercialStatisticsTest extends TestCase
         $this->lead($other->tenant, $other, 'WON', '2026-10-01 10:00:00', '2026-10-01 11:00:00');
         $this->actingAs($admin)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173']);
         $path = '/api/v1/admin/commercial-statistics?from=2026-10-01&to=2026-10-01';
-        $this->getJson($path)->assertOk()->assertJsonPath('data.total.leads', 3)->assertJsonPath('data.total.won', 1)->assertJsonPath('data.total.active', 1)->assertJsonPath('data.total.lost', 1)->assertJsonPath('data.total.period_won', 2)->assertJsonPath('data.total.conversion', 33.33)->assertJsonPath('data.total.close_rate', 50)->assertJsonPath('data.total.undated_won', 1)->assertJsonPath('data.total.response_minutes', null);
+        $this->getJson($path)->assertOk()->assertJsonPath('data.total.leads', 3)->assertJsonPath('data.total.won', 1)->assertJsonPath('data.total.active', 1)->assertJsonPath('data.total.lost', 1)->assertJsonPath('data.total.period_won', 2)->assertJsonPath('data.total.conversion', 33.33)->assertJsonPath('data.total.close_rate', 50)->assertJsonPath('data.total.undated_won', 1)->assertJsonPath('data.total.response_minutes', null)->assertJsonPath('data.series.0.leads', 3)->assertJsonPath('data.series.0.period_won', 2);
         $this->getJson($path.'&advisor='.$other->public_id)->assertNotFound();
         $this->getJson($path.'&tenant_id='.$other->tenant_id)->assertUnprocessable();
         $this->getJson('/api/v1/admin/commercial-statistics?from=2026-10-03&to=2026-10-01')->assertUnprocessable();

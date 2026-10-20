@@ -12,13 +12,31 @@ Panel sobrio con cierres por período/asesor, conversión, tasa de cierre, prome
 - `everprop-api/routes/api.php`: ruta autenticada con límite de 30 solicitudes por minuto.
 - `everprop-public/src/app/admin/estadisticas/page.tsx` y `src/lib/commercial-statistics-api.ts`: diseño Dirección con tarjetas, barras, cobertura, tabla y definiciones, fechas inclusivas de Argentina, carga/error/reintento, foco/etiquetas, tabla con desplazamiento local y colores para tema oscuro/claro. API real; no sustituye fallos con muestras ficticias.
 - Navegación compartida: enlace Estadísticas visible según rol de API.
-- `everprop-api/tests/Feature/CRM/CommercialStatisticsTest.php`: cuatro pruebas MySQL, 49 aserciones.
+- `everprop-api/tests/Feature/CRM/CommercialStatisticsTest.php`: cinco pruebas MySQL, incluyendo creación/verificación de 1.500 registros sintéticos, idempotencia y ausencia de envíos.
 - Capturas en `docs/tickets/evidence/EVP-52/`, con datos de demostración de la base local.
+
+Ampliación solicitada tras revisar el diseño inicial:
+- Tres vistas: **Resumen**, **Equipo** y **Atención**. Menos controles visibles por defecto, fechas personalizadas a demanda, cuatro indicadores prioritarios y detalle por tarea.
+- `StatisticsCharts.tsx`: evolución temporal con selector leads/cierres; barras de asesores ordenadas con selector de métrica; seleccionar barra filtra el período o responsable a nivel global. Botones nativos y etiquetas completas; filtros activos y restablecer. Resumen evita una tabla de diez columnas; Equipo y Atención tienen tablas específicas.
+- La API entrega serie diaria completa en Argentina y el cliente agrupa hasta siete días cuando hay más de 31 puntos, sin perder cantidades. `statistics-series.ts` tiene prueba sobre 0/1/7/31/32/90/366 días y ambas métricas, ejecutada también en Web quality.
+- `SeedStatisticsDemo.php`: `php artisan everprop:statistics-demo --tenant=bellomo`. Solo MySQL de Docker local y bases locales permitidas. Agrega 1.500 leads y conversaciones sintéticos en una transacción; UUID determinísticos y bloqueo de tenant evitan duplicados. Usa asesores y propiedades existentes; no cambia cuentas, precios, disponibilidad ni envía mensajes. Integración y canal de simulación deshabilitados. No elimina filas.
+- Aviso visible de base con datos de simulación (boolean tenant-scoped) y conteo de leads simulados dentro de la cohorte.
 
 Sin nuevas dependencias, variables ni scripts de esquema. Para ejecutar develop actualizado se requieren sus forward existentes: localmente se aplicaron los pendientes EVP-50 y collection-email-kind a la base de pruebas; EVP-50 también a la base local. No hubo conexión ni migración sobre producción.
 
 ## 3. Por qué esta solución
 Se reutilizan apiFetch, sesión, componentes Button, diseño corporativo y policy CRM. No se usa el widget anterior que calculaba estadísticas desde listas de leads del cliente sin filtrar correctamente por mes.
+
+Investigación UX aplicada:
+- [IBM Carbon — Dashboards](https://www.carbondesignsystem.com/building-blocks/data-visualization/dashboards): priorizar indicadores y revelar detalle según la tarea; gráficos vinculados para explorar. Aplicación: resumen con jerarquía y vistas de análisis separadas, sin agregar gráficos decorativos.
+- [GitLab Pajamas — Dashboards](https://design.gitlab.com/patterns/dashboards/): distinguir filtros de dashboard y filtros de visualización. Aplicación: fecha/asesor globales; selector de métrica local con alcance explícito.
+- [NN/g — User Intent Affects Filter Design](https://www.nngroup.com/articles/applying-filters/): preservar continuidad durante el filtrado. Aplicación: cambios simples inmediatos, filtros personalizados aplicados juntos, resultados anteriores atenuados durante carga, sin mover al usuario al inicio.
+- Perfiles consultados: UI Designer, UX Researcher y Data Visualization Engineer. Barras desde cero, magnitudes por longitud, unidades/muestras visibles, cantidades no mezcladas con porcentajes en el mismo eje.
+
+Auditoría de seeds:
+- Existen `seed_bellomo_real_data.sql` y `seed_real_simulation_data.sql`, reutilizadas por `everprop:local-demo` para inventario original y una pequeña muestra CRM.
+- La seed SQL antigua tiene borrados y desactiva claves foráneas; `db:setup-simulation` además reimporta baseline y no es apropiado para ampliar una base ya poblada. No se ejecutaron.
+- Existe `everprop:inventory-import` con plan, backup, rehearse y verify para el Excel de 3.577 unidades/27 desarrollos. El Excel no está en esta carpeta; el usuario eligió expresamente conservar las 73 propiedades existentes. No se afirmó que la seed reducida equivalga al catálogo completo actualizado.
 
 Contrato de métricas:
 - **Cierres del período:** leads actualmente WON cuya won_at está en el intervalo. Es una venta comercial declarada, no contrato ni importe facturado. Los cierres históricos sin fecha se informan por separado sobre toda la cartera filtrada. Reabrir elimina ese cierre del recuento; no es un libro histórico de eventos.
@@ -33,7 +51,7 @@ Contrato de métricas:
 Entorno local: PHP 8.4 en Docker, MySQL real en `bellomo_crm_test`, con fixtures sintéticos y transacciones; Node/Next 16.3.6.
 
 - Prueba nueva primero falló 404 antes de implementar el endpoint.
-- `php artisan test --filter=CommercialStatisticsTest`: 4 pasan, 49 aserciones. Incluye bordes UTC/Argentina, cierres de leads anteriores al período, cierre sin fecha, medias ponderadas y envío demorado, bots/pendientes/fallidos excluidos, reapertura, creación en WON, fechas preservadas, filtros, rol gerente, roles denegados y tenant ajeno.
+- `php artisan test --filter=CommercialStatisticsTest`: 4 pasan, 51 aserciones (incluye la serie diaria). Incluye bordes UTC/Argentina, cierres de leads anteriores al período, cierre sin fecha, medias ponderadas y envío demorado, bots/pendientes/fallidos excluidos, reapertura, creación en WON, fechas preservadas, filtros, rol gerente, roles denegados y tenant ajeno.
 - `php artisan test --no-coverage`: **428 pasan, 1 omitida, 2632 aserciones**. Primer intento detectó un forward previo ausente en la base local de tests; se aplicó el script existente y se volvió a ejecutar toda la suite.
 - `vendor/bin/pint --test`: 311 archivos, pasa.
 - `vendor/bin/phpstan analyse --no-progress --memory-limit=1G`: sin errores. El intento con límite predeterminado 256M agotó memoria; no era un error del código.
@@ -45,7 +63,16 @@ Entorno local: PHP 8.4 en Docker, MySQL real en `bellomo_crm_test`, con fixtures
 
 CI remoto se registra en el PR; su estado final debe comprobarse sobre el SHA publicado.
 
+Verificación de la ampliación:
+- Suite completa local final: 429 pruebas pasan, 2.657 aserciones y una evaluación de modelo externo omitida. Se ejecutó de nuevo tras incorporar el generador; los casos de seed comprueban cantidades, vínculos y que no haya correo, notificaciones ni jobs encolados.
+- Pruebas focalizadas backend: 5/74 aserciones. Prueba de agrupación JS pasa; lint 0 errores/152 advertencias existentes; build y PHPStan correctos.
+- Revisor independiente repitió backend y agrupación y validó consultas nuevas de la serie y aviso sin bloqueantes.
+- SQL local independiente: simulados NEW=450, CONTACTED=225, VISIT_SCHEDULED=150, NEGOTIATION=225, WON=300, LOST=150. Conversaciones OPEN=1.050 y RESOLVED=450. Inventario después: 73 propiedades; conserva 13 leads anteriores, total 1.513.
+- API reconciliada para julio-octubre: 1.513 leads = 1.062 activos + 301 ganados + 150 descartados; 300 cierres fechados, uno previo sin fecha. Serie suma 1.513 ingresos/300 cierres. 1.501 conversaciones, 1.201 respondidas, 450 resueltas.
+- Cinco ejecuciones secuenciales locales del cálculo sobre 1.513 leads: 50,31/32,92/26,32/26,80/27,93 ms antes de añadir la consulta booleana de aviso. No es benchmark de concurrencia ni latencia de producción.
+- Navegador: vistas, métrica temporal, rango elegido en barra, selección de asesor desde gráfico, quitar filtro y ausencia de muestra. Activación de vista y filtro de intervalo con Enter comprobada. Capturas `resumen-v2.png`, `equipo-v2.png`, `atencion-v2.png`. Se conserva la versión inicial como evidencia de evolución.
+
 ## 5. Pendientes y riesgos
 Revisión humana de Mauro y Ramiro antes del merge a develop. No merge, despliegue ni cambios en producción.
 
-La calidad histórica depende de las fechas existentes. Reasignaciones modifican la comparativa; resolución no reconstruye ciclos pasados. No se verificó contra producción, carga de gran volumen ni lector de pantalla; no se afirma validación en dispositivo móvil físico. La consulta transmite solo agregados e identificadores/nombres del equipo al usuario autorizado.
+La calidad histórica depende de las fechas existentes. Reasignaciones modifican la comparativa; resolución no reconstruye ciclos pasados. No se verificó contra producción, concurrencia elevada ni lector de pantalla; no se afirma validación en dispositivo móvil físico. La consulta transmite solo agregados e identificadores/nombres del equipo al usuario autorizado.

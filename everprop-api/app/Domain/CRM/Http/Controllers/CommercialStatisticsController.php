@@ -27,6 +27,10 @@ final class CommercialStatisticsController
         if ($from->diffInDays($to) > 366) {
             throw ValidationException::withMessages(['to' => 'El período máximo es de 366 días.']);
         }
+        $series = [];
+        for ($day = $from; $day < $to; $day = $day->addDay()) {
+            $series[$day->toDateString()] = ['date' => $day->toDateString(), 'leads' => 0, 'period_won' => 0];
+        }
         $from = $from->utc()->format('Y-m-d H:i:s');
         $to = $to->utc()->format('Y-m-d H:i:s');
         $advisorId = null;
@@ -40,7 +44,7 @@ final class CommercialStatisticsController
                 $user->display_name .= ' (dado de baja)';
             }
         }
-        $empty = array_fill_keys(['leads', 'active', 'won', 'lost', 'attended', 'period_won', 'undated_won', 'conversations', 'answered', 'resolved', 'response_seconds', 'resolution_seconds'], 0);
+        $empty = array_fill_keys(['leads', 'active', 'won', 'lost', 'attended', 'period_won', 'undated_won', 'conversations', 'answered', 'resolved', 'response_seconds', 'resolution_seconds', 'simulated_leads'], 0);
         $rows = [];
         $rows[0] = ['id' => null, 'name' => 'Sin asignar'] + $empty;
         foreach ($users as $user) {
@@ -53,12 +57,15 @@ final class CommercialStatisticsController
             ->where(fn ($q) => $q->where(fn ($q) => $q->where('l.created_at', '>=', $from)->where('l.created_at', '<', $to))
                 ->orWhere(fn ($q) => $q->where('l.won_at', '>=', $from)->where('l.won_at', '<', $to))
                 ->orWhere(fn ($q) => $q->where('s.code', 'WON')->whereNull('l.won_at')))
-            ->select(['l.assigned_user_id', 'l.created_at', 'l.won_at', 's.code'])->selectRaw('EXISTS ('.$followed->selectRaw('1')->toSql().') as attended', $followed->getBindings());
+            ->select(['l.assigned_user_id', 'l.created_at', 'l.won_at', 'l.source_kind', 's.code'])->selectRaw('EXISTS ('.$followed->selectRaw('1')->toSql().') as attended', $followed->getBindings());
         // Stream the cohort: no pagination truncation or full message/lead collections in memory.
         foreach ($leads->cursor() as $lead) {
             $key = isset($rows[$lead->assigned_user_id ?? 0]) ? ($lead->assigned_user_id ?? 0) : 0;
             if ($lead->created_at >= $from && $lead->created_at < $to) {
                 $rows[$key]['leads']++;
+                $rows[$key]['simulated_leads'] += $lead->source_kind === 'EVP52_SIMULATION_V1' ? 1 : 0;
+                $date = CarbonImmutable::parse($lead->created_at, 'UTC')->setTimezone('America/Argentina/Buenos_Aires')->toDateString();
+                $series[$date]['leads']++;
                 $rows[$key][match ($lead->code) {
                     'WON' => 'won', 'LOST' => 'lost', default => 'active'
                 }]++;
@@ -66,6 +73,10 @@ final class CommercialStatisticsController
             }
             if ($lead->code === 'WON') {
                 $rows[$key]['undated_won'] += $lead->won_at === null ? 1 : 0;
+                if ($lead->won_at !== null && $lead->won_at >= $from && $lead->won_at < $to) {
+                    $date = CarbonImmutable::parse($lead->won_at, 'UTC')->setTimezone('America/Argentina/Buenos_Aires')->toDateString();
+                    $series[$date]['period_won']++;
+                }
                 $rows[$key]['period_won'] += $lead->won_at !== null && $lead->won_at >= $from && $lead->won_at < $to ? 1 : 0;
             }
         }
@@ -101,7 +112,8 @@ final class CommercialStatisticsController
             $visible[] = $this->metrics($row);
         }
 
-        return response()->json(['data' => ['total' => $this->metrics($total), 'advisors' => $visible,
+        return response()->json(['data' => ['total' => $this->metrics($total), 'advisors' => $visible, 'series' => array_values($series),
+            'has_simulated_data' => DB::table('leads')->where('tenant_id', $tenantId)->where('source_kind', 'EVP52_SIMULATION_V1')->exists(),
             'advisor_options' => $users->map(fn ($u) => ['id' => $u->public_id, 'name' => $u->display_name]),
             'from' => $input['from'], 'to' => $input['to'], 'timezone' => 'America/Argentina/Buenos_Aires']]);
     }
