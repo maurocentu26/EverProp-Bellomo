@@ -8,13 +8,14 @@ Rama `ticket/EVP-53-email-marketing-diseno` desde `develop` (`4460655`) · 2026-
 - Entregable: un documento con la recomendación de proveedor.
 
 ## Entregable
-`docs/email-marketing/propuesta-email-marketing.md`.
+`docs/email-marketing/propuesta-email-cobranzas.md`.
 
 ## Recomendación
+- **Alcance aclarado por Ramiro (2026-10-21):** es para cobranzas, con el modelo Ecogas: avisos antes y después del vencimiento de cada cuota, no campañas promocionales.
 - **Demo y staging:** Brevo, plan gratuito (300 correos por día, por SMTP).
 - **Producción:** Amazon SES (~USD 0,10 cada 1.000 correos).
 
-El módulo vive en EverProp: plantillas, segmentos, consentimiento, bajas y métricas quedan en nuestra base, y el proveedor solo entrega. Reutiliza `contact_consents`, el patrón de `CollectionMailer` y `webhook_events`. Cobranzas sigue separado como correo transaccional.
+Se extiende EVP-31: el aviso a 5 días pasa a ser una secuencia D−5, D0, D+3 y D+15 (esta última la revisa una persona), con correo tipo estado de cuenta, estados de entrega por webhook y un panel de seguimiento para cobranzas.
 
 ## Cómo se verificó
 - Leí el código actual: `contact_consents`, `CollectionMailer`, `PublicLeadService` y `RoleCode`.
