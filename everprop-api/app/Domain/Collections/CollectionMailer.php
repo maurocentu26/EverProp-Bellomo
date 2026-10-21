@@ -34,7 +34,8 @@ final class CollectionMailer
             ! filter_var(config('collections_mail.reply_to'), FILTER_VALIDATE_EMAIL) => 'Falta el remitente o el correo de respuesta.',
             config("mail.mailers.{$mailer}.transport") !== 'smtp', ! config("mail.mailers.{$mailer}.host") => 'Falta configurar el servidor SMTP.',
             trim((string) config('collections_mail.payment_instructions')) === '' => 'Faltan los datos de pago aprobados.',
-            ! Schema::hasColumn('collection_email_attempts', 'kind') => 'Falta aplicar el esquema de auditoría de correos.',
+            // EVP-53: without 2026-10-21.001 the old CHECK rejects the new notices and every run would skip silently.
+            ! Schema::hasColumn('collection_email_attempts', 'sequence_installment_id') => 'Falta aplicar el esquema de auditoría de correos.',
             default => null,
         };
     }
@@ -46,8 +47,9 @@ final class CollectionMailer
             $attempts = DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->where('installment_id', $installmentId);
             if (! $active || $active->status !== 'ACTIVE'
                 || (clone $attempts)->whereIn('status', ['SENDING', 'UNKNOWN'])->exists()
-                // The upcoming notice goes out once per installment, whatever happened to it.
-                || ($kind === CollectionEmail::UPCOMING && (clone $attempts)->where('kind', CollectionEmail::UPCOMING)->exists())) {
+                // Each scheduled notice (UPCOMING, DUE_TODAY, PAST_DUE) goes out once per installment, whatever happened to it;
+                // the automatic unpaid notice also stands down when an operator already sent the manual reminder.
+                || (in_array($kind, CollectionEmail::SEQUENCE, true) && (clone $attempts)->whereIn('kind', CollectionEmail::alreadyCovered($kind))->exists())) {
                 return null;
             }
             $fresh = $this->email->query($tenant->id)->where('i.id', $installmentId)->first();
@@ -70,6 +72,9 @@ final class CollectionMailer
             ->where('installment_id', $installmentId)->where('business_date', $claim['businessDate']);
         try {
             $sent = Mail::mailer((string) config('collections_mail.mailer'))->raw($claim['body'], function ($message) use ($claim) {
+                if ($claim['html'] !== null) {
+                    $message->html($claim['html']);
+                }
                 $message->to($claim['recipient'])->from($claim['sender'], config('collections_mail.from_name'))
                     ->replyTo(config('collections_mail.reply_to'))->subject($claim['subject']);
             });
