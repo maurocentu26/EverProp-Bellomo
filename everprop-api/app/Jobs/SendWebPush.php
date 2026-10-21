@@ -88,6 +88,14 @@ final class SendWebPush implements ShouldQueue
                 'tag' => is_string($data['lead_id'] ?? null) ? 'follow-up-'.$data['lead_id'] : strtolower($data['event_type']), 'url' => $url];
         }
 
+        // EVP-53: installment alerts open Cobranzas filtered; one pending alert per stage on the device.
+        if (in_array($data['event_type'] ?? null, ['installment_due_today', 'installment_overdue'], true)) {
+            $overdue = $data['event_type'] === 'installment_overdue';
+
+            return ['title' => $title, 'body' => $overdue ? 'Una cuota quedó en mora. Revisala en Cobranzas.' : 'Hoy vence una cuota. Revisala en Cobranzas.',
+                'tag' => $overdue ? 'collections-overdue' : 'collections-due-today', 'url' => $overdue ? '/admin/cobranzas?status=overdue' : '/admin/cobranzas?status=dueToday'];
+        }
+
         if (($data['event_type'] ?? null) === 'INTEGRATION_REVOKED') {
             return ['title' => $title, 'body' => 'WhatsApp se desconectó. Volvé a conectarlo en Configuración.', 'tag' => 'integration-revoked', 'url' => '/admin/settings#whatsapp'];
         }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Collections;
 
+use App\Domain\Collections\CollectionEmail;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
@@ -160,7 +161,7 @@ final class CollectionEmailTest extends TestCase
             $callback(new Message($message));
             self::assertSame('client@example.test', $message->getTo()[0]->getAddress());
             self::assertSame('billing@example.test', $message->getFrom()[0]->getAddress());
-            self::assertStringContainsString('ARS 100.00', $body);
+            self::assertStringContainsString('$ 100,00', $body);
 
             return new \stdClass;
         });
@@ -246,7 +247,7 @@ final class CollectionEmailTest extends TestCase
         self::assertCount(1, $sent);
         self::assertSame('client@example.test', $sent[0]['to']);
         self::assertStringContainsString('cuota 1 de 1 vence el 10/02/2026', $sent[0]['subject']);
-        self::assertStringContainsString('ARS 100.00', $sent[0]['body']);
+        self::assertStringContainsString('$ 100,00', $sent[0]['body']);
         self::assertStringContainsString('Transferencia al alias BELLOMO.PRUEBA', $sent[0]['body']);
         $attempt = DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->first();
         self::assertSame(['UPCOMING', 'SENT'], [$attempt->kind, $attempt->status]);
@@ -273,7 +274,7 @@ final class CollectionEmailTest extends TestCase
         $pay('40.00');
         $this->at($tenant, '2026-02-06 10:00');
         $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
-        self::assertStringContainsString('ARS 60.00', $sent[0]);
+        self::assertStringContainsString('$ 60,00', $sent[0]);
     }
 
     public function test_a_fully_paid_installment_is_never_notified(): void
@@ -421,11 +422,11 @@ final class CollectionEmailTest extends TestCase
 
         self::assertCount(2, $sent);
         self::assertStringContainsString('Hoy vence tu cuota 1 de 1', $sent[0]['subject']);
-        self::assertStringContainsString('ARS 100.00', $sent[0]['body']);
+        self::assertStringContainsString('$ 100,00', $sent[0]['body']);
         self::assertStringContainsString('Tu cuota 1 quedó pendiente', $sent[1]['subject']);
         self::assertStringContainsString('venció el 10/02/2026', $sent[1]['body']);
         foreach ($sent as $mail) {
-            self::assertStringContainsString('ARS 100.00', $mail['html']);
+            self::assertStringContainsString('$ 100,00', $mail['html']);
             self::assertStringContainsString('Transferencia al alias BELLOMO.PRUEBA', $mail['html']);
             self::assertStringContainsString('Ana &lt;script&gt;', $mail['html']);
             self::assertStringNotContainsString('<script>', $mail['html']);
@@ -474,5 +475,25 @@ final class CollectionEmailTest extends TestCase
         $this->at($tenant, '2026-02-13 10:00');
         $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
         self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->where('kind', 'PAST_DUE')->count());
+    }
+
+    public function test_the_statement_shows_the_logo_only_from_an_https_url_and_money_in_argentine_format(): void
+    {
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        $email = app(CollectionEmail::class);
+        $html = function () use ($email, $tenant, $id): string {
+            $row = $email->query($tenant->id)->where('i.public_id', $id)->first();
+
+            return (string) $email->preview($row, $tenant, CollectionEmail::UPCOMING)['html'];
+        };
+
+        config(['collections_mail.logo_url' => 'https://panel.example.test/brand/bellomo/logo.png']);
+        self::assertStringContainsString('<img src="https://panel.example.test/brand/bellomo/logo.png" alt="'.e($tenant->name).'"', $html());
+        config(['collections_mail.logo_url' => 'http://panel.example.test/logo.png']);
+        self::assertStringNotContainsString('<img', $html());
+
+        self::assertSame('$ 1.234.567,50', CollectionEmail::money('ARS', '1234567.50'));
+        self::assertSame('US$ 950,00', CollectionEmail::money('USD', '950.00'));
     }
 }
