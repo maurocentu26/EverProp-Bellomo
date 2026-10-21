@@ -247,6 +247,9 @@ final class AdminLeadController extends Controller
                     'public_id' => $leadUuid,
                     'contact_id' => $contactId,
                     'stage_id' => $stage->id,
+                    'is_open' => ! in_array($stageCode, ['WON', 'LOST'], true),
+                    'won_at' => $stageCode === 'WON' ? $now : null,
+                    'lost_at' => $stageCode === 'LOST' ? $now : null,
                     'assigned_user_id' => $assignedId,
                     'assignment_method' => $assignedId ? 'MANUAL' : 'UNASSIGNED',
                     'source_channel' => $validated['source_channel'] ?? 'WEB_FORM',
@@ -548,6 +551,10 @@ final class AdminLeadController extends Controller
                 if ($stage) {
                     $updates['stage_id'] = $stage->id;
                     $updates['is_open'] = ! in_array($stageCode, ['WON', 'LOST'], true);
+                    if ((int) $lead->stage_id !== (int) $stage->id) {
+                        $updates['won_at'] = $stageCode === 'WON' ? Carbon::now('UTC') : null;
+                        $updates['lost_at'] = $stageCode === 'LOST' ? Carbon::now('UTC') : null;
+                    }
                 }
 
                 if (array_key_exists('notes', $validated)) {

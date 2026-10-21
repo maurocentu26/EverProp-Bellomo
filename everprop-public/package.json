@@ -7,6 +7,7 @@
     "test:materials": "node --test tests/bellomo-materials.test.mjs",
     "test:collections": "node --test tests/collections-api.test.mjs",
     "test:conversations": "node --test tests/conversations-api.test.mjs",
+    "test:statistics": "node --test tests/statistics-series.test.mjs",
     "test:follow-up": "node --test tests/lead-follow-up-alerts.test.mjs",
     "dev": "next dev",
     "build": "next build",
