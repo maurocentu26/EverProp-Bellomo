@@ -11,6 +11,8 @@ return [
     // EVP-31: how to pay, approved by the client (account, alias, contact). Without it no email is sent: the text is
     // what a person will act on, so it never falls back to a guess.
     'payment_instructions' => env('COLLECTIONS_MAIL_PAYMENT_INSTRUCTIONS'),
+    // EVP-53: public https URL of the company logo shown at the top of the email; empty shows the company name.
+    'logo_url' => env('COLLECTIONS_MAIL_LOGO_URL'),
     // Upcoming-installment notice: days before the due date, and earliest local hour it goes out.
     'upcoming_days' => (int) env('COLLECTIONS_UPCOMING_DAYS', 5),
     'upcoming_hour' => (int) env('COLLECTIONS_UPCOMING_HOUR', 9),

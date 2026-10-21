@@ -72,11 +72,12 @@ final class CollectionEmail
             default => null,
         };
         $amount = FixedSchedule::decimal($remaining);
+        $shown = self::money($row->currency, $amount); // display only: amountRemaining and the audit row keep the decimal
         [$subject, $body, $html] = match ($kind) {
-            self::UPCOMING => $this->upcoming($row, $tenant, $amount),
-            self::DUE_TODAY => $this->dueToday($row, $tenant, $amount),
-            self::PAST_DUE => $this->pastDue($row, $tenant, $amount),
-            default => [...$this->overdue($row, $tenant, $amount, $today), null],
+            self::UPCOMING => $this->upcoming($row, $tenant, $shown),
+            self::DUE_TODAY => $this->dueToday($row, $tenant, $shown),
+            self::PAST_DUE => $this->pastDue($row, $tenant, $shown),
+            default => [...$this->overdue($row, $tenant, $shown, $today), null],
         };
         $provisioned = config('collections_mail.tenant') === $tenant->slug;
 
@@ -85,6 +86,18 @@ final class CollectionEmail
             'amountRemaining' => $amount, 'currency' => $row->currency, 'businessDate' => $today,
             'sender' => $provisioned ? config('collections_mail.from_address') : null,
             'deliveryEnabled' => $provisioned && (bool) config('collections_mail.enabled')];
+    }
+
+    /** "$ 450.000,00" / "US$ 1.250,50": the format a buyer in Argentina reads on any bill. */
+    public static function money(?string $currency, string $decimal): string
+    {
+        $symbol = match ($currency) {
+            'ARS' => '$',
+            'USD' => 'US$',
+            default => (string) $currency,
+        };
+
+        return trim($symbol.' '.number_format((float) $decimal, 2, ',', '.'));
     }
 
     /** @return array{0: string, 1: string} */
@@ -107,7 +120,7 @@ final class CollectionEmail
             ."Te recordamos el próximo vencimiento de tu plan de pagos{$property}:\n\n"
             ."  Cuota: {$row->installment_number} de {$row->total_installments}\n"
             ."  Vencimiento: {$due}\n"
-            ."  Importe a pagar: {$row->currency} {$amount}\n\n"
+            ."  Importe a pagar: {$amount}\n\n"
             .($instructions !== '' ? "Cómo pagar:\n{$instructions}\n\n" : '')
             .'Si ya realizaste el pago, no tenés que hacer nada: este aviso se genera según nuestros registros y puede no '
             ."reflejar pagos de los últimos días. Ante cualquier duda, respondé este correo.\n\n"
@@ -126,7 +139,7 @@ final class CollectionEmail
             "Hoy vence tu cuota {$row->installment_number} de {$row->total_installments} — {$tenant->name}",
             "Hola {$row->display_name},\n\n"
             ."Hoy vence la cuota {$row->installment_number} de {$row->total_installments} de tu plan de pagos{$property}.\n\n"
-            ."  Importe a pagar: {$row->currency} {$amount}\n\n"
+            ."  Importe a pagar: {$amount}\n\n"
             .($instructions !== '' ? "Cómo pagar:\n{$instructions}\n\n" : '')
             ."Si ya pagaste, no tenés que hacer nada. Ante cualquier duda, respondé este correo.\n\n"
             ."{$tenant->name}",
@@ -144,7 +157,7 @@ final class CollectionEmail
             "Tu cuota {$row->installment_number} quedó pendiente — {$tenant->name}",
             "Hola {$row->display_name},\n\n"
             ."Según nuestros registros, la cuota {$row->installment_number} de {$row->total_installments}, que venció el {$due}, "
-            ."tiene un saldo pendiente de {$row->currency} {$amount}.\n\n"
+            ."tiene un saldo pendiente de {$amount}.\n\n"
             .($instructions !== '' ? "Cómo pagar:\n{$instructions}\n\n" : '')
             .'Si ya realizaste el pago, respondé este correo con el comprobante y lo verificamos. Este aviso puede no '
             ."reflejar pagos de los últimos días.\n\n"
@@ -169,12 +182,12 @@ final class CollectionEmail
         return '<!doctype html><html lang="es"><body style="margin:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:#1d1d1f">'
             .'<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">'
             .'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;padding:24px">'
-            .'<tr><td style="font-size:14px;color:#555">'.$e($tenant->name).'</td></tr>'
+            .$this->brand($tenant, $e)
             .'<tr><td style="padding-top:8px;font-size:22px;font-weight:700">'.$e($headline).'</td></tr>'
             .'<tr><td style="padding-top:12px">Hola '.$e($row->display_name).',</td></tr>'
             .'<tr><td style="padding:16px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;border-radius:8px;padding:16px">'
             .'<tr><td style="color:#555">Importe a pagar</td></tr>'
-            .'<tr><td style="font-size:28px;font-weight:700">'.$e($row->currency).' '.$e($amount).'</td></tr>'
+            .'<tr><td style="font-size:28px;font-weight:700">'.$e($amount).'</td></tr>'
             .'<tr><td style="padding-top:4px;color:#555">Vencimiento: <strong>'.$e($due).'</strong></td></tr></table></td></tr>'
             .'<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
             .$line('Cuota', $e($row->installment_number).' de '.$e($row->total_installments))
@@ -186,12 +199,29 @@ final class CollectionEmail
             .'</table></td></tr></table></body></html>';
     }
 
+    /**
+     * The company logo when an https URL is configured (mail clients only show remote images, never local files),
+     * otherwise its name. The alt text keeps the name visible when images are blocked.
+     */
+    private function brand(object $tenant, \Closure $e): string
+    {
+        $logo = (string) config('collections_mail.logo_url');
+        if (! str_starts_with($logo, 'https://') || filter_var($logo, FILTER_VALIDATE_URL) === false) {
+            return '<tr><td style="font-size:14px;color:#555">'.$e($tenant->name).'</td></tr>';
+        }
+
+        return '<tr><td><img src="'.$e($logo).'" alt="'.$e($tenant->name).'" width="160" style="display:block;width:160px;max-width:60%;height:auto;border:0"></td></tr>';
+    }
+
     /** @return array{0: string, 1: string} */
     private function overdue(object $row, object $tenant, string $amount, string $today): array
     {
+        $today = CarbonImmutable::parse($today)->format('d/m/Y');
+        $due = CarbonImmutable::parse($row->due_date)->format('d/m/Y');
+
         return [
             "Recordatorio de cuota {$row->installment_number} — {$tenant->name}",
-            "Hola {$row->display_name},\n\nSegún nuestros registros al {$today}, la cuota {$row->installment_number}, con vencimiento {$row->due_date}, tiene un saldo pendiente de {$row->currency} {$amount}.\n\nSi ya realizaste el pago, por favor respondé a este correo para que podamos verificarlo. Para cualquier consulta, contactá a nuestro equipo de cobranzas.\n\n{$tenant->name}",
+            "Hola {$row->display_name},\n\nSegún nuestros registros al {$today}, la cuota {$row->installment_number}, con vencimiento {$due}, tiene un saldo pendiente de {$amount}.\n\nSi ya realizaste el pago, por favor respondé a este correo para que podamos verificarlo. Para cualquier consulta, contactá a nuestro equipo de cobranzas.\n\n{$tenant->name}",
         ];
     }
 }

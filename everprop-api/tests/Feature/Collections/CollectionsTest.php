@@ -4,9 +4,12 @@ namespace Tests\Feature\Collections;
 
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
+use App\Jobs\SendWebPush;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -162,5 +165,54 @@ final class CollectionsTest extends TestCase
         } finally {
             unlink($file);
         }
+    }
+
+    public function test_advisor_alert_goes_out_once_per_stage_with_a_push_only_for_recent_due_dates(): void
+    {
+        Queue::fake([SendWebPush::class]);
+        config(['webpush.private_key' => 'test-key']);
+        [$tenant, $admin, $lead] = $this->identity();
+        $this->login($tenant, $admin);
+        $this->postJson('/api/v1/admin/payment-agreements', $this->payload($lead))->assertCreated();
+        $due = CarbonImmutable::parse((string) DB::table('installments')->where('tenant_id', $tenant->id)->value('due_date'), $tenant->timezone);
+        $events = fn () => DB::table('notifications')->where('notifiable_id', $admin->id)->orderBy('created_at')->get()
+            ->map(fn ($n) => json_decode($n->data, true)['event_type'])->all();
+
+        foreach ([$due->setTime(9, 0), $due->setTime(18, 0), $due->addDay()->setTime(9, 0), $due->addDays(2)->setTime(9, 0)] as $at) {
+            $this->travelTo($at);
+            $this->artisan('everprop:collections:notify', ['tenant' => $tenant->slug])->assertSuccessful();
+        }
+
+        // Due day, then overdue, and never again every day after that.
+        self::assertSame(['installment_due_today', 'installment_overdue'], $events());
+        self::assertStringContainsString($due->format('d/m/Y'), (string) DB::table('notifications')->where('notifiable_id', $admin->id)->value('data'));
+        Queue::assertPushed(SendWebPush::class, 2);
+
+        // Push window edge: 11 days late gets the bell entry but no push.
+        DB::table('notifications')->where('notifiable_id', $admin->id)->delete();
+        $this->travelTo($due->addDays(11)->setTime(9, 0));
+        $this->artisan('everprop:collections:notify', ['tenant' => $tenant->slug])->assertSuccessful();
+        self::assertSame(['installment_overdue'], $events());
+        Queue::assertPushed(SendWebPush::class, 2);
+
+        // Deploy day: an alert already stored today under the old per-day key is not repeated.
+        DB::table('notifications')->where('notifiable_id', $admin->id)->delete();
+        $at = $due->addDays(60)->setTime(9, 0);
+        $this->travelTo($at);
+        $installment = (int) DB::table('installments')->where('tenant_id', $tenant->id)->value('id');
+        $hash = md5("collections:{$tenant->id}:{$installment}:{$admin->id}:{$at->toDateString()}");
+        $legacy = substr($hash, 0, 8).'-'.substr($hash, 8, 4).'-'.substr($hash, 12, 4).'-'.substr($hash, 16, 4).'-'.substr($hash, 20);
+        DB::table('notifications')->insert(['id' => $legacy, 'type' => 'collections.installment', 'notifiable_type' => User::class,
+            'notifiable_id' => $admin->id, 'data' => json_encode(['event_type' => 'installment_overdue']), 'created_at' => now(), 'updated_at' => now()]);
+        $this->artisan('everprop:collections:notify', ['tenant' => $tenant->slug])->assertSuccessful();
+        self::assertSame(1, DB::table('notifications')->where('notifiable_id', $admin->id)->count());
+    }
+
+    public function test_installment_push_has_no_client_data_and_opens_the_right_cobranzas_filter(): void
+    {
+        $payload = (new SendWebPush(1, 1, 'n'))->payload('Bellomo', 'n', ['event_type' => 'installment_overdue', 'lead_id' => 'abc',
+            'message' => 'Cuota 3: vencimiento 10/02/2026.']);
+        self::assertSame(['title' => 'Bellomo', 'body' => 'Una cuota quedó en mora. Revisala en Cobranzas.',
+            'tag' => 'collections-overdue', 'url' => '/admin/cobranzas?status=overdue'], $payload);
     }
 }
