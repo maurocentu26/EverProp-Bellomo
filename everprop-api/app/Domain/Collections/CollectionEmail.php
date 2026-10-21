@@ -71,12 +71,13 @@ final class CollectionEmail
             ! filter_var($row->email, FILTER_VALIDATE_EMAIL) => 'El cliente no tiene un correo válido en su ficha.',
             default => null,
         };
-        $amount = self::money($row->currency, FixedSchedule::decimal($remaining));
+        $amount = FixedSchedule::decimal($remaining);
+        $shown = self::money($row->currency, $amount); // display only: amountRemaining and the audit row keep the decimal
         [$subject, $body, $html] = match ($kind) {
-            self::UPCOMING => $this->upcoming($row, $tenant, $amount),
-            self::DUE_TODAY => $this->dueToday($row, $tenant, $amount),
-            self::PAST_DUE => $this->pastDue($row, $tenant, $amount),
-            default => [...$this->overdue($row, $tenant, $amount, $today), null],
+            self::UPCOMING => $this->upcoming($row, $tenant, $shown),
+            self::DUE_TODAY => $this->dueToday($row, $tenant, $shown),
+            self::PAST_DUE => $this->pastDue($row, $tenant, $shown),
+            default => [...$this->overdue($row, $tenant, $shown, $today), null],
         };
         $provisioned = config('collections_mail.tenant') === $tenant->slug;
 
