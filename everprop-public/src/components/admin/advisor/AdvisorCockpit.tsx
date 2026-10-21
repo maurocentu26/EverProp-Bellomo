@@ -18,7 +18,6 @@ import {
   ExternalLink,
   ClipboardCheck,
   CheckCircle2,
-  Flame,
   MapPin,
   ArrowRight,
   Mail,
@@ -511,7 +510,12 @@ export default function AdvisorCockpit() {
       )}
 
       {/* ── 4 TARJETAS DE ENFOQUE DIARIO (KPIS ACCIONABLES) ── */}
-      <div className="daily-metrics grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-labelledby="daily-priorities-title" className="space-y-4">
+        <div>
+          <h2 id="daily-priorities-title" className="text-lg font-bold text-slate-900">Prioridades del día</h2>
+          <p className="mt-1 text-sm text-slate-600">Seleccioná una prioridad para revisar los leads. Las citas se consultan en la agenda.</p>
+        </div>
+        <div className="daily-metrics grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 xl:grid-cols-4">
         {/* Vencidos */}
         <button
           type="button"
@@ -519,22 +523,22 @@ export default function AdvisorCockpit() {
           aria-pressed={activeQueueFilter === "overdue"}
           onClick={() => selectQueueFilter("overdue")}
           className={cn(
-            "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
+            "flex flex-col justify-start rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "overdue"
               ? "border-rose-500 bg-rose-50 ring-2 ring-red-600"
               : "border-rose-200/80 bg-white hover:border-rose-300 hover:bg-rose-50/50"
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-              <AlertTriangle aria-hidden="true" className="metric-motion-alert size-7 sm:size-8" />
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+              <AlertTriangle aria-hidden="true" className="size-5" />
             </span>
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-600">Urgente</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-700">Urgente</span>
           </div>
           <div className="mt-2.5 sm:mt-4">
-            <p className="text-2xl sm:text-3xl font-black text-rose-950">{loadError ? "—" : overdueLeads.length}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-rose-950">{loadError ? "—" : overdueLeads.length}</p>
             <p className="mt-0.5 text-xs sm:text-sm font-semibold text-rose-800">{queueFilterLabels.overdue}</p>
-            <p className="text-[10px] sm:text-xs text-rose-600 hidden sm:block">Plazo vencido o más de 10 días sin contacto</p>
+            <p className="text-xs text-rose-700 block">Plazo vencido o más de 10 días sin contacto</p>
           </div>
         </button>
 
@@ -545,22 +549,22 @@ export default function AdvisorCockpit() {
           aria-pressed={activeQueueFilter === "today"}
           onClick={() => selectQueueFilter("today")}
           className={cn(
-            "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
+            "flex flex-col justify-start rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "today"
               ? "border-amber-500 bg-amber-50 ring-2 ring-yellow-400"
               : "border-amber-200/80 bg-white hover:border-amber-300 hover:bg-amber-50/50"
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-              <Clock3 aria-hidden="true" className="metric-motion-clock size-7 sm:size-8" />
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+              <Clock3 aria-hidden="true" className="size-5" />
             </span>
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600">Seguimiento</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-800">Seguimiento</span>
           </div>
           <div className="mt-2.5 sm:mt-4">
-            <p className="text-2xl sm:text-3xl font-black text-amber-950">{loadError ? "—" : todayLeads.length}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-amber-950">{loadError ? "—" : todayLeads.length}</p>
             <p className="mt-0.5 text-xs sm:text-sm font-semibold text-amber-800">{queueFilterLabels.today}</p>
-            <p className="text-[10px] sm:text-xs text-amber-600 hidden sm:block">Clientes con próximo contacto pactado para hoy</p>
+            <p className="text-xs text-amber-800 block">Clientes con próximo contacto pactado para hoy</p>
           </div>
         </button>
 
@@ -568,18 +572,18 @@ export default function AdvisorCockpit() {
         <Link
           data-priority="agenda"
           href="/admin/agenda"
-          className="flex flex-col justify-between rounded-2xl border border-purple-200/80 bg-white p-3 sm:p-5 text-left shadow-sm transition-all hover:border-purple-300 hover:bg-purple-50/50"
+          className="flex flex-col justify-start rounded-2xl border border-[var(--border)] bg-white p-3 sm:p-5 text-left shadow-sm transition-all hover:border-purple-300 hover:bg-purple-50/50"
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
-              <Calendar aria-hidden="true" className="metric-motion-calendar size-7 sm:size-8" />
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+              <Calendar aria-hidden="true" className="size-5" />
             </span>
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-600">Agenda</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-purple-700">Agenda</span>
           </div>
           <div className="mt-2.5 sm:mt-4">
-            <p className="text-2xl sm:text-3xl font-black text-purple-950">{visitsTotal ?? "—"}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-purple-950">{visitsTotal ?? "—"}</p>
             <p className="mt-0.5 text-xs sm:text-sm font-semibold text-purple-800">Citas agendadas hoy</p>
-            <p className="text-[10px] sm:text-xs text-purple-600 hidden sm:block">{visitsError ? "No se pudieron cargar las citas" : "Revisá los horarios en tu agenda"}</p>
+            <p className="text-xs text-purple-700 block">{visitsError ? "No se pudieron cargar las citas" : "Revisá los horarios en tu agenda"}</p>
           </div>
         </Link>
 
@@ -590,25 +594,26 @@ export default function AdvisorCockpit() {
           aria-pressed={activeQueueFilter === "new"}
           onClick={() => selectQueueFilter("new")}
           className={cn(
-            "flex flex-col justify-between rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
+            "flex flex-col justify-start rounded-2xl border p-3 sm:p-5 text-left transition-all shadow-sm",
             activeQueueFilter === "new"
               ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500"
               : "border-blue-200/80 bg-white hover:border-blue-300 hover:bg-blue-50/50"
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
-              <Flame aria-hidden="true" className="metric-motion-flame size-7 sm:size-8" />
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+              <Users aria-hidden="true" className="size-5" />
             </span>
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-600">Entrantes</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Entrantes</span>
           </div>
           <div className="mt-2.5 sm:mt-4">
-            <p className="text-2xl sm:text-3xl font-black text-blue-950">{loadError ? "—" : newLeads.length}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-blue-950">{loadError ? "—" : newLeads.length}</p>
             <p className="mt-0.5 text-xs sm:text-sm font-semibold text-blue-800">{queueFilterLabels.new}</p>
-            <p className="text-[10px] sm:text-xs text-blue-600 hidden sm:block">Clientes que esperan tu primera respuesta</p>
+            <p className="text-xs text-blue-600 block">Clientes que esperan tu primera respuesta</p>
           </div>
         </button>
-      </div>
+        </div>
+      </section>
 
       {/* ── ALERTA DE MORA EN CUOTAS DE CLIENTES ── */}
       {FINAL_DELIVERY_ENABLED && collectionsError && <p role="alert" className="text-red-600">Cobranzas: {collectionsError}</p>}
@@ -668,7 +673,7 @@ export default function AdvisorCockpit() {
               ))}
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Todos incluye también clientes fuera de estos tres filtros. Verde identifica las citas de la agenda; no indica que todos los clientes estén al día.
+              Todos incluye también clientes fuera de estos tres filtros. Las citas se consultan por separado en la agenda.
             </p>
           </div>
 
