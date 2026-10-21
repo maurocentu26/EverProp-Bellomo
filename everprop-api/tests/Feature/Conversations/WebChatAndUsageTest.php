@@ -92,6 +92,15 @@ final class WebChatAndUsageTest extends TestCase
 
         // The DB never stores the bearer token itself.
         $this->assertSame(0, DB::table('public_chat_sessions')->where('token_sha256', $first)->count());
+
+        // EVP-20: the widget learns the expiry; an expired or revoked session no longer reads the history.
+        $started = $this->withHeaders($headers)->postJson('/api/v1/public/chat/sessions', ['widget_id' => $widget['public_id']])->assertCreated();
+        $this->assertTrue(now()->addHours(23)->lessThan($started->json('data.expires_at')));
+        DB::table('public_chat_sessions')->where('token_sha256', hash('sha256', $first, true))->update(['expires_at' => now()->subMinute()]);
+        $this->withToken($first)->getJson('/api/v1/public/chat/messages')->assertUnauthorized();
+        $this->withToken($second)->getJson('/api/v1/public/chat/messages')->assertOk();
+        DB::table('public_chat_sessions')->where('token_sha256', hash('sha256', $second, true))->update(['revoked_at' => now()]);
+        $this->withToken($second)->getJson('/api/v1/public/chat/messages')->assertUnauthorized();
     }
 
     public function test_visitor_never_sees_queued_or_cancelled_bot_drafts(): void
