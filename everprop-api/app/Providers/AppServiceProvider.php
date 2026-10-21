@@ -123,6 +123,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute((int) config('conversations.copilot_per_minute'))->by('copilot-min|'.$request->user()?->tenant_id.'|'.$request->user()?->id),
             Limit::perDay((int) config('conversations.copilot_per_day'))->by('copilot-day|'.$request->user()?->tenant_id.'|'.$request->user()?->id),
         ]);
+        // Throttle runs before tenant middleware; use the trusted resolver here too.
+        RateLimiter::for('password-recovery', static fn (Request $request): Limit => Limit::perMinute(5)
+            ->by('password-recovery|'.app(TrustedTenantResolver::class)->resolve($request)->id.'|'.$request->ip()));
 
         RateLimiter::for('login', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('security.login_rate_limit_per_minute', 5),

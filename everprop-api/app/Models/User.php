@@ -64,6 +64,12 @@ class User extends Authenticatable
         return 'public_id';
     }
 
+    public function getEmailForPasswordReset(): string
+    {
+        // Cache broker identity is tenant/account/password scoped; changing the password invalidates old links.
+        return hash('sha256', $this->tenant_id.'|'.$this->public_id.'|'.$this->email.'|'.$this->password_hash);
+    }
+
     /** @return BelongsTo<Tenant, $this> */
     public function tenant(): BelongsTo
     {
