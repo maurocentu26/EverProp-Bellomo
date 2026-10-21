@@ -73,6 +73,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PropertyFeature::class, PropertyFeaturePolicy::class);
         Gate::policy(PropertyMedia::class, PropertyMediaPolicy::class);
 
+        // Throttle runs before tenant middleware; use the trusted resolver here too.
+        RateLimiter::for('password-recovery', static fn (Request $request): Limit => Limit::perMinute(5)
+            ->by('password-recovery|'.app(TrustedTenantResolver::class)->resolve($request)->id.'|'.$request->ip()));
+
         RateLimiter::for('login', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('security.login_rate_limit_per_minute', 5),
         )->by('login|'.$request->ip()));
