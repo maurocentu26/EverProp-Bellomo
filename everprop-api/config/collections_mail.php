@@ -14,6 +14,10 @@ return [
     // Upcoming-installment notice: days before the due date, and earliest local hour it goes out.
     'upcoming_days' => (int) env('COLLECTIONS_UPCOMING_DAYS', 5),
     'upcoming_hour' => (int) env('COLLECTIONS_UPCOMING_HOUR', 9),
+    // EVP-53: the unpaid notice goes out once, this many days after the due date, and only for installments that fell
+    // due in the last past_due_max_days: older debt is a person's call, never a bulk email on the day this ships.
+    'past_due_days' => (int) env('COLLECTIONS_PAST_DUE_DAYS', 3),
+    'past_due_max_days' => (int) env('COLLECTIONS_PAST_DUE_MAX_DAYS', 10),
     // Per run, so a backlog or a mistake never floods the provider (the next run picks up the rest).
     'max_per_run' => (int) env('COLLECTIONS_MAIL_MAX_PER_RUN', 200),
 ];

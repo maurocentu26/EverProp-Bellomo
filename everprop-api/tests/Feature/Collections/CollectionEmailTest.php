@@ -395,4 +395,84 @@ final class CollectionEmailTest extends TestCase
         $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
         self::assertSame('UNKNOWN', DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->value('status'));
     }
+
+    public function test_sequence_sends_due_today_and_past_due_once_each_as_an_escaped_html_statement(): void
+    {
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        DB::table('contacts')->where('tenant_id', $tenant->id)->update(['display_name' => 'Ana <script>x</script>']);
+        $sent = [];
+        $mailer = Mockery::mock();
+        Mail::shouldReceive('mailer')->with('collections')->twice()->andReturn($mailer);
+        /** @var Expectation $raw */
+        $raw = $mailer->shouldReceive('raw');
+        $raw->twice()->andReturnUsing(function ($body, $callback) use (&$sent) {
+            $message = new Email;
+            $callback(new Message($message));
+            $sent[] = ['subject' => (string) $message->getSubject(), 'body' => $body, 'html' => (string) $message->getHtmlBody()];
+
+            return new \stdClass;
+        });
+
+        foreach (['2026-02-10 10:00', '2026-02-10 15:00', '2026-02-11 10:00', '2026-02-13 10:00', '2026-02-14 10:00'] as $local) {
+            $this->at($tenant, $local);
+            $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        }
+
+        self::assertCount(2, $sent);
+        self::assertStringContainsString('Hoy vence tu cuota 1 de 1', $sent[0]['subject']);
+        self::assertStringContainsString('ARS 100.00', $sent[0]['body']);
+        self::assertStringContainsString('Tu cuota 1 quedó pendiente', $sent[1]['subject']);
+        self::assertStringContainsString('venció el 10/02/2026', $sent[1]['body']);
+        foreach ($sent as $mail) {
+            self::assertStringContainsString('ARS 100.00', $mail['html']);
+            self::assertStringContainsString('Transferencia al alias BELLOMO.PRUEBA', $mail['html']);
+            self::assertStringContainsString('Ana &lt;script&gt;', $mail['html']);
+            self::assertStringNotContainsString('<script>', $mail['html']);
+        }
+        self::assertSame(['DUE_TODAY', 'PAST_DUE'], DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)
+            ->orderBy('id')->pluck('kind')->all());
+    }
+
+    public function test_old_debt_and_paid_installments_never_get_the_automatic_unpaid_notice(): void
+    {
+        Mail::shouldReceive('mailer')->never();
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        // Due 2026-02-10: twelve days later is older than the 10-day window, so a deploy never mails old debt in bulk.
+        $this->at($tenant, '2026-02-22 10:00');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        $this->postJson("/api/v1/admin/installments/{$id}/payments", [
+            'amountPaid' => '100.00', 'paymentMethod' => 'CASH', 'paymentReceiptNumber' => 'TEST',
+            'paidAt' => '2026-02-11', 'idempotencyKey' => (string) Str::uuid(),
+        ])->assertCreated();
+        $this->at($tenant, '2026-02-13 10:00');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->count());
+    }
+
+    public function test_the_database_rejects_a_second_past_due_notice_for_the_same_installment(): void
+    {
+        [$tenant, $admin, $id] = $this->fixture();
+        $installment = (int) DB::table('installments')->where('public_id', $id)->value('id');
+        $row = ['tenant_id' => $tenant->id, 'installment_id' => $installment, 'kind' => 'PAST_DUE', 'status' => 'SENT',
+            'recipient' => 'client@example.test', 'sender' => 'billing@example.test', 'remaining_amount' => '100.00'];
+        DB::table('collection_email_attempts')->insert($row + ['business_date' => '2026-02-13']);
+        $this->expectException(QueryException::class);
+        DB::table('collection_email_attempts')->insert($row + ['business_date' => '2026-02-14']);
+    }
+
+    public function test_a_manual_overdue_reminder_already_sent_stands_down_the_automatic_unpaid_notice(): void
+    {
+        Mail::shouldReceive('mailer')->never();
+        [$tenant, $admin, $id] = $this->fixture();
+        $this->provision($tenant);
+        $installment = (int) DB::table('installments')->where('public_id', $id)->value('id');
+        DB::table('collection_email_attempts')->insert(['tenant_id' => $tenant->id, 'installment_id' => $installment,
+            'kind' => 'OVERDUE', 'business_date' => '2026-02-11', 'status' => 'SENT', 'recipient' => 'client@example.test',
+            'sender' => 'billing@example.test', 'remaining_amount' => '100.00']);
+        $this->at($tenant, '2026-02-13 10:00');
+        $this->artisan('everprop:collections:notify-upcoming')->assertSuccessful();
+        self::assertSame(0, DB::table('collection_email_attempts')->where('tenant_id', $tenant->id)->where('kind', 'PAST_DUE')->count());
+    }
 }
