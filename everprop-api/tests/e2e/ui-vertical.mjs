@@ -118,8 +118,13 @@ try {
   check("U8", "la respuesta queda 'Enviado' (entregada por el worker)", sql(`SELECT delivery_status FROM messages WHERE text_body='${answer}'`) === "SENT");
   await shot(vp, "03-visitante-recibe");
 
-  await pp.getByRole("button", { name: "Cerrar", exact: true }).click();
-  const reopen = pp.getByRole("button", { name: "Reabrir", exact: true });
+  // EVP-46: cerrar y reabrir viven en el menú de acciones de la conversación.
+  const actions = pp.getByRole("button", { name: "Acciones de la conversación" });
+  await actions.click();
+  await pp.getByRole("menuitem", { name: /^Cerrar conversación/ }).click();
+  await pp.getByText("Conversación cerrada.").first().waitFor({ timeout: 15000 });
+  await actions.click();
+  const reopen = pp.getByRole("menuitem", { name: /^Reabrir conversación/ });
   await reopen.waitFor({ timeout: 15000 });
   check("U8a", "un cierre conserva el hilo y ofrece Reabrir", await pp.getByText(answer).isVisible() && await reopen.isEnabled());
   await reopen.click();
