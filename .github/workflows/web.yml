@@ -29,6 +29,10 @@ jobs:
       - run: npm run lint
       - run: npm run test:conversations
       - run: npm run test:follow-up
+      - run: npm run test:materials
+      - run: npm run test:password-recovery
+      - run: node --test tests/login-password.test.mjs
+      - run: npm run test:collections
       - run: npm run build
         env:
           NEXT_PUBLIC_DATA_MODE: api

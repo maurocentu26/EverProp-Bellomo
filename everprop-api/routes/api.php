@@ -17,6 +17,7 @@ use App\Domain\CRM\Http\Controllers\PublicLeadController;
 use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AdminUserController;
 use App\Domain\Identity\Http\Controllers\AuthController;
+use App\Domain\Identity\Http\Controllers\PasswordRecoveryController;
 use App\Domain\Identity\Http\Controllers\WebPushController;
 use App\Domain\Identity\Http\Middleware\TouchLastActive;
 use App\Domain\Identity\RotatorRoleBoundary;
@@ -34,6 +35,11 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['tenant', 'throttle:login'])->group(function (): void {
     Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
     Route::post('/auth/activate', [AdminUserController::class, 'activate']);
+});
+
+Route::middleware(['tenant', 'throttle:password-recovery'])->group(function (): void {
+    Route::post('/auth/forgot-password', [PasswordRecoveryController::class, 'requestLink']);
+    Route::post('/auth/reset-password', [PasswordRecoveryController::class, 'reset']);
 });
 
 Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(function (): void {
