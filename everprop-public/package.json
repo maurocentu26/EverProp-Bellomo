@@ -9,6 +9,7 @@
     "test:conversations": "node --test tests/conversations-api.test.mjs",
     "test:statistics": "node --test tests/statistics-series.test.mjs",
     "test:follow-up": "node --test tests/lead-follow-up-alerts.test.mjs",
+    "test:chat-session": "node --test tests/chat-session.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

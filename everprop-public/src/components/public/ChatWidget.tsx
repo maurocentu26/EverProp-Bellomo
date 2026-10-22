@@ -2,27 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FileText, Send } from "lucide-react";
+import { chatStorageKey, dropToken, loadToken, pickStore, saveToken } from "@/lib/chat-session";
 
 type WidgetMedia = { kind: string; name: string; mime: string; size: number; url: string };
 type WidgetMessage = { sequence: number; from: "visitor" | "assistant" | "advisor"; text: string | null; at: string; media?: WidgetMedia | null };
 type Pending = { clientId: string; text: string; failed: boolean };
+type Store = ReturnType<typeof pickStore>;
+// boot: not mounted yet (server and first client render match) · restoring: a saved session is loading its history.
+type Phase = "boot" | "restoring" | "ready" | "expired";
 
 const TENANT_HEADER = process.env.NODE_ENV === "development" ? process.env.NEXT_PUBLIC_EVERPROP_TENANT || "bellomo" : null;
-
-function storageKey(widgetId: string) {
-  return `eversys-chat:${widgetId}`;
-}
-
-function readToken(widgetId: string): string | null {
-  try { return window.sessionStorage.getItem(storageKey(widgetId)); } catch { return null; }
-}
-
-function writeToken(widgetId: string, token: string | null) {
-  try {
-    if (token) window.sessionStorage.setItem(storageKey(widgetId), token);
-    else window.sessionStorage.removeItem(storageKey(widgetId));
-  } catch { /* storage unavailable: the session lives only in memory */ }
-}
 
 async function call<T>(path: string, init: RequestInit & { token?: string | null } = {}): Promise<{ status: number; body: T | null }> {
   const headers = new Headers({ Accept: "application/json" });
@@ -38,8 +27,11 @@ async function call<T>(path: string, init: RequestInit & { token?: string | null
  * Messages are durable on the server before they show up; retries reuse the same client id.
  */
 export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widgetId: string; title?: string }) {
-  // Lazy init: the token is never rendered, so server (null) and client values cannot mismatch markup.
-  const [token, setToken] = useState<string | null>(() => (typeof window === "undefined" ? null : readToken(widgetId)));
+  const [token, setToken] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>("boot");
+  const [persistent, setPersistent] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const store = useRef<Store>(null);
   const [messages, setMessages] = useState<WidgetMessage[]>([]);
   const [pending, setPending] = useState<Pending[]>([]);
   const [draft, setDraft] = useState("");
@@ -47,26 +39,55 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
   const lastSequence = useRef(0);
   const sessionPromise = useRef<Promise<string | null> | null>(null);
   const bottom = useRef<HTMLLIElement>(null);
+  const key = chatStorageKey(widgetId);
+
+  // Read storage after mount only, so the server and the first client render show the same "loading" markup.
+  useEffect(() => {
+    const local = () => window.localStorage;
+    store.current = pickStore([local, () => window.sessionStorage]);
+    let legacy: Store = null;
+    try { legacy = window.sessionStorage; } catch { /* blocked */ }
+    let isLocal = false;
+    try { isLocal = store.current !== null && store.current === window.localStorage; } catch { /* blocked */ }
+    const saved = loadToken(store.current, key, Date.now(), legacy);
+    setPersistent(isLocal);
+    setToken(saved.token);
+    setPhase(saved.token ? "restoring" : saved.expired ? "expired" : "ready");
+  }, [key]);
 
   const startSession = useCallback(async (): Promise<string | null> => {
-    const response = await call<{ data: { token: string } }>("/api/v1/public/chat/sessions", {
+    const response = await call<{ data: { token: string; expires_at?: string } }>("/api/v1/public/chat/sessions", {
       method: "POST", body: JSON.stringify({ widget_id: widgetId }),
     }).catch(() => null);
     if (!response || response.status !== 201 || !response.body) {
       setError(response?.status === 429 ? "Demasiados intentos. Probá en un minuto." : "El chat no está disponible en este momento.");
       return null;
     }
-    writeToken(widgetId, response.body.data.token);
+    const expiresAt = Date.parse(response.body.data.expires_at ?? "");
+    saveToken(store.current, key, response.body.data.token, Number.isNaN(expiresAt) ? undefined : expiresAt);
     setToken(response.body.data.token);
+    setPhase("ready");
     setError("");
     return response.body.data.token;
-  }, [widgetId]);
+  }, [widgetId, key]);
+
+  // Expired or revoked: say so instead of showing the welcome as if there had never been a conversation.
+  const expire = useCallback((failed: string) => {
+    dropToken(store.current, key, failed); setToken(null); sessionPromise.current = null; lastSequence.current = 0; setMessages([]);
+    setLoadFailed(false); setPhase("expired");
+  }, [key]);
 
   const poll = useCallback(async () => {
     if (!token) return;
     const response = await call<{ data: WidgetMessage[]; next_after: number }>(`/api/v1/public/chat/messages?after=${lastSequence.current}`, { token }).catch(() => null);
-    if (!response) return;
-    if (response.status === 401) { writeToken(widgetId, null); setToken(null); sessionPromise.current = null; lastSequence.current = 0; setMessages([]); return; }
+    if (response?.status === 401) { expire(token); return; }
+    if (!response || response.status !== 200) {
+      // Network or server trouble: keep the session and retry, but never leave "Cargando…" up forever.
+      setLoadFailed(true); setPhase((current) => current === "restoring" ? "ready" : current);
+      return;
+    }
+    setLoadFailed(false);
+    setPhase((current) => current === "restoring" ? "ready" : current);
     const fresh = response.body?.data ?? [];
     // The server holds the cursor back behind replies that are not visible yet, so none is skipped.
     if (typeof response.body?.next_after === "number") lastSequence.current = response.body.next_after;
@@ -74,7 +95,7 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
       setMessages((current) => [...current, ...fresh.filter((m) => !current.some((c) => c.sequence === m.sequence))]
         .sort((a, b) => a.sequence - b.sequence));
     }
-  }, [token, widgetId]);
+  }, [token, expire]);
 
   useEffect(() => {
     void poll();
@@ -104,6 +125,12 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
     const response = await call("/api/v1/public/chat/messages", {
       method: "POST", token: active, body: JSON.stringify({ client_message_id: item.clientId, text: item.text }),
     }).catch(() => null);
+    if (response?.status === 401) {
+      // The session ran out before the poll noticed: show it, and the retry opens a new conversation.
+      expire(active);
+      setPending((list) => list.map((p) => p.clientId === item.clientId ? { ...p, failed: true } : p));
+      return;
+    }
     if (response && (response.status === 201 || response.status === 200)) {
       await poll();
       setPending((list) => list.filter((p) => p.clientId !== item.clientId));
@@ -129,9 +156,19 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
         {/* Neutral: with the assistant off only people answer. Automatic replies are labelled per message. */}
         <p className="text-xs opacity-90">Te respondemos por este chat. Las respuestas automáticas dicen «Asistente virtual».</p>
       </header>
+      {!persistent && phase !== "boot" && (
+        <p className="border-b border-border bg-muted px-4 py-2 text-xs text-muted-foreground">Este navegador no guarda el chat: si cerrás la página, no vas a poder retomar esta conversación.</p>
+      )}
+      {loadFailed && <p role="status" className="m-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">No pudimos cargar tus mensajes. Seguimos intentando…</p>}
       {error && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{error}</p>}
       <ol aria-label="Mensajes" aria-live="polite" className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-        {messages.length === 0 && pending.length === 0 && (
+        {phase === "expired" && (
+          <li className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">Tu conversación anterior venció. Si escribís, empezás una nueva.</li>
+        )}
+        {messages.length === 0 && pending.length === 0 && (phase === "boot" || phase === "restoring") && (
+          <li className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">Cargando tu conversación…</li>
+        )}
+        {messages.length === 0 && pending.length === 0 && phase === "ready" && (
           <li className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">¡Hola! Contanos qué estás buscando: zona, tipo de propiedad o código de unidad.</li>
         )}
         {messages.map((m) => (

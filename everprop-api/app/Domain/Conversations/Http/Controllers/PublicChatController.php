@@ -40,11 +40,12 @@ final class PublicChatController extends Controller
         $sessionId = (string) Str::uuid();
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $now = CarbonImmutable::now('UTC');
+        $expires = $now->addHours((int) config('conversations.web_session_ttl_hours', 24));
         $visitor = 'visitor:'.$sessionId;
         $contact = $contacts->resolve($tenantId, [], ['channel_type' => 'WEB_CHAT', 'provider_user_id' => $visitor], $now);
 
         $ai = InboundMessageService::aiEnabled($tenantId);
-        DB::transaction(function () use ($tenantId, $channel, $sessionId, $token, $now, $contact, $request, $ai): void {
+        DB::transaction(function () use ($tenantId, $channel, $sessionId, $token, $now, $expires, $contact, $request, $ai): void {
             $conversationId = (int) DB::table('conversations')->insertGetId([
                 'tenant_id' => $tenantId, 'public_id' => (string) Str::uuid(), 'contact_id' => $contact['id'],
                 'channel_account_id' => $channel->id, 'provider_thread_id' => 'web:'.$sessionId, 'status' => 'OPEN',
@@ -56,11 +57,12 @@ final class PublicChatController extends Controller
                 'tenant_id' => $tenantId, 'public_id' => $sessionId, 'channel_account_id' => $channel->id,
                 'conversation_id' => $conversationId, 'token_sha256' => hash('sha256', $token, true),
                 'origin' => mb_substr((string) $request->headers->get('Origin', ''), 0, 255) ?: null,
-                'expires_at' => $now->addHours((int) config('conversations.web_session_ttl_hours', 24))->format('Y-m-d H:i:s.v'),
+                'expires_at' => $expires->format('Y-m-d H:i:s.v'),
             ]);
         });
 
-        return response()->json(['data' => ['session_id' => $sessionId, 'token' => $token]], 201);
+        // EVP-20: the widget keeps the token until this instant at most; the server still checks expiry and revocation.
+        return response()->json(['data' => ['session_id' => $sessionId, 'token' => $token, 'expires_at' => $expires->toIso8601ZuluString('millisecond')]], 201);
     }
 
     public function send(Request $request, InboundMessageService $inbound): JsonResponse
