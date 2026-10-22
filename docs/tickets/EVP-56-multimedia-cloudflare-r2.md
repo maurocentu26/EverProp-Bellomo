@@ -48,6 +48,13 @@ Rama `ticket/EVP-56-multimedia-cloudflare-r2` · 2026-10-22 · Asignado a Mauro 
   4. `DELETE /api/v1/admin/projects/{project}/landing/media`:
      - Permite desvincular un asset con salvaguarda activa: si el asset está en uso en la configuración editorial de la landing (`cover`, `logo`, `gallery`, `documents`), la eliminación es rechazada con código 422.
 
+### E. Desacoplamiento en Frontend y Corrección de Fuga de Storage en Vercel
+- Se migraron los 54 archivos estáticos de `content/bellomo/` a Cloudflare R2 (`assets/content/bellomo/`).
+- En [`everprop-public/src/app/api/bellomo/assets/[id]/route.ts`](../../everprop-public/src/app/api/bellomo/assets/[id]/route.ts):
+  - Se modificó el handler para consumir y servir directamente desde el Edge CDN de Cloudflare R2 (`https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/content/bellomo/...`), con fallback local en caso de requerirse en desarrollo sin conexión.
+- En [`everprop-public/next.config.ts`](../../everprop-public/next.config.ts):
+  - Se removió la directiva `outputFileTracingIncludes` que obligaba a Next.js a empaquetar recursivamente toda la carpeta `content/bellomo` en los bundles serverless de Vercel. Esto soluciona de raíz la fuga de almacenamiento de 10 GB y la alerta de cuota del plan Hobby.
+
 ---
 
 ## 3. Por qué esta solución
