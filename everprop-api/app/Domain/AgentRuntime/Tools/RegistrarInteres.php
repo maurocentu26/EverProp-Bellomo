@@ -53,7 +53,7 @@ final class RegistrarInteres implements AgentTool
 
     public function execute(ToolContext $context, array $arguments, ToolExecutions $executions): array
     {
-        $propertyId = $this->inventory->idOrFail($context->tenantId, $arguments['property_id']);
+        $propertyId = $this->inventory->idOrFail($context->tenantId, $arguments['property_id'], $context->channelType === 'WEB_CHAT');
         $this->contacts->assertReachable($context, $arguments);
         // Cheap fence before creating a lead; the authoritative check runs again under lock.
         $state = DB::table('conversations')->where('tenant_id', $context->tenantId)->where('id', $context->conversationId)->first(['control_epoch']);

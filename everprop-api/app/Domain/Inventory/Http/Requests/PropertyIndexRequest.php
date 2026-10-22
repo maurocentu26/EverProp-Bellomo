@@ -14,6 +14,7 @@ final class PropertyIndexRequest extends InventoryRequest
     {
         return [
             'tenant_id' => ['prohibited'],
+            'channel' => ['sometimes', Rule::in(['landing'])],
             'status' => ['sometimes', Rule::enum(PropertyStatus::class)],
             'operation' => ['sometimes', Rule::enum(PropertyOperation::class)],
             'category' => ['sometimes', Rule::enum(PropertyCategory::class)],

@@ -28,6 +28,7 @@ use App\Domain\Inventory\Http\Controllers\AdminProjectController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyFeatureController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyMediaController;
+use App\Domain\Inventory\Http\Controllers\ProjectLandingController;
 use App\Domain\Inventory\Http\Controllers\PublicProjectController;
 use App\Domain\Inventory\Http\Controllers\PublicPropertyController;
 use App\Domain\Usage\Http\AdminUsageController;
@@ -63,6 +64,9 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
         Route::get('/collections/summary', [CollectionsController::class, 'summary']);
         Route::get('/collections/billing-export', [CollectionBillingController::class, 'export']);
         Route::get('/collections/leads', [CollectionsController::class, 'leads']);
+        Route::get('/web/projects', [ProjectLandingController::class, 'index']);
+        Route::get('/projects/{project}/landing', [ProjectLandingController::class, 'show'])->whereUuid('project');
+        Route::put('/projects/{project}/landing', [ProjectLandingController::class, 'update'])->whereUuid('project')->middleware('throttle:30,1');
         Route::apiResource('projects', AdminProjectController::class);
         Route::patch('/projects/{project}/publish', [AdminProjectController::class, 'publish'])
             ->name('projects.publish');
@@ -141,6 +145,7 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
 });
 
 Route::middleware('tenant')->group(function (): void {
+    Route::get('/public/landing/projects', [ProjectLandingController::class, 'snapshot'])->middleware('throttle:120,1');
     Route::get('/public/projects', [PublicProjectController::class, 'index'])->name('public.projects.index');
     Route::get('/public/projects/{project}', [PublicProjectController::class, 'show'])->name('public.projects.show');
     Route::get('/public/properties', [PublicPropertyController::class, 'index'])->name('public.properties.index');

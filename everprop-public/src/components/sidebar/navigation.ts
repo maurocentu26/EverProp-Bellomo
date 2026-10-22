@@ -13,6 +13,7 @@ import {
   MessagesSquare,
   CalendarCheck,
   BookOpenCheck,
+  Globe,
   type LucideIcon 
 } from "lucide-react";
 
@@ -115,6 +116,7 @@ export const navigationGroups: NavGroup[] = [
       { title: "Agenda", href: "/admin/agenda", icon: CalendarDays, matchPath: "/admin/agenda" },
       { title: "Cobranzas", href: "/admin/cobranzas", icon: ReceiptText, matchPath: "/admin/cobranzas" },
       { title: "Configuración", href: "/admin/settings", icon: Settings, matchPath: "/admin/settings" },
+      { title: "Web", href: "/admin/web", icon: Globe, matchPath: "/admin/web" },
     ]
   }
 ];

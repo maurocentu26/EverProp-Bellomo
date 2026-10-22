@@ -31,7 +31,7 @@ final class ConsultarPropiedad implements AgentTool
 
     public function execute(ToolContext $context, array $arguments, ToolExecutions $executions): array
     {
-        $property = $this->inventory->find($context->tenantId, $arguments['property_id'])
+        $property = $this->inventory->find($context->tenantId, $arguments['property_id'], $context->channelType === 'WEB_CHAT')
             ?? throw new ToolError('NOT_FOUND', 'La propiedad no está disponible.');
 
         return $this->inventory->detail($property);

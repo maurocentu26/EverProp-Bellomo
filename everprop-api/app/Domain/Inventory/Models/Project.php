@@ -69,9 +69,17 @@ class Project extends Model
     }
 
     /** @param Builder<Project> $query */
-    public function scopePubliclyVisible(Builder $query): void
+    public function scopePubliclyVisible(Builder $query, bool $landingChannel = false): void
     {
         $query->whereIn($this->qualifyColumn('status'), ProjectStatus::publicValues());
+        $query->whereNotExists(static fn ($landing) => $landing->selectRaw('1')->from('project_landing')
+            ->whereColumn('project_landing.tenant_id', 'projects.tenant_id')
+            ->whereColumn('project_landing.project_id', 'projects.id')->where('project_landing.is_visible', false));
+        if ($landingChannel) {
+            $query->whereExists(static fn ($landing) => $landing->selectRaw('1')->from('project_landing')
+                ->whereColumn('project_landing.tenant_id', 'projects.tenant_id')
+                ->whereColumn('project_landing.project_id', 'projects.id')->where('project_landing.is_visible', true));
+        }
     }
 
     /** @return HasMany<Property, $this> */

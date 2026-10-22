@@ -3,7 +3,6 @@
 namespace App\Domain\Inventory\Models;
 
 use App\Domain\Inventory\Concerns\HasPublicId;
-use App\Domain\Inventory\Enums\ProjectStatus;
 use App\Domain\Inventory\Enums\PropertyCategory;
 use App\Domain\Inventory\Enums\PropertyOperation;
 use App\Domain\Inventory\Enums\PropertyStatus;
@@ -109,13 +108,15 @@ class Property extends Model
     }
 
     /** @param Builder<Property> $query */
-    public function scopePubliclyVisible(Builder $query): void
+    public function scopePubliclyVisible(Builder $query, bool $landingChannel = false): void
     {
         $query->where($this->qualifyColumn('status'), PropertyStatus::AVAILABLE->value)
-            ->where(static function (Builder $builder): void {
+            ->where(static function (Builder $builder) use ($landingChannel): void {
                 $builder->whereNull('properties.project_id')
-                    ->orWhereHas('project', static fn (Builder $project): Builder => $project
-                        ->whereIn('projects.status', ProjectStatus::publicValues()));
+                    ->orWhereHas('project', static function (Builder $project) use ($landingChannel): void {
+                        /** @var Builder<Project> $project */
+                        $project->publiclyVisible($landingChannel);
+                    });
             });
     }
 

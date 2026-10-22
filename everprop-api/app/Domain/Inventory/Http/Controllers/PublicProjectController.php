@@ -25,9 +25,9 @@ final class PublicProjectController extends InventoryController
 
         $query = Project::query()
             ->where('projects.tenant_id', $this->tenantContext->id())
-            ->publiclyVisible()
+            ->publiclyVisible($request->validated('channel') === 'landing')
             ->withCount([
-                'properties' => static fn ($properties) => $properties->publiclyVisible(),
+                'properties' => static fn ($properties) => $properties->publiclyVisible($request->validated('channel') === 'landing'),
             ]);
 
         return ProjectResource::collection(
@@ -35,14 +35,14 @@ final class PublicProjectController extends InventoryController
         );
     }
 
-    public function show(string $project): ProjectResource
+    public function show(ProjectIndexRequest $request, string $project): ProjectResource
     {
         $model = Project::query()
             ->where('projects.tenant_id', $this->tenantContext->id())
             ->where('public_id', $project)
-            ->publiclyVisible()
+            ->publiclyVisible($request->validated('channel') === 'landing')
             ->withCount([
-                'properties' => static fn ($properties) => $properties->publiclyVisible(),
+                'properties' => static fn ($properties) => $properties->publiclyVisible($request->validated('channel') === 'landing'),
             ])
             ->firstOrFail();
 

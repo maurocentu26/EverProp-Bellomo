@@ -46,7 +46,7 @@ final class BuscarPropiedades implements AgentTool
 
     public function execute(ToolContext $context, array $arguments, ToolExecutions $executions): array
     {
-        $query = $this->inventory->query($context->tenantId)
+        $query = $this->inventory->query($context->tenantId, $context->channelType === 'WEB_CHAT')
             ->when(isset($arguments['operation']), fn ($q) => $q->where('p.operation', $arguments['operation']))
             ->when(isset($arguments['category']), fn ($q) => $q->where('p.category', $arguments['category']))
             ->when(isset($arguments['city']), fn ($q) => $q->where('p.city', 'like', '%'.addcslashes(trim($arguments['city']), '%_\\').'%'))

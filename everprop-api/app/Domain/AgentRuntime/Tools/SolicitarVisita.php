@@ -61,7 +61,7 @@ final class SolicitarVisita implements AgentTool
 
     public function execute(ToolContext $context, array $arguments, ToolExecutions $executions): array
     {
-        $propertyId = $this->inventory->idOrFail($context->tenantId, $arguments['property_id']);
+        $propertyId = $this->inventory->idOrFail($context->tenantId, $arguments['property_id'], $context->channelType === 'WEB_CHAT');
         $this->contacts->assertReachable($context, $arguments);
         $slots = array_map(fn (array $slot): array => $this->slot($slot), $arguments['preferred_slots']);
 
