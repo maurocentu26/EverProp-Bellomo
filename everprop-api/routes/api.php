@@ -67,6 +67,10 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
         Route::get('/web/projects', [ProjectLandingController::class, 'index']);
         Route::get('/projects/{project}/landing', [ProjectLandingController::class, 'show'])->whereUuid('project');
         Route::put('/projects/{project}/landing', [ProjectLandingController::class, 'update'])->whereUuid('project')->middleware('throttle:30,1');
+        Route::get('/projects/{project}/landing/media', [ProjectLandingController::class, 'assets'])->whereUuid('project');
+        Route::post('/projects/{project}/landing/media/upload-url', [ProjectLandingController::class, 'createUploadUrl'])->whereUuid('project')->middleware('throttle:30,1');
+        Route::post('/projects/{project}/landing/media/confirm', [ProjectLandingController::class, 'confirmUpload'])->whereUuid('project')->middleware('throttle:30,1');
+        Route::delete('/projects/{project}/landing/media', [ProjectLandingController::class, 'deleteAsset'])->whereUuid('project')->middleware('throttle:30,1');
         Route::apiResource('projects', AdminProjectController::class);
         Route::patch('/projects/{project}/publish', [AdminProjectController::class, 'publish'])
             ->name('projects.publish');

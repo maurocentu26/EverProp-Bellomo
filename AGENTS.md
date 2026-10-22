@@ -47,6 +47,9 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 **Sin ticket no hay cambios:** ningún cambio al repo sin un ticket `EVP-XX` que exista en Jira y esté En curso, aunque lo pidan; sin ticket, solo investigar, revisar o redactar el ticket. Todo el desarrollo va por tickets: leer y seguir `TICKETS.md` (una rama por ticket desde `develop`, informe en `docs/tickets/`, nunca push a `main` ni a `develop`, y preguntar si el ticket anterior ya fue revisado antes de empezar otro).
 
+**Regla estricta de Merges:**
+NUNCA hacer `merge` de ningún Pull Request o rama a `develop` o `main` a menos que esté EXPLÍCITAMENTE autorizado y ordenado por el usuario en el chat. La responsabilidad del agente ante un ticket finalizado termina en: subir la rama, abrir el Pull Request con su descripción, actualizar Jira y dejar el PR abierto para revisión del usuario.
+
 ## Docker local bajo demanda
 
 - Usar un solo stack local de EverProp a la vez; revisar contenedores existentes antes de iniciar otro.

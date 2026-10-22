@@ -17,6 +17,22 @@ final class ProjectLandingTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set([
+            'filesystems.disks.r2.driver' => 's3',
+            'filesystems.disks.r2.key' => 'test-key',
+            'filesystems.disks.r2.secret' => 'test-secret',
+            'filesystems.disks.r2.region' => 'auto',
+            'filesystems.disks.r2.endpoint' => 'https://example-account.r2.cloudflarestorage.com',
+            'filesystems.disks.r2.bucket' => 'bellomo-assets',
+            'filesystems.disks.r2.url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev',
+            'filesystems.disks.r2.use_path_style_endpoint' => true,
+        ]);
+    }
+
     private function identity(string $role = 'TENANT_ADMIN'): Tenant
     {
         $tenant = Tenant::factory()->create();
@@ -41,6 +57,7 @@ final class ProjectLandingTest extends TestCase
         return '/api/v1/admin/projects/'.$project->public_id.'/landing';
     }
 
+    /** @return array<string, mixed> */
     private function payload(): array
     {
         return [
@@ -259,5 +276,146 @@ final class ProjectLandingTest extends TestCase
         } finally {
             unlink($path);
         }
+    }
+
+    public function test_upload_contract_issues_presigned_ticket_with_isolated_paths(): void
+    {
+        $tenant = $this->identity();
+        $project = $this->project($tenant);
+
+        // Success for image/jpeg
+        $res = $this->postJson($this->endpoint($project).'/media/upload-url', [
+            'filename' => 'fachada principal.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 2 * 1024 * 1024,
+        ])->assertCreated();
+
+        $ticket = $res->json('data');
+        $this->assertNotEmpty($ticket['upload_url']);
+        $this->assertStringStartsWith(ProjectLanding::ASSET_PREFIX, $ticket['public_url']);
+        $this->assertStringStartsWith('assets/tenants/'.$tenant->public_id.'/projects/'.$project->public_id.'/', $ticket['key']);
+        $this->assertStringEndsWith('.jpg', $ticket['key']);
+        $this->assertSame(900, $ticket['expires_in_seconds']);
+
+        // Success for PDF document
+        $pdfRes = $this->postJson($this->endpoint($project).'/media/upload-url', [
+            'filename' => 'memoria_descriptiva.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 1024 * 1024,
+        ])->assertCreated();
+        $this->assertStringEndsWith('.pdf', $pdfRes->json('data.key'));
+
+        // Reject invalid mime type (e.g. video or unapproved media)
+        $this->postJson($this->endpoint($project).'/media/upload-url', [
+            'filename' => 'video.mp4',
+            'mime_type' => 'video/mp4',
+            'file_size' => 1024,
+        ])->assertUnprocessable()->assertJsonValidationErrors('mime_type');
+
+        // Reject file size over limit (16 MB)
+        $this->postJson($this->endpoint($project).'/media/upload-url', [
+            'filename' => 'heavy.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 16 * 1024 * 1024,
+        ])->assertUnprocessable()->assertJsonValidationErrors('file_size');
+
+        // Cross-tenant access is rejected
+        $other = $this->project(Tenant::factory()->create());
+        $this->postJson($this->endpoint($other).'/media/upload-url', [
+            'filename' => 'other.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+        ])->assertNotFound();
+    }
+
+    public function test_upload_confirm_validates_r2_domain_scoping_and_persists_assets(): void
+    {
+        $tenant = $this->identity();
+        $project = $this->project($tenant);
+
+        // Upload ticket to obtain standard scoped url
+        $ticketRes = $this->postJson($this->endpoint($project).'/media/upload-url', [
+            'filename' => 'plano.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 500000,
+        ])->assertCreated();
+        $publicUrl = $ticketRes->json('data.public_url');
+
+        // Confirm success
+        $this->postJson($this->endpoint($project).'/media/confirm', [
+            'url' => $publicUrl,
+            'mime_type' => 'application/pdf',
+            'title' => 'Plano General',
+        ])->assertCreated()->assertJsonPath('data.title', 'Plano General');
+
+        $this->assertDatabaseHas('project_landing_assets', [
+            'tenant_id' => $tenant->id,
+            'project_id' => $project->id,
+            'url' => $publicUrl,
+            'mime_type' => 'application/pdf',
+            'title' => 'Plano General',
+        ]);
+
+        // List assets endpoint
+        $listRes = $this->getJson($this->endpoint($project).'/media')->assertOk();
+        $this->assertCount(1, $listRes->json('data'));
+        $this->assertSame('Plano General', $listRes->json('data.0.title'));
+
+        // Reject HTML in title
+        $this->postJson($this->endpoint($project).'/media/confirm', [
+            'url' => $publicUrl,
+            'mime_type' => 'application/pdf',
+            'title' => '<script>alert(1)</script>Plano',
+        ])->assertUnprocessable()->assertJsonValidationErrors('title');
+
+        // Reject foreign project asset URL
+        $otherTenant = Tenant::factory()->create();
+        $foreignUrl = ProjectLanding::ASSET_PREFIX.'tenants/'.$otherTenant->public_id.'/projects/'.(string) Str::uuid().'/file.jpg';
+        $this->postJson($this->endpoint($project).'/media/confirm', [
+            'url' => $foreignUrl,
+            'mime_type' => 'image/jpeg',
+            'title' => 'Foto sospechosa',
+        ])->assertUnprocessable()->assertJsonValidationErrors('url');
+
+        // Reject external non-R2 URL
+        $this->postJson($this->endpoint($project).'/media/confirm', [
+            'url' => 'https://malicious.site/phishing.jpg',
+            'mime_type' => 'image/jpeg',
+            'title' => 'Foto externa',
+        ])->assertUnprocessable()->assertJsonValidationErrors('url');
+    }
+
+    public function test_delete_asset_safeguards_active_landing_usage(): void
+    {
+        $tenant = $this->identity();
+        $project = $this->project($tenant);
+
+        $url = ProjectLanding::ASSET_PREFIX.'tenants/'.$tenant->public_id.'/projects/'.$project->public_id.'/foto.jpg';
+        DB::table('project_landing_assets')->insert([
+            'tenant_id' => $tenant->id,
+            'project_id' => $project->id,
+            'url' => $url,
+            'mime_type' => 'image/jpeg',
+            'title' => 'Foto de prueba',
+        ]);
+
+        // Put asset into landing presentation (as cover)
+        $payload = array_replace($this->payload(), [
+            'cover' => ['url' => $url, 'alt' => 'Portada', 'kind' => 'PHOTO'],
+        ]);
+        $this->putJson($this->endpoint($project), $payload)->assertOk();
+
+        // Trying to delete while in use in landing is rejected
+        $this->deleteJson($this->endpoint($project).'/media', ['url' => $url])
+            ->assertUnprocessable()->assertJsonValidationErrors('url');
+        $this->assertDatabaseHas('project_landing_assets', ['url' => $url]);
+
+        // Unlink from cover
+        $this->putJson($this->endpoint($project), array_replace($this->payload(), ['cover' => null]))->assertOk();
+
+        // Deleting unused asset succeeds
+        $this->deleteJson($this->endpoint($project).'/media', ['url' => $url])
+            ->assertOk()->assertJsonPath('deleted', true);
+        $this->assertDatabaseMissing('project_landing_assets', ['url' => $url]);
     }
 }

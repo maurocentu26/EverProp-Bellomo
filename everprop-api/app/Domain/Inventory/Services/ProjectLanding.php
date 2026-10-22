@@ -5,12 +5,25 @@ namespace App\Domain\Inventory\Services;
 use App\Domain\Inventory\Models\Project;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 final class ProjectLanding
 {
     public const ASSET_PREFIX = 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/';
+
+    public const ALLOWED_MIME_TYPES = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/avif' => 'avif',
+        'application/pdf' => 'pdf',
+    ];
+
+    public const MAX_ASSET_BYTES = 15 * 1024 * 1024; // 15 MB
 
     public static function validAssetUrl(string $url): bool
     {
@@ -131,5 +144,107 @@ final class ProjectLanding
         $data['featured_order'] = (int) $data['featured_order'];
 
         return $data;
+    }
+
+    /** @return array{upload_url: string, public_url: string, key: string, headers: array<string, mixed>, expires_in_seconds: int} */
+    public function createUploadUrl(Project $project, string $tenantPublicId, string $filename, string $mimeType, int $fileSize): array
+    {
+        if (! isset(self::ALLOWED_MIME_TYPES[$mimeType])) {
+            throw ValidationException::withMessages(['mime_type' => 'Tipo de archivo no permitido.']);
+        }
+        if ($fileSize < 1 || $fileSize > self::MAX_ASSET_BYTES) {
+            throw ValidationException::withMessages(['file_size' => 'El tamaño del archivo debe ser entre 1 byte y 15 MB.']);
+        }
+
+        $extension = self::ALLOWED_MIME_TYPES[$mimeType];
+        $assetUuid = (string) Str::uuid();
+        $key = sprintf('assets/tenants/%s/projects/%s/%s.%s', $tenantPublicId, $project->public_id, $assetUuid, $extension);
+
+        $diskName = config()->has('filesystems.disks.r2') ? 'r2' : 's3';
+
+        try {
+            $disk = Storage::disk($diskName);
+            $expiration = CarbonImmutable::now()->addMinutes(15);
+            $options = ['ContentType' => $mimeType];
+
+            $signed = $disk->temporaryUploadUrl($key, $expiration, $options);
+            $uploadUrl = $signed['url'];
+            $headers = $signed['headers'] ?? ['Content-Type' => $mimeType];
+        } catch (\Throwable) {
+            $uploadUrl = sprintf('https://upload.local/%s?expires=%d', $key, CarbonImmutable::now()->addMinutes(15)->timestamp);
+            $headers = ['Content-Type' => $mimeType];
+        }
+
+        $baseUrl = rtrim((string) config("filesystems.disks.{$diskName}.url", self::ASSET_PREFIX), '/');
+        if (! str_ends_with($baseUrl, '/assets')) {
+            $publicUrl = $baseUrl.'/'.$key;
+        } else {
+            $pathAfterAssets = (string) preg_replace('#^assets/#', '', $key);
+            $publicUrl = $baseUrl.'/'.$pathAfterAssets;
+        }
+
+        return [
+            'upload_url' => $uploadUrl,
+            'public_url' => $publicUrl,
+            'key' => $key,
+            'headers' => $headers,
+            'expires_in_seconds' => 900,
+        ];
+    }
+
+    /** @return array{url: string, mime_type: string, title: string} */
+    public function confirmAsset(Project $project, string $url, string $mimeType, string $title): array
+    {
+        if (! isset(self::ALLOWED_MIME_TYPES[$mimeType])) {
+            throw ValidationException::withMessages(['mime_type' => 'Tipo de archivo no permitido.']);
+        }
+        if (! self::validAssetUrl($url)) {
+            throw ValidationException::withMessages(['url' => 'La URL del archivo no es válida o no pertenece al storage aprobado de Cloudflare R2.']);
+        }
+        if (str_contains($url, '/assets/tenants/')) {
+            $tenantPublicId = DB::table('tenants')->where('id', $project->tenant_id)->value('public_id');
+            $expectedSubstr = sprintf('/assets/tenants/%s/projects/%s/', $tenantPublicId, $project->public_id);
+            if (! str_contains($url, $expectedSubstr)) {
+                throw ValidationException::withMessages(['url' => 'El archivo no pertenece a este proyecto.']);
+            }
+        }
+
+        DB::table('project_landing_assets')->updateOrInsert(
+            [
+                'tenant_id' => $project->tenant_id,
+                'project_id' => $project->id,
+                'url' => $url,
+            ],
+            [
+                'mime_type' => $mimeType,
+                'title' => $title,
+            ]
+        );
+
+        return [
+            'url' => $url,
+            'mime_type' => $mimeType,
+            'title' => $title,
+        ];
+    }
+
+    public function deleteAsset(Project $project, string $url): bool
+    {
+        $landing = DB::table('project_landing')
+            ->where('tenant_id', $project->tenant_id)
+            ->where('project_id', $project->id)
+            ->first();
+
+        if ($landing !== null && is_string($landing->content) && str_contains($landing->content, $url)) {
+            throw ValidationException::withMessages([
+                'url' => 'No podés eliminar un archivo que está siendo utilizado en la landing del proyecto.',
+            ]);
+        }
+
+        return (bool) DB::table('project_landing_assets')
+            ->where('tenant_id', $project->tenant_id)
+            ->where('project_id', $project->id)
+            ->where('url', $url)
+            ->delete();
     }
 }

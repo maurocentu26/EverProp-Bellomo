@@ -1,0 +1,683 @@
+{
+  "tenant_public_id": "b1100000-0000-4000-8000-000000000001",
+  "assets": [
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_elrocio_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa elrocio exterior"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_elrocio_interior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa elrocio interior"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_laarbolada_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa laarbolada exterior"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_laarbolada_interior.png",
+      "mime_type": "image/png",
+      "title": "fichadeventa laarbolada interior"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_lascolinas_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa lascolinas exterior"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_lascolinas_interior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa lascolinas interior"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_quintas_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa quintas exterior"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_quintas_interiorVER%20DIV.MZA.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa quintas interiorVER DIV.MZA"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_sanpablo_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa sanpablo exterior"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_sanpablo_interior%20-%20CORREGIR%20AP5%20Y%20AP4.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa sanpablo interior   CORREGIR AP5 Y AP4"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_santaemilia_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa santaemilia exterior"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_santaemilia_interior%20-%20CORRREGIR%20TABAC.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa santaemilia interior   CORRREGIR TABAC"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_valleverde_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa valleverde exterior"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_valleverde_interior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa valleverde interior"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/colinas2.png",
+      "mime_type": "image/png",
+      "title": "colinas2"
+    },
+    {
+      "project_public_id": "663e4aed-45e5-427b-9a2e-fed1694fbd57",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Arrabal.png",
+      "mime_type": "image/png",
+      "title": "El Arrabal"
+    },
+    {
+      "project_public_id": "663e4aed-45e5-427b-9a2e-fed1694fbd57",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Arrabal_blanco.png",
+      "mime_type": "image/png",
+      "title": "El Arrabal blanco"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20blanco.png",
+      "mime_type": "image/png",
+      "title": "El Rocio blanco"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20color.png",
+      "mime_type": "image/png",
+      "title": "El Rocio color"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20negro.png",
+      "mime_type": "image/png",
+      "title": "El Rocio negro"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20blanco.png",
+      "mime_type": "image/png",
+      "title": "La Arbolada blanco"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20color.png",
+      "mime_type": "image/png",
+      "title": "La Arbolada color"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20negro.png",
+      "mime_type": "image/png",
+      "title": "La Arbolada negro"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20blanco.png",
+      "mime_type": "image/png",
+      "title": "Las Colinas blanco"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20color.png",
+      "mime_type": "image/png",
+      "title": "Las Colinas color"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20negro.png",
+      "mime_type": "image/png",
+      "title": "Las Colinas negro"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Arenales%20color.png",
+      "mime_type": "image/png",
+      "title": "Los Arenales color"
+    },
+    {
+      "project_public_id": "ba2810c4-4a2e-4be8-8eec-5fb124d0160b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Cardinales.png",
+      "mime_type": "image/png",
+      "title": "Los Cardinales"
+    },
+    {
+      "project_public_id": "7f842d41-0e54-48b3-a87a-64dbd5a23938",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Perales%20color.png",
+      "mime_type": "image/png",
+      "title": "Los Perales color"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20blanco.png",
+      "mime_type": "image/png",
+      "title": "Quintas blanco"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20color.png",
+      "mime_type": "image/png",
+      "title": "Quintas color"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20negro.png",
+      "mime_type": "image/png",
+      "title": "Quintas negro"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20blanco.png",
+      "mime_type": "image/png",
+      "title": "San Pablo blanco"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20color.png",
+      "mime_type": "image/png",
+      "title": "San Pablo color"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20negro.png",
+      "mime_type": "image/png",
+      "title": "San Pablo negro"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20blanco.png",
+      "mime_type": "image/png",
+      "title": "Santa Emilia blanco"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20color.png",
+      "mime_type": "image/png",
+      "title": "Santa Emilia color"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20negro.png",
+      "mime_type": "image/png",
+      "title": "Santa Emilia negro"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20blanco.png",
+      "mime_type": "image/png",
+      "title": "Valle Verde blanco"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20color.png",
+      "mime_type": "image/png",
+      "title": "Valle Verde color"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20negro.png",
+      "mime_type": "image/png",
+      "title": "Valle Verde negro"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/loteo%20colinas%202.jpg",
+      "mime_type": "image/jpeg",
+      "title": "loteo colinas 2"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/planmetria%20colinas.jpg",
+      "mime_type": "image/jpeg",
+      "title": "planmetria colinas"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/render%2002.jpg",
+      "mime_type": "image/jpeg",
+      "title": "render 02"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/01%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/02%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/03%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/04%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/06%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "06 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/07%20ok.jpg",
+      "mime_type": "image/jpeg",
+      "title": "07 ok"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/08%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "08 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/10%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "10 OK"
+    },
+    {
+      "project_public_id": "c674815c-dd8e-4a65-ba94-b5a43f7b125b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/HUASI%203.jpg",
+      "mime_type": "image/jpeg",
+      "title": "HUASI 3"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01-02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 02"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01-03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 03"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02-02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02 02"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02-03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02 03"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03-02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03 02"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03-03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03 03"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/04.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTA%20BAJA.jpg",
+      "mime_type": "image/jpeg",
+      "title": "PLANTA BAJA"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTA%20SEGUNDO%20PISO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "PLANTA SEGUNDO PISO"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/1%20PISO%20E-D.jpg",
+      "mime_type": "image/jpeg",
+      "title": "1 PISO E D"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/2%20PISO%20A-G.jpg",
+      "mime_type": "image/jpeg",
+      "title": "2 PISO A G"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/PB%20C-A.jpg",
+      "mime_type": "image/jpeg",
+      "title": "PB C A"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/MONOAMBIENTE%20PNG/1.png",
+      "mime_type": "image/png",
+      "title": "1"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/MONOAMBIENTE%20PNG/2.png",
+      "mime_type": "image/png",
+      "title": "2"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/TIPOLOGIA%20C/2.png",
+      "mime_type": "image/png",
+      "title": "2"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/TIPOLOGIA%20F/1.png",
+      "mime_type": "image/png",
+      "title": "1"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%201x.jpg",
+      "mime_type": "image/jpeg",
+      "title": "imag 1x"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%202x.jpg",
+      "mime_type": "image/jpeg",
+      "title": "imag 2x"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/MONOAMBIENTE%20NORTE.Denoiser.jpg",
+      "mime_type": "image/jpeg",
+      "title": "MONOAMBIENTE NORTE.Denoiser"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/01%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/02%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/03%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/04%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/05%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "05 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/06%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "06 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/07%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "07 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/08%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "08 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/09%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "09 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/10%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "10 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/la%20arbolada%202.jpg",
+      "mime_type": "image/jpeg",
+      "title": "la arbolada 2"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/01.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/04.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/LOTEO%20CON%20NUMEROS.jpg",
+      "mime_type": "image/jpeg",
+      "title": "LOTEO CON NUMEROS"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/ANTERIORES/01-LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 LISTO"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/ANTERIORES/04%20-%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04   LISTO"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%201.jpg",
+      "mime_type": "image/jpeg",
+      "title": "RENDER 1"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%202.jpg",
+      "mime_type": "image/jpeg",
+      "title": "RENDER 2"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%203.jpg",
+      "mime_type": "image/jpeg",
+      "title": "RENDER 3"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%204.jpg",
+      "mime_type": "image/jpeg",
+      "title": "RENDER 4"
+    },
+    {
+      "project_public_id": "c674815c-dd8e-4a65-ba94-b5a43f7b125b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-3.png",
+      "mime_type": "image/png",
+      "title": "huasi 3"
+    },
+    {
+      "project_public_id": "382c0cc2-c972-4779-9d43-3ae8f60c3642",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-4.png",
+      "mime_type": "image/png",
+      "title": "huasi 4"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-7.png",
+      "mime_type": "image/png",
+      "title": "huasi 7"
+    },
+    {
+      "project_public_id": "271fa5e6-5dbc-4a98-a33a-ee2f81fdc2ff",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-8.png",
+      "mime_type": "image/png",
+      "title": "huasi 8"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/vista-aerea.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Las Colinas"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/desarrollo.webp",
+      "mime_type": "image/webp",
+      "title": "Desarrollo Las Colinas"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/infraestructura.webp",
+      "mime_type": "image/webp",
+      "title": "Infraestructura Las Colinas"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-actual.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea La Arbolada"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/quintas-san-antonio/vista-aerea-1.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Quintas de San Antonio"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-arenales/panoramica.webp",
+      "mime_type": "image/webp",
+      "title": "Panorámica Los Arenales"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea San Pablo"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/vista-aerea.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Valle Verde"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/vista-aerea.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea El Rocío"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/paisaje.webp",
+      "mime_type": "image/webp",
+      "title": "Paisaje Santa Emilia"
+    },
+    {
+      "project_public_id": "ba2810c4-4a2e-4be8-8eec-5fb124d0160b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-1.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Los Cardinales"
+    },
+    {
+      "project_public_id": "7f842d41-0e54-48b3-a87a-64dbd5a23938",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-perales/vista-aerea-1.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Los Perales"
+    }
+  ]
+}

@@ -94,4 +94,80 @@ final class ProjectLandingController extends InventoryController
 
         return response()->json(['schema_version' => '1.0', 'data' => $data])->header('Cache-Control', 'no-store');
     }
+
+    public function assets(Request $request, string $project): JsonResponse
+    {
+        $model = $this->findProject($project);
+        $this->authorizeAction($this->policy->view($this->user($request), $model));
+
+        return response()->json(['data' => $this->landing->assets($model)])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function createUploadUrl(Request $request, string $project): JsonResponse
+    {
+        $model = $this->findProject($project);
+        $user = $this->user($request);
+        $this->authorizeAction($this->policy->update($user, $model));
+
+        $validated = $request->validate([
+            'filename' => ['required', 'string', 'max:255'],
+            'mime_type' => ['required', 'string', 'in:image/jpeg,image/png,image/webp,image/avif,application/pdf'],
+            'file_size' => ['required', 'integer', 'min:1', 'max:15728640'],
+        ]);
+
+        $ticket = $this->landing->createUploadUrl(
+            $model,
+            $this->tenantContext->tenant()->public_id,
+            $validated['filename'],
+            $validated['mime_type'],
+            (int) $validated['file_size']
+        );
+
+        return response()->json(['data' => $ticket], 201)
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function confirmUpload(Request $request, string $project): JsonResponse
+    {
+        $model = $this->findProject($project);
+        $user = $this->user($request);
+        $this->authorizeAction($this->policy->update($user, $model));
+
+        $validated = $request->validate([
+            'url' => ['required', 'string', 'max:2048'],
+            'mime_type' => ['required', 'string', 'in:image/jpeg,image/png,image/webp,image/avif,application/pdf'],
+            'title' => ['required', 'string', 'max:160', static function (string $attribute, mixed $value, \Closure $fail): void {
+                if (is_string($value) && $value !== strip_tags($value)) {
+                    $fail('Usá texto plano, sin HTML.');
+                }
+            }],
+        ]);
+
+        $asset = $this->landing->confirmAsset(
+            $model,
+            $validated['url'],
+            $validated['mime_type'],
+            $validated['title']
+        );
+
+        return response()->json(['data' => $asset], 201)
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function deleteAsset(Request $request, string $project): JsonResponse
+    {
+        $model = $this->findProject($project);
+        $user = $this->user($request);
+        $this->authorizeAction($this->policy->update($user, $model));
+
+        $validated = $request->validate([
+            'url' => ['required', 'string', 'max:2048'],
+        ]);
+
+        $deleted = $this->landing->deleteAsset($model, $validated['url']);
+
+        return response()->json(['deleted' => $deleted])
+            ->header('Cache-Control', 'private, no-store');
+    }
 }
