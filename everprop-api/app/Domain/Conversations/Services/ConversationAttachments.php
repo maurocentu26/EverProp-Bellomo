@@ -93,14 +93,15 @@ final class ConversationAttachments
      *
      * @param  array<string, mixed>  $media
      */
-    public function contents(int $tenantId, int $conversationId, array $media): string
+    public function contents(int $tenantId, int $conversationId, array $media): ?string
     {
         $path = (string) ($media['path'] ?? '');
         if (! str_starts_with($path, sprintf('tenants/%d/conversations/%d/', $tenantId, $conversationId)) || str_contains($path, '..')) {
             throw new \RuntimeException('Attachment path outside its conversation.');
         }
 
-        return (string) $this->disk((string) config('filesystems.private', 'local'))->get($path);
+        // null = not on this process's disk; the caller decides (never cast to an empty file).
+        return $this->disk((string) config('filesystems.private', 'local'))->get($path);
     }
 
     /** @param array<string, mixed> $media media_json of a message of this tenant and conversation */

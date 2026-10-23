@@ -3,6 +3,7 @@
 namespace Tests\Feature\Conversations;
 
 use App\Domain\Conversations\Services\ConversationControl;
+use App\Domain\Conversations\Services\OutboundDispatcher;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
@@ -98,6 +99,19 @@ final class ConversationAttachmentsTest extends TestCase
         $this->flushHeaders();
         $this->actingAs($this->user($otherTenant, RoleCode::TENANT_ADMIN))->withHeaders($this->tenantHeaders($otherTenant))
             ->get($url)->assertNotFound();
+    }
+
+    public function test_web_chat_does_not_need_the_bytes_on_the_worker(): void
+    {
+        $f = $this->inControl();
+        $this->attach($f['advisor'], $f['tenant'], $f['conversation'], $this->file('plano.pdf', self::PDF))->assertStatus(202);
+        $message = DB::table('messages')->where('conversation_id', $f['id'])->where('direction', 'OUTBOUND')->sole();
+        $job = DB::table('outbound_jobs')->where('message_id', $message->id)->sole();
+        // EVP-19: the worker has no access to the API volume; the visitor downloads the file from the API, so it still sends.
+        Storage::disk('local')->delete(json_decode((string) $message->media_json, true)['path']);
+        DB::table('outbound_jobs')->where('id', $job->id)->update(['status' => 'PENDING']);
+
+        $this->assertSame('SENT', app(OutboundDispatcher::class)->dispatch((int) $f['tenant']->id, (int) $job->id));
     }
 
     public function test_a_pdf_downloads_and_retries_are_idempotent(): void
