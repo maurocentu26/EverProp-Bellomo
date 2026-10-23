@@ -1,6 +1,8 @@
 # EVP-19 — Adjuntos entre API y worker + informe Meta para Codex
 
-Rama `ticket/EVP-19-adjuntos-worker`, desde `develop` `03adb4f` · 2026-10-14 · Claude con Ramiro Ruggeri.
+Rama `ticket/EVP-19-adjuntos-worker-v2`, desde `develop` `11bce53` · 2026-10-14, actualizada el 2026-10-23 · Claude con Ramiro Ruggeri.
+
+**Actualización 2026-10-23:** la rama original (desde `03adb4f`) nunca se subió. Se reaplicaron los mismos dos commits sobre `develop` al día, sin conflictos. Desde el 14/10 se sumaron Messenger e Instagram (EVP-37). Sus transportes rechazan los adjuntos (`MEDIA_UNSUPPORTED`), así que la regla «solo WhatsApp lee los bytes» sigue siendo correcta y no hace falta tocarlos.
 Jira: https://eversys.atlassian.net/browse/EVP-19, En curso. Sin despliegue ni cambios en Railway.
 
 ## 1. Qué pedía el ticket
