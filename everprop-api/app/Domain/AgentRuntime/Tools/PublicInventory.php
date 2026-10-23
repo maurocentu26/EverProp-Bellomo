@@ -29,20 +29,27 @@ final class PublicInventory
     public const PROPERTY_REF_HINT = ' Identificá la propiedad con property_id (de buscar_propiedades) o con unit_code, el código exacto '
         .'que dijo el visitante (por ejemplo 12A); uno solo, nunca los dos.';
 
-    public function query(int $tenantId): Builder
+    public function query(int $tenantId, bool $landingChannel = false): Builder
     {
         return DB::table('properties as p')
             ->leftJoin('projects as pr', fn ($j) => $j->on('pr.id', '=', 'p.project_id')->on('pr.tenant_id', '=', 'p.tenant_id'))
             ->where('p.tenant_id', $tenantId)
             ->whereNull('p.deleted_at')
             ->where('p.status', 'AVAILABLE')
+            ->when($landingChannel, static fn ($q) => $q->where(static fn ($p) => $p->whereNull('p.project_id')
+                ->orWhereExists(static fn ($landing) => $landing->selectRaw('1')->from('project_landing')
+                    ->whereColumn('project_landing.tenant_id', 'p.tenant_id')
+                    ->whereColumn('project_landing.project_id', 'p.project_id')->where('project_landing.is_visible', true))))
+            ->whereNotExists(static fn ($landing) => $landing->selectRaw('1')->from('project_landing')
+                ->whereColumn('project_landing.tenant_id', 'p.tenant_id')
+                ->whereColumn('project_landing.project_id', 'p.project_id')->where('project_landing.is_visible', false))
             ->where(fn ($q) => $q->whereNull('p.project_id')
                 ->orWhere(fn ($o) => $o->whereNull('pr.deleted_at')->whereIn('pr.status', ProjectStatus::publicValues())));
     }
 
-    public function find(int $tenantId, string $publicId): ?object
+    public function find(int $tenantId, string $publicId, bool $landingChannel = false): ?object
     {
-        return $this->query($tenantId)->where('p.public_id', $publicId)->first($this->columns());
+        return $this->query($tenantId, $landingChannel)->where('p.public_id', $publicId)->first($this->columns());
     }
 
     /**
@@ -58,9 +65,9 @@ final class PublicInventory
     }
 
     /** Internal id of a visible property, or NOT_FOUND (deleted, withdrawn, other tenant, unknown). */
-    public function idOrFail(int $tenantId, string $publicId): int
+    public function idOrFail(int $tenantId, string $publicId, bool $landingChannel = false): int
     {
-        $id = $this->query($tenantId)->where('p.public_id', $publicId)->value('p.id');
+        $id = $this->query($tenantId, $landingChannel)->where('p.public_id', $publicId)->value('p.id');
 
         return $id === null ? throw new ToolError('NOT_FOUND', 'La propiedad no está disponible.') : (int) $id;
     }

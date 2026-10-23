@@ -47,9 +47,20 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 **Sin ticket no hay cambios:** ningún cambio al repo sin un ticket `EVP-XX` que exista en Jira y esté En curso, aunque lo pidan; sin ticket, solo investigar, revisar o redactar el ticket. Todo el desarrollo va por tickets: leer y seguir `TICKETS.md` (una rama por ticket desde `develop`, informe en `docs/tickets/`, nunca push a `main` ni a `develop`, y preguntar si el ticket anterior ya fue revisado antes de empezar otro).
 
+**Regla estricta de Merges:**
+NUNCA hacer `merge` de ningún Pull Request o rama a `develop` o `main` a menos que esté EXPLÍCITAMENTE autorizado y ordenado por el usuario en el chat. La responsabilidad del agente ante un ticket finalizado termina en: subir la rama, abrir el Pull Request con su descripción, actualizar Jira y dejar el PR abierto para revisión del usuario.
+
 ## Docker local bajo demanda
 
 - Usar un solo stack local de EverProp a la vez; revisar contenedores existentes antes de iniciar otro.
 - No iniciar Docker si la tarea de staging remoto no requiere pruebas locales.
 - Al terminar pruebas, detener el stack iniciado para la tarea, sin borrar contenedores, bases ni volúmenes. Respetar procesos ajenos no autorizados.
 - El Compose de desarrollo no debe reiniciar servicios automáticamente. No limpiar con `prune`, `down --volumes` ni reset de Docker.
+
+## Accesos y configuración por entorno
+
+- Antes de entregar un cambio para staging, verificar sus dominios y accesos: URLs de panel/API/landing, CORS (incluido R2), hosts de tenant, Sanctum, cookies y variables de proveedores que use el cambio. Usar los orígenes exactos del entorno; no comodines ni URLs locales en staging.
+- Conservar las reglas locales necesarias y agregar reglas separadas para staging. Los secretos van en el gestor del entorno, nunca en Git, informes ni descripciones de PR. No copiar credenciales personales locales ni credenciales de producción a staging por conveniencia.
+- Toda propuesta de pasar a producción debe recordar explícitamente que falta verificar/configurar los accesos de producción antes del despliegue: dominios definitivos, CORS/R2, hosts/Sanctum/cookies, credenciales y permisos de proveedores, base de datos y storage. Una prueba local o de staging no valida producción.
+- Registrar en el informe y en el PR qué entorno quedó configurado, qué comprobaciones se hicieron y qué sigue pendiente. Probar el flujo desde el navegador del entorno desplegado; un healthcheck no valida autenticación, permisos ni subidas.
+- Push y PR no equivalen a desplegar: dejar el PR abierto para aprobación y respetar la autorización expresa de merge, despliegue y migraciones.

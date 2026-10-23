@@ -32,9 +32,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  outputFileTracingIncludes: {
-    "/api/bellomo/assets/*": ["./content/bellomo/**/*"],
-  },
   async rewrites() {
     return [
       {

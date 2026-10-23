@@ -25,7 +25,7 @@ final class PublicPropertyController extends InventoryController
 
         $query = Property::query()
             ->where('properties.tenant_id', $this->tenantContext->id())
-            ->publiclyVisible()
+            ->publiclyVisible($request->validated('channel') === 'landing')
             ->with([
                 'project',
                 'features' => static fn ($features) => $features->where('is_filterable', true),
@@ -37,12 +37,12 @@ final class PublicPropertyController extends InventoryController
         );
     }
 
-    public function show(string $property): PropertyResource
+    public function show(PropertyIndexRequest $request, string $property): PropertyResource
     {
         $model = Property::query()
             ->where('properties.tenant_id', $this->tenantContext->id())
             ->where('public_id', $property)
-            ->publiclyVisible()
+            ->publiclyVisible($request->validated('channel') === 'landing')
             ->with([
                 'project',
                 'features' => static fn ($features) => $features->where('is_filterable', true),

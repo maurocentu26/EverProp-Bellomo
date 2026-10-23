@@ -13,6 +13,7 @@ final class ProjectIndexRequest extends InventoryRequest
     {
         return [
             'tenant_id' => ['prohibited'],
+            'channel' => ['sometimes', Rule::in(['landing'])],
             'status' => ['sometimes', Rule::enum(ProjectStatus::class)],
             'project_type' => ['sometimes', Rule::enum(ProjectType::class)],
             'city' => ['sometimes', 'string', 'max:160'],
