@@ -135,6 +135,7 @@ final class ProjectLandingController extends InventoryController
         $this->authorizeAction($this->policy->update($user, $model));
 
         $validated = $request->validate([
+            'upload_token' => ['required', 'string', 'max:8192'],
             'url' => ['required', 'string', 'max:2048'],
             'mime_type' => ['required', 'string', 'in:image/jpeg,image/png,image/webp,image/avif,application/pdf'],
             'title' => ['required', 'string', 'max:160', static function (string $attribute, mixed $value, \Closure $fail): void {
@@ -148,7 +149,8 @@ final class ProjectLandingController extends InventoryController
             $model,
             $validated['url'],
             $validated['mime_type'],
-            $validated['title']
+            $validated['title'],
+            $validated['upload_token']
         );
 
         return response()->json(['data' => $asset], 201)

@@ -64,6 +64,8 @@ return [
 
         'r2' => [
             'driver' => 's3',
+            // The presigned PUT has no body yet; do not sign a checksum of an empty body.
+            'request_checksum_calculation' => 'when_required',
             'key' => env('CLOUDFLARE_R2_ACCESS_KEY_ID', env('AWS_ACCESS_KEY_ID')),
             'secret' => env('CLOUDFLARE_R2_SECRET_ACCESS_KEY', env('AWS_SECRET_ACCESS_KEY')),
             'region' => env('CLOUDFLARE_R2_DEFAULT_REGION', env('AWS_DEFAULT_REGION', 'auto')),

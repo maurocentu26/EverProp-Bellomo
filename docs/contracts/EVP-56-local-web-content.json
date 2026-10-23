@@ -1,0 +1,3261 @@
+{
+  "tenant_public_id": "b1100000-0000-4000-8000-000000000001",
+  "assets": [
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_elrocio_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa elrocio exterior"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_elrocio_interior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa elrocio interior"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_laarbolada_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa laarbolada exterior"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_laarbolada_interior.png",
+      "mime_type": "image/png",
+      "title": "fichadeventa laarbolada interior"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_lascolinas_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa lascolinas exterior"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_lascolinas_interior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa lascolinas interior"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_quintas_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa quintas exterior"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_quintas_interiorVER%20DIV.MZA.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa quintas interiorVER DIV.MZA"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_sanpablo_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa sanpablo exterior"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_sanpablo_interior%20-%20CORREGIR%20AP5%20Y%20AP4.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa sanpablo interior   CORREGIR AP5 Y AP4"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_santaemilia_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa santaemilia exterior"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_santaemilia_interior%20-%20CORRREGIR%20TABAC.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa santaemilia interior   CORRREGIR TABAC"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_valleverde_exterior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa valleverde exterior"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_valleverde_interior.jpg",
+      "mime_type": "image/jpeg",
+      "title": "fichadeventa valleverde interior"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/colinas2.png",
+      "mime_type": "image/png",
+      "title": "colinas2"
+    },
+    {
+      "project_public_id": "663e4aed-45e5-427b-9a2e-fed1694fbd57",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Arrabal.png",
+      "mime_type": "image/png",
+      "title": "El Arrabal"
+    },
+    {
+      "project_public_id": "663e4aed-45e5-427b-9a2e-fed1694fbd57",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Arrabal_blanco.png",
+      "mime_type": "image/png",
+      "title": "El Arrabal blanco"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20blanco.png",
+      "mime_type": "image/png",
+      "title": "El Rocio blanco"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20color.png",
+      "mime_type": "image/png",
+      "title": "Logo de El Rocío"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20negro.png",
+      "mime_type": "image/png",
+      "title": "El Rocio negro"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20blanco.png",
+      "mime_type": "image/png",
+      "title": "La Arbolada blanco"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20color.png",
+      "mime_type": "image/png",
+      "title": "La Arbolada color"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20negro.png",
+      "mime_type": "image/png",
+      "title": "La Arbolada negro"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20blanco.png",
+      "mime_type": "image/png",
+      "title": "Las Colinas blanco"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20color.png",
+      "mime_type": "image/png",
+      "title": "Las Colinas color"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20negro.png",
+      "mime_type": "image/png",
+      "title": "Las Colinas negro"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Arenales%20color.png",
+      "mime_type": "image/png",
+      "title": "Los Arenales color"
+    },
+    {
+      "project_public_id": "ba2810c4-4a2e-4be8-8eec-5fb124d0160b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Cardinales.png",
+      "mime_type": "image/png",
+      "title": "Logo de Los Cardinales"
+    },
+    {
+      "project_public_id": "7f842d41-0e54-48b3-a87a-64dbd5a23938",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Perales%20color.png",
+      "mime_type": "image/png",
+      "title": "Los Perales color"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20blanco.png",
+      "mime_type": "image/png",
+      "title": "Quintas blanco"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20color.png",
+      "mime_type": "image/png",
+      "title": "Logo de Quintas de San Antonio"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20negro.png",
+      "mime_type": "image/png",
+      "title": "Quintas negro"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20blanco.png",
+      "mime_type": "image/png",
+      "title": "San Pablo blanco"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20color.png",
+      "mime_type": "image/png",
+      "title": "San Pablo color"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20negro.png",
+      "mime_type": "image/png",
+      "title": "San Pablo negro"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20blanco.png",
+      "mime_type": "image/png",
+      "title": "Santa Emilia blanco"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20color.png",
+      "mime_type": "image/png",
+      "title": "Logo de Santa Emilia"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20negro.png",
+      "mime_type": "image/png",
+      "title": "Santa Emilia negro"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20blanco.png",
+      "mime_type": "image/png",
+      "title": "Valle Verde blanco"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20color.png",
+      "mime_type": "image/png",
+      "title": "Logo de Valle Verde"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20negro.png",
+      "mime_type": "image/png",
+      "title": "Valle Verde negro"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/loteo%20colinas%202.jpg",
+      "mime_type": "image/jpeg",
+      "title": "loteo colinas 2"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/planmetria%20colinas.jpg",
+      "mime_type": "image/jpeg",
+      "title": "planmetria colinas"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/render%2002.jpg",
+      "mime_type": "image/jpeg",
+      "title": "render 02"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/01%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/02%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/03%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/04%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/06%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "06 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/07%20ok.jpg",
+      "mime_type": "image/jpeg",
+      "title": "07 ok"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/08%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "08 OK"
+    },
+    {
+      "project_public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/10%20OK.jpg",
+      "mime_type": "image/jpeg",
+      "title": "10 OK"
+    },
+    {
+      "project_public_id": "c674815c-dd8e-4a65-ba94-b5a43f7b125b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/HUASI%203.jpg",
+      "mime_type": "image/jpeg",
+      "title": "HUASI 3"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01-02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 02"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01-03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 03"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02-02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02 02"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02-03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02 03"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03-02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03 02"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03-03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03 03"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03"
+    },
+    {
+      "project_public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/04.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTA%20BAJA.jpg",
+      "mime_type": "image/jpeg",
+      "title": "PLANTA BAJA"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTA%20SEGUNDO%20PISO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "PLANTA SEGUNDO PISO"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/1%20PISO%20E-D.jpg",
+      "mime_type": "image/jpeg",
+      "title": "1 PISO E D"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/2%20PISO%20A-G.jpg",
+      "mime_type": "image/jpeg",
+      "title": "2 PISO A G"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/PB%20C-A.jpg",
+      "mime_type": "image/jpeg",
+      "title": "PB C A"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/MONOAMBIENTE%20PNG/1.png",
+      "mime_type": "image/png",
+      "title": "1"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/MONOAMBIENTE%20PNG/2.png",
+      "mime_type": "image/png",
+      "title": "2"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/TIPOLOGIA%20C/2.png",
+      "mime_type": "image/png",
+      "title": "2"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/TIPOLOGIA%20F/1.png",
+      "mime_type": "image/png",
+      "title": "1"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%201x.jpg",
+      "mime_type": "image/jpeg",
+      "title": "imag 1x"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%202x.jpg",
+      "mime_type": "image/jpeg",
+      "title": "imag 2x"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/MONOAMBIENTE%20NORTE.Denoiser.jpg",
+      "mime_type": "image/jpeg",
+      "title": "MONOAMBIENTE NORTE.Denoiser"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/01%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/02%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/03%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/04%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/05%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "05 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/06%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "06 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/07%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "07 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/08%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "08 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/09%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "09 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/10%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "10 LISTO"
+    },
+    {
+      "project_public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/la%20arbolada%202.jpg",
+      "mime_type": "image/jpeg",
+      "title": "la arbolada 2"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/01.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/02.jpg",
+      "mime_type": "image/jpeg",
+      "title": "02"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/03.jpg",
+      "mime_type": "image/jpeg",
+      "title": "03"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/04.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/LOTEO%20CON%20NUMEROS.jpg",
+      "mime_type": "image/jpeg",
+      "title": "LOTEO CON NUMEROS"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/ANTERIORES/01-LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "01 LISTO"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/ANTERIORES/04%20-%20LISTO.jpg",
+      "mime_type": "image/jpeg",
+      "title": "04   LISTO"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%201.jpg",
+      "mime_type": "image/jpeg",
+      "title": "RENDER 1"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%202.jpg",
+      "mime_type": "image/jpeg",
+      "title": "RENDER 2"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%203.jpg",
+      "mime_type": "image/jpeg",
+      "title": "RENDER 3"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%204.jpg",
+      "mime_type": "image/jpeg",
+      "title": "RENDER 4"
+    },
+    {
+      "project_public_id": "c674815c-dd8e-4a65-ba94-b5a43f7b125b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-3.png",
+      "mime_type": "image/png",
+      "title": "huasi 3"
+    },
+    {
+      "project_public_id": "382c0cc2-c972-4779-9d43-3ae8f60c3642",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-4.png",
+      "mime_type": "image/png",
+      "title": "huasi 4"
+    },
+    {
+      "project_public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-7.png",
+      "mime_type": "image/png",
+      "title": "huasi 7"
+    },
+    {
+      "project_public_id": "271fa5e6-5dbc-4a98-a33a-ee2f81fdc2ff",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-8.png",
+      "mime_type": "image/png",
+      "title": "huasi 8"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/vista-aerea.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Las Colinas"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/desarrollo.webp",
+      "mime_type": "image/webp",
+      "title": "Desarrollo Las Colinas"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/infraestructura.webp",
+      "mime_type": "image/webp",
+      "title": "Infraestructura Las Colinas"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-actual.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea La Arbolada"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/quintas-san-antonio/vista-aerea-1.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Quintas de San Antonio"
+    },
+    {
+      "project_public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-arenales/panoramica.webp",
+      "mime_type": "image/webp",
+      "title": "Panorámica Los Arenales"
+    },
+    {
+      "project_public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea San Pablo"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/vista-aerea.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Valle Verde"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/vista-aerea.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea El Rocío"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/paisaje.webp",
+      "mime_type": "image/webp",
+      "title": "Paisaje Santa Emilia"
+    },
+    {
+      "project_public_id": "ba2810c4-4a2e-4be8-8eec-5fb124d0160b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-1.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Los Cardinales"
+    },
+    {
+      "project_public_id": "7f842d41-0e54-48b3-a87a-64dbd5a23938",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-perales/vista-aerea-1.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea Los Perales"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/paisaje.webp",
+      "mime_type": "image/webp",
+      "title": "Paisaje · Fotografía"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/render-acceso.webp",
+      "mime_type": "image/webp",
+      "title": "Acceso proyectado · Render"
+    },
+    {
+      "project_public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/render-urbanizacion.webp",
+      "mime_type": "image/webp",
+      "title": "Urbanización proyectada · Render"
+    },
+    {
+      "project_public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/urbanizacion.webp",
+      "mime_type": "image/webp",
+      "title": "Urbanización · Fotografía"
+    },
+    {
+      "project_public_id": "382c0cc2-c972-4779-9d43-3ae8f60c3642",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-logo.png",
+      "mime_type": "image/png",
+      "title": "Logo de Edificio Huasi 4"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/calle.webp",
+      "mime_type": "image/webp",
+      "title": "Calle del desarrollo · Fotografía"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/infraestructura.webp",
+      "mime_type": "image/webp",
+      "title": "Infraestructura · Fotografía"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/obra.webp",
+      "mime_type": "image/webp",
+      "title": "Archivo de obra · Fotografía"
+    },
+    {
+      "project_public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-historica.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea de archivo · Fotografía"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/arbol.webp",
+      "mime_type": "image/webp",
+      "title": "Entorno natural · Fotografía"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/atardecer.webp",
+      "mime_type": "image/webp",
+      "title": "Atardecer · Fotografía"
+    },
+    {
+      "project_public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/calles.webp",
+      "mime_type": "image/webp",
+      "title": "Calles del desarrollo · Fotografía"
+    },
+    {
+      "project_public_id": "ba2810c4-4a2e-4be8-8eec-5fb124d0160b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-2.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea complementaria · Fotografía"
+    },
+    {
+      "project_public_id": "ba2810c4-4a2e-4be8-8eec-5fb124d0160b",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-3.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea del entorno · Fotografía"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/acceso.webp",
+      "mime_type": "image/webp",
+      "title": "Acceso · Fotografía"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/camino.webp",
+      "mime_type": "image/webp",
+      "title": "Camino del desarrollo · Fotografía"
+    },
+    {
+      "project_public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/terreno.webp",
+      "mime_type": "image/webp",
+      "title": "Terreno · Fotografía"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/quintas-san-antonio/camino.webp",
+      "mime_type": "image/webp",
+      "title": "Camino del desarrollo · Fotografía"
+    },
+    {
+      "project_public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/quintas-san-antonio/vista-aerea-2.webp",
+      "mime_type": "image/webp",
+      "title": "Vista aérea complementaria · Fotografía"
+    },
+    {
+      "project_public_id": "271fa5e6-5dbc-4a98-a33a-ee2f81fdc2ff",
+      "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-logo.png",
+      "mime_type": "image/png",
+      "title": "Logo de Edificio Huasi 8"
+    }
+  ],
+  "projects": [
+    {
+      "public_id": "95b45059-b614-426e-a2c8-4f2015db24a2",
+      "presentation": {
+        "name": "LOTEO SAN PABLO 1",
+        "summary": "",
+        "description": "Desarrollo residencial abierto Loteo San Pablo 1 en San Salvador de Jujuy. Lotes con posesi??n y servicios.",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": ""
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20blanco.png",
+          "alt": "San Pablo blanco",
+          "kind": "RENDER"
+        },
+        "logo": null,
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_sanpablo_exterior.jpg",
+            "alt": "fichadeventa sanpablo exterior",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_sanpablo_interior%20-%20CORREGIR%20AP5%20Y%20AP4.jpg",
+            "alt": "fichadeventa sanpablo interior   CORREGIR AP5 Y AP4",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20blanco.png",
+            "alt": "San Pablo blanco",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20color.png",
+            "alt": "San Pablo color",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20negro.png",
+            "alt": "San Pablo negro",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp",
+            "alt": "Vista aérea San Pablo",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "loteo-san-pablo-1",
+        "is_visible": false,
+        "sort_order": 0
+      }
+    },
+    {
+      "public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+      "presentation": {
+        "name": "Valle Verde",
+        "summary": "El valle pensado para tu futuro",
+        "description": "Naturaleza y expansión urbana combinadas en una inversión pensada a largo plazo, en un entorno sereno con aire puro y vistas a las yungas.\n\nEslogan: El valle pensado para tu futuro\n\nDistancia: Zona de expansión residencial\n\nFinanciación: Planes a medida en cuotas fijas",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": ""
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/vista-aerea.webp",
+          "alt": "Vista panorámica de Valle Verde",
+          "kind": "PHOTO"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20color.png",
+          "alt": "Logo de Valle Verde"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/vista-aerea.webp",
+            "alt": "Vista panorámica de Valle Verde",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/paisaje.webp",
+            "alt": "Paisaje de valle verde",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/render-acceso.webp",
+            "alt": "Acceso proyectado de valle verde",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/render-urbanizacion.webp",
+            "alt": "Urbanización proyectada de valle verde",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_valleverde_exterior.jpg",
+            "alt": "Ficha técnica exterior de Valle Verde",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_valleverde_interior.jpg",
+            "alt": "Ficha técnica interior de Valle Verde",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20blanco.png",
+            "alt": "Valle Verde blanco",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20color.png",
+            "alt": "Valle Verde color",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20negro.png",
+            "alt": "Valle Verde negro",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [
+          "Agua potable",
+          "Red eléctrica",
+          "Trazado vial consolidado"
+        ],
+        "documents": [],
+        "slug": "valle-verde",
+        "is_visible": false,
+        "sort_order": 1
+      }
+    },
+    {
+      "public_id": "b3064009-3b18-41df-bee1-c10bc1011403",
+      "presentation": {
+        "name": "RINCONES LOTES E INFRAESTRUC.",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "PUYA PUYA Y AVDA. GDOR. TELLO"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "rincones-lotes-e-infraestruc",
+        "is_visible": false,
+        "sort_order": 2
+      }
+    },
+    {
+      "public_id": "c674815c-dd8e-4a65-ba94-b5a43f7b125b",
+      "presentation": {
+        "name": "COCHERA HUASI III",
+        "summary": "",
+        "description": "",
+        "category": "HUASI",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": ""
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/HUASI%203.jpg",
+          "alt": "HUASI 3",
+          "kind": "RENDER"
+        },
+        "logo": null,
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/HUASI%203.jpg",
+            "alt": "HUASI 3",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-3.png",
+            "alt": "huasi 3",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "cochera-huasi-iii",
+        "is_visible": false,
+        "sort_order": 3
+      }
+    },
+    {
+      "public_id": "5c869339-34b9-4ef7-9ab3-0d58902bf5b4",
+      "presentation": {
+        "name": "LOTEO PALPALA",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "AVDA. MARTIJENA"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "loteo-palpala",
+        "is_visible": false,
+        "sort_order": 4
+      }
+    },
+    {
+      "public_id": "7ece348f-f98b-4e71-8453-da016b240d82",
+      "presentation": {
+        "name": "LOTEO MARTIN RAUL GALAN",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "BARRIO R. MARTIN GALAN"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "loteo-martin-raul-galan",
+        "is_visible": false,
+        "sort_order": 5
+      }
+    },
+    {
+      "public_id": "7e202edb-4677-43dc-a56e-6e4de0a270fd",
+      "presentation": {
+        "name": "RINCONES 2",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "ARIZMENDI Y D'ALESIO"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "rincones-2",
+        "is_visible": false,
+        "sort_order": 6
+      }
+    },
+    {
+      "public_id": "392941db-4f7c-4ef2-b122-12674dddfba0",
+      "presentation": {
+        "name": "COCHERA ALVEAR",
+        "summary": "",
+        "description": "",
+        "category": "COMMERCIAL",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "ALVEAR 1376"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/01%20OK.jpg",
+          "alt": "01 OK",
+          "kind": "RENDER"
+        },
+        "logo": null,
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/01%20OK.jpg",
+            "alt": "01 OK",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/02%20OK.jpg",
+            "alt": "02 OK",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/03%20OK.jpg",
+            "alt": "03 OK",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/04%20OK.jpg",
+            "alt": "04 OK",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/06%20OK.jpg",
+            "alt": "06 OK",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/07%20ok.jpg",
+            "alt": "07 ok",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/08%20OK.jpg",
+            "alt": "08 OK",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/10%20OK.jpg",
+            "alt": "10 OK",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "cochera-alvear",
+        "is_visible": false,
+        "sort_order": 7
+      }
+    },
+    {
+      "public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+      "presentation": {
+        "name": "Las Colinas",
+        "summary": "Explorá sus imágenes, ubicación y características.",
+        "description": "Ubicado sobre ruta Nacional N° 9, a 8km del centro de San Salvador de Jujuy, Las Colinas es un desarrollo que ofrece a los habitantes 20 hectáreas completamente urbanizadas. Terrenos de 250 (10x25) a 300mt2 (10x30).\n\nEslogan: Tierra de Sueños\n\nDistancia: A 8' minutos del centro\n\nFinanciación: Entrega del 50% y saldo en 36 cuotas fijas en pesos\n\nUbicación publicada: Ruta Nacional 9, Jujuy",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "RUTA 9 - LOTE RURAL 48 I 2"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 4,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/vista-aerea.webp",
+          "alt": "Fotografía aérea de Las Colinas",
+          "kind": "PHOTO"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20color.png",
+          "alt": "Logo de Las Colinas"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/vista-aerea.webp",
+            "alt": "Vista aérea de Las Colinas",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/desarrollo.webp",
+            "alt": "Desarrollo de las colinas",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/infraestructura.webp",
+            "alt": "Infraestructura de las colinas",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/urbanizacion.webp",
+            "alt": "Urbanización de las colinas",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_lascolinas_exterior.jpg",
+            "alt": "Ficha técnica exterior de Las Colinas",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_lascolinas_interior.jpg",
+            "alt": "Ficha técnica interior de Las Colinas",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/colinas2.png",
+            "alt": "colinas2",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20blanco.png",
+            "alt": "Las Colinas blanco",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20negro.png",
+            "alt": "Las Colinas negro",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/loteo%20colinas%202.jpg",
+            "alt": "loteo colinas 2",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/planmetria%20colinas.jpg",
+            "alt": "planmetria colinas",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/render%2002.jpg",
+            "alt": "render 02",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [
+          "Agua potable",
+          "Cordón cuneta",
+          "Red eléctrica",
+          "Cerco perimetral"
+        ],
+        "documents": [],
+        "slug": "las-colinas",
+        "is_visible": false,
+        "sort_order": 8
+      }
+    },
+    {
+      "public_id": "382c0cc2-c972-4779-9d43-3ae8f60c3642",
+      "presentation": {
+        "name": "Edificio Huasi 4",
+        "summary": "Identidad oficial del Edificio Huasi 4 de Bellomo.",
+        "description": "Identidad oficial del Edificio Huasi 4 de Bellomo.",
+        "category": "HUASI",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "REPÃšBLICA DEL URUGUAY"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-4.png",
+          "alt": "Logotipo oficial del Edificio Huasi 4",
+          "kind": "RENDER"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-logo.png",
+          "alt": "Logo de Edificio Huasi 4"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-4.png",
+            "alt": "Logotipo oficial del Edificio Huasi 4",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "edificio-huasi-4",
+        "is_visible": false,
+        "sort_order": 9
+      }
+    },
+    {
+      "public_id": "c77a2d36-571c-4dbc-bc0a-5f644febbaac",
+      "presentation": {
+        "name": "GALERIA NORTE 1",
+        "summary": "",
+        "description": "",
+        "category": "COMMERCIAL",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "LAS VICUÃ‘AS"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "galeria-norte-1",
+        "is_visible": false,
+        "sort_order": 10
+      }
+    },
+    {
+      "public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+      "presentation": {
+        "name": "La Arbolada",
+        "summary": "Un entorno natural para proyectar tu próxima etapa. Conocé la urbanización.",
+        "description": "La Arbolada es una urbanización ubicada en B° Sgto. Cabral. Cuenta con 28 hectáreas urbanizadas rodeadas de naturaleza con una vista a la ciudad inigualable.\n\nEslogan: Terrenos verdes Muy Cerca de Todo\n\nDistancia: A 5' minutos del centro\n\nFinanciación: Entrega inmediata del 50% y saldo a financiar. Tasa fija en pesos.\n\nUbicación publicada: Barrio Sargento Cabral, San Salvador de Jujuy",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "SARGENTO CABRAL"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 3,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-actual.webp",
+          "alt": "Fotografía aérea de la urbanización La Arbolada",
+          "kind": "PHOTO"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20color.png",
+          "alt": "Logo de La Arbolada"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-actual.webp",
+            "alt": "Vista aérea de La Arbolada",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/calle.webp",
+            "alt": "Calle del desarrollo de la arbolada",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/infraestructura.webp",
+            "alt": "Infraestructura de la arbolada",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/obra.webp",
+            "alt": "Archivo de obra de la arbolada",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-historica.webp",
+            "alt": "Vista aérea de archivo de la arbolada",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_laarbolada_exterior.jpg",
+            "alt": "Ficha técnica exterior de La Arbolada",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_laarbolada_interior.png",
+            "alt": "Ficha técnica interior de La Arbolada",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20blanco.png",
+            "alt": "La Arbolada blanco",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20negro.png",
+            "alt": "La Arbolada negro",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [
+          "Agua potable",
+          "Cordón cuneta",
+          "Red eléctrica",
+          "Red de cloacas"
+        ],
+        "documents": [],
+        "slug": "la-arbolada",
+        "is_visible": false,
+        "sort_order": 11
+      }
+    },
+    {
+      "public_id": "ecea7fb0-ae84-4094-b1b9-1427c1425451",
+      "presentation": {
+        "name": "COCHERA ALTO PADILLA",
+        "summary": "",
+        "description": "",
+        "category": "COMMERCIAL",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "ESQ. REP. DEL URUGUAY"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "cochera-alto-padilla",
+        "is_visible": false,
+        "sort_order": 12
+      }
+    },
+    {
+      "public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+      "presentation": {
+        "name": "El Rocío",
+        "summary": "Empapate de frescura y tranquilidad",
+        "description": "Tierra y paisaje reunidos en una oportunidad residencial de escala humana. Tranquilidad cotidiana y contacto pleno con la naturaleza.\n\nEslogan: Empapate de frescura y tranquilidad\n\nDistancia: Acceso ágil y entorno calmo\n\nFinanciación: Posesión inmediata y facilidades de pago",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": ""
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/vista-aerea.webp",
+          "alt": "Vista aérea de El Rocío",
+          "kind": "PHOTO"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20color.png",
+          "alt": "Logo de El Rocío"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/vista-aerea.webp",
+            "alt": "Vista aérea de El Rocío",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/arbol.webp",
+            "alt": "Entorno natural de el rocio",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/atardecer.webp",
+            "alt": "Atardecer de el rocio",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/calles.webp",
+            "alt": "Calles del desarrollo de el rocio",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_elrocio_exterior.jpg",
+            "alt": "Ficha técnica exterior de El Rocío",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_elrocio_interior.jpg",
+            "alt": "Ficha técnica interior de El Rocío",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20blanco.png",
+            "alt": "El Rocio blanco",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20color.png",
+            "alt": "El Rocio color",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20negro.png",
+            "alt": "El Rocio negro",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [
+          "Agua potable",
+          "Alumbrado público",
+          "Calles afirmadas"
+        ],
+        "documents": [],
+        "slug": "el-rocio",
+        "is_visible": false,
+        "sort_order": 13
+      }
+    },
+    {
+      "public_id": "ba2810c4-4a2e-4be8-8eec-5fb124d0160b",
+      "presentation": {
+        "name": "Los Cardinales",
+        "summary": "Proyectá tu futuro en el lugar correcto",
+        "description": "Un barrio concebido para edificar tu vivienda propia con tranquilidad, seguridad y el sólido respaldo de la constructora Bellomo.\n\nEslogan: Proyectá tu futuro en el lugar correcto\n\nDistancia: Sargento Cabral\n\nFinanciación: Consultar opciones personalizadas",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "SARGENTO CABRAL"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-1.webp",
+          "alt": "Vista aérea de Los Cardinales",
+          "kind": "PHOTO"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Cardinales.png",
+          "alt": "Logo de Los Cardinales"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-1.webp",
+            "alt": "Vista aérea de Los Cardinales",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-2.webp",
+            "alt": "Vista aérea complementaria de los cardinales",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-3.webp",
+            "alt": "Vista aérea del entorno de los cardinales",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Cardinales.png",
+            "alt": "Los Cardinales",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [
+          "Agua potable",
+          "Red de energía",
+          "Calles trazadas"
+        ],
+        "documents": [],
+        "slug": "los-cardinales",
+        "is_visible": false,
+        "sort_order": 14
+      }
+    },
+    {
+      "public_id": "7f842d41-0e54-48b3-a87a-64dbd5a23938",
+      "presentation": {
+        "name": "LOTEO LOS PERALES",
+        "summary": "Conocé el entorno y consultá sobre este desarrollo.",
+        "description": "Conocé el entorno y consultá sobre este desarrollo.\n\nUbicación publicada: Los Perales, San Salvador de Jujuy",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "BARRIO LOS PERALES"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 5,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-perales/vista-aerea-1.webp",
+          "alt": "Vista aérea del desarrollo Los Perales",
+          "kind": "PHOTO"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Perales%20color.png",
+          "alt": "Logo de LOTEO LOS PERALES"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-perales/vista-aerea-1.webp",
+            "alt": "Vista aérea Los Perales",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "loteo-los-perales",
+        "is_visible": false,
+        "sort_order": 15
+      }
+    },
+    {
+      "public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+      "presentation": {
+        "name": "Santa Emilia",
+        "summary": "Urbanización a tu alcance",
+        "description": "Propuesta de crecimiento familiar en Monterrico con accesos estratégicos sobre rutas provinciales y proyección urbana constante.\n\nEslogan: Urbanización a tu alcance\n\nDistancia: Monterrico\n\nFinanciación: Anticipo y saldo financiado",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": ""
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/paisaje.webp",
+          "alt": "Paisaje y entorno de Santa Emilia",
+          "kind": "PHOTO"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20color.png",
+          "alt": "Logo de Santa Emilia"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/paisaje.webp",
+            "alt": "Paisaje y entorno de Santa Emilia",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/acceso.webp",
+            "alt": "Acceso de santa emilia",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/camino.webp",
+            "alt": "Camino del desarrollo de santa emilia",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/terreno.webp",
+            "alt": "Terreno de santa emilia",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_santaemilia_exterior.jpg",
+            "alt": "Ficha técnica exterior de Santa Emilia",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_santaemilia_interior%20-%20CORRREGIR%20TABAC.jpg",
+            "alt": "fichadeventa santaemilia interior   CORRREGIR TABAC",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20blanco.png",
+            "alt": "Santa Emilia blanco",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20color.png",
+            "alt": "Santa Emilia color",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20negro.png",
+            "alt": "Santa Emilia negro",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [
+          "Agua potable",
+          "Red eléctrica",
+          "Caminos afirmados"
+        ],
+        "documents": [],
+        "slug": "santa-emilia",
+        "is_visible": false,
+        "sort_order": 16
+      }
+    },
+    {
+      "public_id": "c89d5056-faab-4d12-a2f1-7b9b92d31632",
+      "presentation": {
+        "name": "LOTEO SAN PABLO 2",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": ""
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "loteo-san-pablo-2",
+        "is_visible": false,
+        "sort_order": 17
+      }
+    },
+    {
+      "public_id": "663e4aed-45e5-427b-9a2e-fed1694fbd57",
+      "presentation": {
+        "name": "EL ARRABAL",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "MONTERRICO"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Arrabal.png",
+          "alt": "El Arrabal",
+          "kind": "RENDER"
+        },
+        "logo": null,
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Arrabal.png",
+            "alt": "El Arrabal",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Arrabal_blanco.png",
+            "alt": "El Arrabal blanco",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "el-arrabal",
+        "is_visible": false,
+        "sort_order": 18
+      }
+    },
+    {
+      "public_id": "4db0b427-1dd6-473c-8b6f-1547ced6d4c2",
+      "presentation": {
+        "name": "LOTEO ARENALES",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "PARCELAS 1446-47-48-49"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Arenales%20color.png",
+          "alt": "Los Arenales color",
+          "kind": "RENDER"
+        },
+        "logo": null,
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Arenales%20color.png",
+            "alt": "Los Arenales color",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/01.jpg",
+            "alt": "01",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/02.jpg",
+            "alt": "02",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/03.jpg",
+            "alt": "03",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/04.jpg",
+            "alt": "04",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/LOTEO%20CON%20NUMEROS.jpg",
+            "alt": "LOTEO CON NUMEROS",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-arenales/panoramica.webp",
+            "alt": "Panorámica Los Arenales",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "loteo-arenales",
+        "is_visible": false,
+        "sort_order": 19
+      }
+    },
+    {
+      "public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+      "presentation": {
+        "name": "Quintas de San Antonio",
+        "summary": "Zona Residencial",
+        "description": "Fracciones en La Toma – San Antonio. Destinado a quintas de fin de semana, lugar de esparcimiento y descanso. Actividad campista.\n\nEslogan: Zona Residencial\n\nDistancia: A 2 kilómetros del pueblo\n\nFinanciación: Consultar opciones de financiación",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "SAN ANTONIO"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/quintas-san-antonio/vista-aerea-1.webp",
+          "alt": "Vista del loteo Quintas de San Antonio",
+          "kind": "PHOTO"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20color.png",
+          "alt": "Logo de Quintas de San Antonio"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/quintas-san-antonio/vista-aerea-1.webp",
+            "alt": "Vista del loteo Quintas de San Antonio",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/quintas-san-antonio/camino.webp",
+            "alt": "Camino del desarrollo de quintas san antonio",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/quintas-san-antonio/vista-aerea-2.webp",
+            "alt": "Vista aérea complementaria de quintas san antonio",
+            "kind": "PHOTO"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_quintas_exterior.jpg",
+            "alt": "Ficha técnica exterior de Quintas de San Antonio",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_quintas_interiorVER%20DIV.MZA.jpg",
+            "alt": "fichadeventa quintas interiorVER DIV.MZA",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20blanco.png",
+            "alt": "Quintas blanco",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20color.png",
+            "alt": "Quintas color",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20negro.png",
+            "alt": "Quintas negro",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/ANTERIORES/01-LISTO.jpg",
+            "alt": "01 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/ANTERIORES/04%20-%20LISTO.jpg",
+            "alt": "04   LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%201.jpg",
+            "alt": "RENDER 1",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%202.jpg",
+            "alt": "RENDER 2",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%203.jpg",
+            "alt": "RENDER 3",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%204.jpg",
+            "alt": "RENDER 4",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [
+          "Servicio de Agua",
+          "Alumbrado público"
+        ],
+        "documents": [],
+        "slug": "quintas-san-antonio",
+        "is_visible": false,
+        "sort_order": 20
+      }
+    },
+    {
+      "public_id": "e8ba05b4-3a99-49ab-a178-c854cedd68a0",
+      "presentation": {
+        "name": "FRACCION ARENALES",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "SOBRE R. NÂ°1"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "fraccion-arenales",
+        "is_visible": false,
+        "sort_order": 21
+      }
+    },
+    {
+      "public_id": "271fa5e6-5dbc-4a98-a33a-ee2f81fdc2ff",
+      "presentation": {
+        "name": "Edificio Huasi 8",
+        "summary": "Identidad oficial del Edificio Huasi 8 de Bellomo.",
+        "description": "Identidad oficial del Edificio Huasi 8 de Bellomo.",
+        "category": "HUASI",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "ALVEAR 1376"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-8.png",
+          "alt": "Logotipo oficial del Edificio Huasi 8",
+          "kind": "RENDER"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-logo.png",
+          "alt": "Logo de Edificio Huasi 8"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-8.png",
+            "alt": "Logotipo oficial del Edificio Huasi 8",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "edificio-huasi-8",
+        "is_visible": false,
+        "sort_order": 22
+      }
+    },
+    {
+      "public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+      "presentation": {
+        "name": "Edificio Huasi 7",
+        "summary": "Monoambientes y departamentos de uno y dos dormitorios.",
+        "description": "Imágenes exteriores, interiores y tipologías del Edificio Huasi 7.\n\nUbicación publicada: Alto Padilla, San Salvador de Jujuy",
+        "category": "HUASI",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "REPUBLICA DEL URUGUAY ESQ RIO IGUAZU"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%201x.jpg",
+          "alt": "Render de la fachada del Edificio Huasi 7",
+          "kind": "RENDER"
+        },
+        "logo": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-7.png",
+          "alt": "Logo de Edificio Huasi 7"
+        },
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%201x.jpg",
+            "alt": "Render exterior del Edificio Huasi 7 en Alto Padilla",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%202x.jpg",
+            "alt": "Segunda vista exterior del Edificio Huasi 7 en Alto Padilla",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/MONOAMBIENTE%20NORTE.Denoiser.jpg",
+            "alt": "Render interior de un monoambiente del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/TIPOLOGIA%20C/2.png",
+            "alt": "Vista tridimensional de la tipología C del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/TIPOLOGIA%20F/1.png",
+            "alt": "Vista tridimensional de la tipología F del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-7.png",
+            "alt": "Logotipo oficial del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTA%20BAJA.jpg",
+            "alt": "Plano completo de la planta baja del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTA%20SEGUNDO%20PISO.jpg",
+            "alt": "Plano completo del segundo piso del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/PB%20C-A.jpg",
+            "alt": "Plano zonificado de planta baja, tipologías C y A, del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/1%20PISO%20E-D.jpg",
+            "alt": "Plano zonificado del primer piso, tipologías E y D, del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/PLANTAS/PLANTAS%20ZONIFICADAS%20POR%20TIPOLOGIA/2%20PISO%20A-G.jpg",
+            "alt": "Plano zonificado del segundo piso, tipologías A y G, del Edificio Huasi 7",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/MONOAMBIENTE%20PNG/1.png",
+            "alt": "1",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/DIEGO/MONOAMBIENTE%20PNG/2.png",
+            "alt": "2",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "edificio-huasi-7",
+        "is_visible": false,
+        "sort_order": 23
+      }
+    },
+    {
+      "public_id": "96cce5b4-94d2-4ca0-a7d7-e1ef5e562c47",
+      "presentation": {
+        "name": "LA TOMA loteo",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": ""
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": null,
+        "logo": null,
+        "gallery": [],
+        "features": [],
+        "documents": [],
+        "slug": "la-toma-loteo",
+        "is_visible": false,
+        "sort_order": 24
+      }
+    },
+    {
+      "public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+      "presentation": {
+        "name": "GALERIA NORTE 2",
+        "summary": "Arquitectura comercial. Conocé el proyecto y consultá por sus espacios.",
+        "description": "Arquitectura comercial. Conocé el proyecto y consultá por sus espacios.\n\nUbicación publicada: Barrio Chijra, San Salvador de Jujuy",
+        "category": "COMMERCIAL",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "EL ALHELI 780"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 6,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01.jpg",
+          "alt": "Render de la fachada de Galería Norte II",
+          "kind": "RENDER"
+        },
+        "logo": null,
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01-02.jpg",
+            "alt": "01 02",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01-03.jpg",
+            "alt": "01 03",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01.jpg",
+            "alt": "01",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02-02.jpg",
+            "alt": "02 02",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02-03.jpg",
+            "alt": "02 03",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02.jpg",
+            "alt": "02",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03-02.jpg",
+            "alt": "03 02",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03-03.jpg",
+            "alt": "03 03",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/03.jpg",
+            "alt": "03",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/04.jpg",
+            "alt": "04",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "galeria-norte-2",
+        "is_visible": false,
+        "sort_order": 25
+      }
+    },
+    {
+      "public_id": "e9c89484-8213-4dd7-bba1-e2b1f710daa7",
+      "presentation": {
+        "name": "LA ARBOLADA 2",
+        "summary": "",
+        "description": "",
+        "category": "LAND_DEVELOPMENT",
+        "location": {
+          "city": "San Salvador de Jujuy",
+          "province": "Jujuy",
+          "address": "DETRAS DE LOTEO LA ARBOLADA 1"
+        },
+        "status_label": null,
+        "is_featured": false,
+        "featured_order": 0,
+        "cover": {
+          "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/01%20LISTO.jpg",
+          "alt": "01 LISTO",
+          "kind": "RENDER"
+        },
+        "logo": null,
+        "gallery": [
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/01%20LISTO.jpg",
+            "alt": "01 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/02%20LISTO.jpg",
+            "alt": "02 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/03%20LISTO.jpg",
+            "alt": "03 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/04%20LISTO.jpg",
+            "alt": "04 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/05%20LISTO.jpg",
+            "alt": "05 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/06%20LISTO.jpg",
+            "alt": "06 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/07%20LISTO.jpg",
+            "alt": "07 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/08%20LISTO.jpg",
+            "alt": "08 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/09%20LISTO.jpg",
+            "alt": "09 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/10%20LISTO.jpg",
+            "alt": "10 LISTO",
+            "kind": "RENDER"
+          },
+          {
+            "url": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/la%20arbolada%202.jpg",
+            "alt": "la arbolada 2",
+            "kind": "RENDER"
+          }
+        ],
+        "features": [],
+        "documents": [],
+        "slug": "la-arbolada-2",
+        "is_visible": false,
+        "sort_order": 26
+      }
+    }
+  ],
+  "provenance": {
+    "source": "Catálogos locales de la landing y manifiesto R2 aprobado; sin contenido inventado",
+    "mappings": [
+      {
+        "public_id": "9dfebc25-b12b-4ddc-9521-01d058b8f831",
+        "inventory_name": "VALLE VERDE LOTEO",
+        "source_id": "valle-verde"
+      },
+      {
+        "public_id": "0de7600f-1f9d-478f-8c98-504e29b42f0c",
+        "inventory_name": "LAS COLINAS",
+        "source_id": "las-colinas"
+      },
+      {
+        "public_id": "382c0cc2-c972-4779-9d43-3ae8f60c3642",
+        "inventory_name": "HUASI IV",
+        "source_id": "edificio-huasi-4"
+      },
+      {
+        "public_id": "4e543b83-5002-4c16-887b-c711d7945b29",
+        "inventory_name": "LA ARBOLADA.",
+        "source_id": "la-arbolada"
+      },
+      {
+        "public_id": "22836b31-5c48-48d0-9539-5f78b311c43d",
+        "inventory_name": "EL ROCIO",
+        "source_id": "el-rocio"
+      },
+      {
+        "public_id": "ba2810c4-4a2e-4be8-8eec-5fb124d0160b",
+        "inventory_name": "LOTEO CARDINALES",
+        "source_id": "los-cardinales"
+      },
+      {
+        "public_id": "7f842d41-0e54-48b3-a87a-64dbd5a23938",
+        "inventory_name": "LOTEO LOS PERALES",
+        "source_id": "los-perales"
+      },
+      {
+        "public_id": "0aaa4cf5-06a2-49a0-ab3c-4151fc5642f8",
+        "inventory_name": "LOTEO SANTA EMILIA MONTERRICO",
+        "source_id": "santa-emilia"
+      },
+      {
+        "public_id": "2501a2c9-1b6d-4f0e-9021-ebce00f798c1",
+        "inventory_name": "QUINTAS DE SAN ANTONIO Loteo",
+        "source_id": "quintas-san-antonio"
+      },
+      {
+        "public_id": "271fa5e6-5dbc-4a98-a33a-ee2f81fdc2ff",
+        "inventory_name": "HUASI VIII",
+        "source_id": "edificio-huasi-8"
+      },
+      {
+        "public_id": "92bf2eb9-507b-4743-ad62-fa6f673e2d1f",
+        "inventory_name": "HUASI VII",
+        "source_id": "edificio-huasi-7"
+      },
+      {
+        "public_id": "2c09c68a-a135-455b-bfde-79c6a46e7c81",
+        "inventory_name": "GALERIA NORTE 2",
+        "source_id": "galeria-norte-ii"
+      }
+    ],
+    "unresolved_projects": [
+      {
+        "id": "los-arenales",
+        "name": "Los Arenales",
+        "archiveLabel": "Loteo",
+        "pageLabel": "Pre-Venta",
+        "slogan": "Inversión segura",
+        "distance": "Consultar ubicación exacta",
+        "financing": "Escritura y posesión en 48/60 meses",
+        "services": [
+          "Agua potable",
+          "Red eléctrica"
+        ],
+        "description": "Desarrollo de tierra en etapa de pre-venta. Una alternativa para invertir en suelo y acompañar el desarrollo de la ciudad a largo plazo.",
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-arenales/panoramica.webp",
+            "alt": "Vista del loteo Los Arenales",
+            "label": "Vista panorámica",
+            "kind": "photo",
+            "sourceFolder": "LOS ARENALES",
+            "width": 810,
+            "height": 1440
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-arenales/acceso.webp",
+            "alt": "Acceso de los arenales",
+            "label": "Acceso · Fotografía",
+            "kind": "photo",
+            "sourceFolder": "LOS ARENALES",
+            "width": 1920,
+            "height": 1080
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-arenales/camino.webp",
+            "alt": "Camino del desarrollo de los arenales",
+            "label": "Camino del desarrollo · Fotografía",
+            "kind": "photo",
+            "sourceFolder": "LOS ARENALES",
+            "width": 1920,
+            "height": 1080
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-arenales/terreno.webp",
+            "alt": "Terreno de los arenales",
+            "label": "Terreno · Fotografía",
+            "kind": "photo",
+            "sourceFolder": "LOS ARENALES",
+            "width": 1920,
+            "height": 1080
+          }
+        ]
+      },
+      {
+        "id": "san-pablo",
+        "name": "San Pablo",
+        "archiveLabel": "Loteo",
+        "pageLabel": "Loteo Residencial",
+        "slogan": "Tu balcón a la ciudad",
+        "distance": "A minutos del centro de Jujuy",
+        "financing": "Entrega inicial y cuotas accesibles",
+        "services": [
+          "Agua potable",
+          "Red eléctrica",
+          "Apertura de calles"
+        ],
+        "description": "Propuesta residencial con visuales panorámicas inigualables sobre la ciudad y el valle. Un entorno seguro para consolidar tu proyecto de vida.",
+        "technicalSheet": {
+          "exteriorUrl": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FICHAS%20DE%20PRESUPUESTOS/fichadeventa_sanpablo_exterior.jpg"
+        },
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp",
+            "alt": "Vista aérea panorámica de San Pablo",
+            "label": "Vista aérea",
+            "kind": "photo",
+            "sourceFolder": "SAN PABLO",
+            "width": 1920,
+            "height": 1080
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/infraestructura.webp",
+            "alt": "Infraestructura de san pablo",
+            "label": "Infraestructura · Fotografía",
+            "kind": "photo",
+            "sourceFolder": "SAN PABLO",
+            "width": 1920,
+            "height": 1280
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/obra.webp",
+            "alt": "Archivo de obra de san pablo",
+            "label": "Archivo de obra · Fotografía",
+            "kind": "photo",
+            "sourceFolder": "SAN PABLO",
+            "width": 1599,
+            "height": 899
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/urbanizacion.webp",
+            "alt": "Urbanización de san pablo",
+            "label": "Urbanización · Fotografía",
+            "kind": "photo",
+            "sourceFolder": "SAN PABLO",
+            "width": 1200,
+            "height": 675
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-2.webp",
+            "alt": "Vista aérea complementaria de san pablo",
+            "label": "Vista aérea complementaria · Fotografía",
+            "kind": "photo",
+            "sourceFolder": "SAN PABLO",
+            "width": 1920,
+            "height": 1080
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-ciudad.webp",
+            "alt": "Vista hacia la ciudad de san pablo",
+            "label": "Vista hacia la ciudad · Fotografía",
+            "kind": "photo",
+            "sourceFolder": "SAN PABLO",
+            "width": 1200,
+            "height": 675
+          }
+        ]
+      },
+      {
+        "id": "edificio-huasi-3",
+        "name": "Edificio Huasi 3",
+        "archiveLabel": "Archivo fotográfico",
+        "pageLabel": "Archivo fotográfico",
+        "description": "Fotografía de archivo del Edificio Huasi 3.",
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-3.png",
+            "alt": "Logotipo oficial del Edificio Huasi 3",
+            "label": "Identidad · Logo oficial",
+            "kind": "render",
+            "sourceFolder": "LOGOS HUASIS",
+            "width": 1908,
+            "height": 1020
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/HUASI%203.jpg",
+            "alt": "Fotografía de archivo del Edificio Huasi 3",
+            "label": "Fotografía de archivo",
+            "kind": "photo",
+            "sourceFolder": "FOTOS HUASIS",
+            "width": 983,
+            "height": 794
+          }
+        ]
+      },
+      {
+        "id": "edificio-huasi-x",
+        "name": "Edificio Huasi X",
+        "archiveLabel": "Huaico",
+        "pageLabel": "Huaico",
+        "description": "Vistas exteriores y planimetría del Edificio Huasi X.",
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/05.jpg",
+            "alt": "Render exterior del Edificio Huasi X en Huaico",
+            "label": "Vista principal · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 2480,
+            "height": 3264
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/01.jpg",
+            "alt": "Fachada principal del Edificio Huasi X",
+            "label": "Fachada principal · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 3762,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/03-3.jpg",
+            "alt": "Perspectiva exterior del Edificio Huasi X",
+            "label": "Perspectiva exterior · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 3744,
+            "height": 2664
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/04.jpg",
+            "alt": "Fachada lateral del Edificio Huasi X",
+            "label": "Fachada lateral · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 3170,
+            "height": 2143
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/08.jpg",
+            "alt": "Render exterior del Edificio Huasi X",
+            "label": "Vista exterior · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 2384,
+            "height": 3320
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/09.jpg",
+            "alt": "Vista al atardecer del Edificio Huasi X",
+            "label": "Vista atardecer · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/PLANIMETRIA.jpg",
+            "alt": "Planimetría general del Edificio Huasi X",
+            "label": "Planimetría",
+            "kind": "plan",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 3840,
+            "height": 1872
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/000-PB%20PLANTA.jpg",
+            "alt": "Plano de planta baja del Edificio Huasi X",
+            "label": "Planta baja",
+            "kind": "plan",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 2035,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/00-1%20PISO%20PLANTA.jpg",
+            "alt": "Plano de primer piso del Edificio Huasi X",
+            "label": "Primer piso",
+            "kind": "plan",
+            "sourceFolder": "HUASI X - HUAICO",
+            "width": 2640,
+            "height": 2160
+          }
+        ]
+      },
+      {
+        "id": "torre-departamentos-h9",
+        "name": "Torre de Departamentos H9",
+        "archiveLabel": "Residencial de alta densidad",
+        "pageLabel": "Alta densidad",
+        "description": "Imágenes de la fachada, los interiores y la terraza del proyecto.",
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/02.jpg",
+            "alt": "Render de la fachada de la Torre de Departamentos H9",
+            "label": "Fachada principal · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1414,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/03.jpg",
+            "alt": "Perspectiva exterior de la Torre de Departamentos H9",
+            "label": "Fachada perspectiva · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1320,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/04.jpg",
+            "alt": "Vista exterior de la Torre de Departamentos H9",
+            "label": "Vista exterior · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1702,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/05.jpg",
+            "alt": "Vista lateral de la Torre de Departamentos H9",
+            "label": "Vista de torre · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 768,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/DEPTO%20A.jpg",
+            "alt": "Render interior de una unidad de la Torre de Departamentos H9",
+            "label": "Interior Depto A · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1128,
+            "height": 654
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/DPTO%20D.jpg",
+            "alt": "Render interior de Depto D de la Torre H9",
+            "label": "Interior Depto D · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 980,
+            "height": 670
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/Dorm%20DPX.jpg",
+            "alt": "Dormitorio de unidad dúplex en Torre H9",
+            "label": "Dormitorio dúplex · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1186,
+            "height": 684
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/DPX%20PB.jpg",
+            "alt": "Planta baja de unidad dúplex en Torre H9",
+            "label": "Dúplex PB · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1027,
+            "height": 722
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/DUPLEX.jpg",
+            "alt": "Living y estar de unidad dúplex en Torre H9",
+            "label": "Living dúplex · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/monoambiente.jpg",
+            "alt": "Unidad monoambiente de la Torre H9",
+            "label": "Monoambiente · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1156,
+            "height": 666
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/oficina.jpg",
+            "alt": "Espacio de oficina en Torre H9",
+            "label": "Espacio de oficina · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1058,
+            "height": 662
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/TERRAZA.jpg",
+            "alt": "Render de la terraza panorámica de la Torre H9",
+            "label": "Terraza panorámica · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/Terraza%20R.jpg",
+            "alt": "Sector relax en la terraza de la Torre H9",
+            "label": "Terraza relax · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 1219,
+            "height": 768
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/Unidad%20A%203%20PISO.jpg",
+            "alt": "Unidad A en 3° piso de la Torre H9",
+            "label": "Unidad A (3° piso) · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/Unidad%20A%206-7%20PISO.jpg",
+            "alt": "Unidad A en pisos 6 y 7 de la Torre H9",
+            "label": "Unidad A (6°-7° piso) · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/UNIDAD%20B.jpg",
+            "alt": "Unidad B de la Torre H9",
+            "label": "Unidad B · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/UNIDAD%20C.jpg",
+            "alt": "Unidad C de la Torre H9",
+            "label": "Unidad C · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/UNIDAD%20D.jpg",
+            "alt": "Unidad D de la Torre H9",
+            "label": "Unidad D · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/UNIDAD%20E.jpg",
+            "alt": "Unidad E de la Torre H9",
+            "label": "Unidad E · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/UNIDAD%20G%20PB.jpg",
+            "alt": "Unidad G en planta baja de la Torre H9",
+            "label": "Unidad G (PB) · Render",
+            "kind": "render",
+            "sourceFolder": "HUASI IX",
+            "width": 3840,
+            "height": 2160
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-9.png",
+            "alt": "Logotipo oficial de la Torre de Departamentos Huasi IX",
+            "label": "Identidad · Logo oficial",
+            "kind": "render",
+            "sourceFolder": "LOGOS HUASIS",
+            "width": 1909,
+            "height": 1019
+          }
+        ]
+      },
+      {
+        "id": "edificio-huasi-1",
+        "name": "Edificio Huasi 1",
+        "archiveLabel": "Archivo fotográfico",
+        "pageLabel": "Archivo fotográfico",
+        "description": "Fotografía de archivo identificada como Huasi 1 en el material de Bellomo.",
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-1.png",
+            "alt": "Logotipo oficial del Edificio Huasi 1",
+            "label": "Identidad · Logo oficial",
+            "kind": "render",
+            "sourceFolder": "LOGOS HUASIS",
+            "width": 1909,
+            "height": 1019
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/HUASI%201.jpg",
+            "alt": "Fotografía de archivo del Edificio Huasi 1",
+            "label": "Fotografía de archivo",
+            "kind": "photo",
+            "sourceFolder": "FOTOS HUASIS",
+            "width": 1168,
+            "height": 1693
+          }
+        ]
+      },
+      {
+        "id": "edificio-huasi-2",
+        "name": "Edificio Huasi 2",
+        "archiveLabel": "Archivo fotográfico",
+        "pageLabel": "Archivo fotográfico",
+        "description": "Fotografía de archivo del Edificio Huasi 2.",
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-2.png",
+            "alt": "Logotipo oficial del Edificio Huasi 2",
+            "label": "Identidad · Logo oficial",
+            "kind": "render",
+            "sourceFolder": "LOGOS HUASIS",
+            "width": 1909,
+            "height": 1020
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/HUASI%202.JPG",
+            "alt": "Fotografía de archivo del Edificio Huasi 2",
+            "label": "Fotografía de archivo",
+            "kind": "photo",
+            "sourceFolder": "FOTOS HUASIS",
+            "width": 1575,
+            "height": 1096
+          }
+        ]
+      },
+      {
+        "id": "edificio-huasi-5",
+        "name": "Edificio Huasi 5",
+        "archiveLabel": "Archivo fotográfico",
+        "pageLabel": "Archivo fotográfico",
+        "description": "Fotografía de archivo identificada como H5 en el material de Bellomo.",
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-5.png",
+            "alt": "Logotipo oficial del Edificio Huasi 5",
+            "label": "Identidad · Logo oficial",
+            "kind": "render",
+            "sourceFolder": "LOGOS HUASIS",
+            "width": 1909,
+            "height": 1019
+          },
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/H-5%20b.jpg",
+            "alt": "Fotografía de archivo del Edificio Huasi 5",
+            "label": "Fotografía de archivo",
+            "kind": "photo",
+            "sourceFolder": "FOTOS HUASIS",
+            "width": 2592,
+            "height": 4608
+          }
+        ]
+      },
+      {
+        "id": "edificio-huasi-6",
+        "name": "Edificio Huasi 6",
+        "archiveLabel": "Identidad oficial",
+        "pageLabel": "San Salvador de Jujuy",
+        "description": "Identidad oficial del Edificio Huasi 6 de Bellomo.",
+        "media": [
+          {
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-6.png",
+            "alt": "Logotipo oficial del Edificio Huasi 6",
+            "label": "Identidad · Logo oficial",
+            "kind": "render",
+            "sourceFolder": "LOGOS HUASIS",
+            "width": 1909,
+            "height": 1020
+          }
+        ]
+      },
+      {
+        "id": "sala-convenciones-corporativa",
+        "name": "Sala de Convenciones Corporativa",
+        "archiveLabel": "Arquitectura corporativa",
+        "pageLabel": "Arquitectura corporativa",
+        "description": "Consultanos por la Sala de Convenciones Corporativa.",
+        "media": []
+      }
+    ],
+    "source_hero": [
+      {
+        "id": "huasi",
+        "label": "Departamentos Huasi",
+        "projects": [
+          {
+            "id": "huasi-7",
+            "name": "Huasi 7",
+            "location": "Alto Padilla, San Salvador de Jujuy",
+            "description": "Monoambientes y departamentos de uno y dos dormitorios.",
+            "image": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%201x.jpg",
+            "imageAlt": "Render de la fachada del Edificio Huasi 7",
+            "kind": "Render",
+            "logo": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-7.png",
+            "href": "/proyectos/edificio-huasi-7"
+          },
+          {
+            "id": "huasi-x",
+            "name": "Huasi X",
+            "location": "Huaico, San Salvador de Jujuy",
+            "description": "Conocé el proyecto, sus vistas y planimetría.",
+            "image": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20X%20-%20HUAICO/05.jpg",
+            "imageAlt": "Render exterior de Huasi X en Huaico",
+            "kind": "Render",
+            "logo": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-logo.png",
+            "logoAlt": "Marca Edificios Huasi",
+            "href": "/proyectos/edificio-huasi-x"
+          },
+          {
+            "id": "huasi-ix",
+            "name": "Torre Huasi IX",
+            "location": "San Salvador de Jujuy",
+            "description": "Arquitectura en altura, interiores y tipologías.",
+            "image": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/02.jpg",
+            "imageAlt": "Render de la torre Huasi IX",
+            "kind": "Render",
+            "logo": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-9.png",
+            "href": "/proyectos/torre-departamentos-h9"
+          }
+        ]
+      },
+      {
+        "id": "loteos",
+        "label": "Loteos y urbanizaciones",
+        "projects": [
+          {
+            "id": "la-arbolada",
+            "name": "La Arbolada",
+            "location": "Barrio Sargento Cabral, San Salvador de Jujuy",
+            "description": "Un entorno natural para proyectar tu próxima etapa. Conocé la urbanización.",
+            "image": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-actual.webp",
+            "imageAlt": "Fotografía aérea de la urbanización La Arbolada",
+            "kind": "Fotografía",
+            "logo": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20color.png",
+            "href": "/desarrollos/la-arbolada"
+          },
+          {
+            "id": "las-colinas",
+            "name": "Las Colinas",
+            "location": "Ruta Nacional 9, Jujuy",
+            "description": "Explorá sus imágenes, ubicación y características.",
+            "image": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/vista-aerea.webp",
+            "imageAlt": "Fotografía aérea de Las Colinas",
+            "kind": "Fotografía",
+            "logo": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20color.png",
+            "href": "/desarrollos/las-colinas"
+          },
+          {
+            "id": "los-perales",
+            "name": "Los Perales",
+            "location": "Los Perales, San Salvador de Jujuy",
+            "description": "Conocé el entorno y consultá sobre este desarrollo.",
+            "image": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-perales/vista-aerea-1.webp",
+            "imageAlt": "Vista aérea del desarrollo Los Perales",
+            "kind": "Fotografía",
+            "logo": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Perales%20color.png",
+            "href": "#contacto"
+          }
+        ]
+      },
+      {
+        "id": "comercial",
+        "label": "Locales y cocheras",
+        "projects": [
+          {
+            "id": "galeria-norte-ii",
+            "name": "Galería Norte II",
+            "location": "Barrio Chijra, San Salvador de Jujuy",
+            "description": "Arquitectura comercial. Conocé el proyecto y consultá por sus espacios.",
+            "image": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01.jpg",
+            "imageAlt": "Render de la fachada de Galería Norte II",
+            "kind": "Render",
+            "href": "#obras-destacadas"
+          },
+          {
+            "id": "espacios-huasi-ix",
+            "name": "Espacios en Huasi IX",
+            "location": "San Salvador de Jujuy",
+            "description": "Explorá las imágenes de espacios del proyecto Huasi IX.",
+            "image": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/oficina.jpg",
+            "imageAlt": "Render del espacio de oficina del proyecto Huasi IX",
+            "kind": "Render",
+            "logo": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-9.png",
+            "href": "/proyectos/torre-departamentos-h9"
+          }
+        ]
+      }
+    ],
+    "source_groups": [
+      {
+        "id": "edificios-huasi",
+        "name": "Edificios Huasi",
+        "logoFile": "LOGOS HUASIS/huasi-logo.png",
+        "projectIds": [
+          "edificio-huasi-7",
+          "edificio-huasi-3",
+          "edificio-huasi-x",
+          "torre-departamentos-h9",
+          "edificio-huasi-1",
+          "edificio-huasi-2",
+          "edificio-huasi-5",
+          "edificio-huasi-4",
+          "edificio-huasi-6",
+          "edificio-huasi-8"
+        ]
+      },
+      {
+        "id": "las-colinas",
+        "name": "Las Colinas",
+        "logoFile": "Las Colinas color.png",
+        "projectIds": [
+          "las-colinas"
+        ]
+      },
+      {
+        "id": "la-arbolada",
+        "name": "La Arbolada",
+        "logoFile": "La Arbolada color.png",
+        "projectIds": [
+          "la-arbolada"
+        ]
+      },
+      {
+        "id": "quintas-san-antonio",
+        "name": "Quintas de San Antonio",
+        "logoFile": "Quintas color.png",
+        "projectIds": [
+          "quintas-san-antonio"
+        ]
+      },
+      {
+        "id": "san-pablo",
+        "name": "San Pablo",
+        "logoFile": "San Pablo color.png",
+        "projectIds": [
+          "san-pablo"
+        ]
+      },
+      {
+        "id": "valle-verde",
+        "name": "Valle Verde",
+        "logoFile": "Valle Verde color.png",
+        "projectIds": [
+          "valle-verde"
+        ]
+      },
+      {
+        "id": "los-cardinales",
+        "name": "Los Cardinales",
+        "logoFile": "Los Cardinales.png",
+        "projectIds": [
+          "los-cardinales"
+        ]
+      },
+      {
+        "id": "el-rocio",
+        "name": "El Rocío",
+        "logoFile": "El Rocio color.png",
+        "projectIds": [
+          "el-rocio"
+        ]
+      },
+      {
+        "id": "santa-emilia",
+        "name": "Santa Emilia",
+        "logoFile": "Santa Emilia color.png",
+        "projectIds": [
+          "santa-emilia"
+        ]
+      },
+      {
+        "id": "los-arenales",
+        "name": "Los Arenales",
+        "logoFile": "Los Arenales color.png",
+        "projectIds": [
+          "los-arenales"
+        ]
+      }
+    ],
+    "temporary_catalog": {
+      "reason": "Fuente marcada como demo temporal: conservar para revisión, no importar estados ni disponibilidad como hechos comerciales.",
+      "projects": [
+        {
+          "id": "quintas-san-antonio",
+          "name": "Quintas de San Antonio",
+          "type": "Loteo residencial",
+          "location": "La Toma, San Antonio",
+          "status": "En desarrollo",
+          "description": "Hectáreas destinadas a quintas de fin de semana, en una zona residencial de descanso y contacto con la naturaleza.",
+          "media": {
+            "alt": "Render oficial del acceso arbolado a Quintas de San Antonio",
+            "intent": "Presentar el acceso y el entorno proyectado de Quintas de San Antonio con material oficial",
+            "officialSource": "Archivo visual oficial Bellomo",
+            "position": "center",
+            "section": "Quintas de San Antonio",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-san-antonio.png",
+            "temporary": false
+          }
+        },
+        {
+          "id": "la-arbolada",
+          "name": "La Arbolada",
+          "type": "Loteo",
+          "location": "Jujuy",
+          "status": "Consultar disponibilidad",
+          "description": "Una propuesta para proyectar el hogar y resguardar la inversión en un entorno de crecimiento.",
+          "media": {
+            "alt": "Vista aérea de La Arbolada con viviendas, calles y entorno natural jujeño",
+            "intent": "Presentar el desarrollo real de La Arbolada con fotografía institucional oficial",
+            "officialSource": "Archivo fotográfico oficial Bellomo",
+            "position": "center",
+            "section": "La Arbolada",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-actual.webp",
+            "temporary": false
+          }
+        },
+        {
+          "id": "las-colinas",
+          "name": "Las Colinas",
+          "type": "Desarrollo residencial",
+          "location": "Jujuy",
+          "status": "Consultar disponibilidad",
+          "description": "Tierra, entorno y proyección urbana para quienes buscan construir una nueva etapa.",
+          "media": {
+            "alt": "Vista aérea de Las Colinas con parcelas, calles y viviendas en un entorno verde",
+            "intent": "Presentar el desarrollo real de Las Colinas con fotografía oficial del proyecto",
+            "officialSource": "Archivo fotográfico oficial Bellomo",
+            "position": "center",
+            "section": "Las Colinas",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/vista-aerea.webp",
+            "temporary": false
+          }
+        },
+        {
+          "id": "edificios-huasi",
+          "name": "Edificios Huasi",
+          "type": "Desarrollo urbano",
+          "location": "San Salvador de Jujuy",
+          "status": "En desarrollo",
+          "description": "Edificios que integran diseño contemporáneo, conectividad urbana y calidad constructiva.",
+          "media": {
+            "alt": "Fachada de un Edificio Huasi publicada en el sitio de Bellomo",
+            "intent": "Representar la línea Huasi con material actualmente publicado",
+            "position": "center",
+            "section": "Edificios Huasi",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-huasi-facade.jpg",
+            "temporary": true,
+            "temporarySource": "bellomojujuy.com.ar"
+          }
+        },
+        {
+          "id": "san-pablo",
+          "name": "San Pablo",
+          "type": "Loteo",
+          "location": "Jujuy",
+          "status": "Consultar disponibilidad",
+          "description": "Una propuesta residencial con proyección, conectividad y entorno para construir.",
+          "media": {
+            "alt": "Vista aérea del loteo San Pablo con trazado urbano y la ciudad al fondo",
+            "intent": "Presentar el desarrollo real de San Pablo con fotografía institucional oficial",
+            "officialSource": "Archivo fotográfico oficial Bellomo",
+            "position": "center",
+            "section": "San Pablo",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp",
+            "temporary": false
+          }
+        },
+        {
+          "id": "valle-verde",
+          "name": "Valle Verde",
+          "type": "Loteo residencial",
+          "location": "Jujuy",
+          "status": "Consultar disponibilidad",
+          "description": "Naturaleza y expansión urbana para una inversión pensada a largo plazo.",
+          "media": {
+            "alt": "Vista aérea de Valle Verde con parcelas y trazado del desarrollo",
+            "intent": "Presentar el desarrollo territorial real de Valle Verde con fotografía oficial",
+            "officialSource": "Archivo fotográfico oficial Bellomo",
+            "position": "center",
+            "section": "Valle Verde",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/vista-aerea.webp",
+            "temporary": false
+          }
+        },
+        {
+          "id": "los-cardinales",
+          "name": "Los Cardinales",
+          "type": "Desarrollo residencial",
+          "location": "Jujuy",
+          "status": "Consultar disponibilidad",
+          "description": "Un entorno para proyectar vivienda propia con tranquilidad y respaldo.",
+          "media": {
+            "alt": "Vista aérea de Los Cardinales con parcelas, arbolado y trazado vial",
+            "intent": "Presentar el desarrollo real de Los Cardinales con fotografía oficial del proyecto",
+            "officialSource": "Archivo fotográfico oficial Bellomo",
+            "position": "center",
+            "section": "Los Cardinales",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-1.webp",
+            "temporary": false
+          }
+        },
+        {
+          "id": "el-rocio",
+          "name": "El Rocío",
+          "type": "Loteo",
+          "location": "Jujuy",
+          "status": "Consultar disponibilidad",
+          "description": "Tierra y paisaje reunidos en una oportunidad residencial de escala humana.",
+          "media": {
+            "alt": "Vista aérea de El Rocío con parcelas y calles del desarrollo",
+            "intent": "Presentar el desarrollo real de El Rocío con fotografía oficial del proyecto",
+            "officialSource": "Archivo fotográfico oficial Bellomo",
+            "position": "center",
+            "section": "El Rocío",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/vista-aerea.webp",
+            "temporary": false
+          }
+        },
+        {
+          "id": "santa-emilia",
+          "name": "Santa Emilia",
+          "type": "Loteo residencial",
+          "location": "Jujuy",
+          "status": "Consultar disponibilidad",
+          "description": "Una propuesta de crecimiento familiar en un sector con proyección urbana.",
+          "media": {
+            "alt": "Paisaje abierto de Santa Emilia con vegetación y horizonte montañoso",
+            "intent": "Presentar el entorno real de Santa Emilia con fotografía oficial del proyecto",
+            "officialSource": "Archivo fotográfico oficial Bellomo",
+            "position": "center",
+            "section": "Santa Emilia",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/paisaje.webp",
+            "temporary": false
+          }
+        },
+        {
+          "id": "los-arenales",
+          "name": "Los Arenales",
+          "type": "Desarrollo de tierra",
+          "location": "Jujuy",
+          "status": "Consultar disponibilidad",
+          "description": "Una alternativa para invertir en suelo y acompañar el desarrollo de la ciudad.",
+          "media": {
+            "alt": "Vista panorámica de Los Arenales con terreno abierto y cielo amplio",
+            "intent": "Presentar el entorno real de Los Arenales con fotografía oficial del proyecto",
+            "officialSource": "Archivo fotográfico oficial Bellomo",
+            "position": "center",
+            "section": "Los Arenales",
+            "src": "https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-arenales/panoramica.webp",
+            "temporary": false
+          }
+        }
+      ]
+    }
+  }
+}

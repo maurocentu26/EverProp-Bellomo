@@ -7,8 +7,10 @@ use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Inventory\Services\ProjectLanding;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -292,6 +294,9 @@ final class ProjectLandingTest extends TestCase
 
         $ticket = $res->json('data');
         $this->assertNotEmpty($ticket['upload_url']);
+        $this->assertStringContainsString('/pending/assets/tenants/', $ticket['upload_url']);
+        $this->assertStringNotContainsString('x-amz-checksum-crc32', strtolower($ticket['upload_url']));
+        $this->assertNotEmpty($ticket['upload_token']);
         $this->assertStringStartsWith(ProjectLanding::ASSET_PREFIX, $ticket['public_url']);
         $this->assertStringStartsWith('assets/tenants/'.$tenant->public_id.'/projects/'.$project->public_id.'/', $ticket['key']);
         $this->assertStringEndsWith('.jpg', $ticket['key']);
@@ -340,13 +345,25 @@ final class ProjectLandingTest extends TestCase
             'file_size' => 500000,
         ])->assertCreated();
         $publicUrl = $ticketRes->json('data.public_url');
+        $uploadToken = $ticketRes->json('data.upload_token');
+        $disk = Storage::fake('r2');
+        $pdf = "%PDF-1.4\n".str_repeat(' ', 500000 - 9);
+        $disk->put('pending/'.$ticketRes->json('data.key'), $pdf);
 
         // Confirm success
         $this->postJson($this->endpoint($project).'/media/confirm', [
+            'upload_token' => $uploadToken,
             'url' => $publicUrl,
             'mime_type' => 'application/pdf',
             'title' => 'Plano General',
         ])->assertCreated()->assertJsonPath('data.title', 'Plano General');
+        $this->assertSame($pdf, $disk->get($ticketRes->json('data.key')));
+        $this->assertFalse($disk->exists('pending/'.$ticketRes->json('data.key')));
+        $this->postJson($this->endpoint($project).'/media/confirm', [
+            'upload_token' => $uploadToken, 'url' => $publicUrl, 'mime_type' => 'application/pdf', 'title' => 'Plano General',
+        ])->assertCreated();
+        $disk->put('pending/'.$ticketRes->json('data.key'), 'overwritten after confirmation');
+        $this->assertSame($pdf, $disk->get($ticketRes->json('data.key')));
 
         $this->assertDatabaseHas('project_landing_assets', [
             'tenant_id' => $tenant->id,
@@ -363,6 +380,7 @@ final class ProjectLandingTest extends TestCase
 
         // Reject HTML in title
         $this->postJson($this->endpoint($project).'/media/confirm', [
+            'upload_token' => $uploadToken,
             'url' => $publicUrl,
             'mime_type' => 'application/pdf',
             'title' => '<script>alert(1)</script>Plano',
@@ -372,17 +390,77 @@ final class ProjectLandingTest extends TestCase
         $otherTenant = Tenant::factory()->create();
         $foreignUrl = ProjectLanding::ASSET_PREFIX.'tenants/'.$otherTenant->public_id.'/projects/'.(string) Str::uuid().'/file.jpg';
         $this->postJson($this->endpoint($project).'/media/confirm', [
+            'upload_token' => $uploadToken,
             'url' => $foreignUrl,
             'mime_type' => 'image/jpeg',
             'title' => 'Foto sospechosa',
-        ])->assertUnprocessable()->assertJsonValidationErrors('url');
+        ])->assertUnprocessable()->assertJsonValidationErrors('upload_token');
 
         // Reject external non-R2 URL
         $this->postJson($this->endpoint($project).'/media/confirm', [
+            'upload_token' => $uploadToken,
             'url' => 'https://malicious.site/phishing.jpg',
             'mime_type' => 'image/jpeg',
             'title' => 'Foto externa',
-        ])->assertUnprocessable()->assertJsonValidationErrors('url');
+        ])->assertUnprocessable()->assertJsonValidationErrors('upload_token');
+    }
+
+    public function test_upload_signing_failure_returns_service_unavailable_instead_of_fake_url(): void
+    {
+        $project = $this->project($this->identity());
+        $disk = \Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('temporaryUploadUrl')->once()->andThrow(new \RuntimeException('Signing unavailable'));
+        Storage::shouldReceive('disk')->with('r2')->once()->andReturn($disk);
+        $this->postJson($this->endpoint($project).'/media/upload-url', [
+            'filename' => 'foto.jpg', 'mime_type' => 'image/jpeg', 'file_size' => 10,
+        ])->assertStatus(503)->assertJsonMissingPath('data.upload_url');
+    }
+
+    public function test_read_only_and_out_of_scope_advisors_cannot_upload_or_confirm(): void
+    {
+        $tenant = $this->identity('READ_ONLY');
+        foreach (['READ_ONLY', 'SALES_ADVISOR'] as $role) {
+            $this->actingAs(User::factory()->for($tenant)->create(['role_code' => RoleCode::from($role)->value]));
+            $project = $this->project($tenant);
+            if ($role === 'SALES_ADVISOR') {
+                DB::table('user_inventory_settings')->insert([
+                    'tenant_id' => $tenant->id, 'user_id' => auth()->id(), 'workspace_mode' => 'BOTH',
+                    'visibility_mode' => 'SCOPED', 'can_manage_inventory' => true,
+                    'can_manage_prices' => false, 'can_view_prices' => true,
+                ]);
+            }
+            $this->postJson($this->endpoint($project).'/media/upload-url', [
+                'filename' => 'foto.jpg', 'mime_type' => 'image/jpeg', 'file_size' => 10,
+            ])->assertForbidden();
+            $this->postJson($this->endpoint($project).'/media/confirm', [
+                'url' => ProjectLanding::ASSET_PREFIX.'file.jpg', 'upload_token' => 'invalid',
+                'mime_type' => 'image/jpeg', 'title' => 'Foto',
+            ])->assertForbidden();
+        }
+    }
+
+    public function test_confirm_rejects_missing_oversized_forged_expired_and_mismatched_uploads(): void
+    {
+        $tenant = $this->identity();
+        $project = $this->project($tenant);
+        $ticket = $this->postJson($this->endpoint($project).'/media/upload-url', [
+            'filename' => 'plano.pdf', 'mime_type' => 'application/pdf', 'file_size' => 20,
+        ])->assertCreated()->json('data');
+        $disk = Storage::fake('r2');
+        $payload = ['url' => $ticket['public_url'], 'upload_token' => $ticket['upload_token'], 'mime_type' => 'application/pdf', 'title' => 'Plano'];
+        $this->postJson($this->endpoint($project).'/media/confirm', $payload)->assertStatus(503);
+        $disk->put('pending/'.$ticket['key'], str_repeat('a', 21));
+        $this->postJson($this->endpoint($project).'/media/confirm', $payload)->assertUnprocessable()->assertJsonValidationErrors('url');
+        $disk->put('pending/'.$ticket['key'], str_repeat('a', 20));
+        $this->postJson($this->endpoint($project).'/media/confirm', $payload)->assertUnprocessable()->assertJsonValidationErrors('mime_type');
+        $this->postJson($this->endpoint($project).'/media/confirm', array_replace($payload, ['upload_token' => 'forged']))->assertUnprocessable()->assertJsonValidationErrors('upload_token');
+        $other = $this->project(Tenant::factory()->create());
+        $this->postJson($this->endpoint($other).'/media/confirm', $payload)->assertNotFound();
+        $sameTenantOther = $this->project($tenant);
+        $this->postJson($this->endpoint($sameTenantOther).'/media/confirm', $payload)->assertUnprocessable()->assertJsonValidationErrors('upload_token');
+        $this->travel(16)->minutes();
+        $this->postJson($this->endpoint($project).'/media/confirm', $payload)->assertUnprocessable()->assertJsonValidationErrors('upload_token');
+        $this->assertDatabaseMissing('project_landing_assets', ['url' => $ticket['public_url']]);
     }
 
     public function test_delete_asset_safeguards_active_landing_usage(): void

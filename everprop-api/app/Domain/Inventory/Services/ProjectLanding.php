@@ -4,6 +4,7 @@ namespace App\Domain\Inventory\Services;
 
 use App\Domain\Inventory\Models\Project;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -146,7 +147,7 @@ final class ProjectLanding
         return $data;
     }
 
-    /** @return array{upload_url: string, public_url: string, key: string, headers: array<string, mixed>, expires_in_seconds: int} */
+    /** @return array{upload_url: string, public_url: string, upload_token: string, key: string, headers: array<string, mixed>, expires_in_seconds: int} */
     public function createUploadUrl(Project $project, string $tenantPublicId, string $filename, string $mimeType, int $fileSize): array
     {
         if (! isset(self::ALLOWED_MIME_TYPES[$mimeType])) {
@@ -159,20 +160,22 @@ final class ProjectLanding
         $extension = self::ALLOWED_MIME_TYPES[$mimeType];
         $assetUuid = (string) Str::uuid();
         $key = sprintf('assets/tenants/%s/projects/%s/%s.%s', $tenantPublicId, $project->public_id, $assetUuid, $extension);
+        // Sign only the pending key: a reusable PUT must never overwrite an approved public object.
+        $pendingKey = 'pending/'.$key;
 
-        $diskName = config()->has('filesystems.disks.r2') ? 'r2' : 's3';
+        $diskName = 'r2';
 
         try {
             $disk = Storage::disk($diskName);
             $expiration = CarbonImmutable::now()->addMinutes(15);
-            $options = ['ContentType' => $mimeType];
+            // shortcut: the SDK does not sign Content-Length; confirm enforces size, pending objects need lifecycle cleanup.
+            $options = ['ContentType' => $mimeType, 'ContentLength' => $fileSize];
 
-            $signed = $disk->temporaryUploadUrl($key, $expiration, $options);
+            $signed = $disk->temporaryUploadUrl($pendingKey, $expiration, $options);
             $uploadUrl = $signed['url'];
             $headers = $signed['headers'] ?? ['Content-Type' => $mimeType];
         } catch (\Throwable) {
-            $uploadUrl = sprintf('https://upload.local/%s?expires=%d', $key, CarbonImmutable::now()->addMinutes(15)->timestamp);
-            $headers = ['Content-Type' => $mimeType];
+            abort(503, 'No se pudo preparar la carga a R2. Revisá la configuración del almacenamiento.');
         }
 
         $baseUrl = rtrim((string) config("filesystems.disks.{$diskName}.url", self::ASSET_PREFIX), '/');
@@ -182,8 +185,14 @@ final class ProjectLanding
             $pathAfterAssets = (string) preg_replace('#^assets/#', '', $key);
             $publicUrl = $baseUrl.'/'.$pathAfterAssets;
         }
+        abort_unless(self::validAssetUrl($publicUrl), 503, 'La URL pública de R2 no coincide con el almacenamiento aprobado.');
 
         return [
+            'upload_token' => Crypt::encryptString(json_encode([
+                'tenant_id' => $project->tenant_id, 'project_id' => $project->id,
+                'url' => $publicUrl, 'key' => $key, 'pending_key' => $pendingKey, 'mime_type' => $mimeType,
+                'file_size' => $fileSize, 'expires' => $expiration->timestamp,
+            ], JSON_THROW_ON_ERROR)),
             'upload_url' => $uploadUrl,
             'public_url' => $publicUrl,
             'key' => $key,
@@ -193,8 +202,17 @@ final class ProjectLanding
     }
 
     /** @return array{url: string, mime_type: string, title: string} */
-    public function confirmAsset(Project $project, string $url, string $mimeType, string $title): array
+    public function confirmAsset(Project $project, string $url, string $mimeType, string $title, string $uploadToken): array
     {
+        try {
+            $ticket = json_decode(Crypt::decryptString($uploadToken), true, flags: JSON_THROW_ON_ERROR);
+        } catch (\Throwable) {
+            throw ValidationException::withMessages(['upload_token' => 'El comprobante de carga no es válido.']);
+        }
+        if ($ticket['tenant_id'] !== $project->tenant_id || $ticket['project_id'] !== $project->id
+            || $ticket['url'] !== $url || $ticket['mime_type'] !== $mimeType || $ticket['expires'] < now()->timestamp) {
+            throw ValidationException::withMessages(['upload_token' => 'El comprobante venció o no pertenece a este archivo y proyecto.']);
+        }
         if (! isset(self::ALLOWED_MIME_TYPES[$mimeType])) {
             throw ValidationException::withMessages(['mime_type' => 'Tipo de archivo no permitido.']);
         }
@@ -209,6 +227,41 @@ final class ProjectLanding
             }
         }
 
+        $existing = DB::table('project_landing_assets')->where('tenant_id', $project->tenant_id)
+            ->where('project_id', $project->id)->where('url', $url)->first();
+        if ($existing !== null) {
+            return ['url' => $existing->url, 'mime_type' => $existing->mime_type, 'title' => $existing->title];
+        }
+
+        $disk = Storage::disk('r2');
+        try {
+            $size = $disk->size($ticket['pending_key']);
+            if ($size !== $ticket['file_size'] || $size < 1 || $size > self::MAX_ASSET_BYTES) {
+                throw ValidationException::withMessages(['url' => 'El tamaño del archivo subido no coincide con la carga autorizada.']);
+            }
+            $stream = $disk->readStream($ticket['pending_key']);
+            if (! is_resource($stream)) {
+                abort(503, 'No se pudo verificar el archivo en R2.');
+            }
+            try {
+                $bytes = stream_get_contents($stream, self::MAX_ASSET_BYTES + 1);
+            } finally {
+                fclose($stream);
+            }
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable) {
+            abort(503, 'No se pudo verificar el archivo en R2. Reintentá la confirmación.');
+        }
+        if ($bytes === false || strlen($bytes) !== $size || (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes) !== $mimeType) {
+            throw ValidationException::withMessages(['mime_type' => 'El contenido del archivo no coincide con el tipo autorizado.']);
+        }
+        try {
+            abort_unless($disk->put($ticket['key'], $bytes, ['ContentType' => $mimeType]), 503, 'No se pudo aprobar el archivo en R2.');
+        } catch (\Throwable) {
+            abort(503, 'No se pudo aprobar el archivo en R2. Reintentá la confirmación.');
+        }
+
         DB::table('project_landing_assets')->updateOrInsert(
             [
                 'tenant_id' => $project->tenant_id,
@@ -220,6 +273,12 @@ final class ProjectLanding
                 'title' => $title,
             ]
         );
+
+        try {
+            $disk->delete($ticket['pending_key']);
+        } catch (\Throwable) {
+            // Lifecycle cleanup handles leftovers; cleanup failure must not invalidate an approved asset.
+        }
 
         return [
             'url' => $url,

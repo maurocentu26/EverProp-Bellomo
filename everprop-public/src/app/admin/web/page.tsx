@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Globe, Save, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, EverpropApiError } from "@/lib/everprop-api";
-import { landingPayload, type LandingAsset, type LandingImage, type LandingProject } from "@/lib/project-landing";
+import { landingPayload, uploadLandingAsset, type LandingAsset, type LandingImage, type LandingProject } from "@/lib/project-landing";
 
 type ProjectOption = { public_id: string; name: string; can_edit: boolean; can_publish: boolean };
 const inputClass = "mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:outline-2 focus:outline-blue-600";
@@ -17,6 +17,8 @@ export default function WebPage() {
   const [tab, setTab] = useState<"projects" | "hero">("projects");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState<{ projectId: string; url: string; mime_type: string; title: string; upload_token: string } | null>(null);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -42,15 +44,40 @@ export default function WebPage() {
   }, [selected, retry]);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !uploading && !pendingUpload) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  }, [dirty, uploading, pendingUpload]);
 
   const permissions = projects.find((item) => item.public_id === selected);
   const ready = project?.public_id === selected && !loading;
-  const editable = ready && permissions?.can_edit && !saving;
+  const editable = ready && permissions?.can_edit && !saving && !uploading;
+  async function confirmUpload(pending: NonNullable<typeof pendingUpload>) {
+    const { projectId, ...payload } = pending;
+    const { data } = await apiFetch<{ data: LandingAsset }>(`/api/v1/admin/projects/${projectId}/landing/media/confirm`, { method: "POST", body: JSON.stringify(payload), signal: AbortSignal.timeout(60_000) });
+    setAssets((current) => [...current.filter((asset) => asset.url !== data.url), data]);
+    setPendingUpload(null);
+    setNotice("Archivo cargado. Ya podés elegirlo como imagen o documento. Guardá los cambios para usarlo en la web.");
+  }
+  async function upload(file?: File) {
+    if (!file || !editable || pendingUpload) return;
+    setUploading(true); setError(""); setErrors({}); setNotice("");
+    try {
+      const pending = await uploadLandingAsset(selected, file);
+      setPendingUpload(pending);
+      await confirmUpload(pending);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo cargar el archivo. Revisá tu conexión y los permisos CORS de R2.");
+    } finally { setUploading(false); }
+  }
+  async function retryConfirmation() {
+    if (!pendingUpload || uploading) return;
+    setUploading(true); setError("");
+    try { await confirmUpload(pendingUpload); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "No se pudo confirmar el archivo."); }
+    finally { setUploading(false); }
+  }
   function change(patch: Partial<LandingProject>) {
     setProject((value) => value ? { ...value, ...patch } : value);
     setDirty(true); setNotice("");
@@ -102,7 +129,7 @@ export default function WebPage() {
     </nav>
     {error && <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 dark:bg-red-950 dark:text-red-100"><p>{error}</p>{Object.entries(errors).map(([name, messages]) => <a className="block underline" href={`#${name}`} key={name}>{name}: {messages.join(" ")}</a>)}{!project && <Button type="button" variant="outline" onClick={() => { setLoading(true); setError(""); setRetry((n) => n + 1); }}>Reintentar</Button>}</div>}
     {notice && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-100">{notice}</p>}
-    <label className="block max-w-xl text-sm font-medium">Proyecto existente<select className={inputClass} value={selected} disabled={saving || loading} onChange={(event) => {
+    <label className="block max-w-xl text-sm font-medium">Proyecto existente<select className={inputClass} value={selected} disabled={saving || loading || uploading || !!pendingUpload} onChange={(event) => {
       if (dirty && !window.confirm("Hay cambios sin guardar. ¿Querés descartarlos?")) return;
       setSelected(event.target.value); setProject(null); setLoading(true); setDirty(false); setError(""); setErrors({}); setNotice("");
     }}><option value="" disabled>Seleccioná un proyecto</option>{projects.map((item) => <option key={item.public_id} value={item.public_id}>{item.name}</option>)}</select></label>
@@ -111,7 +138,13 @@ export default function WebPage() {
     {ready && project && <form onSubmit={save} className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">{tab === "hero" ? "Destacado del inicio" : "Presentación del proyecto"}</h2><p className="mt-1 text-sm text-slate-600">{project.is_visible ? "Visible en la landing" : "Oculto en la landing"}{dirty ? " · Cambios sin guardar" : ""}</p></div><Button type="submit" disabled={!editable || !dirty}><Save className="mr-2 h-4 w-4" aria-hidden="true" />{saving ? "Guardando…" : "Guardar cambios"}</Button></div>
       {!permissions?.can_edit && <p>Tu cuenta puede consultar esta presentación, pero no editarla.</p>}
-      {assets.length === 0 && <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">Este proyecto todavía no tiene archivos públicos aprobados. Hace falta registrar su correspondencia con R2 por UUID antes de elegir imágenes o documentos.</p>}
+      <section className="space-y-3 rounded-xl border border-slate-200 p-4" aria-label="Archivos del proyecto">
+        <label className="block text-sm font-medium">Cargar imagen o PDF público<input type="file" accept="image/jpeg,image/png,image/webp,image/avif,application/pdf" disabled={!editable || !!pendingUpload} className={inputClass} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void upload(file); }} /></label>
+        <p className="text-sm text-slate-600">Hasta 15 MB. Subí únicamente material aprobado para ser público.</p>
+        {uploading && <p role="status">Cargando y verificando archivo…</p>}
+        {pendingUpload && !uploading && <div className="space-y-2"><p role="status">El archivo se subió, pero falta confirmar su registro.</p><Button type="button" variant="outline" onClick={() => void retryConfirmation()}>Reintentar confirmación</Button><Button type="button" variant="outline" onClick={() => { setPendingUpload(null); setNotice("Registro descartado. El archivo puede permanecer en R2 sin asociar."); }}>Descartar registro pendiente</Button></div>}
+      </section>
+      {assets.length === 0 && <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">Este proyecto todavía no tiene archivos disponibles. Cargá una imagen o un PDF para poder seleccionarlo.</p>}
       <fieldset disabled={!editable} className="space-y-6 disabled:opacity-70">
         <div className="flex flex-wrap gap-6 rounded-xl border border-slate-200 p-4">
           <label className="flex min-h-11 items-center gap-3"><input type="checkbox" className="h-5 w-5" disabled={!permissions?.can_publish} checked={project.is_visible} onChange={(event) => change({ is_visible: event.target.checked, is_featured: event.target.checked && project.is_featured })} />Mostrar en la landing</label>

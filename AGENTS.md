@@ -56,3 +56,11 @@ NUNCA hacer `merge` de ningún Pull Request o rama a `develop` o `main` a menos 
 - No iniciar Docker si la tarea de staging remoto no requiere pruebas locales.
 - Al terminar pruebas, detener el stack iniciado para la tarea, sin borrar contenedores, bases ni volúmenes. Respetar procesos ajenos no autorizados.
 - El Compose de desarrollo no debe reiniciar servicios automáticamente. No limpiar con `prune`, `down --volumes` ni reset de Docker.
+
+## Accesos y configuración por entorno
+
+- Antes de entregar un cambio para staging, verificar sus dominios y accesos: URLs de panel/API/landing, CORS (incluido R2), hosts de tenant, Sanctum, cookies y variables de proveedores que use el cambio. Usar los orígenes exactos del entorno; no comodines ni URLs locales en staging.
+- Conservar las reglas locales necesarias y agregar reglas separadas para staging. Los secretos van en el gestor del entorno, nunca en Git, informes ni descripciones de PR. No copiar credenciales personales locales ni credenciales de producción a staging por conveniencia.
+- Toda propuesta de pasar a producción debe recordar explícitamente que falta verificar/configurar los accesos de producción antes del despliegue: dominios definitivos, CORS/R2, hosts/Sanctum/cookies, credenciales y permisos de proveedores, base de datos y storage. Una prueba local o de staging no valida producción.
+- Registrar en el informe y en el PR qué entorno quedó configurado, qué comprobaciones se hicieron y qué sigue pendiente. Probar el flujo desde el navegador del entorno desplegado; un healthcheck no valida autenticación, permisos ni subidas.
+- Push y PR no equivalen a desplegar: dejar el PR abierto para aprobación y respetar la autorización expresa de merge, despliegue y migraciones.

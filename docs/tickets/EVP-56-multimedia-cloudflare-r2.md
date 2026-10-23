@@ -2,6 +2,19 @@
 
 Rama `ticket/EVP-56-multimedia-cloudflare-r2` · 2026-10-22 · Asignado a Mauro Centurión (`EVP-56`).
 
+## Estado final para revisión — 2026-10-23
+
+- Entrega: Web con carga directa R2, confirmación que valida tamaño/contenido y aislamiento por tenant/proyecto, importación editorial local y documentación de correspondencias pendientes. Esta rama incluye el commit de EVP-55 (`0c0bb34`), todavía ausente de `develop`; revisar también esa dependencia en el PR.
+- Validación final: 22 pruebas PHP / 174 aserciones en MySQL, Pint y PHPStan focalizados; 3 pruebas Node, TypeScript, ESLint y build del panel pasan. Prueba real local con PNG y PDF: PUT, confirmación y lectura pública con hashes idénticos. Las limitaciones históricas de pruebas descritas abajo quedan reemplazadas por estos resultados.
+- Staging: creada con autorización expresa la credencial de cuenta `EverProp bellomito-staging uploads`, lectura/escritura de objetos solo en `bellomo-assets`, sin vencimiento automático. Access Key y Secret guardados exclusivamente en las variables de la API de `bellomito-staging`; no se copiaron claves locales o de producción. Se agregaron las siete variables `CLOUDFLARE_R2_*` y se aplicó el cambio en Railway, que inició la construcción del despliegue.
+- CORS R2: conservada la regla local y agregada una regla separada para `https://panel-staging-staging-62ec.up.railway.app`, PUT, Content-Type y máximo 300 segundos. OPTIONS real desde ese origen devuelve 204 y Allow-Origin exacto. Laravel CORS y Sanctum ya contienen el dominio del panel; el mapa de host de la API resuelve al tenant `bellomito-staging`.
+- Se agregó en `AGENTS.md` la regla de accesos por entorno: verificar dominios, CORS, tenant, Sanctum/cookies y proveedores; secretos solo en el gestor del entorno. Toda propuesta de producción debe recordar verificar/configurar sus accesos antes de desplegar.
+- Antes de desplegar el código nuevo: aprobar e integrar el PR, comprobar/aplicar con autorización el forward `2026-10-22.001_project_landing.sql` si falta y verificar la carga completa desde el navegador de staging. No se aplicó SQL remoto ni se importaron los UUID/datos reales del manifiesto local en staging. Push/PR no equivalen a publicar el módulo.
+- Producción pendiente: configurar/verificar credenciales, permisos, dominios definitivos, CORS R2/Laravel, tenant, Sanctum/cookies, base y storage propios del entorno. La validación local y el preflight de staging no validan producción.
+- Riesgos vigentes: bucket público compartido, prefijo temporal públicamente accesible con su URL, PUT sin límite de tamaño impuesto por la firma y limpieza de temporales abandonados todavía sin regla de ciclo de vida. El límite de 15 MB se comprueba en UI y confirmación. No se afirma haber probado el flujo remoto completo.
+
+Las secciones siguientes conservan el detalle de implementación y pruebas por fecha; las menciones anteriores a «sin commit/push» describen el estado de esas intervenciones.
+
 ## 1. Qué pedía el ticket
 
 1. **Desacoplamiento a Cloudflare R2:** Que los proyectos del catálogo y la landing dejen de depender de archivos locales en disco (evitando saturación de cuotas como la observada en Vercel) y consuman exclusivamente URLs públicas alojadas en Cloudflare R2 (`pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev`).
@@ -86,3 +99,67 @@ Rama `ticket/EVP-56-multimedia-cloudflare-r2` · 2026-10-22 · Asignado a Mauro 
 - Pull Request creado contra `develop` y dejado abierto para revisión humana (cumpliendo con la regla de nunca mergear automáticamente).
 - Notificación y actualización en Jira del ticket `EVP-56`.
 - El equipo comercial cuenta con el documento [`docs/contracts/EVP-56-proyectos-pendientes-multimedia-r2.md`](../contracts/EVP-56-proyectos-pendientes-multimedia-r2.md) para solicitar el material de los 6 proyectos sin multimedia.
+
+## Corrección y conexión de carga desde Web — 2026-10-22
+
+Continuación autorizada por Mauro en la misma rama, con Jira verificado En curso y asignado a Mauro. Estos cambios están sin commit, push ni despliegue. No se migró esquema ni se modificaron datos locales o remotos durante esta corrección.
+
+- Web ahora permite seleccionar una imagen JPEG/PNG/WebP/AVIF o un PDF de hasta 15 MB, subirlo directamente a R2 y registrarlo entre los assets seleccionables del proyecto. Usa `apiFetch`/CSRF para el contrato y un PUT sin cookies para R2. No publica el proyecto ni asigna la nueva imagen automáticamente.
+- La UI bloquea el cambio de proyecto durante la carga y durante una confirmación pendiente. Si el PUT termina y falla la confirmación, permite reintentar sin volver a subir. También puede descartar el registro pendiente; el objeto puede quedar sin asociar en R2. El comprobante vence a los 15 minutos.
+- Se eliminó el fallback ficticio `upload.local`. Una falla al firmar devuelve 503. La URL pública debe corresponder al origen aprobado del contrato.
+- `upload-url` devuelve además `upload_token`: comprobante cifrado/autenticado con tenant, proyecto, clave temporal/final, URL, MIME, tamaño y caducidad. `confirm` ahora lo exige y revalida permisos y alcance; ya no acepta registrar cualquier referencia pública. El importador de referencias aprobadas mantiene su flujo separado.
+- El PUT firmado escribe únicamente en `pending/assets/tenants/{tenant_uuid}/projects/{project_uuid}/...`. Confirmación comprueba tamaño y MIME por contenido y escribe **los mismos bytes verificados** a `assets/tenants/...`, nunca firmado para PUT. Reutilizar la URL temporal no reemplaza el archivo público aprobado.
+- Tras persistir el registro se intenta borrar el temporal. La confirmación repetida del mismo comprobante devuelve el asset ya registrado, con consulta explícita por tenant/proyecto/URL, incluso si ya no existe el temporal. Una falla de limpieza no revierte la aprobación.
+- La comprobación descarga hasta 15 MB + 1 byte y vuelve a escribir hasta 15 MB desde PHP: la carga inicial sigue siendo directa, pero la confirmación sí consume memoria y tráfico del backend. Esto corrige la afirmación anterior de que PHP nunca procesa los bytes. `finfo` verifica tipo, no es un antivirus ni sanitizador de PDF.
+- R2 configura `request_checksum_calculation=when_required`, evitando que el SDK firme automáticamente un checksum de un cuerpo vacío al crear la URL.
+
+### Validación de esta corrección
+
+- `node --test tests/project-landing-upload.test.mjs`: 3 pruebas pasando (secuencia ticket/PUT, sin credenciales al storage, cabeceras de navegador, archivos inválidos, rechazo PUT y error de red/CORS).
+- TypeScript `npx tsc --noEmit`, ESLint focalizado y `npm run build` final: pasan.
+- Se ampliaron pruebas PHP para almacenamiento fallido, comprobante inválido/vencido/de otro proyecto, archivo ausente, tamaño/contenido distintos, permisos de solo lectura/asesor sin scope y sobrescritura de la clave temporal después de confirmar. **No ejecutadas en esta corrección:** Docker Desktop no pudo iniciar por un socket `dockerInference` inaccesible; tampoco se ejecutaron Pint/PHPStan. No se usó SQLite ni se reseteó Docker o sus volúmenes.
+- Revisión independiente de aislamiento detectó el overwrite posterior a confirmación; corregido con claves separadas. Segunda pasada sin nuevos bloqueantes de aislamiento/autorización; mantiene pendientes de validación PHP y R2/CORS reales.
+
+### Configuración y límites antes de habilitar en un entorno
+
+1. La credencial R2 de la API requiere leer y escribir en las claves temporales y finales. Configurar el bucket, endpoint S3 y URL pública aprobada en las variables ya documentadas. No se verificaron credenciales ni permisos remotos en esta corrección.
+2. CORS del bucket R2 debe permitir PUT desde los orígenes exactos del panel usado (por ejemplo `http://127.0.0.1:5173` en el entorno local), `Content-Type` y las cabeceras devueltas por la firma. Esto es independiente del CORS de Laravel y de la integración server-to-server de lectura. No permitir orígenes comodín por defecto. Referencia: [URLs prefirmadas de Cloudflare](https://developers.cloudflare.com/r2/api/s3/presigned-urls/).
+3. Configurar una regla de ciclo de vida para eliminar exclusivamente `pending/` después de un día. No eliminar `assets/` con esa regla. Hasta hacerlo, las cargas abandonadas o cuya limpieza falle acumulan almacenamiento. `pending/` comparte el bucket público: el prefijo **no es una cuarentena privada**; cualquiera con la URL del objeto pendiente puede leerlo antes de confirmar. No se cambió la configuración del bucket.
+4. El SDK excluye `Content-Length` de la firma: enviarlo como opción no garantiza un límite en el PUT. La UI y confirmación limitan a 15 MB, pero un usuario autorizado que altere el cliente puede dejar un temporal mayor o repetir PUT mientras la URL esté vigente. El endpoint mantiene su throttle existente. No se afirma haber eliminado ese riesgo de consumo; una cuota estricta de ingreso requiere enforcement en el servicio de carga.
+5. Falta una prueba real del navegador contra R2 que compruebe firma, CORS, carga, confirmación y lectura pública, además de ejecutar la suite PHP en MySQL. No se declara habilitada la subida en staging/producción por tener el código.
+
+## Precarga local de todo el contenido identificable — 2026-10-22
+
+Mauro pidió precargar el contenido disponible en Web para editarlo y elegir qué mostrar en la landing local. Ante las correspondencias dudosas, confirmó: «dejalos pendientes, pero anda documentando todo eso para aclararselo al cliente». No se crearon proyectos ni se asignaron contenidos ambiguos.
+
+- [Manifiesto local](../contracts/EVP-56-local-web-content.json): 27 presentaciones, 133 referencias de archivos y procedencia de 12 correspondencias seguras. Conserva completos los 10 proyectos de la landing sin correspondencia confirmada, Hero y grupos para revisión. También archiva 10 tarjetas de catálogo marcadas como demo temporal, sin importar sus estados/disponibilidad como hechos comerciales.
+- [Informe para revisar con Bellomo](../contracts/EVP-56-contenido-web-y-pendientes-cliente.md): tabla de los 27 proyectos, archivos y texto disponible; diez pendientes con motivo exacto (edificios sin inventario, cochera/edificio, Arenales y etapas de San Pablo), faltantes y límites.
+- `ImportLandingContent`: reutiliza `ImportLandingAssets` y `ProjectLanding::validate`; simulación por defecto, `--apply` solo en local/testing con host local admitido. Transacción incluye assets y contenido; un fallo posterior revierte todo. Conserva cualquier presentación ya existente, incluidas ediciones manuales. No escribe `projects` ni `properties`; no publica ni destaca automáticamente.
+- Aplicación autorizada exclusivamente local: antes 27 proyectos, 113 assets y ninguna configuración. Después 27 proyectos, 133 assets, 27 borradores y cero publicados. Segunda ejecución: cero borradores nuevos y 27 conservados. Backup previo `.qa/evp56-web-before.json` (no versionado).
+- Los borradores ocultos **sí retiran la exposición local** del catálogo público heredado y Bellomito, conforme al contrato existente. No se cambian las unidades comerciales. Se restaura su exposición local al elegir Mostrar en la landing desde Web.
+- Conservados nombre/descripción/resumen, eslogan/distancia/financiación etiquetados en descripción, servicios como características, portada/logo/galerías y textos alternativos. Fichas y planos en imagen quedan como imágenes identificadas en galería; el contrato 1.0 admite PHOTO/RENDER y solo PDF en documentos. No se agregó schema paralelo ni campos inventados.
+- HEAD de 137 URLs únicas del conjunto inicial: todas 200 con tipos de imagen. Cinco logos con espacios se normalizaron/deduplicaron; manifiesto final 133 asociaciones, 132 URLs únicas. No se subieron ni reemplazaron objetos R2.
+
+### Verificación final de esta continuación
+
+- Docker existente `everprop-api`: se iniciaron solo MySQL/Redis/PHP/Nginx; no otro stack. No se tocaron los contenedores ajenos de Jujuy247.
+- Se corrigieron tres tests de la entrega anterior para provocar realmente la falla de firma y conservar el tenant correcto entre requests. `ProjectLandingTest` + `ImportLandingContentTest`: **22 pruebas, 174 aserciones, todas pasan** sobre MySQL aislado `bellomo_crm_test`. Incluye rollback tras una primera entrada válida, preservación de edición manual, repetibilidad y negativas entre tenants.
+- Pint sobre PHP afectado y PHPStan focalizado sobre servicio/controlador/importador: pasan. No cambia frontend respecto del build/TypeScript/ESLint que ya pasaron en la corrección anterior.
+- Revisión independiente del importador sin fugas de aislamiento detectadas; efecto sobre catálogo oculto documentado.
+- Navegador: sesión de prueba local, Web muestra los 27 proyectos; Las Colinas carga resumen, descripción, financiación, servicios, portada, logo y galería. No se guardó ni publicó desde navegador. Landing `/desarrollos` conectada a API, sin error, muestra vacío hasta elección del usuario.
+- Se dejan panel `http://127.0.0.1:5173/admin/web` y landing `http://127.0.0.1:3100/desarrollos` corriendo para la prueba pedida. La landing usa `BELLOMO_PROJECT_SOURCE=everprop`, API local y tenant Bellomo en variables del proceso, sin editar su repositorio. Guardar en Web y recargar la landing consulta el snapshot sin caché; no hay actualización automática de una pestaña ya abierta.
+- No commit, push, deploy ni cambios en staging/producción. Sigue pendiente una subida nueva real R2/CORS; estas pruebas sí cubren carga de referencias existentes y el contrato de subida con almacenamiento de prueba.
+
+## Prueba real de subida a R2 — 2026-10-23
+
+Mauro autorizó «Probemos la subida». Jira verificado En curso, asignado a Mauro. Se inició el stack local existente (MySQL/Redis/PHP/Nginx) y panel 5173; sin otro stack EverProp, sin tocar contenedores ajenos. No se modificó código de la aplicación durante esta prueba.
+
+- Prueba en el navegador real desde `http://127.0.0.1:5173/admin/web`, sesión local de prueba, proyecto Las Colinas. PNG de 68 bytes y PDF de 329 bytes generados para QA, sin datos privados.
+- Primer intento bloqueado por CORS: OPTIONS a R2 devuelve 403, `CORS not configured for this bucket`. Una carga directa de diagnóstico sí devuelve PUT 200; confirmación valida bytes/MIME, registra en la base local, publica el objeto final y elimina el temporal. La credencial S3 devuelve AccessDenied al consultar CORS (no se amplió esa credencial).
+- Sesión existente de Cloudflare permitió comprobar que `bellomo-assets` no tenía política CORS. Se agregó una única regla: `AllowedOrigins=["http://127.0.0.1:5173"]`, `AllowedMethods=["PUT"]`, `AllowedHeaders=["Content-Type"]`, `MaxAgeSeconds=300`. Sin comodines ni otros orígenes. Este es un cambio **real en la configuración del bucket compartido**, no un despliegue ni una modificación de los archivos existentes. Los PUT siguen requiriendo firma válida.
+- OPTIONS después del cambio devuelve 204, Allow-Origin exacto y método PUT. Se repitió la carga por el selector de archivos de Web: tanto PNG como PDF completaron el flujo y mostraron «Archivo cargado». Quedaron disponibles en el proyecto para seleccionar; no se asignaron a portada/galería ni se guardó/publicó la presentación.
+- Lectura pública de los dos archivos subidos desde el navegador: HTTP 200, `image/png` / `application/pdf`, tamaños 68/329 y SHA-256 idénticos a los archivos locales. Los temporales correspondientes ya no existen en R2. La presentación de Las Colinas permanece oculta y con su fecha de edición anterior.
+- Evidencia local no versionada: `.qa/evp56-upload-browser-success.png` y `.qa/evp56-real-upload-results.json`. Quedaron tres registros/objetos pequeños identificados como `EVP56-upload-test.*`: PNG de diagnóstico directo, PNG y PDF de navegador; sin usar en ninguna presentación.
+- CORS solo quedó probado/habilitado para `http://127.0.0.1:5173`. `localhost`, staging y producción requieren sus orígenes exactos antes de habilitar esta función allí. Sigue pendiente la regla de ciclo de vida de temporales abandonados documentada antes.
+- No commit, push ni despliegue. La limitación anterior «subida real R2/CORS pendiente» queda resuelta **para el entorno local probado**; no equivale a validar una carga grande, dispositivos móviles o el despliegue remoto.
+- Al terminar esta prueba se detuvieron los cuatro servicios Docker EverProp iniciados para ella y los procesos Next del panel identificados por su ruta del workspace, cumpliendo el arranque bajo demanda. No se borraron contenedores, bases o volúmenes ni se detuvieron servicios Jujuy247.
