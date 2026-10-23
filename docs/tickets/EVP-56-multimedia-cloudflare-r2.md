@@ -23,6 +23,12 @@ El run `39990183752` falló en PHPStan, `ProjectLandingTest.php:412`: `Mockery\E
 
 Verificación de la corrección sobre el contenedor PHP 8.4 existente: `vendor/bin/phpstan analyse --no-progress --memory-limit=1G` sobre toda la configuración (app, routes y tests), sin errores; Pint del archivo pasa; `php artisan test --no-coverage --filter=ProjectLandingTest`: 20 pruebas / 161 aserciones pasan. No se inició ni detuvo el stack que ya estaba en uso. El nuevo push vuelve a ejecutar CI; estos resultados locales no sustituyen su conclusión.
 
+### Compatibilidad de las fixtures de evaluación con Web
+
+El siguiente run `39994386363` superó PHPStan y falló en el self-check de `ModelEvalTest`: su proyecto sintético no tenía publicación editorial y la consulta WEB_CHAT ahora exige `project_landing.is_visible=true`. La búsqueda no aportaba el precio y OutputGuard rechazaba correctamente la respuesta del modelo guionado. Se reprodujo de forma aislada; se actualizó el creador compartido de proyectos de las fixtures para publicarlos explícitamente en su tenant. No se relajaron filtros de inventario ni el guard, ni se omitió el test. Pint y PHPStan del archivo corregido pasan.
+
+La suite local completa ejecutó el self-check corregido satisfactoriamente, pero no quedó verde: 453 pasan, 14 fallan, 1 omitida; aparecen diferencias de configuración local en transporte Meta/production-check, que CI había superado. No se presenta esa ejecución como aprobada ni se modifican esos módulos fuera del ticket. CI aislado debe confirmar la entrega; el eval con proveedor real permanece omitido por diseño (costo y autorización).
+
 ## 1. Qué pedía el ticket
 
 1. **Desacoplamiento a Cloudflare R2:** Que los proyectos del catálogo y la landing dejen de depender de archivos locales en disco (evitando saturación de cuotas como la observada en Vercel) y consuman exclusivamente URLs públicas alojadas en Cloudflare R2 (`pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev`).

@@ -351,10 +351,19 @@ final class ModelEvalTest extends TestCase
                 return null;
             }
 
-            return $projects[$t->id.'|'.$name] ??= (int) DB::table('projects')->insertGetId([
+            if (isset($projects[$t->id.'|'.$name])) {
+                return $projects[$t->id.'|'.$name];
+            }
+            $id = (int) DB::table('projects')->insertGetId([
                 'tenant_id' => $t->id, 'public_id' => (string) Str::uuid(), 'name' => $name, 'project_type' => 'LAND_DEVELOPMENT',
                 'status' => ProjectStatus::publicValues()[0], 'city' => 'San Salvador de Jujuy', 'province' => 'Jujuy',
             ]);
+            // Web-chat fixtures must opt in to the landing catalogue, just like real published projects.
+            DB::table('project_landing')->insert([
+                'tenant_id' => $t->id, 'project_id' => $id, 'slug' => 'eval-'.$id, 'is_visible' => true, 'content' => '{}',
+            ]);
+
+            return $projects[$t->id.'|'.$name] = $id;
         };
         $codes = [];
         $property = function (Tenant $t, array $p, ?string $publicId = null) use ($project, &$codes): void {
