@@ -17,6 +17,12 @@ Las secciones siguientes conservan el detalle de implementación y pruebas por f
 
 Entrega subida: commit de implementación `c2699d3`, [PR #68 a develop](https://github.com/maurocentu26/EverProp-Bellomo/pull/68) abierto para aprobación. Jira conserva En curso porque su workflow no ofrece En revisión; comentario de entrega con PR/informe y pendientes, sin marcar Listo.
 
+### Corrección del check API quality
+
+El run `39990183752` falló en PHPStan, `ProjectLandingTest.php:412`: `Mockery\ExpectationInterface|Mockery\HigherOrderMessage::once()` no reconocido. Composer validate/audit y Pint pasaron; los tests/E2E posteriores quedaron omitidos por este fallo. Se tipó la expectativa de Mockery con el patrón ya usado por los tests del repositorio, conservando la misma comprobación de una llamada y excepción de firma. No se cambió el código de la aplicación ni la configuración de Railway.
+
+Verificación de la corrección sobre el contenedor PHP 8.4 existente: `vendor/bin/phpstan analyse --no-progress --memory-limit=1G` sobre toda la configuración (app, routes y tests), sin errores; Pint del archivo pasa; `php artisan test --no-coverage --filter=ProjectLandingTest`: 20 pruebas / 161 aserciones pasan. No se inició ni detuvo el stack que ya estaba en uso. El nuevo push vuelve a ejecutar CI; estos resultados locales no sustituyen su conclusión.
+
 ## 1. Qué pedía el ticket
 
 1. **Desacoplamiento a Cloudflare R2:** Que los proyectos del catálogo y la landing dejen de depender de archivos locales en disco (evitando saturación de cuotas como la observada en Vercel) y consuman exclusivamente URLs públicas alojadas en Cloudflare R2 (`pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev`).

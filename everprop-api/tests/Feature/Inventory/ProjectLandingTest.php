@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Mockery\Expectation;
 use Tests\TestCase;
 
 final class ProjectLandingTest extends TestCase
@@ -409,7 +410,9 @@ final class ProjectLandingTest extends TestCase
     {
         $project = $this->project($this->identity());
         $disk = \Mockery::mock(FilesystemAdapter::class);
-        $disk->shouldReceive('temporaryUploadUrl')->once()->andThrow(new \RuntimeException('Signing unavailable'));
+        /** @var Expectation $expectation */
+        $expectation = $disk->shouldReceive('temporaryUploadUrl');
+        $expectation->once()->andThrow(new \RuntimeException('Signing unavailable'));
         Storage::shouldReceive('disk')->with('r2')->once()->andReturn($disk);
         $this->postJson($this->endpoint($project).'/media/upload-url', [
             'filename' => 'foto.jpg', 'mime_type' => 'image/jpeg', 'file_size' => 10,
