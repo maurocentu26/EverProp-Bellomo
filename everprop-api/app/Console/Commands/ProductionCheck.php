@@ -99,6 +99,8 @@ final class ProductionCheck extends Command
                     && Schema::hasTable('lead_follow_up_alerts');
                 $checks['Schema: project landing'] = Schema::hasTable('project_landing')
                     && Schema::hasTable('project_landing_assets');
+                $checks['Schema: project intakes'] = Schema::hasTable('project_intakes')
+                    && Schema::hasTable('project_intake_units');
             } catch (Throwable) {
                 $checks['Database and Redis connections'] = false;
             }

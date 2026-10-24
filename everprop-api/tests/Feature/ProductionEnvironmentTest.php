@@ -26,7 +26,12 @@ final class ProductionEnvironmentTest extends TestCase
             'tenancy.hosts' => ['api.example.com' => 'bellomo'], 'tenancy.trusted_hosts' => ['api.example.com'],
             'tenancy.allow_local_resolver' => false, 'cors.allowed_origins' => ['https://app.example.com'],
         ]);
-        $this->artisan('everprop:production-check')->assertSuccessful();
+        $this->artisan('everprop:production-check --connections')
+            ->expectsOutputToContain('OK Schema: collection email sequence')
+            ->expectsOutputToContain('OK Schema: follow-up alerts and activity')
+            ->expectsOutputToContain('OK Schema: project landing')
+            ->expectsOutputToContain('OK Schema: project intakes')
+            ->assertSuccessful();
         config(['webpush.public_key' => null, 'webpush.private_key' => null, 'webpush.subject' => null]);
         $this->artisan('everprop:production-check --webpush')->assertFailed();
         $keys = VAPID::createVapidKeys();
@@ -39,11 +44,6 @@ final class ProductionEnvironmentTest extends TestCase
         $this->artisan('everprop:production-check --webpush')->assertFailed();
         config(['session.driver' => 'database', 'cache.default' => 'database', 'queue.default' => 'sync']);
         $this->artisan('everprop:production-check')->assertSuccessful();
-        $this->artisan('everprop:production-check --connections')
-            ->expectsOutputToContain('OK Schema: follow-up alerts and activity')
-            ->expectsOutputToContain('OK Schema: collection email sequence')
-            ->expectsOutputToContain('OK Schema: project landing')
-            ->assertSuccessful();
         config(['session.driver' => 'file']);
         $this->artisan('everprop:production-check')->assertFailed();
         config(['session.driver' => 'database']);
