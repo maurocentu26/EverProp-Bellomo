@@ -8,7 +8,7 @@ import { type Project, type Property, projects as sampleProjects, properties as 
 import { useAuth } from "@/lib/auth-context";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
+import { apiFetch, isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 import { useBellomoMaterials } from "@/hooks/use-bellomo-materials";
 import type { PublicMaterialProject } from "@/lib/bellomo-policy";
@@ -94,6 +94,15 @@ export default function DesarrollosPage() {
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [filterType, setFilterType] = useState<string>('all');
+  const [canCreate, setCanCreate] = useState(false);
+
+  useEffect(() => {
+    if (isMockDataMode) return;
+    const controller = new AbortController();
+    apiFetch<{ can_create: boolean }>("/api/v1/admin/project-intakes", { signal: controller.signal })
+      .then((result) => setCanCreate(result.can_create)).catch(() => setCanCreate(false));
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -181,6 +190,7 @@ export default function DesarrollosPage() {
           <p className="mt-1 text-slate-500">Catálogo de loteos, barrios y edificios.</p>
         </div>
 
+        {canCreate && <Button nativeButton={false} role="link" render={<Link href="/admin/desarrollos/nuevo" />}>Nuevo proyecto / retomar ingreso</Button>}
         {isMockDataMode && (
           <Button className="h-11 rounded-xl bg-emerald-600 px-6 text-white shadow-sm hover:bg-emerald-700" nativeButton={false} role="link" render={<Link href="/admin/inventory-matrix" />}>
               <Map className="mr-2 h-5 w-5" aria-hidden="true" /> Matriz mock de inventario
