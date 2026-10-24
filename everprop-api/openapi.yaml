@@ -3065,6 +3065,277 @@
                     }
                 }
             }
+        },
+        "/api/v1/admin/project-intakes": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "listProjectIntakes",
+                "summary": "List scoped guided intakes for resumption; more than 1000 fails without truncation",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Guided intakes ordered by last project or landing edit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data",
+                                        "can_create"
+                                    ],
+                                    "properties": {
+                                        "can_create": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "maxItems": 1000,
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "public_id": {
+                                                        "type": "string",
+                                                        "format": "uuid"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "$ref": "#/components/schemas/ProjectStatus"
+                                                    },
+                                                    "is_visible": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "can_edit": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "can_publish": {
+                                                        "type": "boolean"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "503": {
+                        "description": "More than 1000 scoped guided intakes; pagination required."
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "createProjectIntake",
+                "summary": "Atomically create one inventory project with a hidden web presentation",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProjectIntakeWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "New guided intake",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectIntakeEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Previously created intake for identical request_key and payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectIntakeEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/project-intakes/{project}": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "name": "project",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "showProjectIntake",
+                "summary": "Resume an existing guided intake with current inventory and web permissions",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Guided intake",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjectIntakeEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "description": "Guided intake not found in the resolved tenant."
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/project-intakes/{project}/units": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "name": "project",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                }
+            ],
+            "post": {
+                "tags": [
+                    "Admin inventory"
+                ],
+                "operationId": "createProjectIntakeUnit",
+                "summary": "Create a manual unit with durable retry protection in an existing guided intake",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/XsrfHeader"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProjectIntakeUnitWrite"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "New unit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Existing unit for the same request key and payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PropertyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "description": "Guided project or unit not found in tenant."
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -4560,6 +4831,260 @@
                         "maxLength": 500
                     }
                 }
+            },
+            "ProjectIntakeWrite": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 80
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    },
+                    "project_type": {
+                        "$ref": "#/components/schemas/ProjectType"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ProjectStatus"
+                    },
+                    "progress": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0,
+                        "maximum": 100
+                    },
+                    "total_units": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "city": {
+                        "type": "string",
+                        "maxLength": 160
+                    },
+                    "province": {
+                        "type": "string",
+                        "maxLength": 160
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "masterplan_image_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uri"
+                    },
+                    "request_key": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "request_key",
+                    "name",
+                    "project_type",
+                    "city",
+                    "province"
+                ],
+                "description": "Guided creation only. Status defaults to UNKNOWN; unknown progress is null; no inventory units or public presentation are inferred. request_key is durable per tenant; retries must preserve the original payload."
+            },
+            "ProjectIntakeEnvelope": {
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "required": [
+                            "project",
+                            "landing",
+                            "assets",
+                            "can_edit",
+                            "can_publish"
+                        ],
+                        "properties": {
+                            "project": {
+                                "$ref": "#/components/schemas/Project"
+                            },
+                            "landing": {
+                                "type": "object",
+                                "description": "Complete existing landing configuration, initially hidden."
+                            },
+                            "assets": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object"
+                                }
+                            },
+                            "can_edit": {
+                                "type": "boolean"
+                            },
+                            "can_publish": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            },
+            "ProjectIntakeUnitWrite": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "operation": {
+                        "type": "string",
+                        "enum": [
+                            "SALE",
+                            "RENT",
+                            "TEMPORARY",
+                            "LEASING",
+                            "UNKNOWN"
+                        ]
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/PropertyCategory"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/PropertyStatus"
+                    },
+                    "price": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "currency_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "USD",
+                            "ARS",
+                            null
+                        ]
+                    },
+                    "city": {
+                        "type": "string"
+                    },
+                    "province": {
+                        "type": "string"
+                    },
+                    "neighborhood": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "bedrooms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "bathrooms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0
+                    },
+                    "area_m2": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "exclusiveMinimum": 0
+                    },
+                    "sector_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "unit_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "main_image_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uri"
+                    },
+                    "services_json": {
+                        "type": [
+                            "array",
+                            "object",
+                            "null"
+                        ]
+                    },
+                    "commercial_features_json": {
+                        "type": [
+                            "array",
+                            "object",
+                            "null"
+                        ]
+                    },
+                    "request_key": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "request_key",
+                    "title",
+                    "operation",
+                    "category",
+                    "city",
+                    "province"
+                ],
+                "description": "Guided manual unit creation. Parent project comes only from path UUID; project_id is prohibited. Default status UNKNOWN. Same tenant request_key + same body returns the existing unit even after edits; changed body or parent returns 409."
             }
         }
     }

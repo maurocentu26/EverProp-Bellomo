@@ -35,6 +35,7 @@ interface GenerateLotsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultProjectId?: string;
+  intakeMode?: boolean;
   onSuccess?: (created: Property[]) => void;
 }
 
@@ -50,29 +51,30 @@ export function GenerateLotsModal({
   open,
   onOpenChange,
   defaultProjectId,
+  intakeMode = false,
   onSuccess,
 }: GenerateLotsModalProps) {
   const fieldPrefix = useId();
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState<string>(defaultProjectId || "");
-  const [sectorName, setSectorName] = useState("Manzana ");
+  const [sectorName, setSectorName] = useState(intakeMode ? "" : "Manzana ");
   const [lotFrom, setLotFrom] = useState<number>(1);
-  const [lotTo, setLotTo] = useState<number>(20);
-  const [frente, setFrente] = useState<string>("10");
-  const [fondo, setFondo] = useState<string>("25");
-  const [areaM2, setAreaM2] = useState<string>("250");
+  const [lotTo, setLotTo] = useState<number>(intakeMode ? 1 : 20);
+  const [frente, setFrente] = useState<string>(intakeMode ? "" : "10");
+  const [fondo, setFondo] = useState<string>(intakeMode ? "" : "25");
+  const [areaM2, setAreaM2] = useState<string>(intakeMode ? "" : "250");
   const [currency, setCurrency] = useState<"USD" | "ARS">("USD");
-  const [price, setPrice] = useState<string>("15000");
+  const [price, setPrice] = useState<string>(intakeMode ? "" : "15000");
 
   // Esquinas
-  const [hasCorners, setHasCorners] = useState(true);
-  const [cornerLotsStr, setCornerLotsStr] = useState("1, 20");
-  const [cornerAreaM2, setCornerAreaM2] = useState<string>("280");
-  const [ochavaM2, setOchavaM2] = useState<string>("4.79");
-  const [cornerPrice, setCornerPrice] = useState<string>("17000");
+  const [hasCorners, setHasCorners] = useState(!intakeMode);
+  const [cornerLotsStr, setCornerLotsStr] = useState(intakeMode ? "" : "1, 20");
+  const [cornerAreaM2, setCornerAreaM2] = useState<string>(intakeMode ? "" : "280");
+  const [ochavaM2, setOchavaM2] = useState<string>(intakeMode ? "" : "4.79");
+  const [cornerPrice, setCornerPrice] = useState<string>(intakeMode ? "" : "17000");
 
   // Servicios
-  const [selectedServices, setSelectedServices] = useState<string[]>([
+  const [selectedServices, setSelectedServices] = useState<string[]>(intakeMode ? [] : [
     "agua",
     "luz",
     "alumbrado",
@@ -154,6 +156,7 @@ export function GenerateLotsModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!projectId) {
       toast.error("Por favor seleccioná un desarrollo o loteo.");
@@ -245,7 +248,7 @@ export function GenerateLotsModal({
   const selectedProj = projects.find((p) => p.id === projectId);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => { if (!isSubmitting) onOpenChange(next); }}>
       <DialogContent className="admin-workspace w-[calc(100%-2rem)] sm:max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6 bg-card rounded-2xl shadow-2xl">
         <DialogHeader className="pb-3 border-b border-slate-100">
           <div className="flex items-start gap-3 pr-7">
@@ -274,7 +277,7 @@ export function GenerateLotsModal({
                 Desarrollo / Loteo <span className="text-rose-500">*</span>
               </label>
               <select
-                id={`${fieldPrefix}-projectId`} value={projectId}
+                id={`${fieldPrefix}-projectId`} value={projectId} disabled={intakeMode || isSubmitting}
                 onChange={(e) => setProjectId(e.target.value)}
                 required
                 className="mt-1 h-11 w-full min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-900 outline-none focus:border-blue-500"
@@ -525,6 +528,7 @@ export function GenerateLotsModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
               className="h-11 px-4 text-xs font-semibold"
             >
               Cancelar
