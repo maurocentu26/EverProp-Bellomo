@@ -28,6 +28,7 @@ use App\Domain\Inventory\Http\Controllers\AdminProjectController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyFeatureController;
 use App\Domain\Inventory\Http\Controllers\AdminPropertyMediaController;
+use App\Domain\Inventory\Http\Controllers\ProjectIntakeController;
 use App\Domain\Inventory\Http\Controllers\ProjectLandingController;
 use App\Domain\Inventory\Http\Controllers\PublicProjectController;
 use App\Domain\Inventory\Http\Controllers\PublicPropertyController;
@@ -64,6 +65,10 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
         Route::get('/collections/summary', [CollectionsController::class, 'summary']);
         Route::get('/collections/billing-export', [CollectionBillingController::class, 'export']);
         Route::get('/collections/leads', [CollectionsController::class, 'leads']);
+        Route::get('/project-intakes', [ProjectIntakeController::class, 'index']);
+        Route::post('/project-intakes', [ProjectIntakeController::class, 'store'])->middleware('throttle:30,1');
+        Route::get('/project-intakes/{project}', [ProjectIntakeController::class, 'show'])->whereUuid('project');
+        Route::post('/project-intakes/{project}/units', [ProjectIntakeController::class, 'storeUnit'])->whereUuid('project')->middleware('throttle:30,1');
         Route::get('/web/projects', [ProjectLandingController::class, 'index']);
         Route::get('/projects/{project}/landing', [ProjectLandingController::class, 'show'])->whereUuid('project');
         Route::put('/projects/{project}/landing', [ProjectLandingController::class, 'update'])->whereUuid('project')->middleware('throttle:30,1');

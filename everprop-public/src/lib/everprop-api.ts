@@ -382,7 +382,7 @@ export type CreatePropertyPayload = {
   commercialFeatures?: Record<string, any>;
 };
 
-export async function createEverpropProperty(data: CreatePropertyPayload) {
+export async function createEverpropProperty(data: CreatePropertyPayload, intakeRequestKey?: string) {
   const categoryMap: Record<string, string> = {
     Lote: "LOT",
     Departamento: "APARTMENT",
@@ -393,7 +393,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
   };
 
   let projectId: number | null = null;
-  if (data.projectId) {
+  if (data.projectId && !intakeRequestKey) {
     const project = await apiFetch<ApiEnvelope<{id: number}>>(`/api/v1/admin/projects/${encodeURIComponent(data.projectId)}`);
     projectId = project.data.id;
     if (!Number.isInteger(projectId)) throw new Error("No se pudo identificar el proyecto seleccionado.");
@@ -419,9 +419,11 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     commercial_features_json: data.commercialFeatures || null,
   };
 
-  const response = await apiFetch<ApiEnvelope<ApiProperty>>("/api/v1/admin/properties", {
+  if (intakeRequestKey && !data.projectId) throw new Error("Falta el proyecto del ingreso.");
+  const { project_id, ...unitPayload } = payload;
+  const response = await apiFetch<ApiEnvelope<ApiProperty>>(intakeRequestKey ? `/api/v1/admin/project-intakes/${encodeURIComponent(data.projectId!)}/units` : "/api/v1/admin/properties", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(intakeRequestKey ? { ...unitPayload, request_key: intakeRequestKey } : { ...unitPayload, project_id }),
   });
 
   return mapProperty(response.data);
@@ -429,52 +431,6 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
 
 export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold", version?: number) {
   return updateEverpropProperty(publicId, { status, version });
-}
-
-export type CreateProjectPayload = {
-  name: string;
-  city: string;
-  province?: string;
-  projectType?: "land_development" | "building" | "commercial";
-  status?: "planning" | "pre_sale" | "under_construction" | "completed";
-  progress?: number;
-  totalUnits?: number;
-  address?: string;
-  description?: string;
-};
-
-export async function createEverpropProject(data: CreateProjectPayload) {
-  const typeMap: Record<string, string> = {
-    land_development: "LAND_DEVELOPMENT",
-    building: "BUILDING",
-    commercial: "COMMERCIAL",
-  };
-
-  const statusMap: Record<string, string> = {
-    planning: "PLANNING",
-    pre_sale: "PRE_SALE",
-    under_construction: "UNDER_CONSTRUCTION",
-    completed: "COMPLETED",
-  };
-
-  const payload = {
-    name: data.name,
-    city: data.city,
-    province: data.province || "Jujuy",
-    project_type: typeMap[data.projectType || "land_development"] || "LAND_DEVELOPMENT",
-    status: statusMap[data.status || "under_construction"] || "UNDER_CONSTRUCTION",
-    progress: data.progress ?? 50,
-    total_units: data.totalUnits ?? 30,
-    address: data.address || null,
-    description: data.description || null,
-  };
-
-  const response = await apiFetch<ApiEnvelope<ApiProject>>("/api/v1/admin/projects", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-
-  return mapProject(response.data);
 }
 
 export type ApiLead = {
