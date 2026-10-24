@@ -88,10 +88,19 @@ final class ProductionCheck extends Command
                     $checks['Schema: visits.'.$column] = Schema::hasColumn('visits', $column);
                 }
                 $checks['Schema: Web Push subscriptions'] = Schema::hasColumns('web_push_subscriptions', [
-                    'tenant_id', 'user_id', 'endpoint_hash', 'subscription',
+                    'tenant_id', 'user_id', 'endpoint_hash', 'subscription', 'out_of_hours',
                 ]);
                 $constraint = DB::selectOne("SELECT CHECK_CLAUSE AS clause_text FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = 'ck_users_role'");
                 $checks['Schema: rotator role'] = str_contains($constraint->clause_text ?? '', 'ROTATOR');
+                $checks['Schema: collection email sequence'] = Schema::hasColumns('collection_email_attempts', [
+                    'kind', 'upcoming_installment_id', 'sequence_installment_id',
+                ]);
+                $checks['Schema: follow-up alerts and activity'] = Schema::hasColumns('users', ['last_active_at', 'last_nudged_at'])
+                    && Schema::hasTable('lead_follow_up_alerts');
+                $checks['Schema: project landing'] = Schema::hasTable('project_landing')
+                    && Schema::hasTable('project_landing_assets');
+                $checks['Schema: project intakes'] = Schema::hasTable('project_intakes')
+                    && Schema::hasTable('project_intake_units');
             } catch (Throwable) {
                 $checks['Database and Redis connections'] = false;
             }
