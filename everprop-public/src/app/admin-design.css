@@ -915,3 +915,20 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
  .inventory-detail .visit-manager form > * { grid-column: 1 / -1; }
  .inventory-detail-header { min-width: 0; }
 }
+
+/* EVP-74: Projects inherit the inventory typography and surfaces. */
+.projects-view { min-width: 0; }
+.project-card h2 { font-size: 28px; font-weight: 750; overflow-wrap: anywhere; }
+.project-cover { height: 180px; border-radius: 10px; background-size: cover; background-position: center; }
+.project-counts { display: flex; flex-wrap: wrap; gap: 12px 20px; list-style: none; padding: 0; }
+.project-counts strong { font-variant-numeric: tabular-nums; }
+.project-summary { display: grid; gap: 12px; padding-block: 16px; border-block: 1px solid var(--border); }
+.projects-view :is(.uppercase, [class*="tracking-"]) { text-transform: none; letter-spacing: normal; }
+.projects-view [class*="text-slate-"] { color: var(--foreground); }
+.projects-view [class*="bg-white"] { background: var(--card); }
+.projects-view a:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+@media (max-width: 767px) {
+ .projects-view > header, .projects-view .project-filters { display: flex; flex-direction: column; align-items: stretch; }
+ .projects-view button, .projects-view .inventory-cta { width: 100%; min-height: 52px; }
+ .projects-view .project-counts { flex-direction: column; }
+}

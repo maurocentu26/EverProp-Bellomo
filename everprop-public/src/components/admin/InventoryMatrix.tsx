@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { type Property } from "@/data/admin-sample";
 import { cn } from "@/lib/utils";
-import { propertyStatusLabel } from "@/lib/inventory-labels";
+import { inventoryPriceLabel, propertyStatusLabel } from "@/lib/inventory-labels";
 import {
   Sheet,
   SheetContent,
@@ -157,9 +157,7 @@ export default function InventoryMatrix({ properties, isLoading }: InventoryMatr
                       <div>
                         <p id="unit-summary-title" className="text-base font-semibold text-slate-500">Precio publicado</p>
                         <p className="mt-2 flex items-center gap-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-                          {selectedUnit.priceKnown === false ? 'Sin moneda confirmada' : selectedUnit.currency === "ARS"
-                            ? `$ ${selectedUnit.price.toLocaleString("es-AR")} ARS`
-                            : `USD ${selectedUnit.price.toLocaleString("es-AR")}`}
+                          {inventoryPriceLabel(selectedUnit)}
                         </p>
                       </div>
                       <Badge className={cn(
