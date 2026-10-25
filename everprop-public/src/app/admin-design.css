@@ -962,6 +962,37 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
 .lots-sheet-body dd { overflow-wrap: anywhere; }
 /* EVP-76: statistics share the inventory typography and theme surfaces. */
 .stats-mobile-back { display: none; }
+/* EVP-77: readable knowledge cards and panel confirmations. */
+.knowledge-view { min-width: 0; max-width: 100%; font-size: 17px; line-height: 1.55; color: var(--foreground); }
+.knowledge-view :is(p,span,a,button,label,input,select,textarea,dt,dd,summary) { font-size: inherit; overflow-wrap: anywhere; white-space: normal; }
+.knowledge-view header, .knowledge-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.knowledge-view h1 { font-size: clamp(28px,3vw,34px); font-weight: 750; }
+.knowledge-view h2 { font-size: 24px; font-weight: 700; }
+.knowledge-view h3 { display: flex; align-items: flex-start; gap: 10px; font-size: 21px; font-weight: 700; overflow-wrap: anywhere; }
+.knowledge-view svg { flex-shrink: 0; }
+.knowledge-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; list-style: none; padding: 0; }
+.knowledge-card { min-width: 0; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); display: flex; flex-direction: column; gap: 16px; }
+.knowledge-status, .knowledge-back { display: flex; align-items: center; gap: 8px; }
+.knowledge-meta { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.knowledge-meta dt { font-weight: 650; }
+.knowledge-view :is(button,.knowledge-button) { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; font-weight: 650; }
+.knowledge-actions { justify-content: flex-start; margin-top: auto; }
+.knowledge-view :is(button,a,input,select,textarea,summary):focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+.knowledge-view button:disabled { opacity: .6; cursor: wait; }
+.knowledge-content summary { cursor: pointer; text-decoration: underline; text-underline-offset: 4px; min-height: 44px; }
+.knowledge-view .knowledge-content p, .knowledge-view .knowledge-body { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 70ch; }
+.knowledge-form label { display: grid; gap: 8px; }
+.knowledge-form :is(input,select,textarea) { min-width: 0; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); color: var(--foreground); }
+.knowledge-dialog { max-height: calc(100dvh - 2rem); overflow-y: auto; padding: 24px; }
+.knowledge-view .knowledge-description { color: var(--foreground); font-size: 17px; }
+@media (max-width: 767px) {
+ .knowledge-grid, .knowledge-meta { grid-template-columns: minmax(0,1fr); }
+ .knowledge-view header, .knowledge-actions { flex-direction: column; align-items: stretch; }
+ .knowledge-view :is(button,.knowledge-button), .knowledge-actions { width: 100%; }
+ .knowledge-view button { min-height: 52px; }
+ .knowledge-card, .knowledge-dialog { padding: 18px; }
+}
+
 .stats-view { min-width: 0; max-width: 100%; }
 .stats-view :is(.text-muted-foreground, [class*="text-xs"], [class*="text-sm"]) { color: inherit; font-size: 17px; }
 .stats-view :is(input,select,button,summary) { font-size: 17px; min-height: 44px; }
