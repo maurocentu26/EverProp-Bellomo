@@ -4,6 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, EverpropApiError } from "@/lib/everprop-api";
 import { connectPayload, parseSignupMessage, type SignupSession } from "@/lib/whatsapp-signup";
 
+import { isMockDataMode } from "@/lib/data-mode";
+import { useCurrentSession } from "@/hooks/use-current-session";
+import { SettingsConfirmation } from "./SettingsConfirmation";
+
 type Connection = { id: string; status: "ACTIVE" | "DEGRADED" | "PENDING" | string; display_phone_number: string | null };
 type Config = { enabled: boolean; app_id: string | null; config_id: string | null; graph_version: string; connections: Connection[] };
 type Connected = { display_phone_number: string; state: "ACTIVE" | "REGISTRATION_PENDING" };
@@ -39,6 +43,9 @@ function loadSdk(config: Config): Promise<FacebookSdk> {
  * account ids (window message); both go to the backend at once, which verifies them with Meta.
  */
 export function WhatsAppConnect() {
+  const { user } = useCurrentSession();
+  const mockWriter = ["TENANT_ADMIN", "SUPER_ADMIN"].includes(user?.apiRole || "") || (!user?.apiRole && user?.role === "ADMIN");
+  const [connectConfirm, setConnectConfirm] = useState(false);
   const [state, setState] = useState<State>("checking");
   const [message, setMessage] = useState("");
   const [connected, setConnected] = useState<Connected | null>(null);
@@ -55,14 +62,17 @@ export function WhatsAppConnect() {
   }, []);
 
   async function disconnect(id: string) {
+    if (disconnecting || state === "hidden") return;
     setDisconnecting(true);
     try {
-      await apiFetch(`/api/v1/admin/integrations/whatsapp/${encodeURIComponent(id)}/disconnect`, { method: "POST" });
+      if (isMockDataMode) setConnections(current => current.filter(item => item.id !== id));
+      else await apiFetch(`/api/v1/admin/integrations/whatsapp/${encodeURIComponent(id)}/disconnect`, { method: "POST" });
       setMessage("WhatsApp desconectado. Los mensajes de ese número ya no llegan a la bandeja.");
       setConfirming(null);
-      await reloadConnections();
-    } catch (error) {
-      setMessage(error instanceof EverpropApiError ? error.message : "No pudimos desconectar. Volvé a intentarlo.");
+      if (!isMockDataMode) await reloadConnections();
+    } catch {
+      setConfirming(null);
+      setMessage("No pudimos desconectar. Volvé a intentarlo.");
     } finally {
       setDisconnecting(false);
     }
@@ -82,8 +92,8 @@ export function WhatsAppConnect() {
       setConnected(result.data);
       void reloadConnections();
       setState("done");
-    } catch (error) {
-      setMessage(error instanceof EverpropApiError ? error.message : "No pudimos conectar WhatsApp. Volvé a intentarlo.");
+    } catch {
+      setMessage("No pudimos conectar WhatsApp. Volvé a intentarlo.");
       setState("error");
     } finally {
       code.current = null;
@@ -92,6 +102,12 @@ export function WhatsAppConnect() {
   }, [reloadConnections]);
 
   useEffect(() => {
+    if (isMockDataMode) {
+      if (!mockWriter) { setState("hidden"); return; }
+      setConnections([{ id: "sample-whatsapp", status: "ACTIVE", display_phone_number: "sample" }]);
+      setSdkReady(true); setState("ready");
+      return;
+    }
     let alive = true;
     apiFetch<{ data: Config }>("/api/v1/admin/integrations/whatsapp/config")
       .then(async ({ data }) => {
@@ -117,15 +133,17 @@ export function WhatsAppConnect() {
       if (parsed.kind === "finish") { session.current = parsed.session; void submit(); return; }
       code.current = null;
       session.current = null;
-      setMessage(parsed.kind === "error" ? parsed.message : "Cerraste la ventana de Meta antes de terminar.");
+      setMessage(parsed.kind === "error" ? "No pudimos completar la conexión. Volvé a intentarlo." : "Cerraste la ventana de Meta antes de terminar.");
       setState(parsed.kind === "error" ? "error" : "cancelled");
     }
     window.addEventListener("message", onMessage);
     return () => { alive = false; window.removeEventListener("message", onMessage); };
-  }, [submit]);
+  }, [submit, mockWriter]);
 
   // Straight from the click: the SDK is already loaded, so Meta's popup is not blocked.
   function start() {
+    setConnectConfirm(false);
+    if (isMockDataMode) { setConnections([{ id: "sample-whatsapp", status: "ACTIVE", display_phone_number: "sample" }]); setState("ready"); setMessage("Conexión guardada."); return; }
     const sdk = window.FB;
     if (!sdk || !config.current?.config_id) return;
     code.current = null;
@@ -146,7 +164,7 @@ export function WhatsAppConnect() {
     });
   }
 
-  if (state === "hidden" || state === "checking") return null;
+  if (state === "hidden") return <section><h2>WhatsApp de la inmobiliaria</h2><p>Conecta los mensajes de la empresa con la bandeja del equipo.</p><p>Solo lectura. Tu cuenta no puede consultar esta conexión. Pedile el detalle a quien administra la inmobiliaria.</p></section>;
 
   return (
     <section id="whatsapp" className="space-y-3 rounded-2xl border border-border bg-card p-4">
@@ -157,12 +175,13 @@ export function WhatsAppConnect() {
         </p>
       </div>
       <p role="status" className="text-sm font-semibold">
+        {state === "checking" && "Comprobando conexión…"}
         {state === "unavailable" && "La conexión con WhatsApp todavía no está habilitada en este entorno."}
         {state === "loading-sdk" && "Preparando la conexión con Meta…"}
-        {state === "ready" && "Listo para conectar."}
+        {state === "ready" && (connections.length ? "Configurado" : "Sin configurar. Podés conectar una cuenta de WhatsApp.")}
         {state === "connecting" && "Conectando… completá los pasos en la ventana de Meta."}
-        {state === "done" && connected?.state === "ACTIVE" && `Conectado: ${connected.display_phone_number}.`}
-        {state === "done" && connected?.state === "REGISTRATION_PENDING" && `Conectado ${connected.display_phone_number}, pero Meta todavía no habilitó el número. Volvé a conectar en unos minutos.`}
+        {state === "done" && connected?.state === "ACTIVE" && "Configurado"}
+        {state === "done" && connected?.state === "REGISTRATION_PENDING" && "Configurado. Meta todavía no habilitó el número. Volvé a conectar en unos minutos."}
         {state === "cancelled" && "No se conectó."}
         {state === "error" && "No se pudo conectar."}
       </p>
@@ -172,25 +191,18 @@ export function WhatsAppConnect() {
           {connections.map((connection) => (
             <li key={connection.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
               <span>
-                <strong>{connection.display_phone_number ?? "Número de WhatsApp"}</strong>
+                <strong>{connection.display_phone_number ? "Configurado" : "Sin configurar"}</strong>
                 <span className="ml-2 text-muted-foreground">{connection.status === "ACTIVE" ? "Conectado" : "Pendiente de habilitación en Meta"}</span>
               </span>
-              {confirming === connection.id ? (
-                <span className="flex gap-2">
-                  <button type="button" onClick={() => setConfirming(null)} disabled={disconnecting} className="min-h-10 rounded-lg border border-border px-3">Cancelar</button>
-                  <button type="button" onClick={() => void disconnect(connection.id)} disabled={disconnecting}
-                    className="min-h-10 rounded-lg bg-red-600 px-3 font-semibold text-white disabled:opacity-50">{disconnecting ? "Desconectando…" : "Sí, desconectar"}</button>
-                </span>
-              ) : (
-                <button type="button" onClick={() => setConfirming(connection.id)} className="min-h-10 rounded-lg border border-border px-3 font-semibold">Desconectar</button>
-              )}
+              <button type="button" disabled={disconnecting} onClick={() => setConfirming(connection.id)} className="min-h-11 rounded-lg border border-border px-3 font-semibold">Desconectar</button>
             </li>
           ))}
         </ul>
       )}
-      {confirming && <p role="alert" className="text-sm text-muted-foreground">Al desconectar se borra el acceso guardado y ese número deja de recibir y enviar mensajes desde la bandeja. Para volver a usarlo hay que conectarlo de nuevo.</p>}
+      <SettingsConfirmation open={confirming !== null} title="¿Desconectar WhatsApp?" before="Conectado a la bandeja del equipo" after="Desconectado. El equipo dejará de recibir y enviar mensajes de esta cuenta." busy={disconnecting} onCancel={() => setConfirming(null)} onConfirm={() => { if (confirming) void disconnect(confirming); }} />
+      <SettingsConfirmation open={connectConfirm} title="¿Conectar WhatsApp?" before={connections.length ? "Cuenta configurada" : "Sin configurar"} after="Cuenta que elijas en Meta conectada a la bandeja del equipo" busy={false} onCancel={() => setConnectConfirm(false)} onConfirm={start} />
       {["ready", "cancelled", "error", "done"].includes(state) && (
-        <button type="button" onClick={start} disabled={!sdkReady}
+        <button type="button" onClick={() => setConnectConfirm(true)} disabled={!sdkReady}
           className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white disabled:opacity-50">
           {state === "done" ? "Volver a conectar" : state === "ready" ? "Conectar WhatsApp" : "Reintentar"}
         </button>
