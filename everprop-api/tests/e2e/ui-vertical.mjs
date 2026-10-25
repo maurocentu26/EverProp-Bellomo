@@ -134,7 +134,7 @@ try {
   // ---------- mobile ----------
   const mp = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: await panel.storageState() })).newPage();
   await mp.goto(`${PANEL}/admin/conversaciones`);
-  await mp.getByRole("group", { name: "Filtrar conversaciones" }).waitFor({ timeout: 30000 });
+  await mp.getByRole("group", { name: "Bandejas de conversaciones" }).waitFor({ timeout: 30000 });
   const inboxOk = await noOverflow(mp);
   await shot(mp, "04-bandeja-movil");
   const ms = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
