@@ -52,3 +52,13 @@ test('cleared optional fields are explicitly sent as null',async()=>{
  await api.updateEverpropProperty('property-a',{version:8,description:null,sectorName:null,unitNumber:null,area_m2:null});
  assert.equal(payload.description,null);assert.equal(payload.sector_name,null);assert.equal(payload.unit_number,null);assert.equal(payload.area_m2,null);
 });
+
+test('Inventory adapter preserves exact codes, null currency and missing prices for the redesigned view',async()=>{
+ const rows=['12','12A','12B'].map((code,index)=>({...property,public_id:code,unit_number:code,currency_code:index===1?null:'ARS',price:index===2?null:0}));
+ const api=client(()=>({data:rows}));
+ const mapped=await api.loadEverpropPropertiesPage(1);
+ assert.deepEqual(Array.from(mapped,p=>p.unitNumber),['12','12A','12B']);
+ assert.equal(mapped[1].inventoryCurrency,null);
+ assert.equal(mapped[2].inventoryPrice,null);
+ assert.equal(mapped[0].inventoryPrice,0);
+});

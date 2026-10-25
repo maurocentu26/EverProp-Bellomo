@@ -3,12 +3,11 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import PropertyList from "@/components/admin/PropertyList";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Download, Plus, Map, Building2, RotateCcw, Database, FlaskConical, ChevronDown } from "lucide-react";
+import { AlertTriangle, Plus, Building2, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { type Project, type Property, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadPropertyList, loadProjectList } from "@/lib/admin-storage";
-import { cn } from "@/lib/utils";
-import { isInvalidEverpropSession, loadEverpropCatalog, loadEverpropPropertiesPage } from "@/lib/everprop-api";
+import { isInvalidEverpropSession, loadEverpropPropertiesPage, loadEverpropProjects } from "@/lib/everprop-api";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -21,9 +20,12 @@ type DataState =
 const statusFilters = [
   { id: "all", label: "Todos" },
   { id: "available", label: "Disponibles" },
-  { id: "reserved", label: "No Vendibles / Reserva" },
+  { id: "reserved", label: "Reservados" },
   { id: "sold", label: "Vendidos" },
   { id: "rented", label: "Alquilados" },
+  { id: "not_sellable", label: "No vendibles" },
+  { id: "not_marketed", label: "No comercializados" },
+  { id: "unknown", label: "Sin estado informado" },
 ] as const;
 
 export default function AllPropertiesPage() {
@@ -38,26 +40,21 @@ export default function AllPropertiesPage() {
 
   // Filters
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
-  const [activeStatus, setActiveStatus] = useState<"all" | "available" | "reserved" | "sold" | "rented">("all");
+  const [activeStatus, setActiveStatus] = useState<string>("all");
   const [selectedManzana, setSelectedManzana] = useState<string>("all");
   
-  const [openFilter, setOpenFilter] = useState<'proyecto' | 'estado' | 'manzana' | null>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-        setOpenFilter(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  const [selectedType, setSelectedType] = useState("all");
+  const [loadMoreError, setLoadMoreError] = useState("");
+  const [hasMore, setHasMore] = useState(true);
+  const requestVersion = useRef(0);
+  const loadingMore = useRef(false);
 
   useEffect(() => {
     let active = true;
+    requestVersion.current += 1;
+    loadingMore.current = false;
+    setIsLoadingMore(false);
+    setLoadMoreError("");
     setDataState({ status: "loading" });
 
     async function loadData() {
@@ -73,12 +70,13 @@ export default function AllPropertiesPage() {
       try {
         const [props, fetchedProjects] = await Promise.all([
           loadEverpropPropertiesPage(1, { projectId: selectedProjectId, status: activeStatus }),
-          projects.length === 0 ? import('@/lib/everprop-api').then(m => m.loadEverpropProjects()) : Promise.resolve(projects)
+          loadEverpropProjects()
         ]);
         
         if (!active) return;
         setAllProperties(props);
-        if (projects.length === 0) setProjects(fetchedProjects);
+        setProjects(fetchedProjects);
+        setHasMore(props.length === 100);
         setPage(1);
         setDataState({ status: "ready", source: "admin-api" });
       } catch (reason) {
@@ -95,7 +93,7 @@ export default function AllPropertiesPage() {
     return () => {
       active = false;
     };
-  }, [attempt, selectedProjectId, activeStatus]);
+  }, [attempt, selectedProjectId, activeStatus, invalidateSession]);
 
   const availableManzanas = useMemo(() => {
     const set = new Set<string>();
@@ -108,46 +106,37 @@ export default function AllPropertiesPage() {
 
   const filteredProperties = useMemo(() => {
     let filtered = allProperties;
+    if (isMockDataMode && selectedProjectId !== "all") filtered = filtered.filter(p => p.projectId === selectedProjectId);
+    if (isMockDataMode && activeStatus !== "all") filtered = filtered.filter(p => p.status === activeStatus);
+    if (selectedType !== "all") filtered = filtered.filter(p => p.propertyType === selectedType);
 
-    // We no longer filter by project or status locally because the API does it.
-    // 3. Manzana Filter
     if (selectedManzana !== "all") {
       filtered = filtered.filter(p => p.sectorName === selectedManzana);
     }
 
     return filtered;
-  }, [allProperties, selectedManzana]);
-
-  const groupedProperties = useMemo(() => {
-    const groups: { projects: Record<string, Property[]>, individual: Property[] } = {
-      projects: {},
-      individual: []
-    };
-
-    filteredProperties.forEach(p => {
-      if (p.projectId) {
-        if (!groups.projects[p.projectId]) groups.projects[p.projectId] = [];
-        groups.projects[p.projectId].push(p);
-      } else {
-        groups.individual.push(p);
-      }
-    });
-    return groups;
-  }, [filteredProperties]);
+  }, [allProperties, selectedManzana, selectedType, selectedProjectId, activeStatus]);
 
   const handleLoadMore = async () => {
-    if (isLoadingMore) return;
+    if (loadingMore.current) return;
+    loadingMore.current = true;
+    const version = requestVersion.current;
     setIsLoadingMore(true);
+    setLoadMoreError("");
     try {
       const nextPage = page + 1;
       const newProps = await loadEverpropPropertiesPage(nextPage, { projectId: selectedProjectId, status: activeStatus });
+      if (version !== requestVersion.current) return;
+      setHasMore(newProps.length === 100);
       if (newProps.length === 0) return;
       setAllProperties(prev => [...prev, ...newProps]);
       setPage(nextPage);
     } catch (e) {
-      console.error(e);
+      if (version !== requestVersion.current) return;
+      if (isInvalidEverpropSession(e)) invalidateSession();
+      else setLoadMoreError("No se pudieron cargar más unidades. Reintentá.");
     } finally {
-      setIsLoadingMore(false);
+      if (version === requestVersion.current) { loadingMore.current = false; setIsLoadingMore(false); }
     }
   };
 
@@ -155,11 +144,11 @@ export default function AllPropertiesPage() {
 
   if (dataState.status === "error") {
     return (
-      <section className="rounded-3xl border border-rose-200 bg-white p-6 shadow-sm" role="alert">
+      <section className="inventory-view rounded-3xl border border-rose-200 bg-card p-6 shadow-sm" role="alert">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
           <div>
-            <h1 className="text-xl font-bold text-slate-900">No se pudo cargar el inventario</h1>
+            <h1 className="text-xl font-bold text-foreground">No se pudo cargar el inventario</h1>
             <p className="mt-2 text-sm text-slate-600">{dataState.message} No se cargaron activos mock.</p>
             <Button
               type="button"
@@ -179,234 +168,22 @@ export default function AllPropertiesPage() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-8 pb-10">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Activos e Inventario</h1>
-          <p className="mt-1 text-slate-500 dark:text-slate-400 text-sm">Gestioná todos los activos, lotes y proyectos en cartera.</p>
-        </div>
-        
-        {!isAdvisor && (
-          <div className="flex items-center gap-3">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2" nativeButton={false} role="link" render={<Link href="/admin/properties/new" />}>
-                  <Plus className="h-4 w-4" />
-                  Nuevo Activo
-              </Button>
-          </div>
-        )}
-      </div>
-
-
-
-      {/* Control Panel / Filtros */}
-      <div className="bg-white dark:bg-card p-4 rounded-2xl border border-slate-200 dark:border-border shadow-sm flex flex-wrap gap-2 items-center relative" ref={filterRef}>
-        <div className="grid w-full grid-cols-1 gap-3 sm:hidden">
-          <label className="grid gap-1.5 text-xs font-semibold text-muted-foreground">Desarrollo
-            <select aria-label="Filtrar activos por desarrollo" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
-              <option value="all">Todos</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </label>
-          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground">Estado
-              <select aria-label="Filtrar activos por estado" value={activeStatus} onChange={e => setActiveStatus(e.target.value as typeof activeStatus)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
-                {statusFilters.map(s => <option key={s.id} value={s.id}>{s.id === "reserved" ? "En reserva" : s.label}</option>)}
-              </select>
-            </label>
-            <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-muted-foreground">Manzana
-              <select aria-label="Filtrar activos por manzana" value={selectedManzana} onChange={e => setSelectedManzana(e.target.value)} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
-                <option value="all">Todas</option>{availableManzanas.map(m => <option key={m} value={m}>{m.replace(/manzana\s*/i, "Mz ")}</option>)}
-              </select>
-            </label>
-          </div>
-          {activeStatus === "reserved" && <p className="text-xs leading-relaxed text-muted-foreground">Incluye unidades reservadas y marcadas como no vendibles.</p>}
-        </div>
-        {/* Desarrollo Chip */}
-        <div className="relative hidden sm:block">
-          <button
-            onClick={() => setOpenFilter(openFilter === 'proyecto' ? null : 'proyecto')}
-            className={cn(
-              "flex items-center gap-1",
-              selectedProjectId === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
-                : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
-            )}
-          >
-            Desarrollo: {selectedProjectId === 'all' ? 'Todos' : projects.find(p => p.id === selectedProjectId)?.name || 'Todos'} <ChevronDown className="h-3.5 w-3.5 ml-1" />
-          </button>
-          {openFilter === 'proyecto' && (
-            <div className="absolute z-50 mt-1 min-w-[180px] rounded-xl border border-slate-200 bg-white shadow-lg dark:bg-slate-900 dark:border-slate-800 p-1">
-              <button
-                onClick={() => { setSelectedProjectId('all'); setOpenFilter(null); }}
-                className={cn(
-                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
-                  selectedProjectId === 'all' && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
-                )}
-              >
-                Todos
-              </button>
-              {projects.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => { setSelectedProjectId(p.id); setOpenFilter(null); }}
-                  className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
-                    selectedProjectId === p.id && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
-                  )}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Estado Chip */}
-        <div className="relative hidden sm:block">
-          <button
-            onClick={() => setOpenFilter(openFilter === 'estado' ? null : 'estado')}
-            className={cn(
-              "flex items-center gap-1",
-              activeStatus === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
-                : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
-            )}
-          >
-            Estado: {statusFilters.find(s => s.id === activeStatus)?.label || 'Todos'} <ChevronDown className="h-3.5 w-3.5 ml-1" />
-          </button>
-          {openFilter === 'estado' && (
-            <div className="absolute z-50 mt-1 min-w-[180px] rounded-xl border border-slate-200 bg-white shadow-lg dark:bg-slate-900 dark:border-slate-800 p-1">
-              {statusFilters.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => { setActiveStatus(tab.id); setOpenFilter(null); }}
-                  className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
-                    activeStatus === tab.id && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Manzana Chip */}
-        <div className="relative hidden sm:block">
-          <button
-            onClick={() => setOpenFilter(openFilter === 'manzana' ? null : 'manzana')}
-            className={cn(
-              "flex items-center gap-1",
-              selectedManzana === "all"
-                ? "px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-muted dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
-                : "px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/80 dark:border-blue-800 dark:text-blue-300 shadow-sm cursor-pointer"
-            )}
-          >
-            Mz: {selectedManzana === 'all' ? 'Todas' : selectedManzana.replace(/manzana\s*/i, "Mz ")} <ChevronDown className="h-3.5 w-3.5 ml-1" />
-          </button>
-          {openFilter === 'manzana' && (
-            <div className="absolute z-50 mt-1 min-w-[180px] rounded-xl border border-slate-200 bg-white shadow-lg dark:bg-slate-900 dark:border-slate-800 p-1 max-h-60 overflow-y-auto">
-              <button
-                onClick={() => { setSelectedManzana('all'); setOpenFilter(null); }}
-                className={cn(
-                  "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
-                  selectedManzana === 'all' && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
-                )}
-              >
-                Todas
-              </button>
-              {availableManzanas.map(m => (
-                <button
-                  key={m}
-                  onClick={() => { setSelectedManzana(m); setOpenFilter(null); }}
-                  className={cn(
-                    "px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 cursor-pointer w-full text-left",
-                    selectedManzana === m && "font-bold text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/30"
-                  )}
-                >
-                  {m.replace(/manzana\s*/i, "Mz ")}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Clear Filters Button */}
-        {(selectedProjectId !== "all" || activeStatus !== "all" || selectedManzana !== "all") && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSelectedProjectId("all");
-              setActiveStatus("all");
-              setSelectedManzana("all");
-            }}
-            className="text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/30 font-semibold gap-1.5"
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> Limpiar
-          </Button>
-        )}
-      </div>
-
-      {/* Content Rendering */}
-      {filteredProperties.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-card px-6 py-14 text-center">
-          <Building2 className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-          <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-slate-100">No hay activos para mostrar</h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">
-            {allProperties.length === 0
-              ? "La consulta fue válida y el catálogo administrativo está vacío. No se sustituyó con datos mock."
-              : "Ninguna activo coincide con los filtros seleccionados."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-12">
-          {/* Projects and their properties */}
-          {Object.entries(groupedProperties.projects).map(([pId, props]) => {
-            const proj = projects.find(p => p.id === pId);
-            return (
-              <div key={pId} className="space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                  <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                    <Map className="h-6 w-6 text-blue-600 dark:text-blue-400" /> {proj?.name || "Proyecto"}
-                  </h2>
-                  <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 rounded-full">
-                    {props.length} unidades
-                  </span>
-                </div>
-                <PropertyList properties={props} readOnly={false} />
-              </div>
-            );
-          })}
-          
-          {/* Individual properties */}
-          {groupedProperties.individual.length > 0 && (
-            <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                  <Building2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" /> Activos Individuales
-                </h2>
-                <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 rounded-full">
-                  {groupedProperties.individual.length} unidades
-                </span>
-              </div>
-              <PropertyList properties={groupedProperties.individual} readOnly={false} />
-            </div>
-          )}
-
-          <div className="pt-8 pb-4 flex justify-center">
-            <Button 
-              variant="outline" 
-              onClick={handleLoadMore} 
-              disabled={isLoadingMore}
-              className="w-full max-w-sm rounded-xl font-semibold border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              {isLoadingMore ? "Cargando..." : "Cargar más activos"}
-            </Button>
-          </div>
-        </div>
-      )}
+    <div className="inventory-view max-w-[1400px] mx-auto space-y-6 pb-10">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div><h1>Activos &amp; Unidades</h1><p>Precio y disponibilidad de cada unidad.</p></div>
+        {!isAdvisor && <Link className="inventory-cta" href="/admin/properties/new"><Plus aria-hidden="true" size={20} />Nuevo activo</Link>}
+      </header>
+      <section aria-label="Filtros de activos" className="inventory-filters">
+        <label>Proyecto<select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}><option value="all">Todos</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+        <label>Tipo<select value={selectedType} onChange={e => setSelectedType(e.target.value)}><option value="all">Todos</option>{Array.from(new Set(allProperties.map(p => p.propertyType))).sort().map(type => <option key={type}>{type}</option>)}</select></label>
+        <label>Disponibilidad<select value={activeStatus} onChange={e => setActiveStatus(e.target.value as typeof activeStatus)}>{statusFilters.map(status => <option key={status.id} value={status.id}>{status.label}</option>)}</select></label>
+        <label>Manzana o sector<select value={selectedManzana} onChange={e => setSelectedManzana(e.target.value)}><option value="all">Todas</option>{availableManzanas.map(m => <option key={m}>{m}</option>)}</select></label>
+        <Button variant="outline" onClick={() => {setSelectedProjectId('all'); setSelectedType('all'); setActiveStatus('all'); setSelectedManzana('all');}}><RotateCcw aria-hidden="true" size={20} />Limpiar filtros</Button>
+      </section>
+      <p>{filteredProperties.length.toLocaleString('es-AR')} {filteredProperties.length === 1 ? 'unidad' : 'unidades'}</p>
+      {filteredProperties.length ? <PropertyList properties={filteredProperties} projects={projects} /> : <section className="inventory-empty"><Building2 aria-hidden="true" size={32} /><h2>No hay unidades para mostrar</h2><p>Revisá los filtros o cargá más unidades del inventario.</p></section>}
+      {loadMoreError && <p role="alert">{loadMoreError}</p>}
+      {!isMockDataMode && hasMore && <Button variant="outline" onClick={handleLoadMore} disabled={isLoadingMore}>{isLoadingMore ? 'Cargando…' : 'Cargar más activos'}</Button>}
     </div>
   );
 }

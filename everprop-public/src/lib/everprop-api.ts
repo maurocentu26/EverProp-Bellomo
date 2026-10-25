@@ -238,6 +238,8 @@ function mapProperty(property: ApiProperty): Property {
     propertyType: categoryLabels[property.category.toUpperCase()] || property.category,
     price: Number(property.price || 0),
     priceKnown: property.price != null && property.currency_code != null,
+    inventoryPrice: property.price == null ? null : Number(property.price),
+    inventoryCurrency: property.currency_code ?? null,
     currency: property.currency_code === "ARS" ? "ARS" : "USD",
     city: property.city || "Sin ciudad informada",
     neighborhood: property.neighborhood || "",

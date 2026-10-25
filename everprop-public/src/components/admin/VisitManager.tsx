@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { QuickScheduleButtons } from "@/components/admin/QuickScheduleButtons";
 
 type Props = {
+  confirmSchedule?: (visit: Visit) => boolean;
   readOnly?: boolean;
   title: string;
   subtitle: string;
@@ -50,6 +51,7 @@ type Props = {
 };
 
 export default function VisitManager({
+  confirmSchedule,
   readOnly = false,
   title,
   subtitle,
@@ -161,6 +163,7 @@ export default function VisitManager({
       propertyTitle: propertyOptions?.find(p => p.id === selectedPropertyId)?.title
     };
 
+    if (confirmSchedule && !confirmSchedule(visit)) return;
     setSaving(true);
     try {
     await onSchedule(visit);
@@ -177,7 +180,7 @@ export default function VisitManager({
   }
 
   return (
-    <div className="@container w-full min-w-0 space-y-6">
+    <div className="visit-manager @container w-full min-w-0 space-y-6">
       {/* Header Section */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
@@ -213,10 +216,10 @@ export default function VisitManager({
             <div className="space-y-1.5" ref={dropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                  Visitante / Interesado
+                  Visitante / interesado
                 </label>
                 {leadOptions && leadOptions.length > 0 && (
-                  <span className="text-[11px] font-semibold text-slate-400">
+                  <span className="visit-lead-count text-[11px] font-semibold text-slate-400">
                     {leadOptions.length} leads disponibles
                   </span>
                 )}
@@ -255,7 +258,7 @@ export default function VisitManager({
                 <div className="relative">
                   <div className="relative">
                     <Search className="absolute left-3.5 top-3.5 size-4 text-slate-400" />
-                    <Input aria-label="Visitante / Interesado"
+                    <Input aria-label="Visitante / interesado"
                       value={searchQuery || guestName}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -397,7 +400,7 @@ export default function VisitManager({
 
         {/* Lista de Visitas (Timeline) */}
         <div className={cn("min-w-0 space-y-4", readOnly ? "@min-[56rem]:col-span-12" : "@min-[56rem]:col-span-7")}>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Cronograma de Visitas</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Cronograma de visitas</h3>
 
           {sortedVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-100 rounded-3xl bg-slate-50/30 dark:border-slate-800 dark:bg-slate-900/30">
