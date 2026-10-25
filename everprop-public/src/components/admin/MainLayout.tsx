@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -121,7 +122,7 @@ export default function MainLayout({ children }: Props) {
 
     return (
         <PanelTextSizeProvider key={currentUser.id} userId={currentUser.id}>
-        <div className="admin-workspace min-h-screen overflow-x-hidden bg-background text-foreground">
+        <div className={`admin-workspace min-h-screen overflow-x-hidden bg-background text-foreground ${currentUser.role === "ADVISOR" ? "advisor-mobile-shell" : ""}`}>
             <SidebarProvider defaultOpen>
                 <div className="flex h-dvh w-full overflow-hidden">
                     <AppSidebar />
@@ -139,6 +140,7 @@ export default function MainLayout({ children }: Props) {
                                     </div>
                                 )}
 
+                                {currentUser.role === "ADVISOR" && pathname !== "/admin" && <Link href={pathname.startsWith("/admin/leads/") ? "/admin/leads" : "/admin"} className="advisor-back">‹ Atrás</Link>}
                                 {currentUser.role === "ROTATOR" && !rotatorRouteAllowed ? <p>Abriendo asignación de leads…</p> : children}
                             </div>
                         </main>

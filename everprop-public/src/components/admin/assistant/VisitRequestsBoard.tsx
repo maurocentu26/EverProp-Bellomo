@@ -5,6 +5,8 @@ import Link from "next/link";
 import { CalendarCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useCurrentSession } from "@/hooks/use-current-session";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   confirmVisitRequest,
   declineVisitRequest,
@@ -20,6 +22,9 @@ export function VisitRequestsBoard() {
   const [items, setItems] = useState<VisitRequest[]>([]);
   const [error, setError] = useState("");
   const [when, setWhen] = useState<Record<string, string>>({});
+  const [confirmation, setConfirmation] = useState<{ item: VisitRequest; date: string } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
 
   const refresh = useCallback(async () => {
     try {
@@ -34,15 +39,27 @@ export function VisitRequestsBoard() {
     void refresh();
   }, [refresh]);
 
-  async function confirm(item: VisitRequest) {
+  function confirm(item: VisitRequest) {
     const value = when[item.id] ?? (item.slots[0] ? slotToLocalInput(item.slots[0].start_utc) : "");
     if (!value) return toast.error("Elegí fecha y hora.");
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return toast.error("Elegí una fecha y hora válidas.");
+    setConfirmError("");
+    setConfirmation({ item, date: date.toISOString() });
+  }
+
+  async function saveConfirmation() {
+    if (!confirmation || confirming) return;
+    setConfirming(true);
     try {
-      await confirmVisitRequest(item.id, new Date(value).toISOString());
+      await confirmVisitRequest(confirmation.item.id, confirmation.date);
+      setConfirmation(null);
       toast.success("Visita agendada. Avisale al cliente desde la conversación.");
       await refresh();
     } catch {
-      toast.error("No se pudo confirmar (¿ya la resolvió otra persona o la fecha es pasada?).");
+      setConfirmError("No se pudo confirmar. Revisá si ya se resolvió o si la fecha es pasada.");
+    } finally {
+      setConfirming(false);
     }
   }
 
@@ -57,7 +74,7 @@ export function VisitRequestsBoard() {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-4 pb-6">
+    <section className="mi-day mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-4 pb-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Solicitudes de visita</h1>
@@ -93,13 +110,27 @@ export function VisitRequestsBoard() {
                   <input type="datetime-local" value={when[item.id] ?? (item.slots[0] ? slotToLocalInput(item.slots[0].start_utc) : "")}
                     onChange={(e) => setWhen({ ...when, [item.id]: e.target.value })} className="min-h-11 rounded-xl border border-border bg-background px-3 text-sm" />
                 </label>
-                <button type="button" onClick={() => void confirm(item)} className="min-h-11 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white">Confirmar y agendar</button>
+                <button type="button" onClick={() => void confirm(item)} className="mi-day-primary">Revisar y confirmar visita</button>
                 <button type="button" onClick={() => void decline(item)} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold">Rechazar</button>
               </div>
             )}
           </li>
         ))}
       </ul>
+      <Dialog open={Boolean(confirmation)} onOpenChange={open => { if (!open && !confirming) setConfirmation(null); }}>
+        <DialogContent showCloseButton={false} className="admin-workspace mi-day mi-day-guide sm:max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6">
+          <DialogTitle className="text-2xl font-bold">¿Confirmamos la visita?</DialogTitle>
+          <DialogDescription>Revisá los datos antes de agendar. Después avisale al cliente desde la conversación.</DialogDescription>
+          {confirmation && <dl className="space-y-3 break-words">
+            <div><dt className="font-bold">Cliente</dt><dd>{confirmation.item.contact.name || "Visitante (nombre sin informar)"}</dd></div>
+            <div><dt className="font-bold">Unidad</dt><dd>{confirmation.item.property.code ?? "Código sin informar"} · {confirmation.item.property.title}</dd></div>
+            <div><dt className="font-bold">Fecha y hora</dt><dd>{new Date(confirmation.date).toLocaleString("es-AR", { dateStyle: "full", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" })} (hora argentina)</dd></div>
+          </dl>}
+          {confirmError && <p role="alert" className="text-rose-700 dark:text-rose-300">{confirmError}</p>}
+          <Button className="mi-day-primary" disabled={confirming} onClick={() => void saveConfirmation()}>{confirming ? "Confirmando…" : "Confirmar y agendar"}</Button>
+          <Button variant="outline" disabled={confirming} onClick={() => setConfirmation(null)}>Todavía no</Button>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

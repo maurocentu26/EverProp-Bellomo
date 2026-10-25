@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
-import { Bell, Check, ExternalLink, Inbox, Menu, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
+import { Bell, Check, ExternalLink, Home, Inbox, Menu, MessagesSquare, Users, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ type Props = {
 
 export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isEngineer, isAdvisor, isAdmin } = useCurrentSession();
   const { state: sidebarState, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
@@ -222,7 +224,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                 setIsMenuOpen(false);
                 toggleSidebar();
               }}
-              className="size-9 sm:size-10 p-0 shrink-0 rounded-xl hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
+              className={cn("size-9 sm:size-10 p-0 shrink-0 rounded-xl hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors", isAdvisor && "advisor-top-menu")}
               aria-label={
                 isMobile
                   ? "Abrir menú principal"
@@ -421,6 +423,12 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
 
       </header>
 
+      {isAdvisor && <nav className="advisor-dock" aria-label="Navegación principal">
+        <Link href="/admin" aria-current={pathname === "/admin" ? "page" : undefined}><Home aria-hidden />Mi Día</Link>
+        <Link href="/admin/conversaciones" aria-current={pathname.startsWith("/admin/conversaciones") ? "page" : undefined}><MessagesSquare aria-hidden />Mensajes</Link>
+        <Link href="/admin/leads" aria-current={pathname.startsWith("/admin/leads") ? "page" : undefined}><Users aria-hidden />Leads</Link>
+        <button type="button" onClick={() => setIsMenuOpen(true)} aria-expanded={isMenuOpen}><Menu aria-hidden />Más</button>
+      </nav>}
       {isMobile && <AdminFullscreenMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} />}
     </>
   );

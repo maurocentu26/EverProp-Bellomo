@@ -64,6 +64,7 @@ const STAGE_OPTIONS: StageOption[] = [
 ];
 
 interface LeadStageUpdateModalProps {
+  className?: string;
   open: boolean;
   leadName: string;
   currentStage?: string;
@@ -72,6 +73,7 @@ interface LeadStageUpdateModalProps {
 }
 
 export function LeadStageUpdateModal({
+  className,
   open,
   leadName,
   currentStage,
@@ -100,7 +102,7 @@ export function LeadStageUpdateModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg max-h-[calc(100dvh-2rem)] flex flex-col p-0 gap-0 overflow-hidden border border-border shadow-2xl">
+      <DialogContent className={cn("w-[calc(100%-2rem)] sm:max-w-lg max-h-[calc(100dvh-2rem)] flex flex-col p-0 gap-0 overflow-hidden border border-border shadow-2xl", className)}>
         <DialogHeader className="border-b border-border bg-card p-4 pr-12 sm:p-5 sm:pr-12 text-left shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-400">
