@@ -960,6 +960,31 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
 .lots-sheet-body dl { display: grid; gap: 24px; margin-block: 8px 24px; }
 .lots-sheet-body dt { font-weight: 700; margin-bottom: 6px; }
 .lots-sheet-body dd { overflow-wrap: anywhere; }
+/* EVP-76: statistics share the inventory typography and theme surfaces. */
+.stats-mobile-back { display: none; }
+.stats-view { min-width: 0; max-width: 100%; }
+.stats-view :is(.text-muted-foreground, [class*="text-xs"], [class*="text-sm"]) { color: inherit; font-size: 17px; }
+.stats-view :is(input,select,button,summary) { font-size: 17px; min-height: 44px; }
+.stats-view :is(button,summary):focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+.stats-panel { min-width: 0; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.stats-panel h2 { font-size: 24px; font-weight: 700; }
+.stats-kpis { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }
+.stats-kpi { min-width: 0; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.stats-kpi h2 { font-size: 17px; font-weight: 600; }
+.stats-kpi-focus { background: #192b3c; color: #fff; border-color: #192b3c; }
+.stats-kpi .stats-number { font-size: clamp(32px,3vw,44px); font-weight: 750; line-height: 1.2; margin-block: 16px; font-variant-numeric: tabular-nums; }
+.stats-charts { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 24px; }
+.stats-bars { display: grid; gap: 12px; margin-top: 20px; }
+.stats-bar-button { width: 100%; min-width: 0; text-align: left; padding: 8px; border-radius: 8px; }
+.stats-bar-button:hover { background: var(--muted); }
+.stats-bar-label { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.stats-track { display: block; width: 100%; height: 10px; background: var(--muted); border-radius: 6px; }
+.stats-track > :is(span,div) { display: block; height: 10px; max-width: 100%; background: var(--primary); border-radius: inherit; }
+.stats-text-values { display: grid; gap: 12px; margin-top: 16px; }
+.stats-text-values > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.stats-text-values dd { font-weight: 700; font-variant-numeric: tabular-nums; }
+.stats-view table { width: 100%; table-layout: fixed; }
+.stats-view table :is(th,td) { white-space: normal; overflow-wrap: anywhere; padding: 12px 8px; }
 @media (max-width: 767px) {
  .lots-page .inventory-filters, .lots-matrix .inventory-filters { display: flex; flex-direction: column; align-items: stretch; }
  .lots-page .inventory-filters label, .lots-matrix .inventory-filters label { flex: auto; }
@@ -971,4 +996,16 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
  .lots-sheet[data-slot="sheet-content"] { inset: 0; width: 100%; max-width: none; border: 0; }
  .lots-sheet [data-slot="sheet-header"] { padding-top: max(20px,env(safe-area-inset-top)); }
  .lots-sheet-body { padding-bottom: max(24px,env(safe-area-inset-bottom)); }
+
+ .stats-kpis, .stats-charts { grid-template-columns: minmax(0,1fr); }
+ .stats-panel, .stats-kpi { padding: 16px; }
+ .stats-view > header { align-items: stretch; flex-direction: column; }
+ .stats-view nav { flex-wrap: wrap; }
+ .stats-view .stats-table :is(table,tbody,tr,th,td) { display: block; width: 100%; }
+ .stats-view .stats-table thead { display: none; }
+ .stats-view .stats-table tr { padding: 12px; border-top: 1px solid var(--border); }
+ .stats-view .stats-table td { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+ .stats-view .stats-table td::before { content: attr(data-label); font-weight: 600; }
+
+ .stats-mobile-back { display: inline-flex; align-items: center; gap: 8px; }
 }
