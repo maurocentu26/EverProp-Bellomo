@@ -110,7 +110,7 @@ try {
   await reply.waitFor({ timeout: 15000 });
   const answer = `Respuesta del asesor ${stamp}`;
   await reply.fill(answer); await pp.getByRole("button", { name: "Enviar respuesta" }).click();
-  await pp.getByText(answer).waitFor({ timeout: 15000 });
+  await pp.getByText(answer).first().waitFor({ timeout: 15000 });
   await shot(pp, "02-bandeja-desktop");
 
   await chat.getByText(answer).waitFor({ timeout: 30000 });
@@ -126,10 +126,10 @@ try {
   await actions.click();
   const reopen = pp.getByRole("menuitem", { name: /^Reabrir conversación/ });
   await reopen.waitFor({ timeout: 15000 });
-  check("U8a", "un cierre conserva el hilo y ofrece Reabrir", await pp.getByText(answer).isVisible() && await reopen.isEnabled());
+  check("U8a", "un cierre conserva el hilo y ofrece Reabrir", await pp.getByText(answer).first().isVisible() && await reopen.isEnabled());
   await reopen.click();
   await reply.waitFor({ timeout: 15000 });
-  check("U8b", "Reabrir restaura la respuesta humana sin borrar el historial", await reply.isVisible() && await pp.getByText(answer).isVisible());
+  check("U8b", "Reabrir restaura la respuesta humana sin borrar el historial", await reply.isVisible() && await pp.getByText(answer).first().isVisible());
 
   // ---------- mobile ----------
   const mp = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: await panel.storageState() })).newPage();
