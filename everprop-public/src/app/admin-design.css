@@ -552,3 +552,66 @@ html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
   .wa-inbox .conversation-composer > label * { font-size: inherit; }
   .wa-inbox .wa-fullscreen .conversation-header { padding-left: 16px; padding-right: 16px; }
 }
+/* EVP-68: solicitudes de visita, misma composición corporativa de Mi Día. */
+.visit-board { display: flex; flex-direction: column; gap: 20px; min-width: 0; padding-bottom: 24px; }
+.visit-heading { display: flex; align-items: start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.visit-heading h1 { font-size: calc(var(--day-text) * 2); font-weight: 800; letter-spacing: -.035em; line-height: 1.15; }
+.visit-heading p, .visit-toolbar p { color: var(--muted-foreground); margin-top: 8px; }
+.visit-board .visit-tabs { display: flex; flex-wrap: nowrap; align-items: stretch; border-radius: 999px; padding: 5px; background: var(--card); border: 1px solid var(--border); max-width: 100%; }
+.visit-board .visit-tabs button { white-space: nowrap; overflow-wrap: normal; border-radius: 999px; padding: 10px 14px; font-weight: 700; font-size: 15px; }
+.visit-tabs [aria-pressed="true"] { background: #0f172a; color: #fff; }
+.visit-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.visit-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; list-style: none; padding: 0; }
+.visit-card { display: flex; flex-direction: column; align-items: start; gap: 10px; border-radius: 24px; padding: 24px; min-width: 0; border: 1px solid var(--border); background: var(--card); overflow-wrap: anywhere; }
+.visit-board .visit-card h2 { font-size: calc(var(--day-text) * 1.25); }
+.visit-pending { background: #fffbeb; color: #78350f; border-color: #fde68a; }
+.visit-featured { background: #0f172a; color: #fff; border-color: #0f172a; }
+.visit-board .visit-date { padding: 5px 10px; background: var(--card); color: var(--foreground); border-radius: 12px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.visit-board .visit-featured .visit-date { background: transparent; color: #fff; padding: 0; font-size: calc(var(--day-text) * 1.75); line-height: 1.2; letter-spacing: -.02em; }
+.visit-status { display: inline-block; padding: 4px 10px; border-radius: 12px; background: #fef3c7; color: #78350f; font-weight: 650; }
+.visit-success { background: #d1fae5; color: #065f46; }
+.visit-card blockquote { margin: 0 0 10px; font-style: italic; }
+.visit-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; width: 100%; }
+.visit-board .visit-white { background: #fff; color: #0f172a; min-height: 44px; padding: 10px 18px; border-radius: 999px; font-weight: 750; }
+.visit-board .visit-white:hover { background: #e2e8f0; }
+.visit-featured .mi-day-secondary { background: #334155; color: #fff; }
+.visit-featured .mi-day-secondary:hover { background: #475569; }
+.visit-editor { display: grid; gap: 12px; width: 100%; padding-top: 16px; }
+.visit-editor label { display: grid; gap: 8px; }
+.visit-editor input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--foreground); }
+.visit-editor a, .visit-conversation { text-decoration: underline; text-underline-offset: 4px; }
+.visit-confirmed { border: 1px solid var(--border); background: var(--card); border-radius: 24px; padding: 24px; min-width: 0; }
+.visit-confirmed > header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.visit-table-head, .visit-table-row { display: grid; grid-template-columns: 1.25fr 1fr 1.15fr 1.3fr auto; gap: 20px; align-items: center; }
+.visit-table-head { color: var(--muted-foreground); font-size: 14px; font-weight: 700; padding: 0 0 12px; }
+.visit-table-row { border-top: 1px solid var(--border); padding: 18px 0; }
+.visit-table-row > div { min-width: 0; overflow-wrap: anywhere; }
+.visit-table-row b { font-variant-numeric: tabular-nums; }
+.visit-mobile-label { display: none; }
+.visit-empty { grid-column: 1 / -1; padding: 32px 16px; text-align: center; color: var(--muted-foreground); }
+.visit-empty svg { margin: 0 auto 12px; }
+.visit-alert { border-radius: 16px; padding: 16px; background: #fff1f2; color: #9f1239; }
+.dark .visit-pending { background: #451a03; color: #fef3c7; border-color: #92400e; }
+@media (min-width: 768px) and (max-width: 1199px) {
+  .visit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .visit-featured { grid-column: 1 / -1; }
+  .visit-table-head { display: none; }
+  .visit-table-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .visit-mobile-label { display: block; color: var(--muted-foreground); font-weight: 700; }
+}
+@media (max-width: 767px) {
+  .admin-workspace:has(.visit-board) [data-admin-scroll-container] { padding-left: 16px; padding-right: 16px; }
+  .visit-grid { grid-template-columns: minmax(0, 1fr); }
+  .visit-heading { gap: 16px; }
+  .visit-heading h1 { font-size: 30px; }
+  .visit-board .visit-tabs { width: 100%; }
+  .visit-board .visit-tabs button { flex: 1; min-width: 0; padding: 8px 4px; font-size: 13px; }
+  .visit-toolbar { align-items: start; flex-direction: column; }
+  .visit-toolbar > button { width: 100%; }
+  .visit-card, .visit-confirmed { padding: 20px; }
+  .visit-actions { flex-direction: column; }
+  .visit-board .visit-actions button, .visit-editor a, .visit-conversation, .visit-table-row a { width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; }
+  .visit-table-head { display: none; }
+  .visit-table-row { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .visit-mobile-label { display: block; color: var(--muted-foreground); font-weight: 700; }
+}

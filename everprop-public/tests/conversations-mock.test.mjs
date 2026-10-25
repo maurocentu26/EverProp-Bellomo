@@ -66,6 +66,9 @@ test('every mock conversation action stays local; sends deduplicate and state su
 test('mock visit starts requested with exact unit and slot; confirmation and decline stay local', async () => {
   const { api, calls } = load('assistant-api');
   const visit = (await api.listVisitRequests()).data[0];
+  assert.equal((await api.listVisitRequests()).data.length, 3);
+  assert.equal((await api.listVisitRequests('CONFIRMED')).data.length, 3);
+  assert.deepEqual(new Set((await api.listVisitRequests()).data.map(item => item.property.code)), new Set(['12', '12A', '4B']));
   assert.equal(visit.conversation_id, 'mock-conversation-1');
   assert.equal(visit.property.code, '12');
   assert.equal(visit.property.title, 'Las Moras');
@@ -74,8 +77,10 @@ test('mock visit starts requested with exact unit and slot; confirmation and dec
   await assert.rejects(api.confirmVisitRequest(visit.id, 'invalid'));
   await assert.rejects(api.confirmVisitRequest(visit.id, '2000-01-01T00:00:00Z'));
   await api.confirmVisitRequest(visit.id, new Date(Date.now() + 86400000).toISOString());
-  assert.equal((await api.listVisitRequests()).data.length, 0);
-  assert.equal((await api.listVisitRequests('CONFIRMED')).data[0].visit_id, 'mock-scheduled-visit-1');
+  assert.equal((await api.listVisitRequests()).data.length, 2);
+  const confirmed = (await api.listVisitRequests('CONFIRMED')).data.find(item => item.id === visit.id);
+  assert.equal(confirmed.visit_id, 'mock-scheduled-visit-1');
+  assert.ok(confirmed.scheduled_at);
   const declined = load('assistant-api');
   await declined.api.declineVisitRequest(visit.id);
   assert.equal((await declined.api.listVisitRequests('DECLINED')).data.length, 1);
