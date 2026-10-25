@@ -1,7 +1,7 @@
 "use client";
 import { useLeadAdvisors } from "@/hooks/use-lead-advisors";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { 
   CalendarDays, 
   Plus 
@@ -21,10 +21,9 @@ import {
 } from "@/data/admin-sample";
 import { loadLeadList, loadPropertyList, saveLeadList, savePropertyList } from "@/lib/admin-storage";
 import { useCurrentSession } from "@/hooks/use-current-session";
-import { MOCK_USERS } from "@/data/auth-sample";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropLeads, loadEverpropCatalog, createEverpropVisit } from "@/lib/everprop-api";
-import { argentinaDateTimeInputToIso } from "@/lib/lead-follow-up";
+import { argentinaDateTimeInputToIso, formatArgentinaDateTime } from "@/lib/lead-follow-up";
 import { QuickScheduleButtons } from "@/components/admin/QuickScheduleButtons";
 
 interface NewVisitModalProps {
@@ -48,6 +47,9 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
   const [scheduledAt, setScheduledAt] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [reviewing, setReviewing] = useState(false);
+  const submitting = useRef(false);
+  const close = (value: boolean) => { if (!submitting.current) { setReviewing(false); onOpenChange(value); } };
 
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(!isMockDataMode);
@@ -88,6 +90,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting.current || loading || loadError) return;
     if (advisorsError) { toast.error(advisorsError); return; }
     const finalName = guestName.trim() || leads.find((l) => l.id === selectedLeadId)?.name;
     if (!finalName) {
@@ -99,6 +102,12 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
       return;
     }
 
+    if (isMockDataMode && !selectedLeadId && !selectedPropertyId) {
+      toast.error("Vinculá un cliente o una unidad para conservar la cita en modo de muestra.");
+      return;
+    }
+    if (!reviewing) { setReviewing(true); return; }
+    submitting.current = true;
     setIsSubmitting(true);
     try {
       const chosenProp = properties.find((p) => p.id === selectedPropertyId);
@@ -161,6 +170,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
 
       toast.success(`Cita agendada con éxito para ${finalName}`);
       onVisitCreated?.();
+      setReviewing(false);
       onOpenChange(false);
       // Reset
       setSelectedLeadId("");
@@ -173,13 +183,14 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
       console.error(err);
       toast.error("Ocurrió un error al agendar la cita.");
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="admin-workspace flex max-h-[calc(100dvh-2rem)] flex-col sm:max-w-[620px] p-0 overflow-hidden rounded-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
+    <Dialog open={open} onOpenChange={close}>
+      <DialogContent className="admin-workspace mi-agenda agenda-dialog flex max-h-[calc(100dvh-2rem)] flex-col sm:max-w-[620px] p-0 overflow-hidden rounded-2xl border-slate-200 dark:border-slate-800 dark:bg-slate-900">
         <DialogHeader className="shrink-0 p-4 pr-12 sm:p-6 sm:pr-12 bg-card text-card-foreground border-b border-border">
           <div className="flex items-center gap-2">
             <span className="hidden sm:flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-600/30 text-blue-400 border border-blue-500/30">
@@ -187,10 +198,10 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
             </span>
             <div>
               <DialogTitle className="text-xl font-bold text-card-foreground tracking-tight">
-                Agendar Nueva Cita
+                {reviewing ? "Revisar cita" : "Agendar nueva cita"}
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground mt-1">
-                Coordiná una visita o llamada con el cliente.
+                {reviewing ? "Comprobá todos los datos antes de confirmar." : "Coordiná una visita con el cliente."}
               </DialogDescription>
             </div>
           </div>
@@ -200,6 +211,8 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
           {advisorsError && <p role="alert" className="text-sm text-red-600">{advisorsError}</p>}
           {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
           {loading && <p role="status">Cargando clientes…</p>}
+          {reviewing && <dl className="agenda-review"><dt>Cliente</dt><dd>{guestName.trim() || leads.find(l => l.id === selectedLeadId)?.name}</dd><dt>Unidad</dt><dd>{properties.find(p => p.id === selectedPropertyId)?.title || "Sin unidad vinculada"}</dd><dt>Fecha y hora</dt><dd>{formatArgentinaDateTime(argentinaDateTimeInputToIso(scheduledAt)!)}</dd><dt>Asesor</dt><dd>{advisors.find(a => a.id === agentId)?.name || (agentId === user?.id ? user.name : "Asesor asignado")}</dd><dt>Teléfono</dt><dd>{phone || "Sin teléfono"}</dd><dt>Correo</dt><dd>{email || "Sin correo"}</dd><dt>Notas</dt><dd>{notes || "Sin notas"}</dd></dl>}
+          <fieldset hidden={reviewing} disabled={reviewing || isSubmitting} className="space-y-4">
           {/* Seleccionar Lead existente o escribir nombre */}
           <div className="space-y-1.5">
             <label htmlFor="visit-lead" className="text-sm font-semibold text-slate-600 dark:text-slate-400">
@@ -218,6 +231,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
                 </option>
               ))}
             </select>
+            {selectedLeadId && <p>{leads.find(l => l.id === selectedLeadId)?.name}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -266,6 +280,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
                 </option>
               ))}
             </select>
+            {selectedPropertyId && <p>{properties.find(p => p.id === selectedPropertyId)?.title}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -278,7 +293,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
                   <button
                     type="button"
                     onClick={() => setScheduledAt("")}
-                    className="text-[11px] font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    className="text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                   >
                     Limpiar fecha
                   </button>
@@ -333,14 +348,16 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
             />
           </div>
 
+          </fieldset>
           <DialogFooter className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+              onClick={() => reviewing ? setReviewing(false) : close(false)}
               className="w-full sm:w-auto min-h-11 rounded-xl border-slate-200 dark:border-slate-800 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              Cancelar
+              {reviewing ? "Volver a editar" : "Cancelar"}
             </Button>
             <Button
               type="submit"
@@ -348,7 +365,7 @@ export function NewVisitModal({ open, onOpenChange, onVisitCreated }: NewVisitMo
               className="w-full sm:w-auto min-h-11 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white hover:bg-blue-700 shadow-xs"
             >
               <Plus className="size-4 mr-1.5" />
-              {isSubmitting ? "Agendando..." : "Confirmar Cita"}
+              {isSubmitting ? "Agendando…" : reviewing ? "Confirmar y agendar" : "Revisar cita"}
             </Button>
           </DialogFooter>
         </form>
