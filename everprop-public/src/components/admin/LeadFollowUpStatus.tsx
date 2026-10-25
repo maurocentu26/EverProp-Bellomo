@@ -150,8 +150,8 @@ export function LeadFollowUpStatus({
             <CalendarClock className="size-3.5" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Último contacto</p>
-            <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Último contacto</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               {state.formattedDate || "Sin actividad previa"}
             </p>
           </div>

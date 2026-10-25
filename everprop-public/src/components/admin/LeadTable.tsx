@@ -35,7 +35,7 @@ type LeadActionsProps = {
   onFollowUp?: () => void;
 };
 
-function LeadActions({ lead, onView, onFollowUp, showLabels = false }: LeadActionsProps) {
+function LeadActions({ lead, onView, onFollowUp, showLabels = true }: LeadActionsProps) {
   const whatsappNumber = lead.phone?.replace(/\D/g, "");
 
   return (
@@ -121,9 +121,9 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
   };
 
   return (
-    <div className="@container min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-sm">
+    <div className="leads-table @container min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-sm">
       {/* Vista Mobile / Tablet */}
-      <div className="divide-y divide-slate-100 dark:divide-slate-800 @min-[80rem]:hidden">
+      <div className="divide-y divide-slate-100 dark:divide-slate-800 @min-[70rem]:hidden">
         {leads.map((lead) => {
           const property = properties.find((item) => item.id === lead.propertyIds[0]);
           const currentStage = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
@@ -204,16 +204,16 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
       </div>
 
       {/* Vista Desktop (Tabla Pro) */}
-      <div className="hidden @min-[80rem]:block overflow-x-auto overflow-y-auto max-h-[70vh] rounded-2xl relative">
+      <div className="hidden @min-[70rem]:block overflow-x-auto overflow-y-auto max-h-[70vh] rounded-2xl relative">
         <table className="w-full table-fixed text-left border-collapse">
-          <colgroup><col style={{width:"25%"}}/><col style={{width:"17%"}}/><col style={{width:"16%"}}/><col style={{width:"11%"}}/><col style={{width:"17%"}}/><col style={{width:"14%"}}/></colgroup>
+          <colgroup><col style={{width:"19%"}}/><col style={{width:"16%"}}/><col style={{width:"16%"}}/><col style={{width:"9%"}}/><col style={{width:"18%"}}/><col style={{width:"22%"}}/></colgroup>
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95">
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Interesado</th>
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Cliente</th>
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Activo / Precio</th>
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Etapa comercial</th>
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Origen</th>
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Seguimiento</th>
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Por qué ahora</th>
               <th className="px-4 py-4 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Acciones</th>
             </tr>
           </thead>

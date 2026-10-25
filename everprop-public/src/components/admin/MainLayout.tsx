@@ -140,7 +140,7 @@ export default function MainLayout({ children }: Props) {
                                     </div>
                                 )}
 
-                                {currentUser.role === "ADVISOR" && pathname !== "/admin" && <Link href={pathname.startsWith("/admin/leads/") ? "/admin/leads" : "/admin"} className="advisor-back">‹ Atrás</Link>}
+                                {currentUser.role === "ADVISOR" && !["/admin", "/admin/leads", "/admin/conversaciones"].includes(pathname) && <Link href={pathname.startsWith("/admin/leads/") ? "/admin/leads" : "/admin"} className="advisor-back">‹ Atrás</Link>}
                                 {currentUser.role === "ROTATOR" && !rotatorRouteAllowed ? <p>Abriendo asignación de leads…</p> : children}
                             </div>
                         </main>

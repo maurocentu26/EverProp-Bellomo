@@ -1,7 +1,7 @@
 "use client";
 import { useLeadAdvisors } from "@/hooks/use-lead-advisors";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,13 +20,15 @@ import {
   MapPin,
   Phone,
   Search,
-  Sparkles,
+  UserPlus,
   Store,
   User,
   X,
   type LucideIcon,
 } from "lucide-react";
 
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { STAGE_LABELS } from "@/components/admin/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -43,7 +45,6 @@ import {
   type Project,
   type Property,
 } from "@/data/admin-sample";
-import { MOCK_USERS } from "@/data/auth-sample";
 import { appendLeadToStorage, loadLeadList, loadProjectList, loadPropertyList, saveLeadList } from "@/lib/admin-storage";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -145,6 +146,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [review, setReview] = useState<FormValues | null>(null);
+  const savingReview = useRef(false);
 
   const { advisors: advisorList, error: advisorsError } = useLeadAdvisors(!isAdvisor);
 
@@ -471,11 +474,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
         }
       }
 
-      const stored = loadLeadList(sampleLeads, companyId);
-      const nextLeads = stored.some((l) => l.id === updatedLead.id)
-        ? stored.map((l) => (l.id === updatedLead.id ? updatedLead : l))
-        : [updatedLead, ...stored];
-      if (isMockDataMode) saveLeadList(nextLeads, companyId);
+      if (isMockDataMode) {
+        const stored = loadLeadList(sampleLeads, companyId);
+        const nextLeads = stored.some((l) => l.id === updatedLead.id)
+          ? stored.map((l) => (l.id === updatedLead.id ? updatedLead : l))
+          : [updatedLead, ...stored];
+        saveLeadList(nextLeads, companyId);
+      }
 
       toast.success("Ficha del lead completada con éxito.");
       router.push(`/admin/leads/${activeLead.id}`);
@@ -567,7 +572,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4">{loadError}</p>;
   if (isEditing && isLoadingLead) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="mi-day leads-workspace lead-form max-w-[1500px] mx-auto space-y-6">
         <div className="h-6 w-44 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
         <div className="h-[36rem] animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
       </div>
@@ -575,34 +580,35 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="mi-day leads-workspace lead-form max-w-[1500px] mx-auto space-y-6">
       <Link
         href={isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads"}
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-100"
       >
-        <ArrowLeft className="h-4 w-4" /> {isEditing ? "Volver a la ficha del lead" : "Volver a la lista de leads"}
+        <ArrowLeft className="h-4 w-4" /> {isEditing ? "Volver a la ficha del lead" : "Mis Leads"}
       </Link>
 
       <Card className="w-full overflow-hidden border border-border bg-card shadow-sm rounded-2xl p-0">
         <div className="bg-card px-5 py-5 text-card-foreground border-b border-border sm:px-6">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-              <Sparkles size={20} aria-hidden="true" />
+              <UserPlus size={20} aria-hidden="true" />
             </span>
             <div>
               <h1 className="text-xl font-bold text-card-foreground">
-                {isEditing ? `Completar Ficha: ${activeLead?.name || ""}` : "Alta de nuevo lead"}
+                {isEditing ? `Completar Ficha: ${activeLead?.name || ""}` : "Nuevo lead"}
               </h1>
               <CardDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {isEditing
                   ? "Actualizá los datos de contacto, requerimientos comerciales y activos de interés del prospecto."
-                  : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
+                  : "Completá el nombre y un teléfono o correo. El interés y las notas son opcionales."}
               </CardDescription>
             </div>
           </div>
         </div>
 
-        <form id="new-lead-page-form" onSubmit={form.handleSubmit(onSubmit, onFormError)}>
+        <form id="new-lead-page-form" onSubmit={form.handleSubmit(data => setReview(data), onFormError)}>
+          <aside className="leads-focus lead-form-help"><h2>Antes de guardar</h2><p>Revisá los datos y el asesor responsable. En el siguiente paso vas a confirmar la ficha completa.</p></aside>
           <CardContent className="p-3 sm:p-6 space-y-6">
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
               {/* ── Seccion 1: Datos basicos del lead ── */}
@@ -770,7 +776,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {!isEditing && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field>
                     <FieldLabel htmlFor="lead-priority">Prioridad</FieldLabel>
                     <select id="lead-priority" {...form.register("priority")} className="h-10 rounded-lg border bg-background px-3">
@@ -786,7 +792,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     <FieldLabel htmlFor="lead-currency">Moneda</FieldLabel>
                     <select id="lead-currency" {...form.register("currency")} className="h-10 rounded-lg border bg-background px-3"><option value="USD">USD</option><option value="ARS">ARS</option></select>
                   </Field>
-                </div>
+                </div>}
 
                 <Controller
                   name="notes"
@@ -921,9 +927,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                         size="icon"
                         onClick={() => setSelectedAsset(null)}
                         className="h-7 w-7 shrink-0 text-slate-500 hover:bg-muted hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                        aria-label="Quitar activo seleccionada"
+                        aria-label="Quitar activo seleccionado"
                       >
-                        <X size={14} aria-hidden="true" />
+                        <X size={14} aria-hidden="true" /> Quitar activo
                       </Button>
                     </div>
                   )}
@@ -1007,12 +1013,42 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                 disabled={isSubmitting}
                 className="h-10 bg-blue-600 px-6 text-xs font-bold text-white hover:bg-blue-700 shadow-sm disabled:opacity-50"
               >
-                {isSubmitting ? "Guardando..." : isEditing ? "Guardar y completar ficha" : "Guardar lead"}
+                {isSubmitting ? "Guardando..." : isEditing ? "Guardar y completar ficha" : "Revisar y guardar lead"}
               </Button>
             </div>
           </CardFooter>
         </form>
       </Card>
+      <Dialog open={Boolean(review)} onOpenChange={open => !open && !isSubmitting && setReview(null)}>
+        <DialogContent showCloseButton={false} className="mi-day leads-workspace lead-review sm:max-w-2xl">
+          <DialogTitle>{isEditing ? "Confirmar cambios del lead" : "Confirmar nuevo lead"}</DialogTitle>
+          <DialogDescription>Revisá los datos antes de guardarlos. Podés volver al formulario sin perderlos.</DialogDescription>
+          {review && <dl className="lead-review-data">
+            {Object.entries({
+              Nombre: review.name,
+              Teléfono: review.phone || "Sin informar",
+              Correo: review.email || "Sin informar",
+              Origen: review.origin,
+              Etapa: STAGE_LABELS[review.stage]?.label || review.stage,
+              Asesor: isAdvisor ? (isEditing ? activeLead?.agentName : user?.name) || "Asesor actual" : advisorList.find(advisor => advisor.id === review.agentId)?.name || (review.agentId === activeLead?.agentId ? activeLead?.agentName : undefined) || "Sin asignar",
+              ...(!isEditing ? { Prioridad: ({ NORMAL: "Normal", LOW: "Baja", HIGH: "Alta", URGENT: "Urgente" })[review.priority || "NORMAL"],
+              Presupuesto: review.budget ? `${review.currency || "USD"} ${Number(review.budget).toLocaleString("es-AR")}` : "Sin informar" } : {}),
+              Interés: CATEGORIES.find(category => category.id === selectedCategory)?.title || "Sin categoría",
+              Proyecto: allProjects.find(project => project.id === (selectedAsset?.projectId || selectedProjectId))?.name || "Sin informar",
+              Activo: selectedAsset ? `${selectedAsset.title} · Unidad ${selectedAsset.unitNumber || "sin informar"} · ${selectedAsset.currency} ${selectedAsset.price.toLocaleString("es-AR")}` : "Sin activo nuevo seleccionado",
+              Notas: review.notes || "Sin notas",
+            }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>}
+          <DialogFooter>
+            <Button variant="outline" disabled={isSubmitting} onClick={() => setReview(null)}>Volver a editar</Button>
+            <Button disabled={isSubmitting || !review} onClick={async () => {
+              if (!review || savingReview.current) return;
+              savingReview.current = true;
+              try { await onSubmit(review); } finally { savingReview.current = false; }
+            }}>{isSubmitting ? "Guardando…" : "Confirmar y guardar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

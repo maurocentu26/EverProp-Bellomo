@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import type { LeadFollowUp, LeadFollowUpType } from "@/data/admin-sample";
+import { isMockDataMode } from "@/lib/data-mode";
 import { getAdvisor } from "@/data/auth-sample";
 import { formatArgentinaDateTime, getLeadFollowUps } from "@/lib/lead-follow-up";
 import {
@@ -114,7 +115,7 @@ export function LeadFollowUpTimeline({
   const activeAdvisor = selectedFollowUp
     ? selectedFollowUp.agentName
       ? { name: selectedFollowUp.agentName }
-      : getAdvisor(selectedFollowUp.agentId)
+      : (isMockDataMode ? getAdvisor(selectedFollowUp.agentId) : undefined)
     : null;
 
   return (
@@ -124,7 +125,7 @@ export function LeadFollowUpTimeline({
           {items.map((item) => {
             const meta = TYPE_META[item.type];
             const Icon = meta.icon;
-            const advisorName = item.agentName || getAdvisor(item.agentId)?.name || "Asesor";
+            const advisorName = item.agentName || (isMockDataMode ? getAdvisor(item.agentId)?.name : undefined) || "Asesor";
             const formattedDate = formatArgentinaDateTime(item.occurredAt);
 
             return (
@@ -232,7 +233,7 @@ export function LeadFollowUpTimeline({
           if (!open) setSelectedFollowUp(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto dark:bg-card dark:border-border">
+        <DialogContent showCloseButton={false} className="mi-day leads-workspace lead-review sm:max-w-xl max-h-[90vh] overflow-y-auto dark:bg-card dark:border-border">
           {selectedFollowUp && activeMeta && (
             <>
               <DialogHeader>
