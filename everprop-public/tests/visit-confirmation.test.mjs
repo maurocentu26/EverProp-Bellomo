@@ -5,9 +5,10 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 // Exercise the component handlers with hook state; no browser or API is required.
-function board({ fail = false, readOnly = false } = {}) {
+function board({ fail = false, readOnly = false, conversationId } = {}) {
   const item = { id: 'request-1', property: { code: '12B', title: 'Unidad completa' }, contact: { name: 'Cliente de prueba', unverified: [] }, slots: [], conversation_id: 'conversation-1' };
-  const state = [[item], '', { 'request-1': '2026-10-26T10:30' }];
+  const other = { ...item, id: "other-request", conversation_id: "conversation-2", contact: { ...item.contact, name: "Otra conversación" } };
+  const state = [[item, other], '', { 'request-1': '2026-10-26T10:30' }];
   let cursor = 0;
   const calls = [];
   const jsx = (type, props) => ({ type, props });
@@ -30,7 +31,7 @@ function board({ fail = false, readOnly = false } = {}) {
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('../src/components/admin/assistant/VisitRequestsBoard.tsx', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
   }).outputText, context);
-  const render = () => { cursor = 0; return context.exports.VisitRequestsBoard(); };
+  const render = () => { cursor = 0; return context.exports.VisitRequestsBoard({ conversationId, channelLabel: "WhatsApp" }); };
   const text = node => !node ? '' : typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join(' ') : text(node.props?.children);
   function find(node, predicate) {
     if (!node || typeof node !== 'object') return undefined;
@@ -69,4 +70,23 @@ test('confirm sends the reviewed request and date once; error leaves review open
 
 test('read-only role keeps confirmation action hidden', () => {
   assert.equal(board({ readOnly: true }).button('Revisar y confirmar'), undefined);
+});
+
+
+test('embedded client panel only shows requests for the selected conversation without confirming on render', () => {
+  const view = board({ conversationId: 'conversation-1' });
+  const copy = view.text(view.render());
+  assert.match(copy, /Sobre este cliente/);
+  assert.match(copy, /Interés solicitado.*12B/);
+  assert.match(copy, /Solicitada · por confirmar/);
+  assert.match(copy, /WhatsApp/);
+  assert.doesNotMatch(copy, /Otra conversación/);
+  assert.equal(view.calls.length, 0);
+});
+
+test('an unrelated conversation has no pending visits and read-only embedded panel cannot confirm', () => {
+  const view = board({ conversationId: 'missing', readOnly: true });
+  assert.match(view.text(view.render()), /No hay solicitudes pendientes/);
+  assert.doesNotMatch(view.text(view.render()), /Cliente de prueba|Otra conversación/);
+  assert.equal(board({ conversationId: 'conversation-1', readOnly: true }).button('Revisar y confirmar'), undefined);
 });

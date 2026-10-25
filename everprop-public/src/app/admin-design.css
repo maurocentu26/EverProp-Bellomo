@@ -225,47 +225,146 @@
 .admin-workspace [data-slot="input-group"] input:focus-visible { outline: none; box-shadow: none; }
 html[data-panel-text-size="grande"] .admin-workspace .lead-actions-expanded > :is(button,a) { font-size: 14.4px; }
 
-/* Inbox styled like WhatsApp (S04). Colors are WhatsApp's own light/dark palettes; status is never color-only. */
+/* EVP-67: prototype composition, corporate surfaces and existing conversation actions. */
 .wa-inbox {
-  --wa-panel: #f0f2f5; --wa-thread: #efeae2; --wa-in: #ffffff; --wa-out: #d9fdd3; --wa-text: #111b21;
-  --wa-meta: #667781; --wa-accent: #008069; --wa-accent-text: #ffffff; --wa-read: #53bdeb; --wa-chip: #ffffff;
-  --wa-selected: #f0f2f5; --wa-input: #ffffff;
+  --conversation-text: 17px;
+  --wa-panel: #fff; --wa-thread: #fff; --wa-in: #f1f5f9; --wa-out: #dbeafe; --wa-text: #0f172a;
+  --wa-meta: #475569; --wa-accent: #2563eb; --wa-accent-text: #fff; --wa-read: #1d4ed8; --wa-chip: #f1f5f9;
+  --wa-selected: #eff6ff; --wa-input: #f1f5f9;
+  font-size: var(--conversation-text); line-height: 1.5; color: var(--wa-text);
 }
+html[data-panel-text-size="grande"] .wa-inbox { --conversation-text: 20.4px; }
 .dark .wa-inbox {
-  --wa-panel: #202c33; --wa-thread: #0b141a; --wa-in: #202c33; --wa-out: #005c4b; --wa-text: #e9edef;
-  --wa-meta: #8696a0; --wa-accent: #00a884; --wa-accent-text: #111b21; --wa-read: #53bdeb; --wa-chip: #182229;
-  --wa-selected: #2a3942; --wa-input: #2a3942;
+  --wa-panel: #0f172a; --wa-thread: #0f172a; --wa-in: #1e293b; --wa-out: #1e3a5f; --wa-text: #f1f5f9;
+  --wa-meta: #cbd5e1; --wa-read: #93c5fd; --wa-chip: #1e293b; --wa-selected: #1e3a5f; --wa-input: #1e293b;
 }
-.wa-inbox .wa-thread { background-color: var(--wa-thread); }
-.wa-inbox .wa-bubble { color: var(--wa-text); box-shadow: 0 1px 0.5px rgb(11 20 26 / 0.13); }
-.wa-inbox .wa-in { background-color: var(--wa-in); }
-.wa-inbox .wa-out { background-color: var(--wa-out); }
-.wa-inbox .wa-meta { color: var(--wa-meta); }
+.wa-inbox :is(p,span,a,button,input,select,textarea,label,dt,dd,h3) { font-size: var(--conversation-text); line-height: 1.5; }
+.wa-inbox h1 { font-size: calc(var(--conversation-text) * 1.9); font-weight: 800; letter-spacing: -.03em; }
+.wa-inbox h2 { font-size: calc(var(--conversation-text) * 1.12); font-weight: 750; }
+.wa-inbox :is(button,a,input,select,textarea,label:has(input[type="file"])) { min-height: 44px; }
+.wa-inbox :is(button,a,input,select,textarea):focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.wa-inbox :is(button,a) { transition: background-color .15s ease-out; }
+.wa-inbox button { cursor: pointer; min-width: 44px; }
+.wa-inbox button:disabled { cursor: default; opacity: .55; }
+.wa-inbox ::selection { background: #bfdbfe; color: #0f172a; }
+.wa-inbox :is(input,textarea) { caret-color: #2563eb; }
+.wa-inbox :is(ul,ol,.conversation-client) { scrollbar-width: thin; scrollbar-color: #94a3b8 transparent; }
+.conversation-columns { display: grid; gap: 16px; min-height: 0; }
+.wa-inbox .conversation-columns > :is(aside,.conversation-chat) { border-radius: 24px; }
+.wa-inbox .conversation-columns > aside:first-child { background: var(--wa-panel); }
+.conversation-tabs { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 4px; padding: 8px; border-bottom: 1px solid var(--border); }
+.wa-inbox .conversation-tabs button { min-width: 0; white-space: normal; overflow-wrap: anywhere; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 0; padding: 6px 2px; border-radius: 999px; font-weight: 700; }
+.conversation-tabs button:hover { background: var(--muted); }
+.conversation-tabs button[aria-pressed="true"] { background: #0f172a; color: #fff; }
+.dark .conversation-tabs button[aria-pressed="true"] { background: #e2e8f0; color: #0f172a; }
+.conversation-tabs span { font-variant-numeric: tabular-nums; }
+.conversation-filter { display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
+.conversation-filter select { flex: 1; min-width: 0; padding: 6px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--wa-panel); }
+.wa-inbox .wa-thread { background: var(--wa-thread); padding: 20px 18px; overscroll-behavior: contain; }
+.wa-inbox .wa-thread > li { margin-top: 12px; }
+.wa-inbox .wa-bubble { color: var(--wa-text); border-radius: 20px 20px 6px 20px; padding: 12px 16px; max-width: 84%; }
+.wa-inbox .wa-in { background: var(--wa-in); border-radius: 20px 20px 20px 6px; }
+.wa-inbox .wa-out { background: var(--wa-out); }
+.wa-inbox .conversation-ai { background: #ede9fe; color: #4c1d95; }
+.dark .wa-inbox .conversation-ai { background: #2e2452; color: #ede9fe; }
+.wa-inbox .conversation-sender { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; font-weight: 750; }
+.wa-inbox .wa-meta { color: var(--wa-meta); font-size: calc(var(--conversation-text) * .88); }
+.wa-inbox .conversation-ai .wa-meta { color: inherit; }
 .wa-inbox .wa-read { color: var(--wa-read); }
-.wa-inbox .wa-chip { background-color: var(--wa-chip); color: var(--wa-meta); }
-.wa-inbox .wa-bar { background-color: var(--wa-panel); }
-.wa-inbox .wa-input { background-color: var(--wa-input); color: var(--wa-text); }
-.wa-inbox .wa-accent { background-color: var(--wa-accent); color: var(--wa-accent-text); }
-.wa-inbox .wa-selected { background-color: var(--wa-selected); }
-
-/* Phone/tablet: an open conversation takes the whole screen, like WhatsApp. Height and top follow the visual
-   viewport (set by ConversationInbox), so the composer sits right above the iOS keyboard instead of floating. */
-@media (max-width: 1023.98px) {
+.wa-inbox .wa-chip { background: var(--wa-chip); color: var(--wa-meta); }
+.wa-inbox .wa-bar { background: var(--wa-panel); }
+.wa-inbox .wa-bar:first-child { flex-wrap: wrap; padding: 16px; gap: 10px; }
+.wa-inbox .wa-bar:first-child h2 { white-space: normal; overflow-wrap: anywhere; }
+.wa-inbox .wa-bar:first-child p { white-space: normal; }
+.wa-inbox .wa-input { background: var(--wa-input); color: var(--wa-text); }
+.wa-inbox .wa-accent { background: var(--wa-accent); color: var(--wa-accent-text); }
+.wa-inbox button.wa-accent:hover:not(:disabled) { background: #1d4ed8; }
+.wa-inbox .wa-selected { background: var(--wa-selected); }
+.wa-inbox [aria-label="Listado de conversaciones"] > ul > li > button { padding: 18px 14px; }
+.wa-inbox [aria-label="Listado de conversaciones"] > ul > li > button > span:first-child { background: #dbeafe; color: #1e40af; }
+.dark .wa-inbox [aria-label="Listado de conversaciones"] > ul > li > button > span:first-child { background: #1e3a5f; color: #bfdbfe; }
+.wa-inbox .wa-note-mode { background: #fffbeb; color: #78350f; }
+.dark .wa-inbox .wa-note-mode { background: #422006; color: #fef3c7; }
+.wa-inbox .conversation-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; background: var(--wa-input); color: var(--wa-text); font-weight: 700; }
+.conversation-suggestion { margin: 12px; padding: 16px; border-radius: 20px; background: #ede9fe; color: #4c1d95; max-height: 32dvh; overflow-y: auto; }
+.dark .conversation-suggestion { background: #2e2452; color: #ede9fe; }
+.conversation-suggestion h3 { display: flex; align-items: center; gap: 6px; font-weight: 750; }
+.conversation-suggestion p { margin: 8px 0; }
+.conversation-suggestion button { padding: 10px 16px; border-radius: 999px; font-weight: 700; }
+.wa-inbox .conversation-composer { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 6px; padding: 12px; }
+.wa-inbox .conversation-composer textarea { grid-column: 1 / -2; grid-row: 1; width: 100%; }
+.wa-inbox .conversation-send { grid-column: -2; grid-row: 1; }
+.conversation-client { display: none; min-width: 0; overflow-y: auto; align-self: stretch; padding: 16px; border: 1px solid var(--border); background: var(--wa-panel); overflow-wrap: anywhere; }
+.conversation-client-empty { display: grid; align-content: center; gap: 12px; min-height: 240px; text-align: center; padding: 12px; }
+.conversation-client-empty p { color: var(--wa-meta); }
+.conversation-visits { display: grid; grid-template-columns: minmax(0,1fr); gap: 16px; }
+.conversation-client :is(section,header,div,ul,li,dl,dd,p) { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.conversation-client button { max-width: 100%; white-space: normal; }
+.wa-inbox .conversation-day { position: static; margin-block: 16px 20px; }
+.wa-inbox .conversation-composer > :is(button,label:has(input)) { width: auto; min-width: 0; gap: 4px; padding-inline: 4px; overflow-wrap: anywhere; text-align: center; }
+.wa-inbox .conversation-composer > :is(button,label:has(input)):not(.conversation-send) { flex-direction: column; }
+.wa-inbox .conversation-composer > :is(button,label:has(input)) svg { flex-shrink: 0; }
+.conversation-suggestion { flex-shrink: 0; }
+.conversation-about { padding: 20px; border-radius: 24px; background: var(--wa-panel); border: 1px solid var(--border); }
+.conversation-about dl { display: grid; gap: 12px; margin-top: 16px; }
+.conversation-about dt { color: var(--wa-meta); }
+.conversation-about dd { font-weight: 650; overflow-wrap: anywhere; }
+.conversation-visits > header { padding: 0 6px; }
+.conversation-visits > header p { color: var(--wa-meta); }
+.conversation-visits > ul { display: grid; gap: 16px; }
+.wa-inbox .conversation-visit { background: #0f172a; color: #fff; border: 0; border-radius: 24px; padding: 20px; overflow-wrap: anywhere; }
+.wa-inbox .conversation-visit .text-muted-foreground { color: #cbd5e1; }
+.wa-inbox .conversation-visit input { width: 100%; min-width: 0; max-width: 100%; background: #1e293b; color: #fff; color-scheme: dark; }
+.wa-inbox .conversation-visit label { min-width: 0; width: 100%; }
+.wa-inbox .conversation-visit button { padding: 10px 16px; border-radius: 999px; background: #fff; color: #0f172a; font-weight: 700; }
+.wa-inbox .conversation-client > button:last-child { margin-top: 16px; }
+@media (min-width: 768px) {
+  .conversation-columns { flex: 1; grid-template-columns: minmax(240px, .8fr) minmax(0, 1.4fr); grid-template-rows: minmax(0,1fr); }
+}
+@media (min-width: 1200px) {
+  .conversation-columns { grid-template-columns: minmax(290px, 1fr) minmax(0,1.6fr) minmax(290px,1fr); }
+  .conversation-client { display: block; }
+  .conversation-client-toggle { display: none !important; }
+}
+@media (max-width: 1199.98px) {
+  .conversation-client-open { display: block; position: fixed; z-index: 61; inset: var(--wa-chat-top, 0px) 0 auto; height: var(--wa-chat-height, 100dvh); background: var(--background); padding: 16px 16px max(20px,env(safe-area-inset-bottom)); }
+  .conversation-client-open > button:first-child { margin-bottom: 16px; }
+  .conversation-columns:has(.conversation-client-open) .conversation-chat { visibility: hidden; }
+}
+@media (max-width: 767.98px) {
+  .wa-inbox :is(button,a,input,select,textarea,label:has(input[type="file"])) { min-height: 52px; }
   html.wa-chat-open, html.wa-chat-open body { overflow: hidden; overscroll-behavior: none; }
   .wa-inbox .wa-fullscreen {
-    position: fixed; left: 0; right: 0; z-index: 60;
+    position: fixed; left: 0; right: 0; z-index: 39;
     top: var(--wa-chat-top, 0px); height: var(--wa-chat-height, 100dvh);
-    border: 0; border-radius: 0;
-    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+    border: 0; border-radius: 0; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+    --tw-translate-x: 0px !important; --tw-translate-y: 0px !important; transform: none !important; translate: none !important;
   }
-  /* With the keyboard up the home indicator is hidden: no gap between composer and keyboard. */
-  html.wa-keyboard .wa-inbox .wa-fullscreen { padding-bottom: 0; }
-  .wa-inbox .wa-fullscreen .wa-bar:first-child { border-radius: 0; }
+  .advisor-mobile-shell .wa-inbox .wa-fullscreen { padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+  html.wa-keyboard .wa-inbox .wa-fullscreen { padding-bottom: 0; z-index: 60; }
+  html.wa-keyboard .advisor-dock { display: none; }
+  .wa-inbox .wa-fullscreen .conversation-header { border-radius: 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px 8px; padding: 6px 8px; }
+  .wa-inbox .conversation-header > span[aria-hidden] { display: none; }
+  .wa-inbox .conversation-header > div { grid-column: 2 / -1; }
+  .wa-inbox .conversation-header > div p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wa-inbox .conversation-header > span:not([aria-hidden]) { grid-column: 1; padding: 0; white-space: normal; }
+  .wa-inbox .conversation-header > .conversation-secondary { padding: 4px 6px; }
+  .wa-inbox .conversation-handoff { margin: 4px 8px 0; padding: 0 8px; flex-shrink: 0; }
+  .conversation-handoff:not(.conversation-handoff-expanded) :is(.conversation-handoff-summary,.conversation-handoff-detail) { display: none; }
+  .wa-inbox .conversation-composer { grid-template-columns: repeat(5,minmax(0,1fr)); flex-shrink: 0; }
+  .wa-inbox .conversation-composer > :is(button,label) { min-width: 52px; }
+  .wa-inbox .conversation-composer textarea { grid-column: 1 / -3; }
+  .wa-inbox .conversation-send { grid-column: -3 / -1; padding: 8px; }
+  .wa-inbox .conversation-send svg { display: none; }
+  .wa-inbox .wa-bubble { padding: 8px 12px; }
+  .wa-inbox .conversation-sender { margin-bottom: 2px; }
+  .conversation-suggestion { max-height: 27dvh; }
+  .advisor-mobile-shell .conversation-client-open { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); z-index: 39; }
 }
-.wa-inbox .wa-note-mode { background-color: #fff7e0; color: #4a3200; }
-.dark .wa-inbox .wa-note-mode { background-color: #3a2c10; color: #f6e2b3; }
+@media (prefers-reduced-motion: reduce) {
+  .wa-inbox *, .wa-inbox *::before, .wa-inbox *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
 
-/* EVP-66: prototype composition, shared panel text scale and semantic colors. */
 .mi-day { --day-text: 17px; font-size: var(--day-text); color: var(--foreground); line-height: 1.5; }
 html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
 .mi-day :is(p, span, a, button, input, select, textarea, label, dt, dd, summary, [data-slot="dialog-description"]) { font-size: var(--day-text); line-height: 1.5; }
@@ -433,4 +532,23 @@ html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
 @media (prefers-reduced-motion: reduce) {
   .mi-day, .mi-day *, .mi-day *::before, .mi-day *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .mi-day :is(button, a):active { transform: none; }
+}
+
+/* EVP-67: ajustes de revisión visual (pestañas en una línea, columnas más anchas, acciones del compositor legibles) */
+.wa-inbox .conversation-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.wa-inbox .conversation-tabs button { flex-direction: row; gap: 6px; white-space: nowrap; overflow-wrap: normal; padding: 10px 8px; font-size: 15px; }
+@media (min-width: 1280px) {
+  .conversation-columns { grid-template-columns: minmax(330px, 1fr) minmax(0, 1.8fr) minmax(280px, .9fr); }
+}
+.wa-inbox .conversation-composer > button:not(.conversation-send), .wa-inbox .conversation-composer > label { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; padding: 6px 2px; font-size: 14px; line-height: 1.1; }
+.wa-inbox .conversation-composer > label svg { order: -1; }
+@media (max-width: 767px) {
+  .wa-inbox .conversation-suggestion { max-height: none; overflow: visible; }
+  .wa-inbox .wa-fullscreen .conversation-header { padding: 8px 12px; }
+  .wa-inbox .conversation-composer > button:not(.conversation-send), .wa-inbox .conversation-composer > label { font-size: 13px; white-space: nowrap; }
+}
+@media (max-width: 767px) {
+  body:has(.wa-inbox .wa-fullscreen) .advisor-dock { display: none; }
+  .wa-inbox .conversation-composer > label * { font-size: inherit; }
+  .wa-inbox .wa-fullscreen .conversation-header { padding-left: 16px; padding-right: 16px; }
 }

@@ -16,7 +16,7 @@ import {
   type VisitRequest,
 } from "@/lib/assistant-api";
 
-export function VisitRequestsBoard() {
+export function VisitRequestsBoard({ conversationId, channelLabel }: { conversationId?: string; channelLabel?: string } = {}) {
   const { user } = useCurrentSession();
   const readOnly = user?.apiRole === "READ_ONLY";
   const [items, setItems] = useState<VisitRequest[]>([]);
@@ -73,11 +73,21 @@ export function VisitRequestsBoard() {
     }
   }
 
+  const visibleItems = conversationId ? items.filter(item => item.conversation_id === conversationId) : items;
+
   return (
-    <section className="mi-day mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-4 pb-6">
+    <section className={`${conversationId ? "conversation-visits" : "mi-day mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-4 pb-6"}`}>
+      {conversationId && <section className="conversation-about">
+        <h2>Sobre este cliente</h2>
+        <dl>
+          <div><dt>Interés solicitado</dt><dd>{error ? "No se pudo cargar el interés de las solicitudes." : visibleItems.length ? visibleItems.map(item => [item.property.code, item.property.title].filter(Boolean).join(" · ")).join("; ") : "Sin solicitudes de visita pendientes."}</dd></div>
+          <div><dt>Etapa comercial</dt><dd>Consultar en la ficha del cliente</dd></div>
+          <div><dt>Origen de la conversación</dt><dd>{channelLabel}</dd></div>
+        </dl>
+      </section>}
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Solicitudes de visita</h1>
+          {conversationId ? <h2>Visitas solicitadas</h2> : <h1 className="text-2xl font-bold">Solicitudes de visita</h1>}
           <p className="mt-1 text-sm text-muted-foreground">Pedidas por clientes al asistente. No están agendadas hasta que las confirmes acá.</p>
         </div>
         <button type="button" onClick={() => void refresh()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold">
@@ -86,18 +96,19 @@ export function VisitRequestsBoard() {
       </header>
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{error}</p>}
       <ul role="list" className="grid gap-3">
-        {items.length === 0 && !error && <li className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">No hay solicitudes pendientes.</li>}
-        {items.map((item) => (
-          <li key={item.id} className="grid gap-3 rounded-2xl border border-border bg-card p-4">
+        {visibleItems.length === 0 && !error && <li className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">No hay solicitudes pendientes.</li>}
+        {visibleItems.map((item) => (
+          <li key={item.id} className={`${conversationId ? "conversation-visit " : ""}grid gap-3 rounded-2xl border border-border bg-card p-4`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
+                <p className="font-bold">Solicitada · por confirmar</p>
                 <p className="flex items-center gap-2 font-semibold"><CalendarCheck className="h-4 w-4" aria-hidden /> {item.property.code ?? ""} {item.property.title}</p>
                 <p className="text-sm text-muted-foreground">
                   {item.contact.name || "Visitante"} · {item.contact.phone ?? "sin teléfono"} {item.contact.email ? `· ${item.contact.email}` : ""}
                   {item.contact.unverified.length > 0 && " · datos declarados en el chat, sin verificar"}
                 </p>
               </div>
-              <Link href={`/admin/conversaciones?c=${item.conversation_id}`} className="text-sm font-semibold text-blue-700 underline dark:text-blue-300">Ver conversación</Link>
+              {!conversationId && <Link href={`/admin/conversaciones?c=${item.conversation_id}`} className="text-sm font-semibold text-blue-700 underline dark:text-blue-300">Ver conversación</Link>}
             </div>
             <ul className="text-sm">
               {item.slots.map((slot) => <li key={slot.start_utc}>• {formatSlot(slot)}</li>)}

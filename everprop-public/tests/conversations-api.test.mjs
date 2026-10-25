@@ -8,6 +8,7 @@ const calls = [];
 const context = {
   exports: {}, URLSearchParams,
   require(name) {
+    if (name.endsWith('/data-mode')) return { isMockDataMode: false };
     if (name.endsWith('/everprop-api')) return { apiFetch: async (path, init = {}) => { calls.push({ path, init }); return { data: [] }; } };
     throw new Error(`unexpected import ${name}`);
   },
