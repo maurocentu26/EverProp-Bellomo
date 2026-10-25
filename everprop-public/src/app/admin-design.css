@@ -767,3 +767,77 @@ html[data-panel-text-size="grande"] .mi-agenda { --agenda-text: 20.4px; }
   .agenda-review dd { margin-bottom: 10px; }
   .mi-agenda.agenda-dialog { left: 16px; top: 16px; margin: 0; --tw-translate-x: 0px; --tw-translate-y: 0px; }
 }
+
+/* EVP-72 — Cobranzas */
+.collections-view, .collections-dialog { font-size: 17px; line-height: 1.55; color: var(--foreground); }
+.collections-view { container-type: inline-size; }
+.collections-view :is(p,span,a,button,label,input,select,th,td), .collections-dialog :is(p,span,button,label,input,select) { font-size: inherit; word-break: normal; overflow-wrap: normal; }
+.collections-view h1 { font-size: clamp(26px,3vw,34px); }
+.collections-view h2, .collections-dialog h2 { font-size: 20px; font-weight: 700; }
+.collections-view :is(button,a,input,select), .collections-dialog :is(button,input,select) { min-height: 44px; white-space: normal; }
+.collections-view button:disabled, .collections-dialog button:disabled { opacity: .55; cursor: not-allowed; }
+.collections-view :focus-visible, .collections-dialog :focus-visible { outline: 3px solid #3b82f6; outline-offset: 3px; }
+.collections-view [class*="text-slate-4"], .collections-view [class*="text-slate-5"] { color: var(--muted-foreground); }
+.collections-overview { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 24px; }
+.collections-priority { padding: 28px; background: #192b3c; color: #fff; border-radius: 24px; display: grid; gap: 12px; }
+.collections-priority :is(p,h2,h3,a) { color: #fff; }
+.collections-priority h3 { font-size: 24px; font-weight: 700; }
+.collections-priority .collections-amount { font-size: clamp(28px,4vw,42px); font-weight: 750; font-variant-numeric: tabular-nums; }
+.collections-summary { display: grid; gap: 20px; }
+.collections-summary article { padding: 20px 0; border-bottom: 1px solid var(--border); }
+.collections-summary strong { font-size: 26px; font-variant-numeric: tabular-nums; }
+.collections-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.collections-actions > :is(a,button) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border-radius: 10px; }
+.collections-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 18px; border-radius: 12px; background: #2563eb; color: #fff; font-weight: 700; }
+.collections-cta:hover { background: #1d4ed8; }
+.collections-view [aria-pressed="true"] { background: #2563eb; color: #fff; }
+.collections-view .size-8 { flex-shrink: 0; }
+.collections-mobile-status { display: grid; gap: 16px; }
+.collections-dialog[data-slot="dialog-content"] { width: min(640px,calc(100vw - 32px)); max-width: 640px; max-height: 90dvh; overflow-y: auto; background: var(--card); color: var(--foreground); padding: 24px; }
+.collections-payment-details { display: grid; gap: 8px; padding-block: 12px; border-bottom: 1px solid var(--border); }
+.collections-payment-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.collections-payment-form label { display: grid; gap: 8px; }
+.collections-payment-form :is(input,select) { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--input); border-radius: 8px; background: var(--card); }
+.collections-view > .fixed > div { max-height: 90dvh; overflow-y: auto; }
+html[data-panel-text-size="grande"] :is(.collections-view,.collections-dialog) { font-size: 20.4px; }
+@media (max-width: 767px) {
+ .collections-overview { grid-template-columns: 1fr; }
+ .collections-priority { padding: 24px; }
+ .collections-actions { flex-direction: column; align-items: stretch; }
+ .collections-actions > :is(a,button) { width: 100%; min-height: 52px; }
+ .collections-view :is(button,input,select), .collections-dialog :is(button,input,select) { min-height: 52px; }
+ .collections-payment-form { grid-template-columns: 1fr; }
+ .collections-dialog[data-slot="dialog-content"] { inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; border-radius: 0; --tw-translate-x: 0px; --tw-translate-y: 0px; padding: max(20px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom)); }
+}
+.admin-workspace .collections-view article :is(button,a) { min-height: 44px; }
+@media (max-width: 767px) {
+ .admin-workspace .collections-view article :is(button,a) { min-height: 52px; }
+}
+
+/* Share the lead-card layout across desktop and phone. */
+.collections-installments { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; padding: 20px; }
+.collections-view .collections-installment { min-width: 0; padding: 24px; border: 1px solid var(--border); border-radius: 16px; display: grid; gap: 20px; font-size: inherit; }
+.collections-installment-heading { display: grid; gap: 16px; }
+.collections-view .collections-installment p, .collections-view .collections-installment a, .collections-payment-details p { overflow-wrap: anywhere; }
+.collections-view .collections-installment-amount { font-size: 28px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.collections-plan-form :is(input,select) { min-width: 0; width: 100%; }
+.collections-view .fixed :is(h2,p,span), .collections-dialog :is(p,strong,span) { overflow-wrap: anywhere; }
+.collections-view .fixed button { flex-shrink: 0; }
+@container (max-width: 850px) {
+ .collections-installments { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 767px) {
+ .collections-header-actions { display: grid; grid-template-columns: minmax(0,1fr); width: 100%; }
+ .collections-header-actions > button { width: 100%; justify-content: center; }
+ .collections-status-filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; gap: 8px; }
+ .collections-status-filters > button:first-child { grid-column: 1 / -1; }
+ .collections-installments { padding: 12px; }
+ .collections-view .collections-installment { padding: 16px; }
+ .collections-plan-form .sm\:grid-cols-2 { grid-template-columns: minmax(0,1fr); }
+ .collections-view > .fixed { padding: 8px; }
+ .collections-view > .fixed > div { padding: 16px; }
+}
+
+.collections-plan-form fieldset[hidden] { display: none; }
+.collections-plan-dialog .collections-actions > button { min-width: 0; }
+.collections-plan-dialog .flex > :is(div,h2) { min-width: 0; }
