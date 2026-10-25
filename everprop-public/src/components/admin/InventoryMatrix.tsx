@@ -1,229 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { type Property } from "@/data/admin-sample";
-import { cn } from "@/lib/utils";
+import { useId, useState } from "react";
+import type { Property } from "@/data/admin-sample";
 import { inventoryPriceLabel, propertyStatusLabel } from "@/lib/inventory-labels";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import Badge from "@/components/ui/badge";
-import { useCurrentSession } from "@/hooks/use-current-session";
-import { MapPin, Maximize, DollarSign, UserPlus, Info, X } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { CircleCheck, CirclePause, CircleX, CircleHelp, ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-type InventoryMatrixProps = {
-  properties: Property[];
-  isLoading?: boolean;
+const statusIcon = (status: Property['status']) => status === 'available' ? CircleCheck : status === 'reserved' ? CirclePause : status === 'sold' ? CircleX : CircleHelp;
+const sectorLabel = (sector: string) => sector === 'Sin manzana informada' || /^manzana\b/i.test(sector) ? sector : `Manzana ${sector}`;
+const countLabel = (count: number, status: Property['status']) => {
+  const labels = { available: ['disponible', 'disponibles'], reserved: ['reservada', 'reservadas'], sold: ['vendida', 'vendidas'], rented: ['alquilada', 'alquiladas'], not_sellable: ['no vendible', 'no vendibles'], not_marketed: ['no comercializada', 'no comercializadas'], unknown: ['sin estado informado', 'sin estado informado'] };
+  return `${count} ${labels[status ?? 'unknown'][count === 1 ? 0 : 1]}`;
 };
 
-export default function InventoryMatrix({ properties, isLoading }: InventoryMatrixProps) {
-  const { isEngineer } = useCurrentSession();
+export default function InventoryMatrix({ properties, isLoading }: { properties: Property[]; isLoading?: boolean }) {
+  const filterId = useId();
   const [selectedUnit, setSelectedUnit] = useState<Property | null>(null);
+  const [selectedSector, setSelectedSector] = useState('');
+  const grouped: Record<string, Property[]> = {};
+  for (const unit of properties) (grouped[unit.sectorName || 'Sin manzana informada'] ??= []).push(unit);
+  const statuses = Array.from(new Set<Property['status']>(['available', 'reserved', 'sold', ...properties.map(unit => unit.status ?? 'unknown')]));
+  const activeSector = selectedSector in grouped ? selectedSector : '';
+  const land = selectedUnit?.commercialFeatures?.land;
+  const services = selectedUnit?.services;
+  const serviceNames = services ? [[services.water, 'Agua potable'], [services.electricity, 'Electricidad'], [services.gas, 'Gas natural'], [services.sewage, 'Cloacas'], [services.internet, 'Internet']].filter(([enabled]) => enabled).map(([, label]) => label).join(' · ') : '';
 
-  // Group properties by sectorName
-  const grouped = properties.reduce((acc, curr) => {
-    const sector = curr.sectorName || "General";
-    if (!acc[sector]) acc[sector] = [];
-    acc[sector].push(curr);
-    return acc;
-  }, {} as Record<string, Property[]>);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        {[1, 2].map(s => (
-          <div key={s}>
-            <div className="h-4 w-32 bg-slate-200 rounded animate-pulse mb-3" />
-            <div className="flex flex-wrap gap-2">
-              {[...Array(12)].map((_, i) => (
-                <div key={i} className="h-10 w-10 bg-slate-100 rounded-md animate-pulse" />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="space-y-8">
-        {Object.entries(grouped).map(([sector, units]) => {
-          const isSoldOut = units.length > 0 && units.every(u => u.status === "sold");
-          
-          return (
-            <div key={sector}>
-              <div className="flex items-center gap-3 mb-3">
-                <h3 className="text-sm font-bold text-slate-700">{sector}</h3>
-                {isSoldOut && (
-                  <span className="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-slate-100 text-slate-500 rounded-md border border-slate-200">
-                    Vendido por completo
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {[...units].sort((a, b) => (a.unitNumber || a.title).localeCompare(b.unitNumber || b.title, "es", { numeric: true })).map((unit) => {
-                  const isAvailable = !unit.status || unit.status === "available";
-                  const isReserved = unit.status === "reserved";
-
-                return (
-                  <button
-                    key={unit.id}
-                    aria-label={`${unit.title} · ${propertyStatusLabel(unit.status)}`}
-                    onClick={() => setSelectedUnit(unit)}
-                    className={cn(
-                      "h-10 w-10 rounded-md border flex items-center justify-center text-xs font-bold transition-all hover:scale-110 hover:shadow-md",
-                      isAvailable ? "bg-emerald-100 border-emerald-200 text-emerald-700 hover:bg-emerald-200 hover:border-emerald-300" :
-                      isReserved ? "bg-amber-100 border-amber-200 text-amber-700 hover:bg-amber-200 hover:border-amber-300" :
-                      unit.status !== "sold" ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-muted" :
-                      "bg-rose-100 border-rose-200 text-rose-700 hover:bg-rose-200 hover:border-rose-300"
-                    )}
-                    title={unit.title}
-                  >
-                    {unit.unitNumber?.replace(/\D/g, "") || unit.title.slice(0, 2)}
-                  </button>
-                );
-              })}
-            </div>
-            </div>
-          );
-        })}
-
-        {properties.length === 0 && (
-          <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-500">
-            No hay unidades registradas para este proyecto.
-          </div>
-        )}
-      </div>
-
-      {/* Leyenda */}
-      <div className="flex flex-wrap gap-4 pt-6 mt-6 border-t border-slate-100 text-xs font-semibold text-slate-600">
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded-md bg-emerald-100 border border-emerald-200" /> 
-          Disponible
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded-md bg-amber-100 border border-amber-200" /> 
-          Reservado
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded-md bg-rose-100 border border-rose-200" /> 
-          Vendido
-        </div>
-      </div>
-
-      {properties.some(unit => ['rented', 'not_sellable', 'not_marketed', 'unknown'].includes(unit.status ?? 'unknown')) && <p className="mt-2 text-xs text-slate-600">Gris: alquilado, no vendible, no comercializado o sin estado. Abrí la unidad para ver su estado exacto.</p>}
-
-      {/* Ficha de unidad en pantalla completa */}
-      <Sheet open={!!selectedUnit} onOpenChange={(open) => !open && setSelectedUnit(null)}>
-        <SheetContent
-          side="right"
-          showCloseButton={false}
-          className="admin-workspace inset-0 h-dvh !w-screen !max-w-none gap-0 overflow-hidden border-0 bg-slate-50 p-0 shadow-none data-[side=right]:!left-0 data-[side=right]:!right-0 data-[side=right]:!w-screen data-[side=right]:sm:!max-w-none motion-reduce:transition-none"
-        >
-          {selectedUnit && (
-            <div className="flex h-dvh min-h-0 w-full flex-col">
-              <SheetHeader className="shrink-0 border-b border-slate-200 bg-white px-4 pb-3 sm:pb-5 pt-[max(1rem,env(safe-area-inset-top))] text-left sm:px-8 lg:px-12">
-                <div className="mx-auto flex w-full max-w-[min(94vw,2800px)] items-start justify-between gap-5">
-                  <div className="min-w-0">
-                    <SheetTitle className="text-lg leading-snug font-bold tracking-tight text-slate-950 sm:text-2xl lg:text-3xl">{selectedUnit.title}</SheetTitle>
-                    <SheetDescription className="mt-2 flex items-start gap-2 text-sm text-slate-600 sm:text-base">
-                      <MapPin className="h-5 w-5 shrink-0" aria-hidden="true" /> {selectedUnit.neighborhood}, {selectedUnit.city}
-                    </SheetDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    aria-label="Cerrar ficha de unidad"
-                    onClick={() => setSelectedUnit(null)}
-                    className="size-11 shrink-0 gap-2 px-2 text-sm font-semibold sm:h-12 sm:w-auto sm:px-4"
-                  >
-                    <X className="h-5 w-5" aria-hidden="true" />
-                    <span className="hidden sm:inline">Cerrar</span>
-                  </Button>
-                </div>
-              </SheetHeader>
-
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
-                <div className="mx-auto grid min-h-full w-full max-w-[min(94vw,2800px)] content-center gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] xl:gap-8">
-                  <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7 lg:p-9" aria-labelledby="unit-summary-title">
-                    <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p id="unit-summary-title" className="text-base font-semibold text-slate-500">Precio publicado</p>
-                        <p className="mt-2 flex items-center gap-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-                          {inventoryPriceLabel(selectedUnit)}
-                        </p>
-                      </div>
-                      <Badge className={cn(
-                        "w-fit px-4 py-2 text-sm font-bold uppercase tracking-wider",
-                        (!selectedUnit.status || selectedUnit.status === "available") ? "border-emerald-200 bg-emerald-100 text-emerald-700" :
-                        selectedUnit.status === "reserved" ? "border-amber-200 bg-amber-100 text-amber-800" :
-                        selectedUnit.status !== "sold" ? "border-slate-300 bg-slate-100 text-slate-700" :
-                        "border-rose-200 bg-rose-100 text-rose-700"
-                      )}>
-                        {propertyStatusLabel(selectedUnit.status)}
-                      </Badge>
-                    </div>
-
-                    <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                      <div className="rounded-2xl bg-slate-50 p-5">
-                        <dt className="text-base font-medium text-slate-500">Tipo</dt>
-                        <dd className="mt-2 text-xl font-bold text-slate-900">{selectedUnit.propertyType}</dd>
-                      </div>
-                      <div className="rounded-2xl bg-slate-50 p-5">
-                        <dt className="text-base font-medium text-slate-500">Manzana</dt>
-                        <dd className="mt-2 text-xl font-bold text-slate-900">{selectedUnit.sectorName || "-"}</dd>
-                      </div>
-                      {selectedUnit.area_m2 && (
-                        <div className="rounded-2xl bg-slate-50 p-5">
-                          <dt className="flex items-center gap-2 text-base font-medium text-slate-500"><Maximize className="h-5 w-5" aria-hidden="true" /> Superficie total</dt>
-                          <dd className="mt-2 text-xl font-bold text-slate-900">{selectedUnit.area_m2.toLocaleString("es-AR", { maximumFractionDigits: 2 })} m²</dd>
-                        </div>
-                      )}
-                    </dl>
-
-                    {selectedUnit.services && [selectedUnit.services.water, selectedUnit.services.electricity, selectedUnit.services.gas, selectedUnit.services.sewage].some(Boolean) && (
-                      <div className="rounded-2xl border border-slate-200 p-5 sm:p-6">
-                        <h3 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-                          <Info className="h-6 w-6 text-blue-600" aria-hidden="true" /> Servicios disponibles
-                        </h3>
-                        <div className="mt-4 flex flex-wrap gap-3">
-                          {selectedUnit.services.electricity && <Badge className="bg-slate-100 px-3 py-2 text-base text-slate-700">Luz eléctrica</Badge>}
-                          {selectedUnit.services.water && <Badge className="bg-slate-100 px-3 py-2 text-base text-slate-700">Agua potable</Badge>}
-                          {selectedUnit.services.gas && <Badge className="bg-slate-100 px-3 py-2 text-base text-slate-700">Gas natural</Badge>}
-                          {selectedUnit.services.sewage && <Badge className="bg-slate-100 px-3 py-2 text-base text-slate-700">Cloacas</Badge>}
-                        </div>
-                      </div>
-                    )}
-                  </section>
-
-                  <aside className="flex flex-col justify-between gap-6 rounded-3xl bg-slate-950 p-5 text-white shadow-xl sm:p-7 lg:p-9" aria-labelledby="unit-actions-title">
-                    <div>
-                      <p className="text-base font-bold uppercase tracking-[0.12em] text-blue-300">Unidad seleccionada</p>
-                      <h3 id="unit-actions-title" className="mt-3 text-2xl font-bold sm:text-3xl">¿Qué querés hacer?</h3>
-                      <p className="mt-2 text-xs leading-5 text-slate-300">
-                        Consultá la información detallada y operaciones de esta unidad.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Link href={`/admin/properties/${selectedUnit.id}`} className="flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">
-                        Ver ficha completa
-                      </Link>
-                    </div>
-                  </aside>
-                </div>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-    </div>
-  );
+  return <div className="inventory-view lots-matrix" aria-busy={isLoading}>
+    <div className="inventory-filters"><label htmlFor={filterId}>Manzana<select id={filterId} value={activeSector} onChange={event => setSelectedSector(event.target.value)}><option value="">Todas las manzanas</option>{Object.keys(grouped).map(sector => <option key={sector} value={sector}>{sectorLabel(sector)}</option>)}</select></label></div>
+    <ul className="lots-legend" aria-label="Estados de los lotes">{statuses.map(status => { const Icon = statusIcon(status); return <li key={status} className="lots-status" data-status={status}><Icon size={20} aria-hidden="true" />{propertyStatusLabel(status)}</li>; })}</ul>
+    {isLoading ? <p role="status">Cargando lotes…</p> : Object.entries(grouped).filter(([sector]) => !activeSector || sector === activeSector).map(([sector, units]) => <section className="lots-block" key={sector} aria-label={sectorLabel(sector)}>
+      <h3>{sectorLabel(sector)}</h3>
+      <ul className="lots-counts" aria-label={`Resumen de ${sectorLabel(sector)}`}>{statuses.map(status => <li key={status}>{countLabel(units.filter(unit => (unit.status ?? 'unknown') === status).length, status)}</li>)}</ul>
+      <div className="lots-scroll" role="region" aria-label={`Lotes de ${sectorLabel(sector)}`} tabIndex={0}><div className="lots-grid">{[...units].sort((a, b) => (a.unitNumber ?? a.title).localeCompare(b.unitNumber ?? b.title, 'es', { numeric: true })).map(unit => { const Icon = statusIcon(unit.status); return <button type="button" key={unit.id} className="lots-cell" data-status={unit.status ?? 'unknown'} aria-label={`${unit.unitNumber ?? unit.title} · ${sectorLabel(sector)} · ${propertyStatusLabel(unit.status)} · ${inventoryPriceLabel(unit)}`} onClick={() => setSelectedUnit(unit)}><strong>{unit.unitNumber ?? unit.title}</strong><Icon size={20} aria-hidden="true" /></button>; })}</div></div>
+    </section>)}
+    {!isLoading && !properties.length && <p className="inventory-empty">No hay unidades registradas para este proyecto.</p>}
+    <Sheet open={!!selectedUnit} onOpenChange={open => { if (!open) setSelectedUnit(null); }}>
+      <SheetContent side="right" showCloseButton={false} className="admin-workspace inventory-view lots-sheet">
+        {selectedUnit && <>
+          <SheetHeader><button type="button" className="lots-back" onClick={() => setSelectedUnit(null)}><ArrowLeft size={20} aria-hidden="true" />Atrás</button><SheetTitle>{selectedUnit.unitNumber ?? selectedUnit.title}</SheetTitle><SheetDescription>{sectorLabel(selectedUnit.sectorName || 'Sin manzana informada')}</SheetDescription><span className="lots-status" data-status={selectedUnit.status ?? 'unknown'}>{(() => { const Icon = statusIcon(selectedUnit.status); return <Icon size={20} aria-hidden="true" />; })()}{propertyStatusLabel(selectedUnit.status)}</span></SheetHeader>
+          <div className="lots-sheet-body"><p>Precio</p><p className="inventory-price">{inventoryPriceLabel(selectedUnit)}</p><dl><div><dt>Superficie</dt><dd>{selectedUnit.area_m2 == null ? 'Sin informar' : `${selectedUnit.area_m2.toLocaleString('es-AR')} m²`}</dd></div><div><dt>Medidas</dt><dd>{land?.frente_m == null ? 'Frente sin informar' : `Frente: ${land.frente_m} m`} · {land?.fondo_m == null ? 'Fondo sin informar' : `Fondo: ${land.fondo_m} m`}{land?.ochava_m2 != null && ` · Ochava: ${land.ochava_m2} m²`}</dd></div><div><dt>Servicios</dt><dd>{serviceNames || 'Sin servicios informados'}</dd></div></dl><Link href={`/admin/properties/${selectedUnit.id}`} className="inventory-cta">Ver ficha completa<ArrowRight size={20} aria-hidden="true" /></Link></div>
+        </>}
+      </SheetContent>
+    </Sheet>
+  </div>;
 }

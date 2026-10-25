@@ -932,3 +932,43 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
  .projects-view button, .projects-view .inventory-cta { width: 100%; min-height: 52px; }
  .projects-view .project-counts { flex-direction: column; }
 }
+
+/* EVP-75: shared lot matrix, using the inventory surfaces. */
+.lots-page, .lots-matrix { display: grid; gap: 24px; min-width: 0; max-width: 100%; }
+.lots-page .inventory-filters { font-size: 17px; }
+.lots-matrix { font-size: 17px; }
+.lots-legend, .lots-counts { display: flex; flex-wrap: wrap; gap: 12px 20px; padding: 0; list-style: none; }
+.lots-status { display: inline-flex; align-items: center; gap: 8px; width: fit-content; padding: 8px 12px; border-radius: 8px; background: #e2e8f0; color: #243247; }
+.lots-status[data-status="available"], .lots-cell[data-status="available"] { background: #d6f5e4; color: #145438; }
+.lots-status[data-status="reserved"], .lots-cell[data-status="reserved"] { background: #fff0ba; color: #654900; }
+.lots-status[data-status="sold"], .lots-cell[data-status="sold"] { background: #f9dfe4; color: #812538; }
+.lots-block { min-width: 0; padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; }
+.lots-block h3 { font-size: 24px; font-weight: 700; }
+.lots-counts { margin-block: 12px 20px; font-variant-numeric: tabular-nums; }
+.lots-scroll { max-width: 100%; overflow-x: auto; padding: 4px; }
+.lots-grid { display: grid; grid-template-columns: repeat(10,minmax(64px,1fr)); gap: 10px; min-width: 730px; }
+.lots-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 72px; min-width: 44px; padding: 8px; border: 1px solid currentColor; border-radius: 10px; background: #e2e8f0; color: #243247; overflow-wrap: anywhere; font-size: 17px; cursor: pointer; }
+.lots-cell:hover { box-shadow: 0 3px 8px #0002; }
+.lots-matrix :focus-visible, .lots-sheet :focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+.lots-sheet[data-slot="sheet-content"] { width: min(100%,560px); max-width: 560px; height: 100dvh; overflow-y: auto; gap: 0; background: var(--card); color: var(--foreground); font-size: 17px; }
+.lots-sheet [data-slot="sheet-header"] { padding: 24px; gap: 16px; border-bottom: 1px solid var(--border); }
+.lots-sheet [data-slot="sheet-title"] { font-size: 32px; overflow-wrap: anywhere; }
+.lots-sheet [data-slot="sheet-description"] { color: var(--foreground); font-size: 17px; }
+.lots-back { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; width: fit-content; }
+.lots-sheet-body { display: grid; gap: 16px; padding: 24px; }
+.lots-sheet-body .inventory-price { font-size: 30px; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.2; overflow-wrap: anywhere; }
+.lots-sheet-body dl { display: grid; gap: 24px; margin-block: 8px 24px; }
+.lots-sheet-body dt { font-weight: 700; margin-bottom: 6px; }
+.lots-sheet-body dd { overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+ .lots-page .inventory-filters, .lots-matrix .inventory-filters { display: flex; flex-direction: column; align-items: stretch; }
+ .lots-page .inventory-filters label, .lots-matrix .inventory-filters label { flex: auto; }
+ .lots-page button, .lots-sheet button, .lots-sheet .inventory-cta { width: 100%; min-height: 52px; }
+ .lots-block { padding: 16px; }
+ .lots-scroll { overflow-x: visible; }
+ .lots-grid { grid-template-columns: repeat(4,minmax(0,1fr)); min-width: 0; gap: 8px; }
+ .lots-cell { min-width: 0; min-height: 52px; padding: 8px 2px; }
+ .lots-sheet[data-slot="sheet-content"] { inset: 0; width: 100%; max-width: none; border: 0; }
+ .lots-sheet [data-slot="sheet-header"] { padding-top: max(20px,env(safe-area-inset-top)); }
+ .lots-sheet-body { padding-bottom: max(24px,env(safe-area-inset-bottom)); }
+}

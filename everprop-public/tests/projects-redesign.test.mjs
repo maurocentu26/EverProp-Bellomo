@@ -68,8 +68,8 @@ test('EVP-74 detail preserves 12, 12A, 12B and null price/currency; advisor has 
 });
 
 test('EVP-74 lot creation shows all data, cancellation never writes, acceptance writes once',async()=>{
-  const states=[],lock={current:false};let cursor=0,writes=0,allow=false,review='';
-  const context={exports:{},window:{confirm(message){review=message;return allow;}},require(name){
+  const states=[],lock={current:false};let cursor=0,writes=0,review='';
+  const context={exports:{},require(name){
     if(name==='react')return {useState(value){const i=cursor++;if(!(i in states))states[i]=value;return [states[i],v=>{states[i]=v;}];},useEffect(){},useMemo:fn=>fn(),useId:()=> 'lots',useRef:()=>lock};
     if(name==='react/jsx-runtime')return {jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})};
     if(name==='@/lib/data-mode')return {isMockDataMode:false};
@@ -82,9 +82,15 @@ test('EVP-74 lot creation shows all data, cancellation never writes, acceptance 
   render();assert.equal(states[7],'');assert.equal(states[9],'');assert.deepEqual(Array.from(states[15]),[]);states[0]=[project];states[2]='Manzana B';states[4]=20;states[5]='10';states[6]='25';states[7]='250';states[9]='15000';states[10]=true;states[11]='1, 20';states[12]='280';states[13]='4.79';states[14]='17000';states[16]='Descripción completa';
   await nodes(render()).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
   assert.equal(writes,0);
+  review=states[18];
   for(const value of ['Proyecto prueba','Manzana B','1 a 20','Disponible','Venta','10 m','25 m','250 m²','USD 15000','1, 20','280 m²','4.79','USD 17000','Descripción completa'])assert.ok(review.includes(value),value);
   assert.equal(states[2],'Manzana B');
-  allow=true;const submit=nodes(render()).find(n=>n.type==='form').props.onSubmit;await Promise.all([submit({preventDefault(){}}),submit({preventDefault(){}})]);assert.equal(writes,1);
+  assert.ok(text(nodes(render()).find(n=>n.props?.['aria-label']==='Confirmaci\u00f3n completa')).includes('Descripci\u00f3n completa'));
+  nodes(render()).find(n=>n.type==='Button' && text(n)==='Volver a editar').props.onClick();
+  assert.equal(states[18],'');assert.equal(writes,0);
+  await nodes(render()).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
+  nodes(render()).find(n=>n.type==='Button' && n.props.type==='submit').props.onClick();
+  const submit=nodes(render()).find(n=>n.type==='form').props.onSubmit;await Promise.all([submit({preventDefault(){}}),submit({preventDefault(){}})]);assert.equal(writes,1);
 });
 
 test('EVP-74 list loads complete project inventory, advisors cannot create, and mobile uses one column',()=>{

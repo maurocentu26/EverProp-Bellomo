@@ -87,6 +87,8 @@ export function GenerateLotsModal({
 
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [review, setReview] = useState("");
+  const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
     async function loadProjects() {
@@ -186,7 +188,8 @@ export function GenerateLotsModal({
     const cArea = cornerAreaM2 ? parseFloat(cornerAreaM2) : undefined;
     const ochava = ochavaM2 ? parseFloat(ochavaM2) : undefined;
 
-    if (confirmBeforeSave && !window.confirm([
+    if (confirmBeforeSave && !accepted) {
+      setReview([
       'Confirmar carga de lotes',
       `Proyecto: ${projects.find(p => p.id === projectId)?.name ?? projectId} (${projectId})`,
       `Manzana: ${sectorName.trim()}`,
@@ -199,7 +202,9 @@ export function GenerateLotsModal({
       ...(hasCorners ? [`Superficie de esquina: ${cArea ?? 'Sin informar'} m²`, `Ochava: ${ochava ?? 'Sin informar'} m²`, `Precio de esquina: ${cPrice == null ? 'Precio a consultar' : `${currency} ${cPrice}`}`] : []),
       `Servicios: ${selectedServices.map(id => AVAILABLE_SERVICES.find(service => service.id === id)?.label ?? id).join(', ') || 'Sin informar'}`,
       `Descripción: ${description.trim() || 'Sin descripción'}`,
-    ].join('\n'))) return;
+    ].join('\n'));
+      return;
+    }
 
     submitLock.current = true;
     setIsSubmitting(true);
@@ -256,6 +261,8 @@ export function GenerateLotsModal({
         onSuccess?.(mockCreated);
       }
 
+      setAccepted(false);
+      setReview("");
       onOpenChange(false);
     } catch (err: any) {
       toast.error("Error al generar lotes: " + (err.message || "Error desconocido"));
@@ -268,7 +275,7 @@ export function GenerateLotsModal({
   const selectedProj = projects.find((p) => p.id === projectId);
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!isSubmitting) onOpenChange(next); }}>
+    <Dialog open={open} onOpenChange={(next) => { if (!isSubmitting) { setReview(""); setAccepted(false); onOpenChange(next); } }}>
       <DialogContent className={`${confirmBeforeSave ? "inventory-view inventory-dialog projects-view " : ""}admin-workspace w-[calc(100%-2rem)] sm:max-w-3xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6 bg-card rounded-2xl shadow-2xl`}>
         <DialogHeader className="pb-3 border-b border-slate-100">
           <div className="flex items-start gap-3 pr-7">
@@ -290,6 +297,7 @@ export function GenerateLotsModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="min-w-0 space-y-5 pt-2">
+          <fieldset hidden={!!review} disabled={!!review || isSubmitting} className="space-y-5">
           {/* SECCIÓN 1: PROYECTO Y MANZANA */}
           <div className="grid grid-cols-2 gap-4 p-3 sm:p-4 rounded-xl border border-slate-200 bg-muted">
             <div className="col-span-2 min-w-0 sm:col-span-1">
@@ -542,12 +550,14 @@ export function GenerateLotsModal({
             </ul>
           </div>
 
+          </fieldset>
+          {review && <section aria-label="Confirmación completa"><h2>Revisar carga de lotes</h2><p className="whitespace-pre-wrap break-words">{review}</p><Button type="button" variant="outline" disabled={isSubmitting} onClick={() => { setReview(""); setAccepted(false); }}>Volver a editar</Button></section>}
           <div className="pt-4 border-t border-border grid grid-cols-1 gap-2 sm:flex sm:justify-end">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => onOpenChange(false)}
+              onClick={() => { setReview(""); setAccepted(false); onOpenChange(false); }}
               disabled={isSubmitting}
               className="h-11 px-4 text-xs font-semibold"
             >
@@ -555,13 +565,14 @@ export function GenerateLotsModal({
             </Button>
             <Button
               type="submit"
+              onClick={() => { if (review) setAccepted(true); }}
               size="sm"
               disabled={isSubmitting || totalCount <= 0}
               className="h-11 px-5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
             >
               {isSubmitting ? (
                 "Generando lotes…"
-              ) : (
+              ) : review ? "Confirmar carga" : (
                 <>
                   <Layers className="size-3.5" /> Generar {totalCount} Lotes
                 </>
