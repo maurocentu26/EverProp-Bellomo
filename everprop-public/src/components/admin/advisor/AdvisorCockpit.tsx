@@ -434,7 +434,8 @@ export default function AdvisorCockpit() {
                     const pillInterest = lead.interests?.find(entry => entry.propertyId === id || entry.unitId === id);
                     const pillProject = projects.find(entry => entry.id === (pillProperty?.projectId || pillInterest?.projectId || lead.projectId));
                     return <button key={id} type="button" aria-pressed={id === propertyId} onClick={() => setSelectedProperties(previous => ({ ...previous, [lead.id]: id }))}><InterestText parts={interestParts(pillProperty, pillInterest, pillProject)} /></button>;
-                  })}</div>}</div>
+                  })}</div>}
+                  <label className="day-stage">Etapa<select value={interest?.status || lead.stage} onChange={event => void handleStageChange(lead.id, event.target.value as Lead["stage"], propertyId)}>{STAGE_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label></div>
                 <div className="day-row-actions">
                   {phone ? <><a className="mi-day-secondary" href={`https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer"><MessageCircle aria-hidden />WhatsApp</a><a className="mi-day-primary" href={`tel:${phone}`} onClick={() => setFollowUpLead(lead)}><Phone aria-hidden />Llamar</a></> : <Link className="mi-day-primary" href={`/admin/leads/${lead.id}`}>Ver cliente</Link>}
                   <Button variant="ghost" className="day-record" onClick={() => setFollowUpLead(lead)}><ClipboardCheck aria-hidden />Registrar resultado</Button>
