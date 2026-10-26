@@ -87,7 +87,7 @@ export default function ProjectDetailView() {
     <div className="inventory-view inventory-detail projects-view space-y-6">
       <header className="inventory-detail-header">
         <h1>{project.name}</h1>
-        <p>{projectStatusLabel(project.status)} · {projectTypeLabel(project.type)}</p>
+        <p><span className="project-detail-status">{projectStatusLabel(project.status)}</span> · {projectTypeLabel(project.type)}</p>
         <p>{projectLocationLabel(project)}</p>
         {project.description && <p>{project.description}</p>}
         {!isAdvisor && <Button onClick={() => setIsGenerateLotsOpen(true)}><Layers aria-hidden="true" /> Cargar manzana y lotes</Button>}

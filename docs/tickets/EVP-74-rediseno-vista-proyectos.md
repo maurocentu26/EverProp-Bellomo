@@ -73,3 +73,20 @@ Rama de integración autorizada: `ticket/EVP-65-rediseno-visual`. Primera pasada
 - Límites y diferencias pendientes: La barra mide unidades disponibles, no avance de obra ni ventas históricas. Sin inventario, no se muestra barra. Nuevo proyecto sigue oculto en mock porque depende de la API. No se inventan portadas si no hay imagen.
 
 Sin backend, SQL, entornos, secretos, Docker, commit, push ni deploy. No se modificaron primitivas ui, MainLayout, navegación ni archivos de Claude.
+
+
+### Revisión visual — corrección acotada de ficha, 2026-10-26
+
+`/admin/desarrollos/[id]`: cotejo con diapositiva 10, s11.png y sección Proyectos del HTML aprobado. La ficha ya mantiene resumen de unidades, conteos, acciones con verbo y tarjetas de inventario con precio. Solo se destaca el estado real del proyecto en una pastilla sky con palabra y se lleva el encabezado a radio 24, usando admin-catalog.css. No se agregó tarjeta negra sin dato urgente ni métricas nuevas. No se cambió la carga de lotes, los tabs, materiales ni permisos.
+
+Antes histórico: `docs/tickets/evidence/EVP-74/2-pc-ficha.jpg` y `4-telefono-ficha.jpg`. Después pendiente: `docs/tickets/evidence/EVP-74/proyecto-ficha-pc.png` y `proyecto-ficha-telefono.png`. Codex no abrió navegador por instrucción expresa; no hay capturas nuevas, medición de solapamiento ni scroll horizontal de esta pasada. Tema oscuro, Grande, reducción de movimiento y acciones de la ficha pendientes de revisión por Claude.
+
+#### Conformidad de esta pasada
+
+- ✓ Estado con palabra: usa projectStatusLabel sobre el proyecto cargado; solo se agregó la clase de pastilla.
+- ✓ Unidades/precios/conteos: se conservaron PropertyList y projectUnitCounts sin alterar sus datos; suite de inventario/proyectos aprobada.
+- ✗ Apariencia 1366/1440 y 375, sin cortes ni encimados: pendiente de Claude; no se declara `[]`.
+- ✗ Flujo real de carga de manzana/lotes y cambio de tabs: sin cambios funcionales, pendiente de navegador.
+- No aplica en mock: materiales servidos por API; su exclusión del mock se conserva.
+
+Suite: `node --test tests/*.test.mjs` bloqueado por `spawn EPERM`; ejecutada con `node --test --test-isolation=none tests/*.test.mjs`: 173 pruebas, 167 aprobadas y solo las 6 fallas conocidas de notifications-worker. `npx tsc --noEmit --incremental false`: OK. Detector Impeccable sobre los cinco archivos de interfaz: `[]`. Lint: OK, 0 errores y 126 advertencias. Logs: docs/tickets/evidence/EVP-73/codex-acotado-{tests,lint,tsc,design}.log. Build no ejecutado en esta pasada acotada (se solicitaron tests, lint y tsc); no se declara build OK.
