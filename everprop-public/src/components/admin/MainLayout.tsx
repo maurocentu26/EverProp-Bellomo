@@ -129,7 +129,7 @@ export default function MainLayout({ children }: Props) {
                     <div className="flex min-w-0 flex-1 flex-col">
                         <AdminNavbar />
                         <main id="admin-content" tabIndex={-1} data-admin-scroll-container="true" className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 ${pathname === "/admin/conversaciones" ? "md:overflow-hidden" : ""}`}>
-                            <div className={`mx-auto w-full max-w-[100rem] space-y-6 ${pathname === "/admin/conversaciones" ? "md:flex md:h-full md:min-h-0 md:flex-col" : ""}`}>
+                            <div className={`admin-page-width mx-auto w-full max-w-[100rem] space-y-6 ${pathname === "/admin/conversaciones" ? "md:flex md:h-full md:min-h-0 md:flex-col" : ""}`}>
                                 {currentUser.role === "ADVISOR" && !["/admin", "/admin/leads", "/admin/conversaciones"].includes(pathname) && <Link href={pathname.startsWith("/admin/leads/") ? "/admin/leads" : "/admin"} className="advisor-back">‹ Atrás</Link>}
                                 {currentUser.role === "ROTATOR" && !rotatorRouteAllowed ? <p>Abriendo asignación de leads…</p> : children}
                             </div>

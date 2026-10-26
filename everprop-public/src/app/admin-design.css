@@ -1152,7 +1152,7 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
   .mi-day.day-board .day-row-actions { grid-column: 2; width: 100%; max-width: 360px; margin-top: 12px; }
 }
 @media (width < 1024px) {
-  .mi-day.day-board .day-grid { display: flex; flex-direction: column; }
+  .mi-day.day-board .day-grid { display: flex; flex-direction: column; align-items: stretch; }
   .mi-day.day-board .day-side { order: 0; }
   .mi-day.day-board .day-next { order: 1; }
 }
@@ -1327,8 +1327,8 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
 .stats-view .stats-advisor > span { flex-shrink: 0; white-space: nowrap; }
 .stats-view .stats-column > span { min-width: 0; }
 .stats-view .stats-column-label { width: 0; overflow: visible; }
-.mi-day.day-board .day-stage { display: inline-flex; align-items: center; gap: 10px; margin-top: 10px; font-weight: 650; white-space: nowrap; }
-.mi-day.day-board .day-stage select { min-height: 44px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); padding: 0 14px; font-size: 17px; font-weight: 600; max-width: 100%; }
+.mi-day.day-board .day-stage { min-width: 0; max-width: 100%; flex-wrap: wrap; display: inline-flex; align-items: center; gap: 10px; margin-top: 10px; font-weight: 650; white-space: nowrap; }
+.mi-day.day-board .day-stage select { min-width: 0; flex: 1; min-height: 44px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); padding: 0 14px; font-size: 17px; font-weight: 600; max-width: 100%; }
 
 /* Marco del panel según el prototipo aprobado (code.xr): fondo salvia, menú en tarjetas blancas
    con la sección activa en negro, encabezado sin barra y acción principal en negro. */
@@ -1345,7 +1345,7 @@ html:not(.dark) .admin-workspace {
 .admin-workspace [data-slot="sidebar-container"] { border-right: 0 !important; }
 .admin-workspace [data-slot="sidebar-content"] nav[aria-label="Navegación administrativa"] > section { background: var(--card); border-radius: 22px; padding: 10px; box-shadow: 0 1px 2px rgb(18 20 23 / .05); }
 .admin-workspace [data-slot="sidebar-content"] nav[aria-label="Navegación administrativa"] > section > h2 { font-size: 13px; letter-spacing: .06em; color: var(--muted-foreground); padding: 6px 10px 4px; margin: 0; }
-.admin-workspace nav[aria-label="Navegación administrativa"] a { min-height: 44px; border-radius: 14px !important; font-size: 15px !important; border-color: transparent !important; }
+.admin-workspace nav[aria-label="Navegación administrativa"] a { min-height: 44px; border-radius: 14px !important; font-size: 1.0625rem !important; border-color: transparent !important; }
 .admin-workspace nav[aria-label="Navegación administrativa"] a[aria-current="page"] { background: #141518 !important; color: #fff !important; box-shadow: none !important; }
 .admin-workspace nav[aria-label="Navegación administrativa"] a[aria-current="page"] svg { color: #fff !important; }
 .dark .admin-workspace nav[aria-label="Navegación administrativa"] a[aria-current="page"] { background: #f2f4f3 !important; color: #141518 !important; }
@@ -1384,4 +1384,14 @@ html:not(.dark) .mi-day .day-traffic-card.day-green { background: #d9f1e3; color
   .mi-day.day-board .day-heading-actions > :is(a, [data-slot="button"]) { flex: 1 1 calc(50% - 5px); }
   .mi-day.day-board .day-heading-actions label { display: flex; align-items: center; gap: 10px; }
   .mi-day.day-board .day-heading-actions label select { flex: 1; min-width: 0; }
+}
+
+/* The shell owns the page width; dialogs keep their own limits. */
+.admin-page-width > :is(div, section, form) { width: 100%; min-width: 0; max-width: none; }
+/* Whole labels need a single column on the narrowest screens. */
+@media (width <= 360px) {
+  .day-traffic { grid-template-columns: minmax(0, 1fr); }
+}
+@media (width <= 480px) {
+  html[data-panel-text-size="grande"] .day-traffic { grid-template-columns: minmax(0, 1fr); }
 }
