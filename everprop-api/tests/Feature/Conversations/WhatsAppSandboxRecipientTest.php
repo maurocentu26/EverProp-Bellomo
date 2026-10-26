@@ -54,6 +54,33 @@ final class WhatsAppSandboxRecipientTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_explicit_list_maps_three_testers_only_on_the_sandbox_channel(): void
+    {
+        $channel = $this->channel();
+        $other = $this->channel('3003');
+        $recipients = [self::FROM, '5493882222222', '5493883333333'];
+        config(['services.meta.whatsapp_sandbox_recipients' => $recipients,
+            'services.meta.whatsapp_sandbox_recipient_from' => null, 'services.meta.whatsapp_sandbox_recipient_to' => null]);
+        $transport = app(WhatsAppCloudTransport::class);
+        foreach ($recipients as $recipient) {
+            $this->assertTrue($transport->send($channel, $recipient, 'text', 'n')->accepted);
+            Http::assertSent(fn ($r) => $r['to'] === '54'.substr($recipient, 3));
+        }
+        $transport->send($channel, '5493884444444', 'unlisted', 'n');
+        $transport->send($other, $recipients[1], 'other channel', 'n');
+        Http::assertSent(fn ($r) => $r['to'] === '5493884444444');
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/3003/messages') && $r['to'] === $recipients[1]);
+        Http::assertSentCount(5);
+    }
+
+    public function test_malformed_listed_recipient_is_rejected_without_http(): void
+    {
+        $channel = $this->channel();
+        config(['services.meta.whatsapp_sandbox_recipients' => ['549invalid']]);
+        $this->assertSame('SANDBOX_RECIPIENT_INVALID', app(WhatsAppCloudTransport::class)->send($channel, '549invalid', 'text', 'n')->errorCode);
+        Http::assertNothingSent();
+    }
+
     public function test_a_mapping_to_a_different_person_is_rejected_without_http(): void
     {
         $channel = $this->channel();
