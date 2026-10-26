@@ -75,6 +75,7 @@ return [
         'graph_version' => env('META_GRAPH_VERSION', 'v24.0'), // v24 (2025-10-08): status webhooks drop `conversation` (unused here)
         'send_enabled' => (bool) env('META_SEND_ENABLED', false),
         'whatsapp_sandbox_phone_number_id' => env('META_WHATSAPP_SANDBOX_PHONE_NUMBER_ID'),
+        'whatsapp_sandbox_recipients' => array_filter(array_map('trim', explode(',', env('META_WHATSAPP_SANDBOX_RECIPIENTS', '')))),
         'whatsapp_sandbox_recipient_from' => env('META_WHATSAPP_SANDBOX_RECIPIENT_FROM'),
         'whatsapp_sandbox_recipient_to' => env('META_WHATSAPP_SANDBOX_RECIPIENT_TO'),
         'send_fake' => (bool) env('META_SEND_FAKE', false),
