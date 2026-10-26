@@ -111,3 +111,56 @@ Las pruebas del guiado usan render de JSX con hooks simulados, no un navegador n
 - Corregir en el ticket correspondiente las seis fallas ajenas del sandbox de notificaciones. Completar el build en un entorno que permita crear procesos.
 - La ronda vive durante el montaje: navegar a una ficha y volver no conserva el paso; puede reabrirse manualmente. No se inventó persistencia de clientes en el navegador.
 - No se desplegó ni configuró staging o producción. Push/PR/deploy/migraciones requieren sus autorizaciones independientes; esta entrega queda local para revisión.
+
+## Revisión de conformidad — 2026-10-25 (Codex)
+
+### 1. Pedido y autorización
+EVP-66 confirmado por el usuario como existente y En curso, verificado por Claude vía API hoy. Se trabajó sobre la rama existente `ticket/EVP-65-rediseno-visual`, asociada al PR #72, por autorización expresa. No se consultó ni actualizó Jira. Sin commits, push, merge, despliegue ni build. Código limitado a `everprop-public`; este informe se actualiza en la ubicación solicitada.
+
+### 2. Implementación
+- `everprop-public/src/components/admin/advisor/AdvisorCockpit.tsx`: saludo con nombre completo y fecha argentina; accesos Nuevo lead y Mi agenda. Cuatro indicadores permanentes antes de la grilla, con iconos, número, texto singular/plural, color y selección de grupo. Citas filtra por leads con visitas de hoy; conserva su total informado por el origen existente.
+- Se reutiliza `commercialQueueGroups`: cola vencidos → hoy → nuevos → al día, pestañas con conteos y búsqueda visible por nombre, teléfono o email.
+- Cada fila muestra Vencido, Vence hoy, Sin contacto previo o Al día, última interacción con fecha y hora es-AR, proyecto/manzana/unidad y precio mediante `inventoryPriceLabel`. Píldoras alternan inmuebles en la misma fila. WhatsApp incluye el inmueble elegido en un mensaje prearmado; se conserva llamada y registro de resultado.
+- `AdvisorDayGuide.tsx`: eliminada apertura automática; acceso exclusivamente con Empezar a llamar. Persistencia del seguimiento y bloqueo de etapa existentes conservados.
+- `MainLayout.tsx` y `login/page.tsx`: retirados avisos y textos de QA visibles; se conserva `isMockDataMode`, selección de usuarios mock y autenticación. Sin cambios en API ni permisos, ni muestras agregadas al modo API.
+- `admin-design.css`: tipografía 17 px, semáforo 2×2 en teléfono, una columna, botones de al menos 44 px, contenido flexible y colores con contraste AA. Eliminado desplazamiento horizontal de las tarjetas de clientes en esta vista.
+- `tests/mi-day-conformity.test.mjs`: orden, conteos de las cuatro tarjetas, cuatro estados renderizados, fecha, nombre completo, ausencia de QA visual, guía opcional y contraste de las ocho combinaciones claro/oscuro.
+
+### 3. Decisiones
+Se conservaron clasificación, carga de datos, semáforos cromáticos existentes y acciones comerciales. No se añadieron dependencias ni se modificaron contratos. Los datos desconocidos se presentan como desconocidos, sin muestras de respaldo fuera de mock.
+
+### 4. Verificación
+- `npx tsc --noEmit`: correcto, sin errores.
+- `npm run lint`: correcto, 0 errores y 128 advertencias del proyecto.
+- `node --test --experimental-test-isolation=none tests/mi-day-conformity.test.mjs tests/commercial-queue.test.mjs tests/advisor-day-guide.test.mjs`: 25/25 correctos.
+- Suite completa antes de agregar la prueba final de contraste: 159/165 correctos. Los seis fallos están en `notifications-worker.test.mjs`, por `navigator` ausente en el entorno de prueba (`clearAppBadge`/`setAppBadge`); archivos de notificaciones no modificados.
+- Runner normal y `npm run dev -- --port 3000` bloqueados por `spawn EPERM` del entorno Windows. Se ejecutaron los tests sin aislamiento de procesos. No se pudo abrir el sitio para verificar visualmente 375 px/escritorio o los flujos desde navegador.
+- Detector Impeccable: avisos sobre CSS anterior ajeno al semáforo; falló la lectura de dos rutas TSX. No se atribuye validación visual completa al detector.
+- Sin Docker ni build. No se modificaron configuración de entornos, proveedores, esquema SQL ni secretos.
+
+### 5. Pendientes y límites
+Revisión manual en navegador a 375 px y escritorio, claro y oscuro, con datos del entorno elegido; validar filtro de citas y cambio de inmueble con datos reales autorizados. No se declara conformidad visual definitiva sin esa revisión. Los seis fallos de notificaciones requieren seguimiento separado. El PR permanece sin integrar; no se cambiaron estado ni contenido remoto.
+
+## Correcciones de revisión de Claude — 2026-10-26 (Codex)
+
+### 1. Alcance
+Continuación autorizada de EVP-66, sin consulta a Jira, commits, cambios de API/permisos ni datos de muestra fuera de mock. Se conservaron la cabecera, semáforo, pestañas y ausencia de textos QA. Solo se modificaron `AdvisorCockpit.tsx`, las regresiones de `tests/mi-day-conformity.test.mjs` y este informe.
+
+### 2. Qué se corrigió
+- Un único formateador local de inmueble para tarjeta, mensaje de WhatsApp y píldoras. Conserva prefijos existentes de manzana, lote o departamento, sin importar mayúsculas/minúsculas; agrega los faltantes y recorta espacios exteriores.
+- Estado y color de tarjeta usan `isOverdue`, `isDueToday` e `isNew`, los mismos indicadores de la cola y semáforo. Un lead Contactado sin historial cargado aparece Al día, sin inventar una interacción.
+- Se muestra una fecha válida disponible del contacto comercial, historial de seguimientos, `lastContactAt` si existe en el objeto, `followUpUpdatedAt` o última actividad, en ese orden. Sin fecha, solo los nuevos muestran «Todavía no hay interacciones registradas»; los demás omiten la línea. Esto solo afecta presentación, no disciplina comercial ni clasificación.
+
+### 3. Por qué
+La ausencia de fecha no equivale a ser nuevo: se reutiliza la clasificación existente sin modificarla. El rótulo se genera una sola vez por inmueble y se comparte entre los tres lugares donde aparece.
+
+### 4. Verificación
+- `npx tsc --noEmit`: correcto.
+- `npm run lint`: correcto, 0 errores y 127 advertencias del proyecto.
+- `node --test --experimental-test-isolation=none tests/mi-day-conformity.test.mjs tests/commercial-queue.test.mjs tests/advisor-day-guide.test.mjs`: 27/27 correctos.
+- Regresiones nuevas: valores prefijados y sin prefijo, departamentos, rótulos/píldoras/WhatsApp sin duplicados; cantidades por estado iguales a los conteos del semáforo; Contactado sin fecha, con última actividad y con `lastContactAt`.
+- Suite completa: 162/168 correctos; persisten los seis fallos anteriores de `notifications-worker.test.mjs` por `navigator` ausente (`clearAppBadge`/`setAppBadge`). Sin cambios en notificaciones.
+- `git diff --check`: correcto.
+
+### 5. Pendientes
+No se repitió verificación en navegador ni build. La revisión visual de estas dos correcciones queda pendiente; los seis fallos de notificaciones siguen fuera de este alcance. Sin despliegue ni cambios remotos.

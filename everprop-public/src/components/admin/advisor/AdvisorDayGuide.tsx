@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, ClipboardCheck, Phone } from "lucide-react";
 import type { Lead, LeadFollowUp } from "@/data/admin-sample";
-import { claimDayGuide, dayPriorities, leadInitials, priorityReason, type DayPriority } from "@/lib/advisor-day-guide";
+import { dayPriorities, leadInitials, priorityReason, type DayPriority } from "@/lib/advisor-day-guide";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -18,31 +18,15 @@ export function AdvisorDayGuide({ userId, day, queue, ready, onSave }: {
   const [step, setStep] = useState(-1);
   const [results, setResults] = useState<Record<string, "recorded" | "skipped">>({});
   const [recording, setRecording] = useState<Lead | null>(null);
-  const autoOpened = useRef("");
-  const key = `everprop:mi-dia:guide:${userId}`;
-
   function openGuide() {
-    try { window.localStorage.setItem(key, day); } catch { /* Private browsing can block storage. */ }
-    autoOpened.current = `${key}:${day}`;
     setRound(dayPriorities(queue));
     setResults({});
     setStep(-1);
     setOpen(true);
   }
 
-  useEffect(() => {
-    if (!ready || !userId || autoOpened.current === `${key}:${day}`) return;
-    autoOpened.current = `${key}:${day}`;
-    let first = true;
-    try { first = claimDayGuide(window.localStorage, key, day); } catch { /* Keep the in-memory daily guard. */ }
-    if (first) {
-      setRound(dayPriorities(queue));
-      setResults({});
-      setStep(-1);
-      setOpen(true);
-    }
-  }, [ready, userId, key, day, queue]);
-
+  void userId;
+  void day;
   const pendingCount = queue.filter(entry => entry.priorityWeight > 0).length;
   const item = round[step];
   const phone = item?.lead.phone?.replace(/[^+0-9]/g, "");
