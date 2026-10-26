@@ -15,12 +15,15 @@ type DocumentView = KnowledgeDocument & { body?: string; topic?: string; kind?: 
 type Pending = { action: "approve" | "revoke"; doc: DocumentView } | { action: "create" };
 const emptyForm = { title: "", body: "", audience: "PUBLIC" as "PUBLIC" | "INTERNAL", validUntil: "" };
 const dateLabel = (value: string) => new Date(value).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
-const statusLabel = (doc: DocumentView) => doc.status === "REVOKED" ? "Archivado · el asistente no lo usa" : doc.status === "DRAFT" ? "Borrador · pendiente de publicar" : doc.valid_until && new Date(doc.valid_until) < new Date() ? "Vencido · el asistente no lo usa" : "Publicado";
+const isExpired = (doc: DocumentView) => Boolean(doc.valid_until && new Date(doc.valid_until) < new Date());
+const isLive = (doc: DocumentView) => doc.status === "APPROVED" && !isExpired(doc);
+const statusLabel = (doc: DocumentView) => doc.status === "REVOKED" ? "Archivado · el asistente no lo usa" : doc.status === "DRAFT" ? "Borrador · pendiente de publicar" : isExpired(doc) ? "Vencido · el asistente no lo usa" : "Publicado · el asistente lo usa";
+const statusTone = (doc: DocumentView) => doc.status === "REVOKED" ? "knowledge-tone-gray" : doc.status === "DRAFT" ? "knowledge-tone-sun" : isExpired(doc) ? "knowledge-tone-rose" : "knowledge-tone-mint";
 
 function DocumentDetails({ doc }: { doc: DocumentView }) {
   const StatusIcon = doc.status === "REVOKED" ? Archive : doc.status === "DRAFT" ? Pencil : CheckCircle2;
   return <>
-    <p className="knowledge-status"><StatusIcon size={20} aria-hidden />{statusLabel(doc)}</p>
+    <p className={`knowledge-status ${statusTone(doc)}`}><StatusIcon size={18} aria-hidden />{statusLabel(doc)}</p>
     <dl className="knowledge-meta">
       <div><dt>Tipo</dt><dd>{doc.kind ?? "Sin informar"}</dd></div>
       <div><dt>Proyecto o tema</dt><dd>{doc.topic ?? "Sin informar"}</dd></div>
@@ -36,7 +39,8 @@ function DocumentDetails({ doc }: { doc: DocumentView }) {
 
 export function KnowledgeManager() {
   const { user, isAdvisor } = useCurrentSession();
-  const canWrite = WRITERS.includes(user?.apiRole ?? "");
+  // Demo admins carry no API role; in mock mode they still need to try every write flow.
+  const canWrite = WRITERS.includes(user?.apiRole ?? "") || (isMockDataMode && !user?.apiRole && user?.role === "ADMIN");
   const [docs, setDocs] = useState<DocumentView[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -64,7 +68,7 @@ export function KnowledgeManager() {
         if (pending.action === "create") {
           setDocs(current => [...current, { id: `mock-${Date.now()}`, title: form.title.trim(), body: form.body.trim(), audience: form.audience, status: "DRAFT", version: 1, updated_at: new Date().toISOString(), approved_at: null, valid_until: form.validUntil ? new Date(`${form.validUntil}T23:59:59`).toISOString() : null, kind: "Texto" }]);
         } else {
-          setDocs(current => current.map(doc => doc.id === pending.doc.id ? { ...doc, status: pending.action === "approve" ? "APPROVED" : "REVOKED" } : doc));
+          setDocs(current => current.map(doc => doc.id === pending.doc.id ? { ...doc, status: pending.action === "approve" ? "APPROVED" : "REVOKED", approved_at: pending.action === "approve" ? new Date().toISOString() : doc.approved_at } : doc));
         }
       } else {
         if (pending.action === "create") await createKnowledge({ title: form.title.trim(), body: form.body.trim(), audience: form.audience, valid_until: form.validUntil ? new Date(`${form.validUntil}T23:59:59`).toISOString() : undefined });
@@ -78,41 +82,58 @@ export function KnowledgeManager() {
     finally { setBusy(false); }
   }
 
-  return <section className="knowledge-view mx-auto flex w-full max-w-6xl flex-col gap-6 pb-6">
+  const live = docs.filter(isLive).length;
+  const drafts = docs.filter(doc => doc.status === "DRAFT").length;
+  return <section className="knowledge-view mx-auto flex w-full max-w-7xl flex-col gap-6 pb-6">
     {!isAdvisor && <Link href="/admin" className="knowledge-back"><ArrowLeft size={20} aria-hidden />Atrás</Link>}
     <header><div><h1>Conocimiento IA</h1><p>Lo que el asistente puede consultar para responder</p></div>
       <div className="knowledge-actions">
         {user?.apiRole === "SUPER_ADMIN" && <Link href="/admin/conocimiento/uso" className="knowledge-button"><Gauge size={20} aria-hidden />Uso de la IA</Link>}
         <button type="button" disabled={loading || busy} onClick={() => void refresh()}><RefreshCw size={20} aria-hidden />Actualizar</button>
-        {canWrite && <button type="button" className="inventory-cta" onClick={() => setEditing(true)}><Plus size={20} aria-hidden />Agregar documento</button>}
+        {canWrite && <button type="button" className="inventory-cta knowledge-primary" onClick={() => setEditing(true)}><Plus size={20} aria-hidden />Agregar documento</button>}
       </div>
     </header>
-    <p>Precios y disponibilidad se consultan siempre en el inventario. Los borradores y documentos archivados o vencidos no se usan para responder.</p>
-    {canWrite && editing && <form className="knowledge-card knowledge-form" onSubmit={event => { event.preventDefault(); if (form.title.trim() && form.body.trim()) setPending({ action: "create" }); }}>
-      <h2>Nuevo documento</h2>
-      <label>Título<input required maxLength={200} value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} placeholder="Preguntas frecuentes de Las Moras" /></label>
-      <label>Contenido<textarea required maxLength={60000} rows={8} value={form.body} onChange={event => setForm({ ...form, body: event.target.value })} /></label>
-      <label>Quién puede consultarlo<select value={form.audience} onChange={event => setForm({ ...form, audience: event.target.value as "PUBLIC" | "INTERNAL" })}><option value="PUBLIC">Público</option><option value="INTERNAL">Solo el equipo</option></select></label>
-      <label>Vigente hasta (opcional)<input type="date" value={form.validUntil} onChange={event => setForm({ ...form, validUntil: event.target.value })} /></label>
-      <div className="knowledge-actions"><button type="submit" disabled={busy} className="inventory-cta">Guardar borrador</button><button type="button" onClick={() => setEditing(false)}>Cerrar formulario</button></div>
-    </form>}
-    {loading ? <p role="status">Cargando documentos…</p> : error ? <div role="alert" className="knowledge-card"><p>{error}</p><button type="button" onClick={() => void refresh()}>Reintentar</button></div> : <>
-      <h2>{docs.length.toLocaleString("es-AR")} {docs.length === 1 ? "documento" : "documentos"}</h2>
-      {docs.length === 0 ? <div className="knowledge-card"><BookOpenCheck size={32} aria-hidden /><h3>Todavía no hay documentos</h3><p>{canWrite ? "Agregá las respuestas y condiciones que el asistente puede consultar." : "Cuando el equipo agregue documentos, vas a poder consultarlos acá."}</p></div> : <ul className="knowledge-grid">{docs.map(doc => <li key={doc.id} className="knowledge-card">
-        <h3><FileText size={24} aria-hidden />{doc.title}</h3>
-        <DocumentDetails doc={doc} />
-        {canWrite && doc.status !== "REVOKED" && <div className="knowledge-actions">
-          {doc.status === "DRAFT" && <button type="button" disabled={busy} className="inventory-cta" onClick={() => setPending({ action: "approve", doc })}>Publicar</button>}
-          <button type="button" disabled={busy} onClick={() => setPending({ action: "revoke", doc })}>Archivar</button>
-        </div>}
-      </li>)}</ul>}
-    </>}
+    <div className="knowledge-layout">
+      <div className="knowledge-main">
+        {canWrite && editing && <form className="knowledge-card knowledge-form" onSubmit={event => { event.preventDefault(); if (form.title.trim() && form.body.trim()) setPending({ action: "create" }); }}>
+          <h2>Nuevo documento</h2>
+          <p className="knowledge-muted">Escribí la respuesta tal como querés que la use el asistente. Queda como borrador hasta que la publiques.</p>
+          <label>Título<input required maxLength={200} value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} placeholder="Ej.: ¿Aceptan auto como parte de pago?" /></label>
+          <label>Contenido<textarea required maxLength={60000} rows={8} value={form.body} onChange={event => setForm({ ...form, body: event.target.value })} placeholder="La respuesta completa, con las condiciones." /></label>
+          <div className="knowledge-form-row">
+            <label>Quién puede consultarlo<select value={form.audience} onChange={event => setForm({ ...form, audience: event.target.value as "PUBLIC" | "INTERNAL" })}><option value="PUBLIC">Público</option><option value="INTERNAL">Solo el equipo</option></select></label>
+            <label>Vigente hasta (opcional)<input type="date" value={form.validUntil} onChange={event => setForm({ ...form, validUntil: event.target.value })} /></label>
+          </div>
+          <div className="knowledge-actions"><button type="submit" disabled={busy} className="inventory-cta knowledge-primary">Guardar borrador</button><button type="button" onClick={() => setEditing(false)}>Cerrar formulario</button></div>
+        </form>}
+        {loading ? <p role="status">Cargando documentos…</p> : error ? <div role="alert" className="knowledge-card"><p>{error}</p><button type="button" onClick={() => void refresh()}>Reintentar</button></div> : <>
+          <h2>{docs.length.toLocaleString("es-AR")} {docs.length === 1 ? "documento" : "documentos"}</h2>
+          {docs.length === 0 ? <div className="knowledge-card"><BookOpenCheck size={32} aria-hidden /><h3>Todavía no hay documentos</h3><p>{canWrite ? "Agregá las respuestas y condiciones que el asistente puede consultar." : "Cuando el equipo agregue documentos, vas a poder consultarlos acá."}</p></div> : <ul className="knowledge-grid">{docs.map(doc => <li key={doc.id} className="knowledge-card knowledge-row">
+            <div className="knowledge-row-head">
+              <span className={`knowledge-icon ${statusTone(doc)}`} aria-hidden><FileText size={22} /></span>
+              <div className="knowledge-row-title"><h3>{doc.title}</h3><p className="knowledge-muted">{[doc.kind, doc.topic, `actualizado ${dateLabel(doc.updated_at)}`].filter(Boolean).join(" · ")}</p></div>
+              {canWrite && doc.status !== "REVOKED" && <div className="knowledge-actions knowledge-row-actions">
+                {doc.status === "DRAFT" && <button type="button" disabled={busy} className="inventory-cta knowledge-primary" onClick={() => setPending({ action: "approve", doc })}>Publicar</button>}
+                <button type="button" disabled={busy} onClick={() => setPending({ action: "revoke", doc })}>Archivar</button>
+              </div>}
+            </div>
+            <DocumentDetails doc={doc} />
+          </li>)}</ul>}
+        </>}
+      </div>
+      <aside className="knowledge-side" aria-label="Resumen del conocimiento">
+        <div className="knowledge-focus"><p>El asistente usa hoy</p><strong>{live}</strong><p>{live === 1 ? "documento publicado" : "documentos publicados"}{drafts ? ` · ${drafts === 1 ? "1 borrador espera" : `${drafts} borradores esperan`} que lo publiques` : ""}</p>
+          {canWrite && <button type="button" className="knowledge-focus-action" onClick={() => setEditing(true)}><Plus size={20} aria-hidden />Agregar una respuesta</button>}</div>
+        <div className="knowledge-card knowledge-note"><h3>Precios y disponibilidad</h3><p>Siempre salen del inventario en vivo, nunca de estos documentos. Si un documento tiene precios viejos, archivalo.</p></div>
+        <div className="knowledge-card knowledge-note"><h3>Cómo se usa</h3><p>Los borradores, archivados y vencidos no se usan para responder. Al publicar, el asistente lo empieza a usar de inmediato.</p></div>
+      </aside>
+    </div>
     {canWrite && <Dialog open={Boolean(pending)} onOpenChange={open => { if (!open && !busy) setPending(null); }}>
       <DialogContent showCloseButton={false} className="knowledge-view knowledge-dialog admin-workspace sm:max-w-2xl">
         <DialogTitle>{pending?.action === "create" ? "¿Guardar este borrador?" : pending?.action === "approve" ? "¿Publicar este documento?" : "¿Archivar este documento?"}</DialogTitle>
         <DialogDescription className="knowledge-description">{pending?.action === "create" ? "El asistente no lo usará hasta que lo publiques." : pending?.action === "approve" ? "El asistente podrá consultarlo mientras esté vigente. Revisá los datos antes de continuar." : "El asistente dejará de usarlo de inmediato. El documento seguirá visible en el panel."}</DialogDescription>
         {pending?.action === "create" ? <><h3>{form.title}</h3><p className="knowledge-body">{form.body}</p><p>{form.audience === "PUBLIC" ? "Público" : "Solo el equipo"} · {form.validUntil ? `Vigente hasta ${dateLabel(`${form.validUntil}T23:59:59`)}` : "Sin fecha de vencimiento"}</p></> : pending && <><h3>{pending.doc.title}</h3><DocumentDetails doc={pending.doc} /></>}
-        <div className="knowledge-actions"><button type="button" disabled={busy} onClick={() => setPending(null)}>Cancelar</button><button type="button" className="inventory-cta" disabled={busy} onClick={() => void confirm()}>{busy ? "Guardando…" : "Confirmar"}</button></div>
+        <div className="knowledge-actions"><button type="button" disabled={busy} onClick={() => setPending(null)}>Cancelar</button><button type="button" className="inventory-cta knowledge-primary" disabled={busy} onClick={() => void confirm()}>{busy ? "Guardando…" : "Confirmar"}</button></div>
       </DialogContent>
     </Dialog>}
   </section>;
