@@ -41,6 +41,18 @@ final class WhatsAppCloudTransport implements ChannelTransport
             return SendResult::rejected('CHANNEL_NOT_CONFIGURED', false);
         }
 
+        // shortcut: one sandbox allowlist pair; remove when Meta accepts the inbound wa_id without this exception.
+        if ($media === null && $template === null
+            && (string) $channel['provider_account_id'] === config('services.meta.whatsapp_sandbox_phone_number_id')
+            && $recipientProviderId === config('services.meta.whatsapp_sandbox_recipient_from')) {
+            $to = config('services.meta.whatsapp_sandbox_recipient_to');
+            if (preg_match('/\A549[0-9]{10}\z/', $recipientProviderId) !== 1
+                || $to !== '54'.substr($recipientProviderId, 3)) {
+                return SendResult::rejected('SANDBOX_RECIPIENT_INVALID', false);
+            }
+            $recipientProviderId = $to;
+        }
+
         $base = sprintf('https://graph.facebook.com/%s/%s', config('services.meta.graph_version'), rawurlencode((string) $channel['provider_account_id']));
         $content = ['type' => 'text', 'text' => ['preview_url' => false, 'body' => $text]];
         if ($template !== null) {
