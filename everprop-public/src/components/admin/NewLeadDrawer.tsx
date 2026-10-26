@@ -726,7 +726,7 @@ export function NewLeadDrawer({
 
                 <Field>
                   <FieldLabel className="text-xs font-semibold text-slate-200">Categoría de interés</FieldLabel>
-                  <div className="grid grid-cols-2 gap-2 mt-1">
+                  <div className="lead-categories grid grid-cols-2 gap-2 mt-1">
                     {CATEGORIES.map((category) => {
                       const Icon = category.icon;
                       const isSelected = selectedCategory === category.id;

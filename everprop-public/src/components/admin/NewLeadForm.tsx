@@ -842,21 +842,21 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
               {/* ── Seccion 2: Interes inmobiliario (Opcional) ── */}
               <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-interest-data">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/80 dark:text-violet-300">
                       <Building2 size={16} aria-hidden="true" />
                     </span>
                     <h2 id="lead-interest-data" className="text-sm font-bold text-slate-900 dark:text-slate-100">Interés inmobiliario</h2>
                   </div>
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                  <span className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
                     Opcional
                   </span>
                 </div>
 
                 <Field>
                   <FieldLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">Categoría de interés</FieldLabel>
-                  <div className="grid grid-cols-2 gap-2 mt-1">
+                  <div className="lead-categories grid grid-cols-2 gap-2 mt-1">
                     {CATEGORIES.map((category) => {
                       const Icon = category.icon;
                       const isSelected = selectedCategory === category.id;
@@ -911,7 +911,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   </FieldLabel>
 
                   {selectedAsset && (
-                    <div className="my-2 flex items-center gap-2.5 rounded-lg border border-blue-300 bg-blue-50 p-2.5 shadow-sm dark:border-blue-900 dark:bg-blue-950/40">
+                    <div className="lead-selected-asset my-2 flex flex-wrap items-center gap-2.5 rounded-lg border border-blue-300 bg-blue-50 p-2.5 shadow-sm dark:border-blue-900 dark:bg-blue-950/40">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
                         <Building2 size={14} aria-hidden="true" />
                       </span>

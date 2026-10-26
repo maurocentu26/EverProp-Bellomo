@@ -537,7 +537,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               )}
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <span className="font-semibold text-slate-900 dark:text-slate-100">Email:</span>
-                <span className="min-w-0 break-all text-right">{lead.email || "Sin informar"}</span>
+                <span className="min-w-0 [overflow-wrap:break-word] text-right">{lead.email ? <>{lead.email.split("@")[0]}@<wbr />{lead.email.split("@").slice(1).join("@")}</> : "Sin informar"}</span>
               </div>
             </div>
 
