@@ -235,7 +235,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
   if (pendingUnit) return <div className="space-y-4 rounded-xl border border-border p-5"><h3 className="font-semibold">Unidad pendiente de confirmar</h3><p>Reintentá la misma solicitud para recuperar la unidad sin duplicarla.</p>{error && <p role="alert" className="text-red-700 dark:text-red-300">{error}</p>}<Button type="button" disabled={isSaving} onClick={() => void retryUnit()}>{isSaving ? "Confirmando…" : "Reintentar guardado de unidad"}</Button></div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="inventory-view inventory-form max-w-4xl mx-auto space-y-6">
       {!initialCategory && <button disabled={isSaving} onClick={() => setStep(1)} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Volver a categorías
       </button>}

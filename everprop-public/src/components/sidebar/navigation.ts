@@ -49,6 +49,7 @@ export const advisorNavigationGroups: NavGroup[] = [
   {
     label: "Mi Gestión",
     items: [
+      { title: "Estadísticas", href: "/admin/estadisticas", icon: BarChart3, matchPath: "/admin/estadisticas" },
       { title: "Mi Día", href: "/admin", icon: Home, matchPath: "/admin" },
       { title: "Conversaciones", href: "/admin/conversaciones", icon: MessagesSquare, matchPath: "/admin/conversaciones" },
       { title: "Solicitudes de visita", href: "/admin/solicitudes-visita", icon: CalendarCheck, matchPath: "/admin/solicitudes-visita" },

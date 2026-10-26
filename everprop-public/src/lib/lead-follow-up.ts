@@ -36,11 +36,10 @@ export function formatArgentinaDateTime(value: string | Date) {
   const date = parseArgentinaDate(value);
   if (Number.isNaN(date.getTime())) return "Fecha inválida";
 
-  return new Intl.DateTimeFormat("es-AR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: ARGENTINA_TIME_ZONE,
-  }).format(date);
+  const weekday = new Intl.DateTimeFormat("es-AR", { weekday: "long", timeZone: ARGENTINA_TIME_ZONE }).format(date);
+  const day = new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", timeZone: ARGENTINA_TIME_ZONE }).format(date);
+  const clock = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: ARGENTINA_TIME_ZONE }).format(date);
+  return `${weekday[0].toUpperCase()}${weekday.slice(1)} ${day}, ${clock}`;
 }
 
 export function toArgentinaDateTimeInputValue(date: Date = new Date()) {

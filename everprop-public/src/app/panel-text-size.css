@@ -16,6 +16,7 @@ html[data-panel-text-size="grande"] .admin-workspace :is(input:not([type="checkb
 html[data-panel-text-size="grande"] .admin-workspace [data-slot="input-group"] { min-height: 2.75rem; }
 html[data-panel-text-size="grande"] .admin-workspace [data-slot="input-group"] input { min-height: 0; }
 html[data-panel-text-size="grande"] .admin-workspace table { min-width: 60rem; }
+html[data-panel-text-size="grande"] .admin-workspace table:has(td[data-label]) { min-width: 0; }
 html[data-panel-text-size="grande"] .admin-topbar > div { flex-wrap: wrap; }
 html[data-panel-text-size="grande"] .admin-topbar > div > div:first-child { min-width: min(100%, 14rem); }
 @media (max-width: 767px) {

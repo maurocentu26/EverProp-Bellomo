@@ -81,7 +81,7 @@ const CATEGORIES: AssetCategoryOption[] = [
   },
   {
     id: "comercial",
-    title: "Comerciales (cochera/locales)",
+    title: "Locales y cocheras",
     subtitle: "Espacios de estacionamiento, locales y oficinas",
     icon: Store,
     color: "text-indigo-300 border-indigo-700 bg-indigo-950/60",
@@ -726,7 +726,7 @@ export function NewLeadDrawer({
 
                 <Field>
                   <FieldLabel className="text-xs font-semibold text-slate-200">Categoría de interés</FieldLabel>
-                  <div className="grid grid-cols-2 gap-2 mt-1">
+                  <div className="lead-categories grid grid-cols-2 gap-2 mt-1">
                     {CATEGORIES.map((category) => {
                       const Icon = category.icon;
                       const isSelected = selectedCategory === category.id;

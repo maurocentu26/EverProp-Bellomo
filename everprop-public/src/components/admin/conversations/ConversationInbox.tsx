@@ -46,6 +46,9 @@ import {
   type HandoffSummary,
 } from "@/lib/conversations-api";
 
+import { CONVERSATION_TABS, conversationTab, conversationReason, type ConversationTab } from "@/lib/conversation-presentation";
+import { VisitRequestsBoard } from "@/components/admin/assistant/VisitRequestsBoard";
+
 const FILTERS: [ConversationFilter, string][] = [
   ["waiting", "Esperan asesor"],
   ["mine", "Mías"],
@@ -109,7 +112,7 @@ function useVisiblePolling(run: () => void, ms: number) {
 }
 
 /** Saved replies live on this device, per user: they are templates, never client data. */
-const SPLIT_VIEW = "(min-width: 1024px)";
+const SPLIT_VIEW = "(min-width: 768px)";
 
 /**
  * Phone/tablet with a conversation open: full screen like WhatsApp. The chat follows the visual viewport, which
@@ -173,7 +176,9 @@ export function ConversationInbox() {
   const { user } = useCurrentSession();
   const router = useRouter();
   const readOnly = user?.apiRole === "READ_ONLY";
-  const [filter, setFilter] = useState<ConversationFilter>("waiting");
+  const [filter, setFilter] = useState<ConversationFilter>("all");
+  const [tab, setTab] = useState<ConversationTab>("human");
+  const [showClient, setShowClient] = useState(false);
   // What the user types, and the term actually sent once they pause typing.
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -193,7 +198,7 @@ export function ConversationInbox() {
   const [aiEnabled, setAiEnabled] = useState(false);
   const [copilotEnabled, setCopilotEnabled] = useState(false);
   // The copilot draft currently in the composer (to report whether it was sent as is or edited).
-  const [suggestion, setSuggestion] = useState<{ id: string; text: string } | null>(null);
+  const [suggestion, setSuggestion] = useState<{ id: string; text: string; applied: boolean } | null>(null);
   // WhatsApp only: when the 24 h service window closes (null closes_at = already closed).
   const [replyWindow, setReplyWindow] = useState<{ closes_at: string | null } | null>(null);
   const [handoff, setHandoff] = useState<HandoffSummary | null>(null);
@@ -222,6 +227,8 @@ export function ConversationInbox() {
   const [templateParams, setTemplateParams] = useState<string[]>([]);
   // Same rule as replies: the key belongs to the exact text it was created for.
   const noteKey = useRef({ key: newKey(), text: "" });
+  const clientBack = useRef<HTMLButtonElement>(null);
+  useEffect(() => { if (showClient) clientBack.current?.focus(); }, [showClient]);
   const threadHeading = useRef<HTMLHeadingElement>(null);
   const thread = useRef<HTMLOListElement>(null);
   const atBottom = useRef(true);
@@ -293,7 +300,7 @@ export function ConversationInbox() {
   function jumpToLatest() {
     atBottom.current = true;
     setUnseen(0);
-    thread.current?.scrollTo({ top: thread.current.scrollHeight, behavior: "smooth" });
+    thread.current?.scrollTo({ top: thread.current.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   }
 
   // Unread conversations in the tab/app title, visible from the task switcher.
@@ -326,6 +333,7 @@ export function ConversationInbox() {
     setUnseen(0);
     atBottom.current = true;
     setShowQuick(false);
+    setShowClient(false);
     setShowActionsMenu(false);
     setShowResume(false);
     setResumeReason("");
@@ -343,6 +351,7 @@ export function ConversationInbox() {
   }
 
   function backToList() {
+    setShowClient(false);
     const id = selectedRef.current;
     if (id) drafts.current.set(id, draft);
     selectedRef.current = null;
@@ -382,7 +391,7 @@ export function ConversationInbox() {
     if (!conversation || !text || windowClosed) return;
     if (draftKey.current.text !== text) draftKey.current = { key: newKey(), text };
     atBottom.current = true;
-    const fromDraft = suggestion?.id;
+    const fromDraft = suggestion?.applied ? suggestion.id : undefined;
     await run("reply", async () => {
       await sendReply(conversation, text, draftKey.current.key, fromDraft);
       drafts.current.delete(conversation);
@@ -394,18 +403,15 @@ export function ConversationInbox() {
     });
   }
 
-  /** Copilot: fills the composer with a draft; the advisor reviews, edits and sends it. Nothing goes out on its own. */
+  /** Copilot proposes a response; only the advisor can copy it into the composer and send it. */
   async function suggestDraft() {
     const conversation = selected;
     if (!conversation) return;
-    const previous = draft;
     await run("suggest", async () => {
       const { data } = await suggestReply(conversation);
       if (selectedRef.current !== conversation) return;
-      setSuggestion({ id: data.suggestion_id, text: data.text });
-      setDraft(data.text);
-      focusComposer();
-      if (previous.trim()) toast("Reemplacé lo que habías escrito por la sugerencia.", { action: { label: "Deshacer", onClick: () => { setSuggestion(null); setDraft(previous); } } });
+      setSuggestion({ id: data.suggestion_id, text: data.text, applied: false });
+
     });
   }
 
@@ -479,9 +485,11 @@ export function ConversationInbox() {
   // A reply queued just before the window closed still shows up in the thread through polling.
   const windowClosed = replyWindow !== null && replyWindow.closes_at === null;
 
+  const visibleItems = items.filter(item => conversationTab(item.state) === tab);
+
   return (
-    <section className="wa-inbox mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 pb-6 lg:min-h-0 lg:flex-1 lg:pb-0">
-      <header className={`${selected ? "hidden lg:flex" : "flex"} shrink-0 flex-wrap items-end justify-between gap-3`}>
+    <section className="wa-inbox mx-auto flex w-full max-w-none min-w-0 flex-col gap-4 pb-6 md:min-h-0 md:flex-1 md:pb-0">
+      <header className={`${selected ? "hidden md:flex" : "flex"} shrink-0 flex-wrap items-end justify-between gap-3`}>
         <div>
           <h1 className="text-2xl font-bold">Conversaciones</h1>
           <p className="mt-1 hidden text-sm text-muted-foreground sm:block">WhatsApp y chat web en una sola bandeja. La IA se detiene cuando tomás el control.</p>
@@ -490,13 +498,13 @@ export function ConversationInbox() {
           className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold disabled:opacity-70">
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden /> {refreshing ? "Actualizando…" : "Actualizar"}
         </button>
-        <p id="inbox-refresh-status" role="status" className="sr-only sm:not-sr-only sm:w-auto sm:text-right sm:text-xs sm:text-muted-foreground">
+        <p id="inbox-refresh-status" role="status" className="sr-only">
           {refreshedAt ? `Actualizado ${clockTime(refreshedAt)} · se actualiza solo` : "Se actualiza solo cada pocos segundos"}
         </p>
       </header>
 
-      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
-        <aside className={`${selected ? "hidden lg:flex" : "flex"} min-w-0 flex-col rounded-2xl border border-border bg-card lg:min-h-0 lg:overflow-hidden`} aria-label="Listado de conversaciones">
+      <div className="conversation-columns">
+        <aside className={`${selected ? "hidden md:flex" : "flex"} min-w-0 flex-col rounded-2xl border border-border bg-card md:min-h-0 md:overflow-hidden`} aria-label="Listado de conversaciones">
           <div role="search" className="p-2">
             <label htmlFor="inbox-search" className="sr-only">Buscar conversaciones</label>
             <div className="relative">
@@ -506,22 +514,26 @@ export function ConversationInbox() {
                 className="min-h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-base sm:text-sm" />
             </div>
           </div>
-          <div role="group" aria-label="Filtrar conversaciones" className="flex flex-wrap gap-1.5 border-b border-border px-2 pb-2">
-            {FILTERS.map(([id, label]) => (
-              <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}
-                className={`min-h-10 rounded-full px-3 text-xs font-semibold ${filter === id ? "wa-accent" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-                {label}
+          <div role="group" aria-label="Bandejas de conversaciones" title="Cantidades del filtro actual" className="conversation-tabs">
+            {CONVERSATION_TABS.map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>
+                {label} <span>{items.filter(item => conversationTab(item.state) === id).length}</span>
               </button>
             ))}
           </div>
-          {listError && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{listError}</p>}
+          <label className="conversation-filter">Mostrar
+            <select value={filter} onChange={event => setFilter(event.target.value as ConversationFilter)}>
+              {FILTERS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+          </label>
+          {listError && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{listError} <button type="button" disabled={refreshing} onClick={() => void refreshNow()} className="conversation-secondary mt-2">{refreshing ? "Reintentando…" : "Reintentar"}</button></p>}
           <ul role="list" className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
-            {items.length === 0 && !listError && (
+            {visibleItems.length === 0 && !listError && (
               <li className="p-6 text-center text-sm text-muted-foreground">
                 {search ? `Nada coincide con “${search}” en este filtro.` : "No hay conversaciones en este filtro."}
               </li>
             )}
-            {items.map((item) => {
+            {visibleItems.map((item) => {
               const preview = previewText(item);
               return (
                 <li key={item.id}>
@@ -542,7 +554,7 @@ export function ConversationInbox() {
                         {item.unread > 0 && <span className="wa-accent shrink-0 rounded-full px-2 py-0.5 text-xs font-bold" aria-label={`${item.unread} sin leer`}>{item.unread}</span>}
                       </span>
                       <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                        <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_STYLES[item.state]}`}>{STATE_LABELS[item.state]}</span>
+                        <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_STYLES[item.state]}`}>{conversationReason(item)}</span>
                         <span>{CHANNEL_LABELS[item.channel] ?? item.channel}</span>
                         {item.assigned_user && <span className="truncate">· {item.assigned_user.name}</span>}
                         {item.out_of_hours && item.waiting_since && (
@@ -559,7 +571,7 @@ export function ConversationInbox() {
           </ul>
         </aside>
 
-        <div className={`${selected ? "wa-fullscreen flex lg:h-auto" : "hidden lg:flex"} relative min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card lg:min-h-0`}>
+        <div className={`conversation-chat ${selected ? "wa-fullscreen flex md:h-auto" : "hidden md:flex"} relative min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card md:min-h-0`}>
           {!selected ? (
             <div className="m-auto flex max-w-sm flex-col items-center gap-3 p-8 text-center text-muted-foreground">
               <MessageSquare className="h-8 w-8" aria-hidden />
@@ -567,9 +579,9 @@ export function ConversationInbox() {
             </div>
           ) : (
             <>
-              <div className="wa-bar flex items-center gap-2 rounded-t-2xl border-b border-border p-2 sm:p-3">
-                <button type="button" onClick={backToList} aria-label="Volver a la bandeja" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full lg:hidden">
-                  <ArrowLeft className="h-5 w-5" aria-hidden />
+              <div className="conversation-header wa-bar flex items-center gap-2 rounded-t-2xl border-b border-border p-2 sm:p-3">
+                <button type="button" onClick={backToList} aria-label="Volver a la bandeja" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full md:hidden">
+                  <ArrowLeft className="h-5 w-5" aria-hidden /> Atrás
                 </button>
                 <span aria-hidden className="wa-accent inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
                   {initials(current ? displayName(current) : "?")}
@@ -579,24 +591,25 @@ export function ConversationInbox() {
                     {current ? displayName(current) : "Conversación"}
                   </h2>
                   <p className="truncate text-xs text-muted-foreground">
-                    {state && <span className="sm:hidden">{STATE_LABELS[state]} · </span>}
                     {current ? (CHANNEL_LABELS[current.channel] ?? current.channel) : ""}
                     {replyWindow?.closes_at ? ` · podés responder hasta ${dayLabel(replyWindow.closes_at).toLowerCase()} ${clockTime(replyWindow.closes_at)}` : ""}
                   </p>
                 </div>
-                {state && <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${STATE_STYLES[state]}`}>{STATE_LABELS[state]}</span>}
+                {state && <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${STATE_STYLES[state]}`}>{humanInControl ? "Ahora atendés vos" : STATE_LABELS[state]}</span>}
+                {!readOnly && humanInControl && aiEnabled && <button type="button" disabled={busy !== null} onClick={() => setShowResume(true)} className="conversation-secondary">Devolver a la IA</button>}
+                <button type="button" aria-expanded={showClient} id="conversation-client-toggle" aria-controls="conversation-client" onClick={() => setShowClient(value => !value)} className="conversation-secondary conversation-client-toggle">{showClient ? "Volver al chat" : "Ver cliente"}</button>
               </div>
 
               {handoff && !handoffDismissed && (state === "WAITING_HUMAN" || state === "HUMAN_ACTIVE") && (
                 // Model-written: plain text only (React escapes it), for the team, never sent to the visitor.
-                <section aria-label="Resumen del asistente" className="mx-3 mt-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-950 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-50">
+                <section aria-label="Resumen del asistente" className={`conversation-handoff ${handoffExpanded ? "conversation-handoff-expanded" : ""} mx-3 mt-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-950 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-50`}>
                   <div className="flex items-center justify-between gap-2">
                     <p className="min-w-0 truncate font-semibold">
-                      Resumen del asistente · {HANDOFF_REASONS[handoff.reason] ?? "Derivación"}
-                      <span className="font-normal text-muted-foreground"> · {dayLabel(handoff.at)} {clockTime(handoff.at)}</span>
+                      Te la pasó la IA<span className="conversation-handoff-detail"> · {HANDOFF_REASONS[handoff.reason] ?? "Derivación"}</span>
+                      <span className="conversation-handoff-detail font-normal text-muted-foreground"> · {dayLabel(handoff.at)} {clockTime(handoff.at)}</span>
                     </p>
                     <div className="flex shrink-0 items-center gap-1">
-                      {handoff.summary && (handoff.summary.length > 90 || handoff.summary.includes("\n")) && (
+                      {handoff.summary && (
                         <button type="button" onClick={() => setHandoffExpanded((open) => !open)} aria-expanded={handoffExpanded}
                           className="inline-flex min-h-7 items-center gap-1 rounded-md px-2 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 dark:text-indigo-200 dark:hover:bg-indigo-500/20">
                           {handoffExpanded ? <><ChevronUp className="h-3.5 w-3.5" aria-hidden /> Contraer</> : <><ChevronDown className="h-3.5 w-3.5" aria-hidden /> Ampliar</>}
@@ -609,7 +622,7 @@ export function ConversationInbox() {
                     </div>
                   </div>
                   {handoff.summary && (
-                    <p className={`mt-1 break-words ${handoffExpanded ? "whitespace-pre-wrap" : "line-clamp-1"}`}>{handoff.summary}</p>
+                    <p className={`conversation-handoff-summary mt-1 break-words ${handoffExpanded ? "whitespace-pre-wrap" : "line-clamp-1"}`}>{handoff.summary}</p>
                   )}
                 </section>
               )}
@@ -637,7 +650,7 @@ export function ConversationInbox() {
                   // Like WhatsApp: consecutive messages from the same side stack tightly; only the first gets the tail.
                   const first = newDay || previous.direction !== message.direction || previous.sender !== message.sender;
                   const separator = newDay && (
-                    <li className="sticky top-1 z-10 my-2 flex justify-center">
+                    <li className="conversation-day my-3 flex justify-center">
                       <span className="wa-chip rounded-lg px-3 py-1 text-xs font-medium shadow-sm first-letter:uppercase">{dayLabel(message.at)}</span>
                     </li>
                   );
@@ -664,11 +677,8 @@ export function ConversationInbox() {
                     <Fragment key={message.sequence}>
                       {separator}
                       <li className={`flex ${mine ? "justify-end" : "justify-start"} ${first ? "mt-2" : "mt-0.5"}`}>
-                        <div className={`wa-bubble ${mine ? "wa-out" : "wa-in"} max-w-[85%] rounded-lg px-2.5 pb-1 pt-1.5 text-sm sm:max-w-[65%] ${first ? (mine ? "rounded-tr-none" : "rounded-tl-none") : ""} ${message.status === "CANCELLED" ? "opacity-60" : ""}`}>
-                          <span className="sr-only">{who}: </span>
-                          {message.sender === "BOT" && first && (
-                            <p className="mb-0.5 flex items-center gap-1 text-[11px] font-semibold text-violet-700 dark:text-violet-300"><Bot className="h-3 w-3" aria-hidden /> IA</p>
-                          )}
+                        <div className={`wa-bubble ${message.sender === "BOT" ? "conversation-ai" : mine ? "wa-out" : "wa-in"} max-w-[85%] rounded-lg px-2.5 pb-1 pt-1.5 text-sm sm:max-w-[65%] ${first ? (mine ? "rounded-tr-none" : "rounded-tl-none") : ""} ${message.status === "CANCELLED" ? "opacity-60" : ""}`}>
+                          <p className="conversation-sender">{message.sender === "BOT" && <Bot className="h-4 w-4" aria-hidden />}{who}</p>
                           {message.media && <MediaPreview media={message.media} />}
                           {(message.text || !message.media) && (
                             <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{message.text ?? "[contenido no textual]"}</p>
@@ -755,12 +765,23 @@ export function ConversationInbox() {
                       )}
                     </div>
                   )}
+                    {!noteMode && suggestion && (
+                      <section className="conversation-suggestion" aria-label="Sugerencia del copiloto">
+                        <h3><Sparkles className="h-5 w-5" aria-hidden /> Sugerencia para responder</h3>
+                        <p className="whitespace-pre-wrap break-words">{suggestion.text}</p>
+                        <p>Revisala antes de enviar. No se envía automáticamente.</p>
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" disabled={busy !== null} className="wa-accent" onClick={() => { setDraft(suggestion.text); setSuggestion({ ...suggestion, applied: true }); focusComposer(); }}>Usar esta respuesta</button>
+                          <button type="button" disabled={busy !== null} className="conversation-secondary" onClick={() => { setSuggestion(null); focusComposer(); }}>Escribir otra</button>
+                        </div>
+                      </section>
+                    )}
                   {!humanInControl && !noteMode ? (
                     // Not in control: where the composer goes, the one action that makes it appear.
                     <div className="wa-bar flex items-center gap-2 px-2 py-2 sm:px-3">
                       <button type="button" aria-label="Escribir una nota interna" onClick={() => { setNoteMode(true); focusComposer(); }}
                         className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
-                        <StickyNote className="h-5 w-5" aria-hidden />
+                        <StickyNote className="h-5 w-5" aria-hidden /> {noteMode ? "Responder" : "Nota"}
                       </button>
                       {state && state !== "CLOSED" ? (
                         <button type="button" disabled={busy !== null || state === "TRANSITION_PENDING"} onClick={() => void run("takeover", async () => {
@@ -777,32 +798,27 @@ export function ConversationInbox() {
                         <button type="button" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
                           onClick={() => setShowActionsMenu((open) => !open)}
                           className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border transition-colors ${showActionsMenu ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-                          {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />}
+                          {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />} Más
                         </button>
                       )}
                     </div>
                   ) : (
                     <>
-                    {!noteMode && suggestion && draft.trim() !== "" && (
-                      <p role="status" className="wa-bar flex items-center gap-1 px-4 pt-2 text-xs font-semibold text-violet-700 dark:text-violet-300">
-                        <Sparkles className="h-3 w-3" aria-hidden /> Borrador de la IA: revisalo antes de enviar. No sale nada hasta que lo envíes.
-                      </p>
-                    )}
-                    <form onSubmit={(event) => { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); }} className="wa-bar flex items-end gap-1.5 px-2 py-2 sm:px-3">
+                    <form onSubmit={(event) => { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); }} className="conversation-composer wa-bar flex items-end gap-1.5 px-2 py-2 sm:px-3">
                       {!noteMode && (
                         <button type="button" aria-expanded={showQuick} aria-label="Respuestas rápidas" onClick={() => { if (!showQuick) loadReplies(); setShowQuick(!showQuick); }}
                           className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${showQuick ? "bg-muted" : ""}`}>
-                          <MessageSquareText className="h-5 w-5" aria-hidden />
+                          <MessageSquareText className="h-5 w-5" aria-hidden /> Rápidas
                         </button>
                       )}
                       <button type="button" aria-pressed={noteMode} aria-label={noteMode ? "Volver a responder al cliente" : "Escribir una nota interna"}
                         onClick={() => { setNoteMode(!noteMode); setShowQuick(false); focusComposer(); }}
                         className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-muted ${noteMode ? "wa-note-mode" : "text-muted-foreground"}`}>
-                        <StickyNote className="h-5 w-5" aria-hidden />
+                        <StickyNote className="h-5 w-5" aria-hidden /> {noteMode ? "Responder" : "Nota"}
                       </button>
                       {!noteMode && (current?.channel === "WEB_CHAT" || current?.channel === "WHATSAPP") && (
                         <label className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${busy !== null ? "pointer-events-none opacity-50" : ""}`}>
-                          <span className="sr-only">{busy === "attach" ? "Enviando archivo" : "Adjuntar foto o PDF"}</span>
+                          <span>{busy === "attach" ? "Enviando…" : "Adjuntar"}</span>
                           <Paperclip className={`h-5 w-5 ${busy === "attach" ? "animate-pulse motion-reduce:animate-none" : ""}`} aria-hidden />
                           <input type="file" accept={ATTACHMENT_TYPES} className="sr-only" disabled={busy !== null}
                             onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void sendFile(file); }} />
@@ -812,7 +828,7 @@ export function ConversationInbox() {
                         <button type="button" disabled={busy !== null} onClick={() => void suggestDraft()}
                           aria-label={busy === "suggest" ? "Pidiendo una sugerencia a la IA" : "Sugerir respuesta con IA"}
                           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-violet-700 hover:bg-muted disabled:opacity-50 dark:text-violet-300">
-                          <Sparkles className={`h-5 w-5 ${busy === "suggest" ? "animate-pulse motion-reduce:animate-none" : ""}`} aria-hidden />
+                          <Sparkles className={`h-5 w-5 ${busy === "suggest" ? "animate-pulse motion-reduce:animate-none" : ""}`} aria-hidden /> Sugerir
                         </button>
                       )}
                       <label htmlFor="reply" className="sr-only">{noteMode ? "Nota interna para el equipo" : "Respuesta al cliente"}</label>
@@ -826,8 +842,8 @@ export function ConversationInbox() {
                         placeholder={noteMode ? "Nota interna: solo la ve el equipo" : "Escribí un mensaje"} />
                       <button type="submit" disabled={busy !== null || (noteMode ? note.trim() === "" : draft.trim() === "" || windowClosed)}
                         aria-label={noteMode ? "Guardar nota" : "Enviar respuesta"}
-                        className="wa-accent inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50">
-                        {noteMode ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
+                        className="conversation-send wa-accent inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 disabled:opacity-50">
+                        {noteMode ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />} {noteMode ? "Guardar" : "Enviar"}
                       </button>
 
                       {/* Botón Flotante de Acciones (FAB) */}
@@ -835,7 +851,7 @@ export function ConversationInbox() {
                         <button type="button" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
                           onClick={() => setShowActionsMenu((open) => !open)}
                           className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border transition-colors ${showActionsMenu ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-                          {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />}
+                          {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />} Más
                         </button>
                       )}
                     </form>
@@ -976,6 +992,16 @@ export function ConversationInbox() {
             </>
           )}
         </div>
+        <aside id="conversation-client" className={`conversation-client ${showClient ? "conversation-client-open" : ""}`} aria-label="Panel del cliente">
+          <button ref={clientBack} type="button" className="conversation-secondary conversation-client-toggle" onClick={() => { setShowClient(false); window.setTimeout(() => document.getElementById("conversation-client-toggle")?.focus(), 0); }}><ArrowLeft className="h-5 w-5" aria-hidden /> Atrás al chat</button>
+          {selected ? <>
+            <VisitRequestsBoard key={selected} conversationId={selected} channelLabel={current ? (CHANNEL_LABELS[current.channel] ?? current.channel) : "Sin informar"} />
+            {!readOnly && <button type="button" disabled={busy !== null} className="conversation-secondary w-full" onClick={() => void run("lead", async () => {
+              const { data } = await openConversationLead(selected);
+              router.push(`/admin/leads/${data.lead_id}`);
+            })}>Abrir ficha del cliente</button>}
+          </> : <div className="conversation-client-empty"><h2>Datos del cliente</h2><p>Elegí una conversación para ver su información y las visitas solicitadas.</p></div>}
+        </aside>
       </div>
     </section>
   );

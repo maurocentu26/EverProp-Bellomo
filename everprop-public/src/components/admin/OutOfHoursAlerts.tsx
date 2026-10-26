@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/everprop-api";
 import { endpointHash, registerNotificationWorker } from "@/lib/push-registration";
 
+import { isMockDataMode } from "@/lib/data-mode";
+
 type Config = { outOfHours?: Record<string, boolean>; businessHoursConfigured?: boolean };
 
 /**
@@ -17,6 +19,7 @@ export function OutOfHoursAlerts() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (isMockDataMode) { setEnabled(false); return; }
     let alive = true;
     (async () => {
       const subscription = await (await registerNotificationWorker(navigator.serviceWorker)).pushManager.getSubscription();
@@ -30,6 +33,7 @@ export function OutOfHoursAlerts() {
   }, []);
 
   async function change(value: boolean) {
+    if (isMockDataMode) { setEnabled(value); return; }
     if (!endpoint) return;
     setSaving(true);
     setMessage("");
@@ -53,6 +57,7 @@ export function OutOfHoursAlerts() {
         <p id="out-of-hours-alerts-help" className="mt-1 text-sm text-muted-foreground">Solo en este dispositivo. Si los apagás, igual quedan en la campana del panel.</p>
         {message && <p role="status" className="mt-1 text-sm">{message}</p>}
       </div>
+      <span>{enabled ? "Activados" : "Desactivados"}</span>
       <input id="out-of-hours-alerts" type="checkbox" role="switch" aria-describedby="out-of-hours-alerts-help" className="mt-1 h-6 w-6 shrink-0"
         checked={enabled} disabled={saving} onChange={(event) => void change(event.target.checked)} />
     </div>

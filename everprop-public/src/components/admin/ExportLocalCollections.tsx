@@ -14,5 +14,5 @@ export function ExportLocalCollections() {
       toast.success("Exportado para revisión. Los datos locales se conservan.");
     } catch { toast.error("No se pudieron exportar los datos locales."); }
   }
-  return <button type="button" className="rounded-lg border px-3 py-2 text-xs" onClick={download}>Exportar datos locales</button>;
+  return <button type="button" className="rounded-lg border px-3 py-2 text-xs" onClick={download}>Exportar</button>;
 }

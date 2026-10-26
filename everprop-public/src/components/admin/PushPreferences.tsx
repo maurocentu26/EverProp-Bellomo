@@ -4,6 +4,8 @@ import { apiFetch } from "@/lib/everprop-api";
 import { OutOfHoursAlerts } from "@/components/admin/OutOfHoursAlerts";
 import { activatePush, currentPushState, deactivatePush, endpointHash, registerNotificationWorker, type PushDeps, type PushEnvironment, type PushState } from "@/lib/push-registration";
 
+import { isMockDataMode } from "@/lib/data-mode";
+
 type PushConfig = { enabled: boolean; publicKey: string; subscriptionHashes: string[] };
 
 function environment(): PushEnvironment {
@@ -38,6 +40,7 @@ export function usePushDevice() {
 
   const mounted = useRef(true);
   const check = useCallback(() => {
+    if (isMockDataMode) { setState("inactive"); return; }
     currentPushState(environment(), deps.current)
       .then((next) => { if (mounted.current) setState(next); })
       .catch(() => { if (mounted.current) { setState("error"); setMessage("No pudimos comprobar los avisos de este dispositivo. Reintentá."); } });
@@ -51,6 +54,7 @@ export function usePushDevice() {
 
   // Called directly from a click: activatePush asks for permission before awaiting anything else.
   const activate = useCallback(() => {
+    if (isMockDataMode) { setState("active"); return; }
     if (!publicKey.current) { setState("checking"); setMessage(""); check(); return; }
     setState("activating");
     setMessage("");
@@ -58,6 +62,7 @@ export function usePushDevice() {
   }, [check]);
 
   const deactivate = useCallback(async () => {
+    if (isMockDataMode) { setState("inactive"); return; }
     setState("activating");
     setMessage("");
     try {
@@ -80,7 +85,7 @@ const STATUS: Record<PushState, string> = {
   checking: "Comprobando este dispositivo…",
   unsupported: "Este navegador no puede recibir avisos con el panel cerrado.",
   install: "En iPhone o iPad, los avisos funcionan solo con el panel instalado.",
-  "server-off": "Los avisos con el panel cerrado todavía no están configurados en el servidor.",
+  "server-off": "Los avisos con el panel cerrado todavía no están configurados para la inmobiliaria.",
   blocked: "Las notificaciones están bloqueadas para el panel en este dispositivo.",
   inactive: "No activados en este dispositivo.",
   activating: "Activando…",
@@ -117,7 +122,7 @@ export function PushPreferences() {
       <div>
         <h2 className="font-semibold">Avisos con el panel cerrado</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Te avisan en este dispositivo, aunque el panel esté cerrado, cuando un cliente espera respuesta o un lead lleva días sin seguimiento. La campana y el sonido del panel funcionan solo mientras lo tenés abierto.
+          Te avisan en este dispositivo, aunque el panel esté cerrado, cuando un cliente espera respuesta o un contacto lleva días sin seguimiento. La campana y el sonido del panel funcionan solo mientras lo tenés abierto.
         </p>
       </div>
       <p role="status" className="text-sm font-semibold">{STATUS[state]}</p>

@@ -109,6 +109,8 @@ export type Property = {
   propertyType: string;
   price: number;
   priceKnown?: boolean;
+  inventoryPrice?: number | null;
+  inventoryCurrency?: string | null;
   currency: 'USD' | 'ARS';
   city: string;
   neighborhood: string;
@@ -317,6 +319,16 @@ export const projects: Project[] = [
 ];
 
 export const properties: Property[] = [
+  ...['12', '12A', '12B'].map((code, index): Property => ({
+    id: `evp73-demo-${code}`, companyId: 'c1', title: `Unidad ${code}`,
+    unitNumber: code, projectId: projects[0].id, sectorName: 'Manzana B',
+    operation: 'sale', propertyType: 'Lote', price: index ? 36000 : 38500,
+    currency: 'USD', inventoryPrice: index === 2 ? null : index ? 36000 : 38500,
+    inventoryCurrency: index === 2 ? null : 'USD', priceKnown: index !== 2,
+    status: index === 1 ? 'reserved' : 'available', area_m2: index ? 280 : 300,
+    city: 'San Salvador de Jujuy', neighborhood: '', bedrooms: 0, bathrooms: 0,
+  })),
+
   {
     id: "86634fca-fc83-4c43-920d-7b5b4c2fcec1",
     companyId: 'c1',

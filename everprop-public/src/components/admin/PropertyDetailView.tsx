@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { 
-    ArrowLeft, Building2, MapPin, Ruler, BedDouble, Bath, Car, 
-    ExternalLink, Edit3, Share2, Calendar, CheckCircle2, Trees
+import {
+    ArrowLeft, Building2, MapPin, Ruler,
+    Edit3, Share2, Calendar, CheckCircle2, Trees
 } from "lucide-react";
 import type { Lead, Property, Visit } from "@/data/admin-sample";
-import { leads as sampleLeads, properties as sampleProperties } from "@/data/admin-sample";
+import { leads as sampleLeads, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadLeadList, loadPropertyList, saveLeadList, savePropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropCatalog, loadEverpropLeads, loadEverpropVisits, createEverpropVisit, cancelEverpropVisit, updateEverpropPropertyStatus, loadEverpropPropertyById } from "@/lib/everprop-api";
@@ -18,22 +18,22 @@ import {
   syncLeadWithInterests,
 } from "@/lib/lead-interests";
 import { Button } from "@/components/ui/button";
-import Badge from "@/components/ui/badge";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import VisitManager from "@/components/admin/VisitManager";
 import { EditPropertyModal } from "@/components/admin/EditPropertyModal";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { inventoryPriceLabel, propertyStatusLabel, propertyOperationLabel } from "@/lib/inventory-labels";
 
 type Props = {
   propertyId: string;
 };
 
 export default function PropertyDetailView({ propertyId }: Props) {
-  const { isEngineer, isAdvisor } = useCurrentSession();
+  const { isEngineer, isAdvisor, user } = useCurrentSession();
   const visitSectionRef = useRef<HTMLDivElement>(null);
+  const [projectName, setProjectName] = useState("");
   const [loadError, setLoadError] = useState("");
   const [savingStatus, setSavingStatus] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -59,6 +59,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
           setAllLeads(apiLeads);
 
           const found = loadedProperty;
+          setProjectName(catalog.projects.find(p => p.id === found?.projectId)?.name ?? "");
           setProperty(found ? { ...found, visits: visits.filter((visit) => visit.propertyId === propertyId) } : null);
           setLoading(false);
           return;
@@ -76,6 +77,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
 
       const foundProperty = initialProperties.find((item) => item.id === propertyId);
       setProperty(foundProperty ?? null);
+      setProjectName(sampleProjects.find(p => p.id === foundProperty?.projectId)?.name ?? "");
       setLoading(false);
     }
     void loadData();
@@ -101,21 +103,21 @@ export default function PropertyDetailView({ propertyId }: Props) {
     const finalLeadName = visit.leadName || targetLead?.name || "Interesado";
 
     // 2. Preparamos el objeto de la visita con toda la data necesaria
-    const nextVisit: Visit = { 
-      ...visit, 
-      propertyId: property.id, 
+    const nextVisit: Visit = {
+      ...visit,
+      propertyId: property.id,
       propertyTitle: property.title,
       leadName: finalLeadName, // VITAL para la sidebar
       agentId: visit.agentId ?? targetLead?.agentId,
     };
 
     // 3. Actualizamos la PROPIEDAD actual y la lista global de activos
-    const updatedProperty: Property = { 
-      ...property, 
-      visits: [...(property.visits ?? []), nextVisit] 
+    const updatedProperty: Property = {
+      ...property,
+      visits: [...(property.visits ?? []), nextVisit]
     };
-    
-    const nextProperties = allProperties.map((p) => 
+
+    const nextProperties = allProperties.map((p) =>
       p.id === property.id ? updatedProperty : p
     );
 
@@ -173,24 +175,24 @@ export default function PropertyDetailView({ propertyId }: Props) {
     setProperty(updatedProperty);
     setAllProperties(nextProperties);
     setAllLeads(nextLeads);
-    
+
     savePropertyList(nextProperties, property.companyId);
     saveLeadList(nextLeads, property.companyId);
-    
+
     toast.info("Visita eliminada");
   }
 
   if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4">{loadError}</p>;
   if (loading) return <p role="status">Cargando activo…</p>;
-  if (!property) return <div className="p-8 text-center text-slate-500 font-medium">Activo no encontrada.</div>;
+  if (!property) return <div className="p-8 text-center text-foreground font-medium">Activo no encontrado.</div>;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20 animate-in fade-in duration-500">
+    <div className="inventory-view inventory-detail max-w-7xl mx-auto space-y-6 pb-20 animate-in fade-in duration-500">
       {/* Barra Superior */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <Link href="/admin/properties" className="group flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">
+        <Link href="/admin/properties" className="inventory-detail-back group flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-          Volver al inventario
+          Atrás
         </Link>
         <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Button
@@ -224,24 +226,18 @@ export default function PropertyDetailView({ propertyId }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* COLUMNA IZQUIERDA: Galería e Info */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
-             <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                <Trees size={64} strokeWidth={1} className="text-emerald-500/50" />
-             </div>
-             <div className="absolute top-4 left-4 flex gap-2">
-                <Badge className="px-3 py-1 rounded-full border-none shadow-md text-white font-bold text-xs tracking-wider bg-emerald-600">
-                    EN VENTA
-                </Badge>
-                <Badge className="bg-white/90 backdrop-blur text-slate-900 border-none px-3 py-1 rounded-full shadow-md text-xs font-bold">
-                    {property.sectorName || property.propertyType}
-                </Badge>
-             </div>
-          </div>
+          <header className="inventory-detail-header">
+            <h1>{property.unitNumber ? `Unidad ${property.unitNumber}` : property.title}</h1>
+            <div className="inventory-detail-summary">
+              <span className="inventory-status" data-status={property.status}><CheckCircle2 aria-hidden="true" size={20} />{propertyStatusLabel(property.status)}</span>
+              <span>{propertyOperationLabel(property.operation)}</span>
+            </div>
+            <p>{[property.projectId ? projectName || "Proyecto sin identificar" : "Activo independiente", property.propertyType, property.sectorName ? (/^manzana\b/i.test(property.sectorName) ? property.sectorName : `Manzana ${property.sectorName}`) : null].filter(Boolean).join(" · ")}</p>
+          </header>
 
           <div className="space-y-3">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-tight">{property.title}</h1>
             <div className="flex items-center gap-2 text-slate-500 text-sm font-medium">
-              <MapPin className="h-4 w-4 text-red-500" /> {property.neighborhood}, {property.city}
+              <MapPin className="h-4 w-4 text-red-500" /> {[property.neighborhood, property.city].filter(part => part?.trim()).join(", ")}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-4 border-y border-slate-100">
@@ -249,12 +245,10 @@ export default function PropertyDetailView({ propertyId }: Props) {
                     { label: 'Superficie', val: `${property.area_m2?.toLocaleString("es-AR", { maximumFractionDigits: 2 }) ?? "--"} m²`, icon: Ruler },
                     { label: property.propertyType === 'Lote' ? 'Manzana' : 'Habitaciones', val: property.propertyType === 'Lote' ? property.sectorName || '-' : property.bedrooms || 'Sin informar', icon: Trees },
                     { label: property.propertyType === 'Lote' ? 'Parcela' : 'Baños', val: property.propertyType === 'Lote' ? property.unitNumber || '-' : property.bathrooms || 'Sin informar', icon: Building2 },
-                    { 
-                      label: property.propertyType === 'Lote' ? 'Ochava / Obs.' : 'Tipo',
-                      val: property.propertyType !== 'Lote' ? property.propertyType : property.commercialFeatures?.land?.ochava_m2 != null ? `${property.commercialFeatures.land.ochava_m2.toLocaleString("es-AR")} m²` : property.description?.match(/OCH\.?\s*([0-9.,]+)\s*M2?/i)?.[1]
-                        ? `Och. ${property.description?.match(/OCH\.?\s*([0-9.,]+)\s*M2?/i)?.[1]} m²` 
-                        : 'Estándar', 
-                      icon: MapPin 
+                    {
+                      label: property.propertyType === 'Lote' ? 'Ochava' : 'Tipo',
+                      val: property.propertyType !== 'Lote' ? property.propertyType : property.commercialFeatures?.land?.ochava_m2 != null ? `${property.commercialFeatures.land.ochava_m2.toLocaleString("es-AR")} m²` : 'Sin informar',
+                      icon: MapPin
                     }
                 ].map((item, idx) => (
                     <div key={idx} className="flex items-center gap-3">
@@ -262,7 +256,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
                             <item.icon className="h-4 w-4" />
                         </div>
                         <div>
-                            <p className="text-[10px] uppercase font-bold text-slate-400">{item.label}</p>
+                            <p className="text-xs uppercase font-bold text-slate-400">{item.label}</p>
                             <p className="text-sm font-bold text-slate-700">{item.val}</p>
                         </div>
                     </div>
@@ -277,13 +271,11 @@ export default function PropertyDetailView({ propertyId }: Props) {
         {/* COLUMNA DERECHA: Precio y Sidebar de Visitas */}
         <div className="space-y-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-center">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
               Precio
             </span>
-            <div className="mt-1.5 text-2xl sm:text-3xl font-extrabold text-slate-900">
-              {property.priceKnown === false ? 'Sin moneda confirmada' : property.currency === 'ARS'
-                ? `$ ${property.price.toLocaleString('es-AR')} ARS`
-                : `USD ${property.price.toLocaleString('es-AR')}`}
+            <div className="inventory-detail-price mt-1.5 font-extrabold text-slate-900">
+              {inventoryPriceLabel(property)}
             </div>
 
             {/* Selector de Estado en Vivo */}
@@ -292,10 +284,10 @@ export default function PropertyDetailView({ propertyId }: Props) {
               {property.status === "not_sellable" && <p className="mb-2 text-sm font-semibold">No vendible</p>}
               {property.status === "not_marketed" && <p className="mb-2 text-sm font-semibold">No comercializado</p>}
               {property.status === "unknown" && <p className="mb-2 text-sm font-semibold">Sin estado informado</p>}
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Estado del Inmueble
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Estado del inmueble
               </span>
-              <div className="flex w-full flex-wrap justify-center gap-1 rounded-xl bg-slate-100 p-1">
+              {isAdvisor || isEngineer ? <p>{propertyStatusLabel(property.status)}</p> : <div className="flex w-full flex-wrap justify-center gap-1 rounded-xl bg-slate-100 p-1">
                 {(['available', 'reserved', 'sold'] as const).map((st) => (
                   <button
                     key={st}
@@ -303,7 +295,8 @@ export default function PropertyDetailView({ propertyId }: Props) {
                     disabled={isEngineer || isAdvisor || savingStatus}
                     onClick={async () => {
                       const updated = { ...property, status: st };
-                      if (savingStatus || isAdvisor || isEngineer) return;
+                      if (savingStatus || isAdvisor || isEngineer || property.status === st) return;
+                      if (!window.confirm(`Confirmar disponibilidad de ${property.unitNumber ?? property.title} (${property.title}).\nActual: ${propertyStatusLabel(property.status)}.\nNueva: ${propertyStatusLabel(st)}.\nPrecio: ${inventoryPriceLabel(property)}.\n¿Guardar el cambio?`)) return;
                       setSavingStatus(true);
                       if (!isMockDataMode) {
                         try {
@@ -334,7 +327,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
                     {st === 'available' ? 'Disponible' : st === 'reserved' ? 'Reservado' : 'Vendido'}
                   </button>
                 ))}
-              </div>
+              </div>}
             </div>
 
             {!isEngineer && (
@@ -347,9 +340,9 @@ export default function PropertyDetailView({ propertyId }: Props) {
           {/* LISTA DE INTERESADOS (SIDEBAR) */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-inner">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Calendar className="h-3 w-3" /> Interesados Agendados
+              <Calendar className="h-3 w-3" /> Interesados agendados
             </h3>
-            
+
             <div className="space-y-3">
                 {(!property.visits || property.visits.length === 0) ? (
                     <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-xl">
@@ -359,13 +352,13 @@ export default function PropertyDetailView({ propertyId }: Props) {
                     property.visits.map((visit) => (
                         <div key={visit.id} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm animate-in slide-in-from-right-2">
                             <Avatar className="h-8 w-8">
-                                <AvatarFallback className="bg-blue-50 text-blue-600 text-[10px] font-black">
+                                <AvatarFallback className="bg-blue-50 text-blue-600 text-xs font-black">
                                     {(visit.leadName || "I").substring(0,2).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-slate-900 truncate">{visit.leadName}</p>
-                                <p className="text-[10px] text-slate-500">
+                                <p className="text-xs font-bold text-slate-900 break-words">{visit.leadName}</p>
+                                <p className="text-xs text-slate-500">
                                     {new Date(visit.scheduledAt).toLocaleDateString('es-AR')} • {new Date(visit.scheduledAt).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}hs
                                 </p>
                             </div>
@@ -388,6 +381,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
                   onSchedule={handleScheduleVisit}
                   onDelete={handleDeleteVisit}
                   leadOptions={allLeads}
+                  confirmSchedule={(visit) => window.confirm(`¿Agendar esta visita?\nUnidad: ${property.unitNumber ?? property.title}.\nProyecto: ${projectName || "Sin informar"}.\nVisitante: ${visit.leadName}.\nTeléfono: ${visit.phone || "Sin informar"}.\nCorreo: ${visit.email || "Sin informar"}.\nFecha y hora (Argentina): ${new Date(visit.scheduledAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" })}.\nAsesor: ${allLeads.find(lead => lead.id === visit.leadId)?.agentName || user?.name || "Sin informar"}.\nNotas: ${visit.notes || "Sin notas"}.`)}
               />
           </div>
         </div>

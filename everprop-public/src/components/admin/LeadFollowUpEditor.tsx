@@ -33,12 +33,16 @@ const FOLLOW_UP_TYPES: { value: LeadFollowUpType; label: string }[] = [
 ];
 
 type LeadFollowUpEditorProps = {
+  className?: string;
+  title?: string;
   lead: Lead;
   onClose: () => void;
   onConfirm: (followUp: LeadFollowUp) => void | Promise<void>;
 };
 
 export function LeadFollowUpEditor({
+  className = "",
+  title = "Registrar seguimiento",
   lead,
   onClose,
   onConfirm,
@@ -117,7 +121,7 @@ export function LeadFollowUpEditor({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="admin-workspace w-full sm:max-w-2xl max-h-[calc(100dvh-2rem)] overflow-hidden p-0 rounded-2xl border border-slate-200 bg-white shadow-2xl flex flex-col"
+        className={`admin-workspace w-full sm:max-w-2xl max-h-[calc(100dvh-2rem)] overflow-hidden p-0 rounded-2xl border border-slate-200 bg-white shadow-2xl flex flex-col ${className}`}
       >
         <form onSubmit={handleSubmit} className="flex min-h-0 w-full flex-col">
           {/* Header Compacto y Corporativo */}
@@ -128,7 +132,7 @@ export function LeadFollowUpEditor({
               </span>
               <div className="min-w-0">
                 <DialogTitle className="text-lg font-bold text-slate-950 leading-tight">
-                  Registrar seguimiento
+                  {title}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 break-words">
                   Contacto comercial con {lead.name}

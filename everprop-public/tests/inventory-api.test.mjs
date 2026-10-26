@@ -9,6 +9,25 @@ function client(responder) {
  return context.exports;
 }
 const property={public_id:'property-a',version:8,title:'Unidad',operation:'SALE',category:'LOT',status:'RESERVED',price:0,currency_code:'ARS'};
+
+test('EVP-73 operation and category filters survive every requested page',async()=>{
+ const requests=[];
+ const api=client(url=>{requests.push(new URL(url));return {data:[property]};});
+ for(const [operation,expected] of [['sale','SALE'],['rent','RENT'],['temporal','TEMPORARY']]) {
+  for(const category of ['LOT','APARTMENT','LOCAL','GARAGE','HOUSE']) {
+   for(const page of [1,2]) {
+    await api.loadEverpropPropertiesPage(page,{projectId:'project-a',status:'reserved',category,operation});
+    const query=requests.at(-1).searchParams;
+    assert.equal(query.get('page'),String(page)); assert.equal(query.get('category'),category);
+    assert.equal(query.get('operation'),expected); assert.equal(query.get('status'),'RESERVED');
+    assert.equal(query.get('project'),'project-a');
+   }
+  }
+ }
+ await api.loadEverpropPropertiesPage(1,{category:'all',operation:'all'});
+ assert.equal(requests.at(-1).searchParams.has('category'),false);
+ assert.equal(requests.at(-1).searchParams.has('operation'),false);
+});
 test('standalone inventory does not assign project one and preserves zero prices and temporary operation',async()=>{
  let payload;
  const api=client((url,init)=>{payload=JSON.parse(init.body);return {data:property};});
@@ -51,4 +70,14 @@ test('cleared optional fields are explicitly sent as null',async()=>{
  let payload;const api=client((url,init)=>{payload=JSON.parse(init.body);return {data:property};});
  await api.updateEverpropProperty('property-a',{version:8,description:null,sectorName:null,unitNumber:null,area_m2:null});
  assert.equal(payload.description,null);assert.equal(payload.sector_name,null);assert.equal(payload.unit_number,null);assert.equal(payload.area_m2,null);
+});
+
+test('Inventory adapter preserves exact codes, null currency and missing prices for the redesigned view',async()=>{
+ const rows=['12','12A','12B'].map((code,index)=>({...property,public_id:code,unit_number:code,currency_code:index===1?null:'ARS',price:index===2?null:0}));
+ const api=client(()=>({data:rows}));
+ const mapped=await api.loadEverpropPropertiesPage(1);
+ assert.deepEqual(Array.from(mapped,p=>p.unitNumber),['12','12A','12B']);
+ assert.equal(mapped[1].inventoryCurrency,null);
+ assert.equal(mapped[2].inventoryPrice,null);
+ assert.equal(mapped[0].inventoryPrice,0);
 });

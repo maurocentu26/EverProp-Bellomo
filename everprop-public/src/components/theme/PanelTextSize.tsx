@@ -40,7 +40,7 @@ export function PanelTextSizeProvider({ userId, children }: { userId: string; ch
   return <TextSizeContext.Provider value={{ size, choose, saved }}>{children}</TextSizeContext.Provider>;
 }
 
-export function PanelTextSizeControl() {
+export function PanelTextSizeControl({ showLabel = false }: { showLabel?: boolean } = {}) {
   const context = useContext(TextSizeContext);
   if (!context) throw new Error("PanelTextSizeControl requires PanelTextSizeProvider");
   const { size, choose, saved } = context;
@@ -49,11 +49,11 @@ export function PanelTextSizeControl() {
       <PopoverTrigger
         aria-label={`Tamaño de texto: ${size === "grande" ? "Grande" : "Actual"}`}
         title="Tamaño de texto"
-        className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-card-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-card-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", showLabel && "min-h-11 w-auto px-4 gap-2")}
       >
-        <ALargeSmall className="size-5" aria-hidden="true" />
+        <ALargeSmall className="size-5" aria-hidden="true" />{showLabel && (size === "grande" ? "Grande" : "Actual")}
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="w-72 max-w-[calc(100vw-2rem)] p-4">
+      <PopoverContent align="end" sideOffset={8} className={cn("w-72 max-w-[calc(100vw-2rem)] p-4", showLabel && "settings-view admin-workspace")}>
         <fieldset>
           <legend className="text-sm font-bold">Tamaño de texto</legend>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Elegí cómo preferís leer el panel.</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Building2, Save } from "lucide-react";
 import { type Property, JUJUY_CITIES } from "@/data/admin-sample";
 import { isMockDataMode } from "@/lib/data-mode";
+import { propertyStatusLabel, propertyOperationLabel } from "@/lib/inventory-labels";
 import { updateEverpropProperty } from "@/lib/everprop-api";
 
 interface EditPropertyModalProps {
@@ -25,17 +26,19 @@ export function EditPropertyModal({
   property,
   onSuccess,
 }: EditPropertyModalProps) {
+  const savingRef = useRef(false);
+  const [reviewing, setReviewing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: property.title,
-    price: property.priceKnown === false ? "" : property.price != null ? String(property.price) : "",
-    currency: property.currency || "USD",
+    price: property.inventoryPrice === null ? "" : String(property.inventoryPrice ?? property.price),
+    currency: property.inventoryCurrency === null ? "" : property.inventoryCurrency ?? property.currency,
     operation: property.operation || "sale",
     propertyType: property.propertyType || "Lote",
     status: property.status || "available",
     sectorName: property.sectorName || "",
     unitNumber: property.unitNumber || "",
-    area_m2: property.area_m2 ? String(property.area_m2) : "",
+    area_m2: property.area_m2 != null ? String(property.area_m2) : "",
     city: property.city || "",
     neighborhood: property.neighborhood || "",
     description: property.description || "",
@@ -43,13 +46,20 @@ export function EditPropertyModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSaving) return;
+    if (savingRef.current) return;
     if (!formData.title.trim() || (formData.price.trim() && (!Number.isFinite(Number(formData.price)) || Number(formData.price) < 0))) {
       toast.error("Ingresá un título y un precio válido, mayor o igual a cero."); return;
     }
     if (formData.area_m2 && (!Number.isFinite(Number(formData.area_m2)) || Number(formData.area_m2) <= 0)) {
       toast.error("La superficie debe ser mayor que cero."); return;
     }
+    const priceChanged = formData.price !== (property.inventoryPrice === null ? "" : String(property.inventoryPrice ?? property.price));
+    const currencyChanged = formData.currency !== (property.inventoryCurrency === null ? "" : property.inventoryCurrency ?? property.currency);
+    if (currencyChanged && !formData.currency) { toast.error("La API no admite quitar la moneda desde esta ficha."); return; }
+    if (priceChanged && !formData.price.trim()) { toast.error("La API no admite quitar el precio desde esta ficha."); return; }
+    if ((priceChanged || currencyChanged) && formData.price.trim() && !formData.currency) { toast.error("Confirmá la moneda antes de guardar un precio."); return; }
+    if (!reviewing) { setReviewing(true); return; }
+    savingRef.current = true;
     setIsSaving(true);
     try {
       let updatedData: Property = {
@@ -57,6 +67,9 @@ export function EditPropertyModal({
         title: formData.title.trim(),
         price: formData.price ? Number(formData.price) : 0,
         currency: formData.currency as "USD" | "ARS",
+        inventoryPrice: formData.price.trim() ? Number(formData.price) : null,
+        inventoryCurrency: formData.currency || null,
+        priceKnown: Boolean(formData.price.trim() && formData.currency),
         operation: formData.operation as Property['operation'],
         propertyType: formData.propertyType,
         status: formData.status as Property['status'],
@@ -72,7 +85,8 @@ export function EditPropertyModal({
         const persisted = await updateEverpropProperty(property.id, {
           version: property.version,
           title: updatedData.title,
-          ...(formData.price.trim() ? { price: updatedData.price, currency: updatedData.currency } : {}),
+          ...(priceChanged && formData.price.trim() ? { price: updatedData.price } : {}),
+          ...((priceChanged || currencyChanged) && formData.currency ? { currency: updatedData.currency } : {}),
           operation: updatedData.operation,
           propertyType: updatedData.propertyType,
           status: updatedData.status,
@@ -86,19 +100,20 @@ export function EditPropertyModal({
         updatedData = { ...updatedData, ...persisted };
       }
 
-      toast.success("Activo actualizada correctamente");
+      toast.success("Activo actualizado correctamente");
       onSuccess(updatedData);
       onOpenChange(false);
     } catch (err: any) {
       toast.error("Error al actualizar la propiedad: " + (err.message || "Error desconocido"));
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!isSaving) onOpenChange(next); }}>
-      <DialogContent className="admin-workspace w-[calc(100%-2rem)] sm:max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl">
+      <DialogContent className="admin-workspace inventory-view inventory-dialog w-[calc(100%-2rem)] sm:max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-5">
           <DialogHeader className="pb-3 pr-6 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
@@ -106,7 +121,7 @@ export function EditPropertyModal({
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Editar Activo / Activo</DialogTitle>
+                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Editar activo</DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Actualizá la información de esta propiedad.
                 </DialogDescription>
@@ -114,7 +129,7 @@ export function EditPropertyModal({
             </div>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <fieldset hidden={reviewing} disabled={isSaving} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field className="md:col-span-2">
               <FieldLabel htmlFor="edit-property-1" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Título del Inmueble</FieldLabel>
               <Input id="edit-property-1"
@@ -162,6 +177,7 @@ export function EditPropertyModal({
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value as any })}
                 className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500"
               >
+                <option value="">Moneda sin confirmar</option>
                 <option value="USD">Dólares (USD)</option>
                 <option value="ARS">Pesos Argentinos (ARS)</option>
               </select>
@@ -266,7 +282,8 @@ export function EditPropertyModal({
                 className="text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 rounded-lg"
               />
             </Field>
-          </div>
+          </fieldset>
+          {reviewing && <section aria-label="Confirmación completa"><h2>Revisar cambios</h2><dl className="inventory-review">{Object.entries(formData).map(([key, value]) => <div key={key}><dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie (m²)",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt><dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a consultar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd></div>)}</dl><Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button></section>}
 
           <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <Button
@@ -286,7 +303,7 @@ export function EditPropertyModal({
               className="h-9 px-5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-xs"
             >
               <Save className="h-3.5 w-3.5" />
-              {isSaving ? "Guardando..." : "Guardar Cambios"}
+              {isSaving ? "Guardando..." : reviewing ? "Confirmar y guardar" : "Revisar cambios"}
             </Button>
           </DialogFooter>
         </form>

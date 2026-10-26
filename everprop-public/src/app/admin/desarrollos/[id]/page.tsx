@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, BarChart3, Map, Layers } from "lucide-react";
+import { useParams } from "next/navigation";
+import { BarChart3, Map, Layers } from "lucide-react";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog, isInvalidEverpropSession } from "@/lib/everprop-api";
+import { loadEverpropProjects, loadEverpropPropertiesByProject, isInvalidEverpropSession } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
+import PropertyList from '@/components/admin/PropertyList';
+import { projectLocationLabel, projectStatusLabel, projectTypeLabel, projectUnitCounts, projectCountLabel } from '@/lib/project-labels';
 import { Button } from "@/components/ui/button";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
@@ -17,14 +19,13 @@ import { ProjectMaterials, MaterialErrorNotice } from "@/components/admin/Bellom
 
 export default function ProjectDetailView() {
   const params = useParams();
-  const router = useRouter();
   const projectId = params.id as string;
   const { isAdvisor } = useCurrentSession();
   const { invalidateSession } = useAuth();
   
   const [project, setProject] = useState<Project | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "matrix" | "log">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "matrix">("overview");
   const [isGenerateLotsOpen, setIsGenerateLotsOpen] = useState(false);
   const [loadError, setLoadError] = useState<{ projectId: string; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -32,21 +33,22 @@ export default function ProjectDetailView() {
   useEffect(() => {
     let active = true;
     async function fetchProject() {
+      setProject(null);
+      setProperties([]);
       if (!isMockDataMode) {
         try {
-          const catalog = await loadEverpropCatalog();
+          const projects = await loadEverpropProjects();
           if (!active) return;
-          const p = catalog.projects.find((p) => p.id === projectId);
+          const p = projects.find((p) => p.id === projectId);
           if (p) {
-            setProject(p);
-            // Fetch ALL properties for this project specifically
-            const { loadEverpropPropertiesByProject } = await import('@/lib/everprop-api');
+
             const props = await loadEverpropPropertiesByProject(projectId);
             if (!active) return;
+            setProject(p);
             setProperties(props);
             return;
           }
-          setLoadError({ projectId, message: "Proyecto no encontrado en la API." });
+          setLoadError({ projectId, message: "Proyecto no encontrado." });
         } catch (reason) {
           if (isInvalidEverpropSession(reason)) {
             invalidateSession();
@@ -69,7 +71,7 @@ export default function ProjectDetailView() {
     return () => {
       active = false;
     };
-  }, [projectId, attempt]);
+  }, [projectId, attempt, invalidateSession]);
 
   if (loadError?.projectId === projectId) return <MaterialErrorNotice message={loadError.message} retry={()=>{setLoadError(null);setAttempt(n=>n+1);}} />;
   if (!project || project.id !== projectId) return (
@@ -79,48 +81,17 @@ export default function ProjectDetailView() {
     </div>
   );
 
-  const soldUnits = properties.filter(p => p.status === "sold").length;
-  const reservedUnits = properties.filter(p => p.status === "reserved").length;
-  const availableUnits = properties.filter(p => p.status === "available").length;
+  const counts = projectUnitCounts(properties);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-start gap-3 border-b border-slate-200 pb-6">
-        <button 
-          aria-label="Volver a proyectos"
-          onClick={() => router.push("/admin/desarrollos")}
-          className="h-10 w-10 shrink-0 bg-slate-100 hover:bg-muted rounded-full flex items-center justify-center text-slate-600 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
-            <span className={cn(
-              "px-2 py-1 text-[10px] font-black uppercase tracking-wider rounded-md",
-              project.status === 'completed' ? "bg-emerald-100 text-emerald-700" :
-              project.status === 'under_construction' ? "bg-blue-100 text-blue-700" :
-              "bg-amber-100 text-amber-700"
-            )}>
-              {({ planning: "En planificación", completed: "Finalizado", under_construction: "En construcción", pre_sale: "Preventa", available: "Disponible", unknown: "Sin estado informado" })[project.status]}
-            </span>
-          </div>
-          <p className="text-sm text-slate-500 mt-1">{project.location.city}, {project.location.province}</p>
-        </div>
-
-        {!isAdvisor && (
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => setIsGenerateLotsOpen(true)}
-              className="h-9 px-4 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
-            >
-              <Layers className="h-4 w-4" /> + Cargar Manzana / Lotes
-            </Button>
-          </div>
-        )}
-      </div>
+    <div className="inventory-view inventory-detail projects-view space-y-6">
+      <header className="inventory-detail-header">
+        <h1>{project.name}</h1>
+        <p><span className="project-detail-status">{projectStatusLabel(project.status)}</span> · {projectTypeLabel(project.type)}</p>
+        <p>{projectLocationLabel(project)}</p>
+        {project.description && <p>{project.description}</p>}
+        {!isAdvisor && <Button onClick={() => setIsGenerateLotsOpen(true)}><Layers aria-hidden="true" /> Cargar manzana y lotes</Button>}
+      </header>
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200">
@@ -142,84 +113,34 @@ export default function ProjectDetailView() {
             activeTab === "matrix" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
           )}
         >
-          <Map className="h-4 w-4" /> Matriz de Inventario
+          <Map className="h-4 w-4" /> Matriz de inventario
         </button>
       </div>
 
-      {/* Tab Content */}
-      <div className="pt-4">
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              {/* Inventario Stats */}
-              <div className="bg-card rounded-2xl p-4 sm:p-6 shadow-sm border border-border">
-                <h3 className="text-lg font-bold text-slate-800 mb-6">Estado del Inventario</h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-                  <div className="bg-emerald-50 flex min-w-0 items-center justify-between gap-3 rounded-xl p-3 sm:block sm:p-4 border border-emerald-100">
-                    <span className="block text-xs font-bold text-emerald-700 tracking-normal sm:mb-1">Disponible</span>
-                    <span className="text-3xl font-black text-emerald-700">{availableUnits}</span>
-                  </div>
-                  <div className="bg-amber-50 flex min-w-0 items-center justify-between gap-3 rounded-xl p-3 sm:block sm:p-4 border border-amber-100">
-                    <span className="block text-xs font-bold text-amber-800 tracking-normal sm:mb-1">Reservado</span>
-                    <span className="text-3xl font-black text-amber-700">{reservedUnits}</span>
-                  </div>
-                  <div className="bg-slate-50 flex min-w-0 items-center justify-between gap-3 rounded-xl p-3 sm:block sm:p-4 border border-slate-200">
-                    <span className="block text-xs font-bold text-slate-500 tracking-normal sm:mb-1">Vendido</span>
-                    <span className="text-3xl font-black text-slate-700">{soldUnits}</span>
-                  </div>
-                </div>
-                
-                <div className="mt-6 flex gap-4">
-                  <Button onClick={() => setActiveTab("matrix")} className="bg-blue-600 hover:bg-blue-700 text-white w-full min-w-0 rounded-xl min-h-12 h-auto whitespace-normal px-3 py-3 text-sm">
-                    <Map className="mr-2 h-4 w-4" /> Ver Matriz Completa
-                  </Button>
-                </div>
-              </div>
+      <section className="project-summary" aria-label="Resumen de unidades">
+        <h2>Unidades del proyecto</h2>
+        <p>{properties.length} {properties.length === 1 ? 'unidad cargada' : 'unidades cargadas'}</p>
+        <ul className="project-counts">
+          {counts.map((count, index) => <li key={index}><strong>{count}</strong> {projectCountLabel(count, index)}</li>)}
+        </ul>
+      </section>
+      {activeTab === 'overview' && <>
+        {properties.length ? <PropertyList properties={properties} projects={[project]} readOnly={isAdvisor} /> : <p className="inventory-empty">Este proyecto todavía no tiene unidades cargadas.</p>}
+        {project.masterplanImage && <a className="inventory-cta" href={project.masterplanImage} target="_blank" rel="noreferrer">Ver plano del proyecto</a>}
+      </>}
+      {activeTab === 'matrix' && <InventoryMatrix properties={properties} />}
 
-              {/* Descripción del Desarrollo */}
-              {project.description && (
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                  <h3 className="text-base font-bold text-slate-800 mb-2">Descripción del Desarrollo</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    {project.description}
-                  </p>
-                </div>
-              )}
-            </div>
+      {activeTab === "overview" && !isMockDataMode && <ProjectMaterials key={project.id} projectId={project.id} />}
 
-            <div className="space-y-6">
-              {project.masterplanImage && (
-                <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-200">
-                  <img src={project.masterplanImage} alt="Masterplan" className="w-full h-48 object-cover" />
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Masterplan</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "matrix" && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <Map className="h-5 w-5 text-emerald-600" /> Matriz de Inventario
-            </h3>
-            <InventoryMatrix properties={properties} />
-          </div>
-        )}
-      </div>
-
-      {activeTab === "overview" && <ProjectMaterials key={project.id} projectId={project.id} />}
-
-      <GenerateLotsModal
+      {!isAdvisor && <GenerateLotsModal
         open={isGenerateLotsOpen}
         onOpenChange={setIsGenerateLotsOpen}
         defaultProjectId={project.id}
+        confirmBeforeSave
         onSuccess={(created) => {
           setProperties((prev) => [...prev, ...created]);
         }}
-      />
+      />}
     </div>
   );
 }

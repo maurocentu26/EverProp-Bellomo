@@ -26,7 +26,6 @@ import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropCatalog, loadEverpropLeads, loadEverpropLeadsPage, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useDashboardMode } from "@/lib/dashboard-context";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -227,7 +226,6 @@ function AllLeadsPage() {
 
   // Actualización de estado en 1 clic
   async function handleStageChange(leadId: string, newStage: Lead["stage"]) {
-    const prevLeads = [...allLeads];
     const targetLead = allLeads.find((l) => l.id === leadId);
     if (!targetLead) return;
 
@@ -330,12 +328,14 @@ function AllLeadsPage() {
 
   if (!isLoaded) return <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />;
 
+  const nextLead = filteredLeads.find(lead => lead.stage !== "closing" && lead.stage !== "discarded" && needsFollowUp(getLeadFollowUpState(followUps, lead.id, lead.followUpUpdatedAt, new Date(), lead.companyId)));
+
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 pb-10 sm:space-y-8">
+    <div className="mi-day leads-workspace leads-list mx-auto max-w-[1500px] space-y-6 pb-10">
       {/* Header */}
       <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-center">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Leads Comerciales</h1>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Mis Leads</h1>
           <p className="mt-1 max-w-xl text-base leading-6 text-slate-500">
             Gestioná tus clientes y próximos contactos.
           </p>
@@ -357,108 +357,43 @@ function AllLeadsPage() {
             <div className="flex w-full gap-2 sm:w-auto">
               <Button nativeButton={false} role="link" render={<Link href="/admin/leads/new" />} className="min-h-11 flex-1 sm:flex-none w-full gap-2 bg-blue-600 text-white hover:bg-blue-700 font-bold shadow-sm">
                   <Plus className="h-4 w-4" />
-                  Nuevo Lead
+                  Nuevo lead
                 </Button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Compact Filter Bar */}
-      <div className="lead-filters grid grid-cols-1 min-[380px]:grid-cols-2 sm:flex sm:flex-wrap sm:items-end gap-3">
-        <label className="min-[380px]:col-span-2 flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground sm:hidden">
-          Etapa comercial
-          <select aria-label="Filtrar por etapa comercial" value={activeStage}
-            onChange={event => setActiveStage(event.target.value as typeof activeStage)}
-            className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-card-foreground">
-            {LEAD_STAGE_FILTERS.map(tab => <option key={tab.id} value={tab.id}>{tab.label} ({stageCounts[tab.id]})</option>)}
-          </select>
-        </label>
-        {/* Stage chip-tabs: compact pills */}
-        <div role="group" aria-label="Filtrar por etapa comercial" className="hidden sm:flex max-w-full flex-wrap items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-1">
-          {LEAD_STAGE_FILTERS.map(tab => {
-            const count = stageCounts[tab.id];
-            const isActive = activeStage === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveStage(tab.id)}
-                aria-pressed={isActive}
-                className={cn(
-                  "min-h-10 rounded-lg px-3 py-2 text-xs font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
-                  isActive
-                    ? "bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-300"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                )}
-              >
-                <span>{tab.label}</span>
-                <span className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[9px] font-extrabold leading-none",
-                  isActive ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                )}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+      {!loadError && <section className="leads-focus" aria-labelledby="leads-next-title">
+        <div><h2 id="leads-next-title">Tu próximo paso</h2>
+          <p>{nextLead ? `Revisá el seguimiento de ${nextLead.name} antes de volver a contactarlo.` : "No hay contactos pendientes con estos filtros."}</p>
+          <p>{filteredLeads.length === stageCounts.all ? `${stageCounts.all} ${stageCounts.all === 1 ? "cliente" : "clientes"} en total` : `Ves ${filteredLeads.length} de ${stageCounts.all} clientes`}</p>
         </div>
+        {nextLead && <Link className="leads-white-action" href={`/admin/leads/${nextLead.id}`}>Abrir ficha de {nextLead.name}</Link>}
+      </section>}
 
-        {/* Divider */}
-        <div className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-800" />
-
-        {/* Asset type chip */}
-        <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Tipo de interés
-<select
-          aria-label="Filtrar por tipo de interés"
-          className="min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 cursor-pointer"
-          value={assetType}
-          onChange={(e) => setAssetType(e.target.value as AssetTypeFilter)}
-        >
-          <option value="all">Todos</option>
-          <option value="lote">Loteos</option>
-          <option value="departamento">Edificios</option>
-          <option value="comercial">Comercial</option>
-          <option value="tradicional">Tradicional</option>
-        </select>
-</label>
-
-        {/* Follow-up urgency chip */}
-        <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Seguimiento
-<select
-          aria-label="Filtrar por urgencia de seguimiento"
-          className="min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 cursor-pointer"
-          value={followUpFilter}
-          onChange={(e) => setFollowUpFilter(e.target.value as FollowUpFilter)}
-        >
-          {FOLLOW_UP_FILTERS.map((filter) => <option key={filter.id} value={filter.id}>{filter.label}</option>)}
-        </select>
-</label>
-
-        <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Origen
-<select aria-label="Filtrar por origen" value={originFilter} onChange={(event) => setOriginFilter(event.target.value)} className="min-h-11 w-full min-w-0 max-w-full rounded-lg border border-border bg-card px-3 text-xs text-card-foreground">
-          <option value="all">Todos</option>
-          {[...new Set(allLeads.map((lead) => lead.origin))].sort().map((origin) => <option key={origin} value={origin}>{origin}</option>)}
-        </select>
-</label>
-        {!isAdvisor && <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Asesor
-<select aria-label="Filtrar por asesor" value={advisorFilter} onChange={(event) => setAdvisorFilter(event.target.value)} className="min-h-11 w-full min-w-0 max-w-full rounded-lg border border-border bg-card px-3 text-xs text-card-foreground">
-          <option value="all">Todos</option>
-          <option value="unassigned">Sin asignar</option>
-          {[...new Map(allLeads.filter((lead) => lead.agentId).map((lead) => [lead.agentId!, lead.agentName || "Asesor asignado"])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-        </select>
-</label>}
-        {/* Clear filters */}
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearFilters}
-            className="h-8 gap-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/30"
-          >
-            <RotateCcw className="size-3.5" /> Limpiar
-          </Button>
-        )}
+      <div className="leads-filter-line" aria-label="Filtros de clientes">
+        <div role="group" aria-label="Tipo de interés" className="leads-tabs">
+          {([['all', 'Todos'], ['lote', 'Loteos'], ['departamento', 'Edificios'], ['tradicional', 'Tradicional'], ['comercial', 'Comercial']] as const).map(([id, label]) =>
+            <button key={id} type="button" aria-pressed={assetType === id} onClick={() => setAssetType(id)}>{label}</button>)}
+        </div>
+        <label>Etapa<select aria-label="Filtrar por etapa comercial" value={activeStage} onChange={e => setActiveStage(e.target.value as LeadStageFilter)}>
+          {LEAD_STAGE_FILTERS.map(tab => <option key={tab.id} value={tab.id}>{tab.label} ({stageCounts[tab.id]})</option>)}
+        </select></label>
+        <label>Origen<select aria-label="Filtrar por origen" value={originFilter} onChange={e => setOriginFilter(e.target.value)}>
+          <option value="all">Todos</option>{[...new Set(allLeads.map(lead => lead.origin))].sort().map(origin => <option key={origin}>{origin}</option>)}
+        </select></label>
+        <label>Seguimiento<select aria-label="Filtrar por seguimiento" value={followUpFilter} onChange={e => setFollowUpFilter(e.target.value as FollowUpFilter)}>
+          {FOLLOW_UP_FILTERS.map(filter => <option key={filter.id} value={filter.id}>{filter.label}</option>)}
+        </select></label>
+        {!isAdvisor && <label>Asesor<select aria-label="Filtrar por asesor" value={advisorFilter} onChange={e => setAdvisorFilter(e.target.value)}>
+          <option value="all">Todos</option><option value="unassigned">Sin asignar</option>
+          {[...new Map(allLeads.filter(lead => lead.agentId).map(lead => [lead.agentId!, lead.agentName || "Asesor asignado"])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select></label>}
+        {hasActiveFilters && <Button variant="outline" onClick={handleClearFilters}><RotateCcw aria-hidden="true" /> Limpiar filtros</Button>}
+      </div>
+      <div className="leads-stage-counts" aria-label="Clientes cargados por etapa">
+        {LEAD_STAGE_FILTERS.filter(stage => stage.id !== "all").map(stage => <button type="button" key={stage.id} aria-pressed={activeStage === stage.id} onClick={() => setActiveStage(stage.id)}><span>{stage.label}</span><strong>{stageCounts[stage.id]}</strong></button>)}
       </div>
 
       {/* Tabla Pro de Leads */}
@@ -472,7 +407,7 @@ function AllLeadsPage() {
                 onStageChange={handleStageChange}
                 onFollowUp={(lead) => setFollowUpLead(lead)}
               />
-              <div className="pt-8 pb-4 flex justify-center">
+              {!isMockDataMode && <div className="pt-8 pb-4 flex justify-center">
                 <Button 
                   variant="outline" 
                   onClick={handleLoadMore} 
@@ -481,7 +416,7 @@ function AllLeadsPage() {
                 >
                   {isLoadingMore ? "Cargando..." : "Cargar más leads"}
                 </Button>
-              </div>
+              </div>}
             </>
           ) : (
           <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50">
@@ -494,6 +429,7 @@ function AllLeadsPage() {
       {/* Modal de Registro de Seguimiento In-situ */}
       {followUpLead && (
         <LeadFollowUpEditor
+          className="mi-day leads-workspace"
           lead={followUpLead}
           onClose={() => setFollowUpLead(null)}
           onConfirm={handleConfirmFollowUp}

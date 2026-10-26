@@ -1,0 +1,8 @@
+import type { KnowledgeDocument } from "@/lib/assistant-api";
+
+export const knowledgeSample: (KnowledgeDocument & { body: string; topic: string; kind: string })[] = [
+  { id: "knowledge-moras", title: "Reglamento de convivencia de Las Moras", kind: "Texto", topic: "Las Moras", status: "APPROVED", audience: "PUBLIC", version: 3, updated_at: "2026-10-23T14:00:00Z", approved_at: "2026-10-23T14:00:00Z", valid_until: null, body: "Las visitas al desarrollo se coordinan previamente con un asesor. Para iniciar una obra, consultá los requisitos y horarios de trabajo con la administración." },
+  { id: "knowledge-pagos", title: "Formas de pago y financiación", kind: "Texto", topic: "Condiciones comerciales", status: "APPROVED", audience: "PUBLIC", version: 2, updated_at: "2026-10-20T12:00:00Z", approved_at: "2026-10-20T12:00:00Z", valid_until: "2026-12-31T23:59:59Z", body: "Las alternativas de financiación se evalúan con un asesor según la unidad elegida. Los importes y la disponibilidad se confirman desde el inventario actualizado." },
+  { id: "knowledge-torre", title: "Preguntas frecuentes de Torre Sur", kind: "Texto", topic: "Torre Sur", status: "DRAFT", audience: "PUBLIC", version: 1, updated_at: "2026-10-24T16:00:00Z", approved_at: null, valid_until: null, body: "Para conocer los espacios comunes y las unidades disponibles, solicitá una visita. Un asesor confirmará el día y horario." },
+  { id: "knowledge-equipo", title: "Guía de atención para visitas", kind: "Texto", topic: "Atención comercial", status: "REVOKED", audience: "INTERNAL", version: 1, updated_at: "2026-10-15T12:00:00Z", approved_at: null, valid_until: null, body: "Antes de coordinar una visita, confirmar los datos de contacto y la unidad de interés con el cliente." },
+];

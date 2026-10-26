@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 type ThemeToggleProps = {
   className?: string;
   compact?: boolean;
+  showLabel?: boolean;
 };
 
-export function ThemeToggle({ className }: ThemeToggleProps) {
+export function ThemeToggle({ className, showLabel }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
@@ -26,10 +27,12 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
       className={cn(
         "size-9 sm:size-10 shrink-0 rounded-xl border-slate-200 bg-white p-0 text-slate-700 shadow-2xs transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white",
+        showLabel && "min-h-11 w-auto px-4 gap-2",
         className,
       )}
     >
       {isDark ? <Moon className="size-4 sm:size-4.5" aria-hidden="true" /> : <Sun className="size-4 sm:size-4.5" aria-hidden="true" />}
+      {showLabel && (isDark ? "Oscuro" : "Claro")}
     </Button>
   );
 }

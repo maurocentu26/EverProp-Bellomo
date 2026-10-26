@@ -30,10 +30,12 @@ import { DateTimeFields } from "@/components/ui/date-time-fields";
 import { Textarea } from "@/components/ui/textarea";
 import Badge from "@/components/ui/badge";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { formatArgentinaDateTime } from "@/lib/lead-follow-up";
 import { cn } from "@/lib/utils";
 import { QuickScheduleButtons } from "@/components/admin/QuickScheduleButtons";
 
 type Props = {
+  confirmSchedule?: (visit: Visit) => boolean;
   readOnly?: boolean;
   title: string;
   subtitle: string;
@@ -48,20 +50,8 @@ type Props = {
   propertyOptions?: Property[];
 };
 
-function formatVisitDate(iso: string) {
-  try {
-    const date = new Date(iso);
-    return {
-        day: date.toLocaleDateString("es-AR", { day: '2-digit', month: 'short' }),
-        time: date.toLocaleTimeString("es-AR", { hour: '2-digit', minute: '2-digit' }),
-        full: date.toLocaleString("es-AR", { dateStyle: "long", timeStyle: "short" })
-    };
-  } catch {
-    return { day: iso, time: "", full: iso };
-  }
-}
-
 export default function VisitManager({
+  confirmSchedule,
   readOnly = false,
   title,
   subtitle,
@@ -173,6 +163,7 @@ export default function VisitManager({
       propertyTitle: propertyOptions?.find(p => p.id === selectedPropertyId)?.title
     };
 
+    if (confirmSchedule && !confirmSchedule(visit)) return;
     setSaving(true);
     try {
     await onSchedule(visit);
@@ -189,7 +180,7 @@ export default function VisitManager({
   }
 
   return (
-    <div className="@container w-full min-w-0 space-y-6">
+    <div className="visit-manager @container w-full min-w-0 space-y-6">
       {/* Header Section */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
@@ -225,10 +216,10 @@ export default function VisitManager({
             <div className="space-y-1.5" ref={dropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wider dark:text-slate-400">
-                  Visitante / Interesado
+                  Visitante / interesado
                 </label>
                 {leadOptions && leadOptions.length > 0 && (
-                  <span className="text-[11px] font-semibold text-slate-400">
+                  <span className="visit-lead-count text-[11px] font-semibold text-slate-400">
                     {leadOptions.length} leads disponibles
                   </span>
                 )}
@@ -267,7 +258,7 @@ export default function VisitManager({
                 <div className="relative">
                   <div className="relative">
                     <Search className="absolute left-3.5 top-3.5 size-4 text-slate-400" />
-                    <Input aria-label="Visitante / Interesado"
+                    <Input aria-label="Visitante / interesado"
                       value={searchQuery || guestName}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -409,7 +400,7 @@ export default function VisitManager({
 
         {/* Lista de Visitas (Timeline) */}
         <div className={cn("min-w-0 space-y-4", readOnly ? "@min-[56rem]:col-span-12" : "@min-[56rem]:col-span-7")}>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Cronograma de Visitas</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Cronograma de visitas</h3>
 
           {sortedVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-100 rounded-3xl bg-slate-50/30 dark:border-slate-800 dark:bg-slate-900/30">
@@ -419,13 +410,11 @@ export default function VisitManager({
           ) : (
             <div className="grid gap-3">
               {sortedVisits.map((visit) => {
-                const dateInfo = formatVisitDate(visit.scheduledAt);
                 return (
                   <div key={visit.id} className="group relative flex min-w-0 flex-wrap items-start gap-3 p-4 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-md transition-all dark:bg-card dark:border-border dark:hover:border-blue-500">
                     {/* Indicador de Fecha */}
                     <div className="flex flex-col items-center justify-center min-w-[60px] py-2 px-1 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:group-hover:bg-blue-950 dark:group-hover:border-blue-900">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-blue-400">{dateInfo.day}</span>
-                        <span className="text-lg font-black text-slate-700 group-hover:text-blue-700 dark:text-slate-200 dark:group-hover:text-blue-400">{dateInfo.time}</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-200">{formatArgentinaDateTime(visit.scheduledAt)}</span>
                     </div>
 
                     <div className="min-w-0 flex-1 basis-48">
@@ -451,12 +440,11 @@ export default function VisitManager({
                     {!readOnly && onDelete && visit.status === "scheduled" && <div className="flex items-center gap-1">
                         <Button
                             variant="ghost"
-                            size="icon"
                             aria-label="Cancelar cita"
                             onClick={() => setDeletingVisitId(visit.id)}
                             className="text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full dark:hover:bg-red-950/50"
                         >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" aria-hidden="true" /> Cancelar cita
                         </Button>
                     </div>}
                   </div>
@@ -469,15 +457,18 @@ export default function VisitManager({
 
       {/* Dialog de Eliminación */}
       <Dialog open={!!deletingVisitId} onOpenChange={(open) => !open && setDeletingVisitId(null)}>
-        <DialogContent className="rounded-3xl dark:bg-card dark:border-border">
+        <DialogContent showCloseButton={false} className="mi-day leads-workspace lead-review rounded-3xl dark:bg-card dark:border-border">
           <DialogHeader>
             <DialogTitle className="dark:text-slate-100">¿Cancelar esta cita?</DialogTitle>
             <DialogDescription className="dark:text-slate-400">
+              {visits.filter(visit => visit.id === deletingVisitId).map(visit => <span key={visit.id} className="block">
+                {visit.leadName} · {formatArgentinaDateTime(visit.scheduledAt)} · Teléfono: {visit.phone || "Sin informar"} · Correo: {visit.email || "Sin informar"} · Activo: {propertyOptions?.find(property => property.id === visit.propertyId)?.title || visit.propertyId || "Sin informar"} · Notas: {visit.notes || "Sin notas"}.
+              </span>)}
               La cita dejará de contar como pendiente y quedará conservada en el historial.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeletingVisitId(null)} className="rounded-xl dark:border-slate-800">Cancelar</Button>
+            <Button variant="outline" onClick={() => setDeletingVisitId(null)} className="rounded-xl dark:border-slate-800">Volver sin cancelar</Button>
             <Button
               className="bg-red-600 text-white hover:bg-red-700 rounded-xl"
               disabled={saving}

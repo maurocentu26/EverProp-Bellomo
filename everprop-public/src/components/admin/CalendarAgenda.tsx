@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  ChevronLeft, ChevronRight, CalendarDays, Clock, MapPin,
-  User, Phone, Mail, Trash2, MessageCircle, CheckCircle2,
-  AlertCircle, Building2, Users, Plus
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Clock, Building2, Plus, MessageCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { Visit } from "@/data/admin-sample";
@@ -16,12 +11,13 @@ import { Button } from "@/components/ui/button";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { useDashboardMode } from "@/lib/dashboard-context";
 import { leads as sampleLeads, properties as sampleProperties } from "@/data/admin-sample";
-import { MOCK_USERS, getAdvisor } from "@/data/auth-sample";
+import { getAdvisor } from "@/data/auth-sample";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropVisits, cancelEverpropVisit } from "@/lib/everprop-api";
-import { toArgentinaDateTimeInputValue, ARGENTINA_TIME_ZONE } from "@/lib/lead-follow-up";
+import { toArgentinaDateTimeInputValue, ARGENTINA_TIME_ZONE, formatArgentinaDateTime } from "@/lib/lead-follow-up";
+import { seedMockAgenda } from "@/lib/mock-agenda";
 import { NewVisitModal } from "@/components/admin/NewVisitModal";
 
 type AgendaItem = Visit & {
@@ -43,7 +39,7 @@ const MONTHS_ES = [
 function getMonthGrid(date: Date) {
   const year = date.getFullYear();
   const month = date.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
+  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const days: { date: Date; current: boolean }[] = [];
   for (let i = 0; i < firstDay; i++)
@@ -59,60 +55,36 @@ function toKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "completed")
-    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-200"><CheckCircle2 className="h-2.5 w-2.5" />Realizada</span>;
-  if (status === "cancelled")
-    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-600"><AlertCircle className="h-2.5 w-2.5" />Cancelada</span>;
-  return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border border-blue-300 bg-blue-100 text-blue-900 dark:border-blue-400 dark:bg-blue-950 dark:text-blue-200"><Clock className="h-2.5 w-2.5" />Programada</span>;
-}
-
-function PropertyTypeIcon({ type }: { type?: string }) {
-  const t = type?.toLowerCase() ?? "";
-  if (t.includes("lote")) return <MapPin className="h-3.5 w-3.5 text-emerald-600" />;
-  if (t.includes("local")) return <Building2 className="h-3.5 w-3.5 text-indigo-600" />;
-  if (t.includes("cochera")) return <Building2 className="h-3.5 w-3.5 text-blue-600" />;
-  return <Building2 className="h-3.5 w-3.5 text-slate-500" />;
-}
-
 export default function CalendarAgenda() {
   // ─── All hooks at top ────────────────────────────────────────────────────
   const { isAdvisor, isAdmin, user } = useCurrentSession();
   const { globalSelectedAgentId } = useDashboardMode();
-  const [today] = useState(() => new Date());
-  const [viewDate, setViewDate] = useState(() => new Date());
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [today, setToday] = useState(() => new Date());
+  const [viewDate, setViewDate] = useState(() => new Date(`${toArgentinaDateTimeInputValue().slice(0, 10)}T12:00:00`));
+  const [selectedDate, setSelectedDate] = useState(() => new Date(`${toArgentinaDateTimeInputValue().slice(0, 10)}T12:00:00`));
   const [items, setItems] = useState<AgendaItem[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"all" | "scheduled" | "completed">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "scheduled" | "completed" | "cancelled">("all");
   const [showNewVisitModal, setShowNewVisitModal] = useState(false);
-  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [view, setView] = useState<"day" | "week" | "month">("week");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleting = useRef(false);
 
   const [loadError, setLoadError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const loadItems = useCallback(async () => {
+    setToday(new Date());
     if (!isMockDataMode) {
       try {
         const visits = await loadEverpropVisits();
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-
-        let filteredVisits = isAdmin && globalSelectedAgentId !== "all" ? visits.filter(v => v.agentId === globalSelectedAgentId) : visits;
-
-        filteredVisits = filteredVisits.map(v => {
-          if (v.status === 'scheduled' && new Date(v.scheduledAt) < now) {
-            return { ...v, status: 'cancelled' };
-          }
-          return v;
-        });
-
-        setItems(filteredVisits);
+        setItems(isAdmin && globalSelectedAgentId !== "all" ? visits.filter(v => v.agentId === globalSelectedAgentId) : visits);
         setLoadError("");
       } catch {
         setLoadError("No pudimos actualizar la agenda. Reintentaremos automáticamente.");
       } finally { setIsLoading(false); }
       return;
     }
+    seedMockAgenda();
     let leads = loadLeadList(sampleLeads, "c1");
     const properties = loadPropertyList(sampleProperties, "c1");
 
@@ -188,14 +160,7 @@ export default function CalendarAgenda() {
       merged = merged.filter((v) => v.agentId === globalSelectedAgentId);
     }
 
-    const now = new Date();
-    now.setHours(0,0,0,0);
-    setItems(merged.map(v => {
-      if (v.status === 'scheduled' && new Date(v.scheduledAt) < now) {
-        return { ...v, status: 'cancelled' };
-      }
-      return v;
-    }));
+    setItems(merged);
     setIsLoading(false);
   }, [isAdvisor, isAdmin, user, globalSelectedAgentId]);
 
@@ -225,45 +190,38 @@ export default function CalendarAgenda() {
       const k = toArgentinaDateTimeInputValue(new Date(it.scheduledAt)).slice(0, 10);
       map.set(k, [...(map.get(k) ?? []), it]);
     });
+    map.forEach(events => events.sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt)));
     return map;
   }, [items]);
 
   const selectedDayKey = useMemo(() => toKey(selectedDate), [selectedDate]);
   const selectedDayItems = useMemo(() => {
     const dayItems = eventsByDay.get(selectedDayKey) ?? [];
-    if (activeFilter === "all") return dayItems;
-    return dayItems.filter((it) => it.status === activeFilter);
+    return dayItems.filter(it => activeFilter === "all" || it.status === activeFilter)
+      .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
   }, [eventsByDay, selectedDayKey, activeFilter]);
-
-  const upcomingItems = useMemo(() => {
-    const now = today.getTime();
-    return items
-      .filter((it) => it.status === "scheduled" && new Date(it.scheduledAt).getTime() > now)
-      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-      .slice(0, 8);
-  }, [items, today]);
-
-  const monthStats = useMemo(() => {
-    const month = viewDate.getMonth();
-    const year = viewDate.getFullYear();
-    const monthItems = items.filter((it) => {
-      const key = toArgentinaDateTimeInputValue(new Date(it.scheduledAt));
-      return key.startsWith(`${year}-${String(month + 1).padStart(2, "0")}`);
-    });
-    return {
-      total: monthItems.length,
-      completed: monthItems.filter((it) => it.status === "completed").length,
-      scheduled: monthItems.filter((it) => it.status === "scheduled").length,
-    };
-  }, [items, viewDate]);
-
-  const pendingVisits = useMemo(() => {
-    return items
-      .filter((it) => it.status === "scheduled")
-      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-  }, [items]);
+  const nextToday = items.filter(it => it.status === "scheduled" && Date.parse(it.scheduledAt) >= today.getTime()
+    && toArgentinaDateTimeInputValue(new Date(it.scheduledAt)).slice(0, 10) === toArgentinaDateTimeInputValue(today).slice(0, 10))
+    .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt))[0];
+  const weekStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() - (viewDate.getDay() + 6) % 7);
+  const visibleDays = view === "month" ? grid : Array.from({ length: 7 }, (_, i) => ({ date: new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i), current: true }));
+  const nextPhone = nextToday?.phone?.replace(/[^0-9]/g, "");
+  const whatsappPhone = nextPhone && !nextPhone.startsWith("54") ? `549${nextPhone}` : nextPhone;
+  const cancelledItem = items.find(item => item.id === deletingId);
+  function selectDay(date: Date) { setSelectedDate(date); setViewDate(date); }
+  function moveDate(direction: number) {
+    selectDay(view === "month" ? new Date(viewDate.getFullYear(), viewDate.getMonth() + direction, 1)
+      : new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate() + direction * (view === "week" ? 7 : 1)));
+  }
+  const time = (value: string) => new Date(value).toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const dayLabel = (date: Date) => formatArgentinaDateTime(`${toKey(date)}T12:00:00-03:00`).split(",")[0];
+  const statusLabel = (status: string) => status === "completed" ? "Realizada" : status === "cancelled" ? "Cancelada" : "Programada";
 
   const handleDelete = useCallback(async (id: string) => {
+    if (deleting.current || id.startsWith("followup-")) return;
+    deleting.current = true;
+    setIsDeleting(true);
+    try {
     if (!isMockDataMode) {
       try {
         await cancelEverpropVisit(id);
@@ -281,522 +239,69 @@ export default function CalendarAgenda() {
     setItems((prev) => prev.filter((it) => it.id !== id));
     setDeletingId(null);
     toast.success("Visita eliminada");
+    } finally { deleting.current = false; setIsDeleting(false); }
   }, [loadItems]);
 
   return (
-    <div className="space-y-6">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Agenda</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {MONTHS_ES[viewDate.getMonth()]} {viewDate.getFullYear()} —{" "}
-            <span className="font-semibold text-slate-700 dark:text-slate-200">{monthStats.total} visitas</span>
-          </p>
-        </div>
-
-        {/* Month stats pills and Action Button */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setShowPendingModal(true)}
-            className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-900/50 border border-blue-200 px-3 py-1.5 rounded-full transition-colors cursor-pointer text-xs font-bold text-blue-700 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            title="Ver lista de visitas pendientes"
-          >
-            <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-            <span>{monthStats.scheduled} pendientes</span>
-          </button>
-          <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900 px-3 py-1.5 rounded-full">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{monthStats.completed} realizadas</span>
+    <div className="mi-agenda">
+      <header className="agenda-heading">
+        <div><h1>Mi Agenda</h1><p>Organizá tus visitas y próximos contactos.</p></div>
+        <Button className="agenda-primary" onClick={() => setShowNewVisitModal(true)}><Plus />Agendar cita</Button>
+      </header>
+      {loadError && <div role="alert" className="agenda-notice">{loadError}<Button variant="outline" onClick={loadItems}>Reintentar</Button></div>}
+      {isLoading ? <p role="status">Cargando agenda…</p> : !loadError && <section className="agenda-focus" aria-labelledby="agenda-next">
+        <h2 id="agenda-next">{nextToday ? "Lo próximo de hoy" : "Sin actividades próximas hoy"}</h2>
+        {nextToday ? <><p className="agenda-focus-time">{time(nextToday.scheduledAt)}</p><h3>{nextToday.leadName}</h3><p>{nextToday.propertyTitle || "Sin unidad vinculada"}</p><p>{formatArgentinaDateTime(nextToday.scheduledAt)}</p>{nextToday.notes && <p>{nextToday.notes}</p>}<div className="agenda-actions">{nextToday.leadId && <Link href={`/admin/leads/${nextToday.leadId}`}>Abrir ficha</Link>}{whatsappPhone && <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noopener noreferrer"><MessageCircle />WhatsApp</a>}<Button onClick={() => selectDay(new Date(`${toArgentinaDateTimeInputValue(new Date(nextToday.scheduledAt)).slice(0, 10)}T12:00:00`))}>Ver el día</Button></div></>
+          : <p>Elegí una fecha para consultar tu agenda o agendá una nueva cita.</p>}
+      </section>}
+      <nav className="agenda-toolbar" aria-label="Período de agenda">
+        <div className="agenda-tabs">{([['day', 'Día'], ['week', 'Semana'], ['month', 'Mes']] as const).map(([key, label]) => <button key={key} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}</div>
+        <div className="agenda-actions"><button onClick={() => moveDate(-1)}><ChevronLeft />Anterior</button><button onClick={() => selectDay(new Date(`${toArgentinaDateTimeInputValue(today).slice(0, 10)}T12:00:00`))}>Hoy</button><button onClick={() => moveDate(1)}>Siguiente<ChevronRight /></button></div>
+      </nav>
+      <div className="agenda-layout">
+        {view !== "day" && <section className="agenda-calendar" aria-label="Calendario">
+          <h2>{MONTHS_ES[viewDate.getMonth()]} {viewDate.getFullYear()}</h2>
+          <div className={`agenda-days agenda-days-${view}`}>
+            {visibleDays.map(({ date, current }, index) => {
+              const key = toKey(date), count = (eventsByDay.get(key) ?? []).length, month = view === "month";
+              return <button key={key} className={cn(!current && "agenda-other-month")} aria-current={key === toArgentinaDateTimeInputValue(today).slice(0, 10) ? "date" : undefined} aria-pressed={selectedDayKey === key} aria-label={`${dayLabel(date)}, ${count} ${count === 1 ? "actividad" : "actividades"}`} onClick={() => selectDay(date)}>
+                {(!month || index < 7) && <span>{WEEKDAYS[date.getDay()]}</span>}<strong>{date.getDate()}</strong><span>{count > 0 ? `${count} ${count === 1 ? "cita" : "citas"}` : month ? "" : "Sin citas"}</span>
+                {!month && <span className="agenda-week-events">{(eventsByDay.get(key) ?? []).slice(0, 3).map(event => <span className="agenda-week-event" data-status={event.status} key={event.id}><b>{time(event.scheduledAt)} · {event.id.startsWith("followup-") ? "Llamar" : statusLabel(event.status)}</b><span>{event.leadName}</span></span>)}</span>}
+              </button>;
+            })}
           </div>
-          <Button
-            onClick={() => setShowNewVisitModal(true)}
-            className="min-h-10 gap-2 rounded-xl bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700 shadow-xs"
-          >
-            <Plus className="size-4" />
-            Nueva Cita
-          </Button>
-        </div>
-      </div>
-
-      {/* ── 3-column layout ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px_300px] gap-6">
-
-        {/* ── Col 1: Calendar ── */}
-        <div className="rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-          {/* Calendar header */}
-          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <button
-              aria-label="Mes anterior"
-              onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
-              className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 capitalize">
-              {MONTHS_ES[viewDate.getMonth()]} {viewDate.getFullYear()}
-            </h2>
-            <button
-              aria-label="Mes siguiente"
-              onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
-              className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-muted dark:hover:bg-slate-800 transition-colors"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="p-4">
-            {/* Weekday labels */}
-            <div className="grid grid-cols-7 mb-2">
-              {WEEKDAYS.map((d) => (
-                <div key={d} className="py-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                  {d}
+        </section>}
+        <section className="agenda-day" aria-labelledby="agenda-selected-day">
+          <div className="agenda-day-heading"><CalendarDays /><h2 id="agenda-selected-day">{dayLabel(selectedDate)}</h2></div>
+          <div className="agenda-tabs" aria-label="Estado de las actividades">{([['all', 'Todas'], ['scheduled', 'Pendientes'], ['completed', 'Realizadas'], ['cancelled', 'Canceladas']] as const).map(([key, label]) => <button key={key} aria-pressed={activeFilter === key} onClick={() => setActiveFilter(key)}>{label}</button>)}</div>
+          {!isLoading && !loadError && <p>{selectedDayItems.length} {selectedDayItems.length === 1 ? "actividad" : "actividades"}</p>}
+          {!isLoading && !loadError && selectedDayItems.length === 0 && <p className="agenda-empty">No hay actividades para este día y estado.</p>}
+          <div className="agenda-list">{selectedDayItems.map(ev => {
+            const followUp = ev.id.startsWith("followup-");
+            let phone = ev.phone?.replace(/[^0-9]/g, "");
+            if (phone && !phone.startsWith("54")) phone = `549${phone}`;
+            return <article key={ev.id} className="agenda-event">
+              <div className="agenda-time"><Clock /><strong>{time(ev.scheduledAt)}</strong></div>
+              <div className="agenda-event-content"><div className="agenda-event-title"><h3>{ev.leadName}</h3><span className="agenda-status">{followUp ? "Seguimiento" : statusLabel(ev.status)}</span></div>
+                <p><Building2 />{ev.propertyTitle || "Sin unidad vinculada"}</p><p>{formatArgentinaDateTime(ev.scheduledAt)}</p>
+                {ev.agentName && <p>Asesor: {ev.agentName}</p>}{ev.phone && <p>{ev.phone}</p>}{ev.email && <p>{ev.email}</p>}{ev.notes && <p>{ev.notes}</p>}
+                <div className="agenda-actions">{ev.leadId && <Link href={`/admin/leads/${ev.leadId}`}>Ver cliente</Link>}
+                  {phone && <a href={`https://wa.me/${phone}?text=${encodeURIComponent(`Hola ${ev.leadName}, te contacto por ${ev.propertyTitle || "nuestra cita"} (${formatArgentinaDateTime(ev.scheduledAt)}).`)}`} target="_blank" rel="noopener noreferrer"><MessageCircle />WhatsApp</a>}
+                  {!followUp && ev.status === "scheduled" && <button onClick={() => setDeletingId(ev.id)}>Cancelar cita</button>}
                 </div>
-              ))}
-            </div>
-
-            {/* Day grid */}
-            <div className="grid grid-cols-7 gap-1">
-              {grid.map((cell, i) => {
-                const key = toKey(cell.date);
-                const dayEvents = eventsByDay.get(key) ?? [];
-                const isSelected = key === selectedDayKey;
-                const isToday = key === toKey(today);
-                const hasCompleted = dayEvents.some((e) => e.status === "completed");
-                const hasScheduled = dayEvents.some((e) => e.status === "scheduled");
-
-                return (
-                  <button
-                    key={`${key}-${i}`}
-                    aria-label={`${cell.date.getDate()} de ${MONTHS_ES[cell.date.getMonth()]} de ${cell.date.getFullYear()}`}
-                    aria-pressed={isSelected}
-                    onClick={() => {
-                      setSelectedDate(cell.date);
-                      setViewDate(cell.date);
-                    }}
-                    className={cn(
-                      "relative flex flex-col items-center justify-start pt-2 pb-1.5 rounded-xl min-h-[56px] transition-all border text-sm font-semibold",
-                      cell.current ? "text-slate-800 dark:text-slate-100" : "text-slate-300 dark:text-slate-600",
-                      isSelected
-                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200 dark:shadow-none"
-                        : isToday
-                        ? "border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
-                        : "border-transparent hover:bg-muted dark:hover:bg-slate-800/60",
-                    )}
-                  >
-                    <span>{cell.date.getDate()}</span>
-                    {dayEvents.length > 0 && (
-                      <div className="flex gap-0.5 mt-1">
-                        {hasScheduled && (
-                          <span className={cn("h-2 w-2 rounded-full", isSelected ? "bg-[#ffffff] ring-1 ring-blue-900" : "bg-blue-500 ring-1 ring-blue-300")} />
-                        )}
-                        {hasCompleted && (
-                          <span className={cn("h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-emerald-200")} />
-                        )}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className="px-6 pb-5 flex flex-wrap items-center gap-4 text-xs text-slate-600 dark:text-slate-300 font-semibold">
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" />Programada</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />Realizada</span>
-          </div>
-        </div>
-
-        {/* ── Col 2: Selected Day Panel ── */}
-        <div className="rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col">
-          {/* Day header */}
-          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  {WEEKDAYS[selectedDate.getDay()]}
-                </p>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 leading-none mt-1">
-                  {selectedDate.getDate()} de {MONTHS_ES[selectedDate.getMonth()]}
-                </h3>
               </div>
-              <div className={cn(
-                "h-12 w-12 rounded-2xl flex items-center justify-center text-xl font-black",
-                toKey(selectedDate) === toKey(today) ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-              )}>
-                {selectedDate.getDate()}
-              </div>
-            </div>
-
-            {/* Filter tabs */}
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {(["all", "scheduled", "completed"] as const).map((f) => (
-                <button
-                  key={f}
-                  aria-pressed={activeFilter === f}
-                  onClick={() => setActiveFilter(f)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
-                    activeFilter === f
-                      ? f === "completed" ? "bg-emerald-600 text-white" : f === "scheduled" ? "bg-blue-600 text-white" : "bg-slate-800 dark:bg-slate-700 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-muted dark:hover:bg-slate-700"
-                  )}
-                >
-                  {f === "all" ? "Todas" : f === "scheduled" ? "Pendientes" : "Realizadas"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Events list */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            <AnimatePresence mode="wait">
-              {selectedDayItems.length === 0 ? (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-col items-center justify-center py-16 text-center"
-                >
-                  <CalendarDays className="h-10 w-10 text-slate-200 dark:text-slate-700 mb-3" />
-                  <p className="text-sm font-semibold text-slate-400 dark:text-slate-500">Sin visitas este día</p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={selectedDayKey + activeFilter}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-3"
-                >
-                  {selectedDayItems.map((ev) => {
-                    const time = new Date(ev.scheduledAt).toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
-                    const wa = ev.phone
-                      ? `https://wa.me/${(ev.phone.replace(/[^0-9]/g, "").startsWith("54") ? ev.phone.replace(/[^0-9]/g, "") : "549" + ev.phone.replace(/[^0-9]/g, ""))}?text=Hola%20${encodeURIComponent(ev.leadName)}%2C%20recordamos%20tu%20visita%20de%20hoy.`
-                      : null;
-
-                    return (
-                      <div
-                        key={ev.id}
-                        className={cn(
-                          "rounded-2xl border p-4 space-y-3 transition-all hover:shadow-sm",
-                          ev.status === "completed"
-                            ? "border-l-4 border-emerald-200 border-l-emerald-600 bg-emerald-50 dark:border-emerald-800 dark:border-l-emerald-400 dark:bg-emerald-950/30"
-                            : ev.status === "cancelled"
-                            ? "border-l-4 border-l-rose-400 border-slate-100 dark:border-slate-800 dark:bg-slate-800/20 opacity-60"
-                            : "border-l-4 border-blue-200 border-l-blue-600 bg-blue-50 dark:border-blue-800 dark:border-l-blue-400 dark:bg-blue-950/30"
-                        )}
-                      >
-                        {/* Time + status */}
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className={cn(
-                            "px-3 py-1.5 rounded-lg text-sm font-black",
-                            ev.status === "completed" ? "bg-emerald-700 text-white dark:bg-emerald-700 dark:text-white" : "bg-blue-700 text-white dark:bg-blue-700 dark:text-white"
-                          )}>
-                            {time}
-                          </span>
-                          <StatusBadge status={ev.status} />
-                        </div>
-
-                        {/* Lead info */}
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">{ev.leadName}</p>
-                          {ev.phone && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1"><Phone className="h-3 w-3" />{ev.phone}</p>}
-                          {ev.email && <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"><Mail className="h-3 w-3" />{ev.email}</p>}
-                        </div>
-
-                        {/* Property */}
-                        {ev.propertyTitle && (
-                          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl px-2.5 py-1.5 border border-slate-100 dark:border-slate-700/80">
-                            <PropertyTypeIcon type={ev.propertyType} />
-                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{ev.propertyTitle}</span>
-                          </div>
-                        )}
-
-                        {/* Advisor info — always visible (key feature) */}
-                        {ev.agentName && (
-                          <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                            <div className="h-6 w-6 rounded-full bg-blue-600 flex items-center justify-center text-[9px] font-black text-white shrink-0">
-                              {ev.agentAvatar || ev.agentName[0]}
-                            </div>
-                            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Asesor: <span className="text-slate-800 dark:text-slate-200">{ev.agentName}</span></span>
-                          </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 pt-1">
-                          {wa && (
-                            <a href={wa} target="_blank" rel="noopener noreferrer" className="flex-1">
-                              <button className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors">
-                                <MessageCircle className="h-3.5 w-3.5 fill-current" /> WhatsApp
-                              </button>
-                            </a>
-                          )}
-                          <button
-                            aria-label={`Cancelar cita de ${ev.leadName}`}
-                            disabled={ev.status !== "scheduled"}
-                            onClick={() => setDeletingId(ev.id)}
-                            className="h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/30 dark:hover:border-rose-800 transition-colors shrink-0"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* ── Col 3: Upcoming Visits ── */}
-        <div className="rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden flex flex-col">
-          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-blue-600 text-white">
-              <Users className="h-4 w-4" />
-            </span>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Próximas Visitas</h3>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Las más cercanas en el tiempo</p>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {upcomingItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Clock className="h-8 w-8 text-slate-200 dark:text-slate-700 mb-2" />
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">No hay visitas próximas</p>
-              </div>
-            ) : (
-              upcomingItems.map((ev) => {
-                const d = new Date(ev.scheduledAt);
-                const time = d.toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, hour: "2-digit", minute: "2-digit" });
-                const dateStr = d.toLocaleDateString("es-AR", { timeZone: ARGENTINA_TIME_ZONE, weekday: "short", day: "numeric", month: "short" });
-
-                return (
-                  <button
-                    key={ev.id}
-                    onClick={() => {
-                      setSelectedDate(d);
-                      setViewDate(d);
-                    }}
-                    className="w-full text-left p-3 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-all group"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="bg-blue-50 dark:bg-blue-950/60 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/60 rounded-xl px-2 py-1.5 text-center shrink-0 transition-colors">
-                        <p className="text-[9px] font-bold uppercase text-blue-500 dark:text-blue-400 leading-none">{dateStr.split(" ")[0]}</p>
-                        <p className="text-sm font-black text-blue-700 dark:text-blue-300 leading-none mt-0.5">{d.getDate()}</p>
-                        <p className="text-[9px] font-bold text-blue-500 dark:text-blue-400 leading-none">{time}</p>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 break-words">{ev.leadName}</p>
-                        {ev.propertyTitle && (
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5 flex items-center gap-1">
-                            <PropertyTypeIcon type={ev.propertyType} />{ev.propertyTitle}
-                          </p>
-                        )}
-                        {/* Advisor chip */}
-                        {ev.agentName && (
-                          <div className="flex items-center gap-1 mt-1.5">
-                            <div className="h-4 w-4 rounded-full bg-indigo-600 flex items-center justify-center text-[7px] font-black text-white shrink-0">
-                              {ev.agentAvatar || ev.agentName[0]}
-                            </div>
-                            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate">{ev.agentName}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
+            </article>;
+          })}</div>
+        </section>
       </div>
-
-      {/* ── Delete Confirmation Modal ── */}
-      <Dialog open={!!deletingId} onOpenChange={(open) => { if (!open) setDeletingId(null); }}>
-        <DialogContent className="sm:max-w-sm dark:bg-slate-900 dark:border-slate-800">
-          <DialogHeader>
-            <DialogTitle className="dark:text-slate-100">Cancelar cita</DialogTitle>
-            <DialogDescription className="dark:text-slate-400">La cita dejará de figurar como pendiente y se conservará en el historial.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 gap-2">
-            <Button variant="outline" onClick={() => setDeletingId(null)} className="dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">Volver</Button>
-            <Button
-              className="bg-rose-600 text-white hover:bg-rose-700"
-              onClick={() => deletingId && handleDelete(deletingId)}
-            >
-              {isMockDataMode ? "Eliminar" : "Cancelar cita"}
-            </Button>
-          </DialogFooter>
+      <Dialog open={!!deletingId} onOpenChange={open => { if (!open && !deleting.current) setDeletingId(null); }}>
+        <DialogContent className="admin-workspace mi-agenda agenda-dialog">
+          <DialogHeader><DialogTitle>Cancelar cita</DialogTitle><DialogDescription>{isMockDataMode ? "Se eliminará esta cita de tu agenda." : "La cita dejará de estar pendiente y se conservará en el historial."}</DialogDescription></DialogHeader>
+          {cancelledItem && <dl className="agenda-review"><dt>Cliente</dt><dd>{cancelledItem.leadName}</dd><dt>Unidad</dt><dd>{cancelledItem.propertyTitle || "Sin unidad vinculada"}</dd><dt>Fecha y hora</dt><dd>{formatArgentinaDateTime(cancelledItem.scheduledAt)}</dd><dt>Asesor</dt><dd>{cancelledItem.agentName || "Sin informar"}</dd><dt>Contacto</dt><dd>{cancelledItem.phone || "Sin teléfono"} · {cancelledItem.email || "Sin correo"}</dd><dt>Notas</dt><dd>{cancelledItem.notes || "Sin notas"}</dd></dl>}
+          <DialogFooter><Button variant="outline" disabled={isDeleting} onClick={() => setDeletingId(null)}>Conservar cita</Button><Button className="agenda-primary" disabled={isDeleting || !cancelledItem} onClick={() => deletingId && handleDelete(deletingId)}>{isDeleting ? "Cancelando…" : "Confirmar cancelación"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* ── Modal Nueva Cita Desktop ── */}
-      <NewVisitModal
-        open={showNewVisitModal}
-        onOpenChange={setShowNewVisitModal}
-        onVisitCreated={loadItems}
-      />
-
-      {/* ── Modal Citas Pendientes ── */}
-      <Dialog open={showPendingModal} onOpenChange={setShowPendingModal}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-6 dark:bg-card dark:border-border">
-          <DialogHeader>
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-400">
-                <Clock className="size-5" />
-              </span>
-              <div>
-                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  Citas y Visitas Pendientes
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-                  {pendingVisits.length} {pendingVisits.length === 1 ? "cita pendiente registrada" : "citas pendientes registradas"}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto space-y-3 my-4 pr-1">
-            {pendingVisits.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 dark:border-slate-800 dark:bg-slate-900/30">
-                <CheckCircle2 className="size-10 text-emerald-500 mb-2" />
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No hay visitas pendientes</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Todas las citas del período fueron completadas.</p>
-              </div>
-            ) : (
-              pendingVisits.map((ev) => {
-                const dateObj = new Date(ev.scheduledAt);
-                const dateFormatted = dateObj.toLocaleDateString("es-AR", { timeZone: ARGENTINA_TIME_ZONE,
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                });
-                const timeFormatted = dateObj.toLocaleTimeString("es-AR", { timeZone: ARGENTINA_TIME_ZONE,
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-                let cleanPhone = ev.phone?.replace(/[^0-9]/g, "");
-                if (cleanPhone && !cleanPhone.startsWith("54")) cleanPhone = "549" + cleanPhone;
-
-                return (
-                  <div
-                    key={ev.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-all shadow-2xs dark:bg-card dark:border-border dark:hover:border-blue-500"
-                  >
-                    <div className="flex items-start gap-3.5 min-w-0">
-                      {/* Fecha y Hora Pill */}
-                      <div className="flex flex-col items-center justify-center min-w-[65px] px-2 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-center shrink-0 dark:bg-blue-950/40 dark:border-blue-900">
-                        <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400">{dateFormatted}</span>
-                        <span className="text-sm font-black text-blue-900 dark:text-blue-200">{timeFormatted}</span>
-                      </div>
-
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-                            {ev.leadName}
-                          </p>
-                          {ev.leadId && (
-                            <Link
-                              href={`/admin/leads/${ev.leadId}`}
-                              className="text-[11px] text-blue-600 hover:underline flex items-center gap-0.5 shrink-0 dark:text-blue-400"
-                              onClick={() => setShowPendingModal(false)}
-                            >
-                              Ver ficha <ChevronRight className="size-3" />
-                            </Link>
-                          )}
-                        </div>
-
-                        {ev.propertyTitle && (
-                          <p className="text-xs text-slate-600 dark:text-slate-300 truncate flex items-center gap-1.5">
-                            <PropertyTypeIcon type={ev.propertyType} />
-                            <span className="font-medium">{ev.propertyTitle}</span>
-                          </p>
-                        )}
-
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
-                          {ev.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="size-3 text-slate-400" />
-                              {ev.phone}
-                            </span>
-                          )}
-                          {cleanPhone && (
-                            <a
-                              href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hola ${ev.leadName}, te contacto de Bellomo Inmobiliaria para coordinar tu cita...`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400"
-                            >
-                              <MessageCircle className="size-3" /> WhatsApp
-                            </a>
-                          )}
-                          {ev.agentName && (
-                            <span className="flex items-center gap-1 text-slate-400">
-                              <User className="size-3" />
-                              {ev.agentName}
-                            </span>
-                          )}
-                        </div>
-
-                        {ev.notes && (
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 border border-slate-100 dark:bg-slate-900 dark:border-slate-800 rounded-md px-2 py-1 mt-1 line-clamp-2">
-                            {ev.notes}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Acciones */}
-                    <div className="flex sm:flex-col items-center sm:items-end justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedDate(new Date(ev.scheduledAt));
-                          setViewDate(new Date(ev.scheduledAt));
-                          setShowPendingModal(false);
-                        }}
-                        className="h-8 text-xs font-semibold px-2.5 rounded-lg border-slate-200 dark:border-slate-800"
-                      >
-                        Ver en día
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Cancelar cita de ${ev.leadName}`}
-                            disabled={ev.status !== "scheduled"}
-                            onClick={() => setDeletingId(ev.id)}
-                        className="h-8 text-xs text-rose-600 hover:bg-rose-50 px-2 rounded-lg dark:hover:bg-rose-950/40"
-                        title="Cancelar cita"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowPendingModal(false)}
-              className="w-full sm:w-auto h-9 text-xs font-semibold rounded-xl dark:border-slate-800"
-            >
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NewVisitModal open={showNewVisitModal} onOpenChange={setShowNewVisitModal} onVisitCreated={loadItems} />
     </div>
   );
 }

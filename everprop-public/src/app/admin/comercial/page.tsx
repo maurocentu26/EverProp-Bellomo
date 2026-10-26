@@ -8,7 +8,7 @@ import { type Property, properties as sampleProperties } from "@/data/admin-samp
 import { loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropCatalog } from "@/lib/everprop-api";
-import { deferEffectUpdate } from "@/lib/deferred-effect";
+import { inventoryPriceLabel, propertyStatusLabel } from "@/lib/inventory-labels";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useCurrentSession } from "@/hooks/use-current-session";
@@ -59,14 +59,14 @@ export default function CommercialAssetsPage() {
   const garages = properties.filter(p => p.propertyType === "Cochera");
 
   return (
-    <div className="space-y-8">
+    <div className="inventory-view commercial-assets space-y-8">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Store className="h-7 w-7 sm:h-8 sm:w-8 text-indigo-600 dark:text-indigo-400" /> 
             Activos Comerciales
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Heatmap de Locales y Cocheras, rentabilidad y ocupación.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Locales y cocheras: precio y disponibilidad del inventario.</p>
         </div>
         {!isAdvisor && (
           <div className="flex flex-wrap items-center gap-2">
@@ -95,8 +95,9 @@ export default function CommercialAssetsPage() {
           )}
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left whitespace-nowrap">
+        {locals.length === 0 ? <div className="inventory-empty commercial-empty" role="status">No hay locales registrados.</div> : (
+        <div className="commercial-table-container">
+          <table className="commercial-table w-full text-left">
             <thead className="bg-slate-50/80 dark:bg-slate-900/80 text-xs uppercase font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="px-6 py-4">ID / Ubicación</th>
@@ -107,49 +108,48 @@ export default function CommercialAssetsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {locals.length > 0 ? locals.map(local => {
-                const isAvailable = !local.status || local.status === 'available';
+              {locals.map(local => {
+                const isAvailable = local.status === 'available';
                 return (
                   <tr
                     key={local.id}
                     onClick={() => router.push(`/admin/properties/${local.id}`)}
                     className="cursor-pointer hover:bg-muted dark:hover:bg-slate-800/80 transition-colors"
                   >
-                    <td className="px-6 py-4">
-                      <p className="font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{local.unitNumber || local.title}</p>
+                    <td data-label="ID / Ubicación" className="px-6 py-4">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"><Link className="commercial-unit-link" href={`/admin/properties/${local.id}`}>Ver {local.unitNumber || local.title}</Link></p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">{local.sectorName || "Planta Baja"}</p>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Dimensiones" className="px-6 py-4">
                       <span className="font-medium text-slate-700 dark:text-slate-300">{local.area_m2} m²</span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-slate-900 dark:text-slate-100">{local.currency} {local.price.toLocaleString('es-AR')}</span>
+                    <td data-label="Renta mensual" className="px-6 py-4">
+                      <span className="font-bold text-slate-900 dark:text-slate-100">{inventoryPriceLabel(local)}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Características" className="px-6 py-4">
                       <div className="flex flex-wrap gap-2 text-xs">
                         {local.commercialFeatures?.showcaseLength && <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700">Vidriera: {local.commercialFeatures.showcaseLength}m</span>}
                         {local.commercialFeatures?.hasBathroom && <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700">Baño</span>}
                         {local.commercialFeatures?.mezzanine && <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700">Entrepiso</span>}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td data-label="Estado" className="px-6 py-4 text-right">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border",
                         isAvailable ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" :
                         local.status === 'reserved' ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800" : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800"
                       )}>
                         {isAvailable ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                        {isAvailable ? 'Disponible' : local.status === 'sold' ? 'Alquilado' : 'Reservado'}
+                        {propertyStatusLabel(local.status)}
                       </span>
                     </td>
                   </tr>
                 );
-              }) : (
-                <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">No hay locales registrados.</td></tr>
-              )}
+              })}
             </tbody>
           </table>
         </div>
+        )}
       </section>
 
       {/* Seccion: Cocheras */}
@@ -167,8 +167,9 @@ export default function CommercialAssetsPage() {
           )}
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left whitespace-nowrap">
+        {garages.length === 0 ? <div className="inventory-empty commercial-empty" role="status">No hay cocheras registradas.</div> : (
+        <div className="commercial-table-container">
+          <table className="commercial-table w-full text-left">
             <thead className="bg-slate-50/80 dark:bg-slate-900/80 text-xs uppercase font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="px-6 py-4">Unidad</th>
@@ -179,48 +180,47 @@ export default function CommercialAssetsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {garages.length > 0 ? garages.map(garage => {
-                const isAvailable = !garage.status || garage.status === 'available';
+              {garages.map(garage => {
+                const isAvailable = garage.status === 'available';
                 return (
                   <tr
                     key={garage.id}
                     onClick={() => router.push(`/admin/properties/${garage.id}`)}
                     className="cursor-pointer hover:bg-muted dark:hover:bg-slate-800/80 transition-colors"
                   >
-                    <td className="px-6 py-4">
-                      <p className="font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{garage.unitNumber || garage.title}</p>
+                    <td data-label="Unidad" className="px-6 py-4">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"><Link className="commercial-unit-link" href={`/admin/properties/${garage.id}`}>Ver {garage.unitNumber || garage.title}</Link></p>
                     </td>
-                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium">
+                    <td data-label="Nivel / Sector" className="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium">
                       {garage.sectorName || "-"}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-slate-900 dark:text-slate-100">{garage.currency} {garage.price.toLocaleString('es-AR')}</span>
+                    <td data-label="Valor mensual" className="px-6 py-4">
+                      <span className="font-bold text-slate-900 dark:text-slate-100">{inventoryPriceLabel(garage)}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Tipo" className="px-6 py-4">
                       {garage.isCovered ? (
                         <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700">Cubierta</span>
                       ) : (
                         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-800">Descubierta</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td data-label="Estado" className="px-6 py-4 text-right">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border",
                         isAvailable ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" :
                         garage.status === 'reserved' ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800" : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800"
                       )}>
                         {isAvailable ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                        {isAvailable ? 'Disponible' : garage.status === 'sold' ? 'Alquilada' : 'Reservada'}
+                        {propertyStatusLabel(garage.status)}
                       </span>
                     </td>
                   </tr>
                 );
-              }) : (
-                <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-500 dark:text-slate-400">No hay cocheras registradas.</td></tr>
-              )}
+              })}
             </tbody>
           </table>
         </div>
+        )}
       </section>
     </div>
   );

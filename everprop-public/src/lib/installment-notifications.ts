@@ -14,11 +14,12 @@ export function getTodayDateString(): string {
 /**
  * Formats a currency amount according to corporate standards
  */
-export function formatInstallmentAmount(amount: number, currency: "ARS" | "USD" = "ARS"): string {
+export function formatInstallmentAmount(amount: number, currency?: "ARS" | "USD" | null): string {
+  if (currency !== "ARS" && currency !== "USD") return `${amount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · Moneda sin confirmar`;
   if (currency === "USD") {
     return `USD ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
-  return `$ ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `ARS ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /**
