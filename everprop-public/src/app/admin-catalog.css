@@ -140,3 +140,38 @@ html[data-panel-text-size="grande"] :is(.mi-agenda,.collections-view,.collection
 @media (prefers-reduced-motion: reduce) {
   :is(.mi-agenda,.collections-view,.inventory-view,.settings-view) *, .lots-sheet { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* EVP-73/74: catalog details and commercial rows share the inventory hierarchy. */
+.inventory-detail .inventory-detail-header,.inventory-form [data-slot="card"] { border-radius: 24px; }
+.inventory-detail .inventory-detail-price { font-size: 2em; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.inventory-detail-summary .inventory-status,.project-detail-status { display: inline-flex; width: fit-content; border-radius: 999px; padding: 4px 12px; }
+.project-detail-status { background: var(--catalog-sky); color: var(--catalog-sky-ink); font-weight: 700; }
+.inventory-detail-summary .inventory-status[data-status="available"] { background: var(--catalog-mint); color: var(--catalog-mint-ink); }
+.inventory-detail-summary .inventory-status[data-status="reserved"] { background: var(--catalog-sun); color: var(--catalog-sun-ink); }
+.inventory-form :is(input,select,textarea,button) { font-size: inherit; }
+.inventory-form [data-slot="card"] { background: var(--card); box-shadow: none; }
+.commercial-assets :is(p,span,a,button,th,td) { font-size: inherit; }
+.commercial-assets :is(button,a[role="link"],.commercial-unit-link) { min-height: 44px; white-space: normal; }
+.commercial-assets > section > div:first-child { flex-wrap: wrap; gap: 16px; }
+.commercial-assets > section > div:first-child > div { flex-wrap: wrap; min-width: 0; }
+.commercial-table-container { container: commercial-table / inline-size; }
+.commercial-table { table-layout: fixed; white-space: normal; }
+.commercial-table :is(th,td) { white-space: normal; text-transform: none; letter-spacing: normal; }
+.commercial-unit-link { display: inline-flex; align-items: center; text-decoration: underline; text-underline-offset: 4px; }
+.commercial-table td[data-label="Estado"] > span { border-radius: 999px; }
+.commercial-table td[data-label="Estado"] svg { flex-shrink: 0; }
+.commercial-empty { padding: 40px 24px; text-align: center; color: var(--muted-foreground); }
+@container commercial-table (width < 1100px) {
+  .commercial-table,.commercial-table tbody,.commercial-table tr { display: block; width: 100%; }
+  .commercial-table thead { display: none; }
+  .commercial-table tbody { padding: 16px; }
+  .commercial-table tr { padding: 16px; border: 1px solid var(--border); border-radius: 24px; background: var(--card); }
+  .commercial-table tr + tr { margin-top: 16px; }
+  .commercial-table td { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding: 8px 0; text-align: left; }
+  .commercial-table td::before { content: attr(data-label); color: var(--muted-foreground); font-weight: 650; }
+  .commercial-table td > * { min-width: 0; max-width: 100%; }
+}
+@media (width < 768px) {
+  .commercial-assets :is(button,a[role="link"],.commercial-unit-link) { min-height: 52px; }
+  .inventory-detail .inventory-detail-price { font-size: 1.7em; }
+}

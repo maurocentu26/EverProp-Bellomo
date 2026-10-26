@@ -1366,8 +1366,8 @@ html:not(.dark) .mi-day .day-traffic-card.day-amber { background: #fde8d3; color
 html:not(.dark) .mi-day .day-traffic-card.day-blue { background: #dceafc; color: #2158b8; }
 html:not(.dark) .mi-day .day-traffic-card.day-green { background: #d9f1e3; color: #17784a; }
 .mi-day.day-board .day-traffic-card[aria-pressed="true"] { outline: 3px solid #141518; outline-offset: 3px; }
-.lead-form .lead-categories { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-.lead-form .lead-categories button span { overflow-wrap: normal; text-wrap: balance; }
+.lead-categories { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.lead-categories button span { overflow-wrap: normal; text-wrap: balance; }
 /* Entrada al estilo code.xr Dashboard V16: tarjetas escalonadas y barras que crecen. */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes stats-rise { from { opacity: 0; transform: translateY(12px); } }
@@ -1395,3 +1395,34 @@ html:not(.dark) .mi-day .day-traffic-card.day-green { background: #d9f1e3; color
 @media (width <= 480px) {
   html[data-panel-text-size="grande"] .day-traffic { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Ficha del lead: 3 columnas solo con ancho real; en notebooks, intereses y cuotas a todo el ancho. */
+@media (max-width: 1599px) and (min-width: 768px) {
+  .lead-detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "identity next" "main main"; }
+}
+.lead-detail-main section > .grid.md\:grid-cols-2 { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.lead-detail :is(h2, h3, p, span, dt, dd, a, button) { overflow-wrap: break-word; word-break: normal; }
+.lead-detail a[href^="mailto:"], .lead-detail .lead-email { overflow-wrap: anywhere; }
+.lead-detail [data-slot="button"] { white-space: nowrap; }
+/* Cuotas en la ficha: en anchos chicos cada cuota es una tarjeta con sus rótulos, sin scroll lateral. */
+@media (width < 1100px) {
+  .lead-installments, .lead-installments tbody, .lead-installments tr, .lead-installments td { display: block; width: 100%; }
+  .lead-installments thead { display: none; }
+  .lead-installments tr { padding: 12px 16px; }
+  .lead-installments td { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 4px 0 !important; text-align: left !important; }
+  .lead-installments td::before { content: attr(data-label); font-weight: 650; color: var(--muted-foreground); }
+  .lead-installments td[data-label="Acciones"] > * { flex-wrap: wrap; justify-content: flex-end; }
+}
+/* Encabezado y menú con la misma escala de lectura que las secciones (17 px). */
+.admin-workspace .admin-topbar :is(button, a, input, [data-slot="button"]) { font-size: 16px; }
+.admin-workspace .admin-topbar input::placeholder { font-size: 16px; }
+.admin-workspace .admin-topbar [data-slot="button"]:not([class*="size-"]) { min-height: 44px; padding-inline: 16px; }
+.admin-workspace .admin-topbar :is(button, a)[class*="size-9"] { width: 44px; height: 44px; }
+.admin-workspace .admin-topbar svg { width: 20px; height: 20px; }
+.admin-workspace nav[aria-label="Navegación administrativa"] a { font-size: 17px !important; min-height: 48px; }
+.admin-workspace nav[aria-label="Navegación administrativa"] a svg { width: 20px; height: 20px; }
+.admin-workspace [data-slot="sidebar-content"] nav[aria-label="Navegación administrativa"] > section > h2 { font-size: 14px; }
+.admin-workspace [data-slot="sidebar-inner"] footer :is(p, span) { font-size: 15px; }
+.lead-selected-asset > div { min-width: 12rem; }
+.lead-selected-asset [aria-label="Quitar activo seleccionado"] { width: auto !important; height: auto; min-height: 44px; padding-inline: 14px; white-space: nowrap; }
+@media (width < 768px) { .lead-categories { grid-template-columns: minmax(0, 1fr) !important; } .lead-categories button { flex-direction: row !important; align-items: center !important; min-height: 52px; } }
