@@ -6,10 +6,16 @@ import type { CommercialStatistics } from "@/lib/commercial-statistics-api";
 
 export const formatNumber = (value: number) => new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 }).format(value);
 export const formatPercent = (value: number | null) => value === null ? "Sin datos" : `${formatNumber(value)}%`;
-export const formatDuration = (value: number | null) => value === null ? "Sin datos" : `${formatNumber(value)} min`;
+export const formatDuration = (value: number | null) => {
+  if (value === null) return "Sin datos";
+  if (value < 60) return `${Math.round(value)} min`;
+  const minutes = Math.round(value % 60);
+  return `${Math.floor(value / 60)} h${minutes ? ` ${minutes} min` : ""}`;
+};
+// Response-time tone: color always travels with the written time.
+export const durationTone = (value: number | null) => value === null ? "stats-tone-gray" : value <= 60 ? "stats-tone-mint" : value <= 240 ? "stats-tone-sun" : "stats-tone-rose";
 export const panelClass = "stats-panel";
 export const countLabel = (value: number, singular: string, plural: string) => `${formatNumber(value)} ${value === 1 ? singular : plural}`;
-const control = "min-h-10 rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-blue-600";
 const shortDate = (value: string) => new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
 
 export function EvolutionChart({ series, onRange }: {
@@ -19,20 +25,21 @@ export function EvolutionChart({ series, onRange }: {
   const [metric, setMetric] = useState<"leads" | "period_won">("leads");
   const { step, bins } = groupStatisticsSeries(series, metric);
   const max = Math.max(1, ...bins.map(bin => bin.value));
-  return <section className={panelClass}>
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 className="font-semibold">Evolución del período</h2><p className="mt-1 text-xs text-muted-foreground">{step === 7 ? "Intervalos de hasta 7 días" : "Por día"} · Seleccioná una barra para ver ese intervalo.</p></div>
-      <label className="text-xs text-muted-foreground">Mostrar<select className={`${control} ml-2`} value={metric} onChange={e => setMetric(e.target.value as typeof metric)}><option value="leads">Leads ingresados</option><option value="period_won">Cierres ganados</option></select></label>
+  const labelEvery = Math.max(1, Math.ceil(bins.length / 5));
+  const unit = metric === "leads" ? "leads" : "cierres";
+  return <section className={`${panelClass} stats-evolution`}>
+    <div className="stats-panel-head">
+      <div><h2>Evolución del período</h2><p className="stats-muted">{step === 7 ? "Por semana" : "Por día"} · tocá una columna para ver ese intervalo</p></div>
+      <label className="stats-inline-select">Mostrar<select value={metric} onChange={e => setMetric(e.target.value as typeof metric)}><option value="leads">Leads ingresados</option><option value="period_won">Cierres ganados</option></select></label>
     </div>
-    <p className="mt-5"><strong>{formatNumber(bins.reduce((sum, bin) => sum + bin.value, 0))}</strong> {metric === "leads" ? "leads ingresados" : "cierres con fecha registrada"}</p>
-
+    <p className="stats-evolution-total"><strong>{formatNumber(bins.reduce((sum, bin) => sum + bin.value, 0))}</strong> {metric === "leads" ? "leads ingresados" : "cierres con fecha registrada"}</p>
     {!bins.length && <p>Sin datos para este período.</p>}
-    <div className="stats-bars">{bins.map(bin => <button key={bin.from} type="button" onClick={() => onRange(bin.from, bin.to)} className="stats-bar-button" aria-label={`Filtrar del ${bin.from} al ${bin.to}: ${formatNumber(bin.value)} ${metric === "leads" ? "leads" : "cierres"}`}>
-      <span className="stats-bar-label"><span>{shortDate(bin.from)}{bin.from !== bin.to && ` al ${shortDate(bin.to)}`}</span><strong>{formatNumber(bin.value)}</strong></span>
-      <span className="stats-track" aria-hidden="true"><span style={{ width: `${100 * bin.value / max}%` }} /></span>
+    <div className="stats-columns" style={{ gridTemplateColumns: `repeat(${Math.max(bins.length, 1)}, minmax(0, 1fr))` }}>{bins.map((bin, index) => <button key={bin.from} type="button" onClick={() => onRange(bin.from, bin.to)} className="stats-column" title={`${shortDate(bin.from)}${bin.from !== bin.to ? ` al ${shortDate(bin.to)}` : ""}: ${formatNumber(bin.value)} ${unit}`} aria-label={`Filtrar del ${bin.from} al ${bin.to}: ${formatNumber(bin.value)} ${unit}`}>
+      <span className="stats-column-value">{formatNumber(bin.value)}</span>
+      <span className="stats-column-track" aria-hidden="true"><span style={{ height: `${Math.max(bin.value ? 4 : 0, 100 * bin.value / max)}%` }} /></span>
+      <span className={`stats-column-label ${index % labelEvery ? "stats-column-label-hidden" : ""}`}>{shortDate(bin.from)}</span>
     </button>)}</div>
-    {!!bins.length && <details className="mt-5"><summary>Ver valores de la evolución</summary><dl className="stats-text-values">{bins.map(bin => <div key={bin.from}><dt>{shortDate(bin.from)} al {shortDate(bin.to)}</dt><dd>{formatNumber(bin.value)} {metric === "leads" ? "leads" : "cierres"}</dd></div>)}</dl></details>}
-
+    {!!bins.length && <details className="stats-details"><summary>Ver valores de la evolución</summary><dl className="stats-text-values">{bins.map(bin => <div key={bin.from}><dt>{shortDate(bin.from)} al {shortDate(bin.to)}</dt><dd>{formatNumber(bin.value)} {unit}</dd></div>)}</dl></details>}
   </section>;
 }
 
@@ -59,15 +66,15 @@ export function AdvisorChart({ advisors, onAdvisor, attention = false }: {
   });
   const max = metric === "conversion" ? 100 : Math.max(1, ...rows.map(row => row[metric] || 0));
   return <section className={panelClass}>
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 className="font-semibold">{attention ? "Tiempos por responsable" : "Comparar responsables"}</h2><p className="mt-1 text-xs text-muted-foreground">{attention ? "Menor tiempo primero. " : "Mayor valor primero. "}Seleccioná un asesor para filtrar todo el panel.</p></div>
-      <label className="text-xs text-muted-foreground">Métrica del gráfico<select className={`${control} ml-2`} value={metric} onChange={e => setMetric(e.target.value as typeof metric)}>{choices.map(key => <option key={key} value={key}>{metricOptions[key].label}</option>)}</select></label>
+    <div className="stats-panel-head">
+      <div><h2>{attention ? "Tiempos por asesor" : "Ranking de asesores"}</h2><p className="stats-muted">{attention ? "El más rápido primero. " : "El mejor primero. "}Tocá un asesor para ver solo sus números.</p></div>
+      <label className="stats-inline-select">Ordenar por<select value={metric} onChange={e => setMetric(e.target.value as typeof metric)}>{choices.map(key => <option key={key} value={key}>{metricOptions[key].label}</option>)}</select></label>
     </div>
-    <div className="mt-5 space-y-2">{rows.map(row => <button key={row.id || "unassigned"} type="button" disabled={!row.id} onClick={() => row.id && onAdvisor(row.id)} className="block w-full rounded-lg p-2 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-default">
-      <span className="mb-2 flex flex-wrap justify-between gap-2 text-sm"><span className="font-medium">{row.name}</span><span className="tabular-nums">{metricOptions[metric].format(row[metric])}{attention && <span className="ml-2 text-xs text-muted-foreground"> · n={metric === "response_minutes" ? formatNumber(row.answered) : formatNumber(row.resolved)}</span>}</span></span>
-      <span className="stats-track" aria-hidden="true"><span className="stats-fill" style={{ width: `${100 * (row[metric] || 0) / max}%` }} /></span>
+    <div className="stats-bars">{rows.map(row => <button key={row.id || "unassigned"} type="button" disabled={!row.id} onClick={() => row.id && onAdvisor(row.id)} className="stats-bar-button">
+      <span className="stats-bar-label"><span>{row.name}</span><strong>{metricOptions[metric].format(row[metric])}</strong></span>
+      <span className="stats-track" aria-hidden="true"><span className={attention ? durationTone(row[metric]) : "stats-fill"} style={{ width: `${100 * (row[metric] || 0) / max}%` }} /></span>
+      {attention && <span className="stats-muted">{metric === "response_minutes" ? countLabel(row.answered, "consulta respondida", "consultas respondidas") : countLabel(row.resolved, "consulta resuelta", "consultas resueltas")}</span>}
     </button>)}</div>
-    {rows.length === 0 && <p className="mt-5 text-sm text-muted-foreground">No hay actividad para comparar en este período.</p>}
-    <p className="mt-4 text-xs text-muted-foreground">{attention && "Las medias no incluyen consultas sin muestra."}</p>
+    {rows.length === 0 && <p className="stats-muted">No hay actividad para comparar en este período.</p>}
   </section>;
 }

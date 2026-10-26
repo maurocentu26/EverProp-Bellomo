@@ -80,7 +80,7 @@ test('EVP-76 page renders four period-aware KPIs and preserves loading, retry an
  assert.match(text(tree),/1 lead nuevo del 1\/10\/2026 al 25\/10\/2026/);
  assert.match(text(tree),/1 cierre ganado con fecha registrada/);
  assert.doesNotMatch(text(tree),/simulados|prueba|Datos de muestra/);
- nodes(tree).find(n=>n.type==='select').props.onChange({target:{value:'custom'}});
+ nodes(tree).find(n=>n.type==='button'&&text(n)==='Personalizado').props.onClick();
  tree=render();assert.equal(nodes(tree).filter(n=>n.type==='input'&&n.props.type==='date').length,2);
  state[6]='Falló la carga';tree=render();assert.match(text(tree),/Reintentar/);
  assert.equal(nodes(tree).filter(n=>n.props?.className?.startsWith('stats-kpi ')).length,0);
@@ -117,10 +117,10 @@ test('EVP-76 mock renders sample without API calls, filters dates/advisors and s
  assert.ok(page.state[4].total.leads>0);const monthTotal=page.state[4].total.leads;
  assert.equal(nodes(tree).filter(n=>n.props?.className?.startsWith('stats-kpi ')).length,4);
  assert.equal((text(tree).match(/Atrás/g)||[]).length,0); // Advisor shell already provides Back.
- nodes(tree).filter(n=>n.type==='select')[0].props.onChange({target:{value:'today'}});
+ nodes(tree).find(n=>n.type==='button'&&text(n)==='Hoy').props.onClick();
  page.render();await page.load();tree=page.render();
  assert.equal(page.state[4].series.length,1);assert.ok(page.state[4].total.leads<monthTotal);
- nodes(tree).filter(n=>n.type==='select')[1].props.onChange({target:{value:'stats-lucia'}});
+ nodes(tree).find(n=>n.type==='select').props.onChange({target:{value:'stats-lucia'}});
  page.render();await page.load();tree=page.render();const data=page.state[4];
  assert.equal(data.advisors.length,1);assert.equal(data.advisors[0].name,'Lucía Fernández');
  assert.equal(data.total.response_minutes,null);assert.match(text(tree),/Sin datos/);
