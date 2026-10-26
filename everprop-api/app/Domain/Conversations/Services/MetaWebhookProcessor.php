@@ -63,7 +63,7 @@ final class MetaWebhookProcessor
      *
      * @return object{id: int|string, tenant_id: int|string, integration_id: int|string, status: string, provider: string, integration_status: string}|null
      */
-    public function socialChannelFor(string $channelType, string $accountId): ?object
+    public function socialChannelFor(string $channelType, string $accountId, bool $instagramLogin = false): ?object
     {
         if ($accountId === '' || ! in_array($channelType, ['INSTAGRAM_DM', 'FACEBOOK_MESSENGER'], true)) {
             return null;
@@ -77,16 +77,22 @@ final class MetaWebhookProcessor
             ->where('ic.provider', 'META')
             ->where('ic.status', 'ACTIVE')
             ->limit(2)
-            ->get(['ca.id', 'ca.tenant_id', 'ca.integration_id', 'ca.status', 'ic.provider', 'ic.status as integration_status']);
+            ->get(['ca.id', 'ca.tenant_id', 'ca.integration_id', 'ca.status', 'ic.provider', 'ic.status as integration_status', 'ic.settings_json']);
 
-        return $rows->count() === 1 ? $rows->first() : null;
+        if ($rows->count() !== 1) {
+            return null;
+        }
+        $channel = $rows->first();
+        $settings = json_decode((string) $channel->settings_json, true) ?: [];
+
+        return ($settings['instagram_login'] ?? false) === $instagramLogin ? $channel : null;
     }
 
     /** @param list<array<string, mixed>> $messaging */
-    public function social(string $object, string $accountId, array $messaging, int $tenantId, int $integrationId): bool
+    public function social(string $object, string $accountId, array $messaging, int $tenantId, int $integrationId, bool $instagramLogin = false): bool
     {
         $channelType = $object === 'instagram' ? 'INSTAGRAM_DM' : ($object === 'page' ? 'FACEBOOK_MESSENGER' : '');
-        $channel = $this->socialChannelFor($channelType, $accountId);
+        $channel = $this->socialChannelFor($channelType, $accountId, $instagramLogin);
         if ($channel === null || (int) $channel->tenant_id !== $tenantId || (int) $channel->integration_id !== $integrationId) {
             Log::warning('meta.webhook.unmapped_social_account', ['channel_type' => $channelType, 'mapped' => $channel !== null]);
 

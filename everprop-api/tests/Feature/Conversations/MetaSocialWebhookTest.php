@@ -9,6 +9,7 @@ use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\MetaWebhookProcessor;
 use App\Domain\Conversations\Services\OutboundDispatcher;
 use App\Domain\Conversations\Transports\MetaMessengerTransport;
+use App\Domain\Integrations\Services\IntegrationTokens;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +77,75 @@ final class MetaSocialWebhookTest extends TestCase
                 'is_echo' => $echo ?: null,
             ], fn ($v) => $v !== null),
         ];
+    }
+
+    public function test_instagram_login_has_separate_handshake_signature_and_delivery_mode(): void
+    {
+        config(['services.meta.instagram_app_secret' => 'instagram-secret', 'services.meta.instagram_webhook_verify_token' => 'ig-verify']);
+        $this->get('/api/v1/webhooks/meta/instagram?hub_mode=subscribe&hub_verify_token=ig-verify&hub_challenge=123')->assertOk()->assertSee('123');
+        $this->get('/api/v1/webhooks/meta/instagram?hub_mode=subscribe&hub_verify_token=verify-me&hub_challenge=123')->assertForbidden();
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        DB::table('integration_connections')->where('id', $integration)->update(['settings_json' => json_encode(['instagram_login' => true])]);
+        $this->socialChannel($tenant->id, $integration, 'INSTAGRAM_DM', '123456');
+        $raw = $this->socialPayload('instagram', '123456', [$this->socialMessage('789', '123456', 'mid.login', 'Hola')]);
+        $post = fn (string $body, string $secret) => $this->call('POST', '/api/v1/webhooks/meta/instagram', [], [], [], [
+            'CONTENT_TYPE' => 'application/json', 'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $body, $secret),
+        ], $body);
+        $post($raw, self::APP_SECRET)->assertUnauthorized();
+        $this->postWebhook($raw)->assertOk();
+        $this->assertDatabaseMissing('messages', ['provider_message_id' => 'mid.login']);
+        $post($this->socialPayload('page', '123456', [$this->socialMessage('789', '123456', 'mid.page', 'Wrong object')]), 'instagram-secret')->assertOk();
+        $this->assertDatabaseMissing('messages', ['provider_message_id' => 'mid.page']);
+        $post($raw, 'instagram-secret')->assertOk();
+        $post($raw, 'instagram-secret')->assertOk();
+        $this->assertSame(1, DB::table('messages')->where('tenant_id', $tenant->id)->where('provider_message_id', 'mid.login')->count());
+    }
+
+    public function test_instagram_login_rechecks_mode_in_worker_and_rejects_ambiguous_ownership(): void
+    {
+        Queue::fake([ProcessMetaWebhookReceipt::class]);
+        config(['services.meta.instagram_app_secret' => 'instagram-secret']);
+        ['tenant' => $a, 'integration' => $ia] = $this->tenantWithIntegration();
+        ['tenant' => $b, 'integration' => $ib] = $this->tenantWithIntegration();
+        DB::table('integration_connections')->where('id', $ia)->update(['settings_json' => json_encode(['instagram_login' => true])]);
+        $this->socialChannel($a->id, $ia, 'INSTAGRAM_DM', '123456');
+        $raw = $this->socialPayload('instagram', '123456', [$this->socialMessage('789', '123456', 'mid.mode', 'Hola')]);
+        $post = fn () => $this->call('POST', '/api/v1/webhooks/meta/instagram', [], [], [], [
+            'CONTENT_TYPE' => 'application/json', 'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $raw, 'instagram-secret'),
+        ], $raw);
+        config(['services.meta.instagram_app_secret' => '']);
+        $post()->assertStatus(503);
+        config(['services.meta.instagram_app_secret' => 'instagram-secret']);
+        $post()->assertOk();
+        $receipt = (int) DB::table('webhook_receipts')->where('tenant_id', $a->id)->value('id');
+        DB::table('integration_connections')->where('id', $ia)->update(['settings_json' => '{}']);
+        (new ProcessMetaWebhookReceipt($a->id, $receipt))->handle(app(MetaWebhookProcessor::class));
+        $this->assertDatabaseHas('webhook_receipts', ['id' => $receipt, 'processing_status' => 'REJECTED', 'last_error_code' => 'CHANNEL_CHANGED']);
+        DB::table('integration_connections')->where('id', $ia)->update(['settings_json' => json_encode(['instagram_login' => true])]);
+        $this->socialChannel($b->id, $ib, 'INSTAGRAM_DM', '123456');
+        $post()->assertOk();
+        $this->assertNull(app(MetaWebhookProcessor::class)->socialChannelFor('INSTAGRAM_DM', '123456', true));
+        $this->assertDatabaseMissing('messages', ['provider_message_id' => 'mid.mode']);
+    }
+
+    public function test_instagram_login_transport_uses_account_endpoint_and_encrypted_token(): void
+    {
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        DB::table('integration_connections')->where('id', $integration)->update(['settings_json' => json_encode(['instagram_login' => true])]);
+        app(IntegrationTokens::class)->store($tenant->id, $integration, 'ig-private-token');
+        $id = $this->socialChannel($tenant->id, $integration, 'INSTAGRAM_DM', '123456');
+        $channel = (array) DB::table('channel_accounts')->find($id);
+        config(['services.meta.send_enabled' => true]);
+        Http::preventStrayRequests();
+        Http::fake(['graph.instagram.com/*' => Http::response(['message_id' => 'ig-out'], 200)]);
+        $result = app(MetaMessengerTransport::class)->send($channel, '789', 'Hola', 'nonce');
+        $this->assertTrue($result->accepted);
+        Http::assertSent(fn ($request) => $request->url() === 'https://graph.instagram.com/'.config('services.meta.graph_version').'/123456/messages'
+            && $request->hasHeader('Authorization', 'Bearer ig-private-token')
+            && $request->data() === ['recipient' => ['id' => '789'], 'message' => ['text' => 'Hola']]);
+        $channel['tenant_id']++;
+        $this->assertSame('CHANNEL_NOT_CONFIGURED', app(MetaMessengerTransport::class)->send($channel, '789', 'No', 'nonce')->errorCode);
+        Http::assertSentCount(1);
     }
 
     public function test_invalid_signature_is_rejected_on_neutral_meta_webhook(): void

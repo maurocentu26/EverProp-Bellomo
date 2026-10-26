@@ -182,6 +182,8 @@ Route::middleware('tenant')->group(function (): void {
 Route::middleware('throttle:meta-webhooks')->group(function (): void {
     Route::get('/webhooks/meta', [MetaWhatsAppWebhookController::class, 'verify']);
     Route::post('/webhooks/meta', [MetaWhatsAppWebhookController::class, 'receive']);
+    Route::get('/webhooks/meta/instagram', [MetaWhatsAppWebhookController::class, 'verify'])->name('meta.instagram.verify');
+    Route::post('/webhooks/meta/instagram', [MetaWhatsAppWebhookController::class, 'receive'])->name('meta.instagram.receive');
     Route::get('/webhooks/meta/whatsapp', [MetaWhatsAppWebhookController::class, 'verify']);
     Route::post('/webhooks/meta/whatsapp', [MetaWhatsAppWebhookController::class, 'receive']);
 });
