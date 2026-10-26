@@ -29,7 +29,7 @@ final class MetaWhatsAppWebhookController extends Controller
 
     public function verify(Request $request): Response
     {
-        $expected = (string) config('services.meta.webhook_verify_token');
+        $expected = (string) config($request->routeIs('meta.instagram.verify') ? 'services.meta.instagram_webhook_verify_token' : 'services.meta.webhook_verify_token');
         $token = (string) $request->query('hub_verify_token', '');
         $challenge = (string) $request->query('hub_challenge', '');
 
@@ -43,7 +43,8 @@ final class MetaWhatsAppWebhookController extends Controller
 
     public function receive(Request $request, MetaWebhookProcessor $processor): Response
     {
-        $secret = (string) config('services.meta.app_secret');
+        $instagramLogin = $request->routeIs('meta.instagram.receive');
+        $secret = (string) config($instagramLogin ? 'services.meta.instagram_app_secret' : 'services.meta.app_secret');
         if ($secret === '') {
             return response('Not configured', 503);
         }
@@ -64,7 +65,7 @@ final class MetaWhatsAppWebhookController extends Controller
 
         $payload = json_decode($raw, true);
         $object = is_array($payload) && is_string($payload['object'] ?? null) ? $payload['object'] : '';
-        if (! in_array($object, ['whatsapp_business_account', 'page', 'instagram'], true)) {
+        if (($instagramLogin && $object !== 'instagram') || ! in_array($object, ['whatsapp_business_account', 'page', 'instagram'], true)) {
             return response('Ignored', 200);
         }
 
@@ -86,7 +87,7 @@ final class MetaWhatsAppWebhookController extends Controller
             } else {
                 $messaging = $processor->arrays($entry['messaging'] ?? null);
                 if ($entryId !== null && $entryId !== '' && $messaging !== []) {
-                    $this->storeSocial($processor, $object, $entryId, $messaging);
+                    $this->storeSocial($processor, $object, $entryId, $messaging, $instagramLogin);
                 }
             }
         }
@@ -112,17 +113,17 @@ final class MetaWhatsAppWebhookController extends Controller
     }
 
     /** @param list<array<string, mixed>> $messaging */
-    private function storeSocial(MetaWebhookProcessor $processor, string $object, string $accountId, array $messaging): void
+    private function storeSocial(MetaWebhookProcessor $processor, string $object, string $accountId, array $messaging, bool $instagramLogin): void
     {
         $channelType = $object === 'instagram' ? 'INSTAGRAM_DM' : 'FACEBOOK_MESSENGER';
-        $channel = $processor->socialChannelFor($channelType, $accountId);
+        $channel = $processor->socialChannelFor($channelType, $accountId, $instagramLogin);
         if ($channel === null) {
             Log::warning('meta.webhook.unmapped_social_account', ['channel_type' => $channelType, 'mapped' => false]);
 
             return;
         }
         $providerObject = $object === 'instagram' ? 'instagram_messages' : 'messenger_messages';
-        $json = json_encode(['object' => $object, 'account_id' => $accountId, 'messaging' => $messaging], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $json = json_encode(['object' => $object, 'account_id' => $accountId, 'messaging' => $messaging, 'instagram_login' => $instagramLogin], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         $this->persistReceipt($channel, 'meta-social:', $providerObject, $accountId, $json);
     }
 

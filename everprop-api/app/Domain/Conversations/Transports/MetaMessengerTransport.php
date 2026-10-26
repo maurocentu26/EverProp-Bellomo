@@ -7,12 +7,13 @@ use App\Domain\Conversations\Data\SendResult;
 use App\Domain\Conversations\Exceptions\DeliveryAmbiguous;
 use App\Domain\Integrations\Services\IntegrationTokens;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 /**
  * Meta Messenger Platform text send for both Facebook Messenger (FACEBOOK_MESSENGER) and
  * Instagram Direct (INSTAGRAM_DM). Uses POST {graph}/{version}/me/messages with the integration's
- * Page access token. Disabled unless META_SEND_ENABLED=true (or META_SEND_FAKE=true outside prod).
+ * Page access token, or the Instagram account endpoint with its Instagram Login token. Disabled unless META_SEND_ENABLED=true (or META_SEND_FAKE=true outside prod).
  */
 final class MetaMessengerTransport implements ChannelTransport
 {
@@ -45,16 +46,26 @@ final class MetaMessengerTransport implements ChannelTransport
             return SendResult::rejected('CHANNEL_NOT_CONFIGURED', false);
         }
 
-        $url = sprintf('https://graph.facebook.com/%s/me/messages', config('services.meta.graph_version'));
+        $settings = json_decode((string) DB::table('integration_connections')
+            ->where('tenant_id', (int) $channel['tenant_id'])->where('id', (int) $channel['integration_id'])
+            ->where('provider', 'META')->value('settings_json'), true) ?: [];
+        $instagramLogin = ($settings['instagram_login'] ?? false) === true;
+        if ($instagramLogin && (($channel['channel_type'] ?? null) !== 'INSTAGRAM_DM'
+            || preg_match('/\A[0-9]{1,30}\z/', (string) ($channel['provider_account_id'] ?? '')) !== 1)) {
+            return SendResult::rejected('CHANNEL_NOT_CONFIGURED', false);
+        }
+        $url = $instagramLogin
+            ? sprintf('https://graph.instagram.com/%s/%s/messages', config('services.meta.graph_version'), $channel['provider_account_id'])
+            : sprintf('https://graph.facebook.com/%s/me/messages', config('services.meta.graph_version'));
+        $payload = ['recipient' => ['id' => $recipientProviderId], 'message' => ['text' => $text]];
+        if (! $instagramLogin) {
+            $payload['messaging_type'] = 'RESPONSE';
+        }
 
         try {
             $response = Http::withToken($token)
                 ->timeout((int) config('services.meta.send_timeout_seconds', 10))
-                ->post($url, [
-                    'recipient' => ['id' => $recipientProviderId],
-                    'messaging_type' => 'RESPONSE',
-                    'message' => ['text' => $text],
-                ]);
+                ->post($url, $payload);
         } catch (ConnectionException $e) {
             throw new DeliveryAmbiguous('Meta Messenger send outcome unknown.', 0, $e);
         }

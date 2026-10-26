@@ -61,7 +61,7 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
                 if (! is_array($stored) || ! is_string($stored['object'] ?? null) || ! is_string($stored['account_id'] ?? null) || ! is_array($stored['messaging'] ?? null)) {
                     throw new \UnexpectedValueException('INVALID_RECEIPT');
                 }
-                if (! $processor->social($stored['object'], $stored['account_id'], $processor->arrays($stored['messaging']), $this->tenantId, (int) $receipt->integration_id)) {
+                if (! $processor->social($stored['object'], $stored['account_id'], $processor->arrays($stored['messaging']), $this->tenantId, (int) $receipt->integration_id, ($stored['instagram_login'] ?? false) === true)) {
                     $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
 
                     return;
