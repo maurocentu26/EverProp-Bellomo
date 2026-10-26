@@ -213,6 +213,9 @@ export default function CobranzasPage() {
     let paidThisMonthArs = 0;
     let paidThisMonthUsd = 0;
     let paidThisMonthCount = 0;
+    let pendingThisMonthArs = 0;
+    let pendingThisMonthUsd = 0;
+    let pendingThisMonthCount = 0;
 
     const currentYearMonth = todayStr.substring(0, 7); // "YYYY-MM"
 
@@ -220,6 +223,12 @@ export default function CobranzasPage() {
       const { status } = evaluateInstallmentStatus(inst, todayStr);
       const cleanDue = inst.dueDate.split("T")[0];
       const dueTime = new Date(`${cleanDue}T00:00:00`).getTime();
+      if (cleanDue.startsWith(currentYearMonth) && status !== "PAID" && status !== "CANCELLED") {
+        pendingThisMonthCount++;
+        const balance = inst.amountRemaining ?? Math.max(0, inst.amountExpected - (inst.amountPaid ?? 0));
+        if (inst.currency === "USD") pendingThisMonthUsd += balance;
+        else if (inst.currency === "ARS") pendingThisMonthArs += balance;
+      }
 
       if (status === "OVERDUE") {
         overdueCount++;
@@ -266,6 +275,9 @@ export default function CobranzasPage() {
       paidThisMonthArs,
       paidThisMonthUsd,
       paidThisMonthCount,
+      pendingThisMonthArs,
+      pendingThisMonthUsd,
+      pendingThisMonthCount,
     };
   }, [visibleInstallments]);
 
@@ -505,8 +517,8 @@ export default function CobranzasPage() {
           </> : <p>Las cuotas cargadas no tienen cobros pendientes.</p>}
         </article>
         <div className="collections-summary">
-          <article><h2>Cobrado este mes</h2><p>Dólares cobrados</p><strong>{formatInstallmentAmount(metrics.paidThisMonthUsd, "USD")}</strong><p>Pesos cobrados: {formatInstallmentAmount(metrics.paidThisMonthArs, "ARS")}</p><p>{metrics.paidThisMonthCount} {metrics.paidThisMonthCount === 1 ? "cuota con pagos" : "cuotas con pagos"}</p></article>
-          <article><h2>Vencimientos cercanos</h2><strong>{metrics.dueTodayCount} hoy</strong><p>{metrics.next7DaysCount} en los próximos 7 días</p><p>{metrics.overdueCount} vencidas · {metrics.overdueLeadsCount} clientes</p></article>
+          <article><h2>Cobrado este mes</h2><strong>{formatInstallmentAmount(metrics.paidThisMonthUsd, "USD")}</strong><p>+ {formatInstallmentAmount(metrics.paidThisMonthArs, "ARS")}</p><p>{metrics.paidThisMonthCount} {metrics.paidThisMonthCount === 1 ? "cuota con pagos" : "cuotas con pagos"}</p></article>
+          <article><h2>Por cobrar este mes</h2><strong>{formatInstallmentAmount(metrics.pendingThisMonthUsd, "USD")}</strong><p>+ {formatInstallmentAmount(metrics.pendingThisMonthArs, "ARS")}</p><p>{metrics.pendingThisMonthCount} {metrics.pendingThisMonthCount === 1 ? "cuota pendiente" : "cuotas pendientes"}</p><p>Hoy: {metrics.dueTodayCount} · En 7 días: {metrics.next7DaysCount}</p><p>{metrics.overdueCount} vencidas · {metrics.overdueLeadsCount} clientes</p></article>
           {visibleInstallments.some(inst => !inst.currency) && <p role="status">Hay cuotas con moneda sin confirmar. Sus importes no se suman a ARS ni USD.</p>}
         </div>
       </section>

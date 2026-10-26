@@ -53,3 +53,42 @@ En `C:\w65\everprop-public`:
 ## Revisión solicitada el 2026-10-25
 
 Correcciones de la revisión de Claude implementadas en la misma rama y archivos locales, sin commit. Se sustituyó completamente la tabla PC, reutilizando el contenido de las tarjetas; no se duplican listas por breakpoint. Los resultados de verificación anteriores corresponden a esta revisión. Sigue pendiente la inspección visual en 1440×900 y 375×812 por los bloqueos del navegador descritos arriba; los tests JSX no prueban medidas reales, foco ni ausencia visual de truncados. Sin cambios de queries, policies, jobs, caché, permisos ni IA: no aplican revisiones especializadas de aislamiento/LLM a estas correcciones.
+
+
+## Revisión visual — Codex, 2026-10-26
+
+Rama de integración autorizada: `ticket/EVP-65-rediseno-visual`. Primera pasada implementada; **no terminada ni aprobada visualmente**. Ticket existente y En curso según confirmación expresa del usuario; sin cambios de estado en Jira.
+
+- Referencia: diapositiva 8, captura local `C:/Users/L A T I T U D E/Downloads/bellomo-rediseno-codex/capturas/s9.png` y sección Cobranzas & Cuotas del prototipo `prototipos/bellomo-panel-app.html`. Las capturas tienen una lámina inicial adicional; se cotejó el título, no solo el número.
+- Cambios frente a la referencia: Foco negro con Registrar pago blanco; resumen cobrado en mint y vencimientos en tarjeta blanca; importes con mayor jerarquía, filtros en pastillas y tarjetas de cuotas con radio 24. Se conservan los importes, monedas, formularios y confirmaciones existentes.
+- Archivos de pantalla: Sin cambios TSX; reglas .collections-* en everprop-public/src/app/admin-catalog.css. Estilos únicamente en `everprop-public/src/app/admin-catalog.css`, importado inmediatamente después de admin-design.css en layout.tsx; no se editó la hoja compartida.
+- Evidencia anterior existente: docs/tickets/evidence/EVP-72/1-pc-resumen.jpg; docs/tickets/evidence/EVP-72/5-telefono-cuota.jpg. No se presenta como evidencia de esta pasada.
+- Capturas posteriores requeridas: `docs/tickets/evidence/EVP-72/cobranzas-pc.png` y `cobranzas-telefono.png`: **no generadas**.
+- Solapamiento a 1440 y 375: **no ejecutado**, no se afirma `[]`. Scroll horizontal, palabras partidas, botones solo ícono y horarios: pendientes de comprobar en DOM real.
+- Uso real demo admin/asesor, agregar/editar/confirmar/cancelar, búsqueda/filtros, vacío y error: no verificados en navegador. Las pruebas de componentes existentes no reemplazan estos controles.
+- Oscuro, Grande y reducción de movimiento: reglas conservadas/extendidas, **sin inspección visual**. Objetivos de 17/20,4 px y botones 44/52 px pendientes de medición real.
+- Límite concreto: no hay navegador en CUA. Playwright CLI instalado no puede lanzar su proceso (`spawn EPERM`). Chrome DevTools permite listar una página vacía pero rechaza abrir/navegar con «MCP tool call requires approval, but approval policy is never». No se puede conceder esa aprobación desde esta sesión.
+- Comprobaciones disponibles: suite sin aislamiento de procesos, lint, TypeScript directo y detector; ver resultados finales en `docs/tickets/evidence/CODEX-PROGRESO.md`. Build compiló y falló al lanzar TypeScript (`spawn EPERM`); no es build OK.
+- Límites y diferencias pendientes: La referencia tiene tabla en PC; se conserva la composición existente de tarjetas y queda pendiente validar su densidad en navegador. No se simula el estado Listo ni un cobro que no ocurrió.
+
+Sin backend, SQL, entornos, secretos, Docker, commit, push ni deploy. No se modificaron primitivas ui, MainLayout, navegación ni archivos de Claude.
+
+## Conformidad — revisión del certificado, 2026-10-26
+
+Fuente cotejada por extracción del PDF local: `C:/Users/L A T I T U D E/Downloads/RECIBO DE PAGO Y CERTIFICADO DE CONFORMIDAD DE ETAPA.pdf` (8/9/2026), apartados 2–6 aplicables. La transcripción funcional del usuario tiene prioridad sobre el diseño.
+
+✓ significa comprobación de código o prueba automatizada descrita, no aprobación visual ni prueba contra API real. ✗ marca lo pendiente. Persistencia MySQL/Sanctum real: no aplica en mock (usa almacenamiento local); su verificación contra el servidor sigue pendiente.
+
+| Punto aplicable | Estado | Evidencia o límite |
+|---|---|---|
+| Alcance del certificado | ✓ preservación | Cobranzas no es una prestación enumerada por separado en el certificado; se mantienen los planes, cuotas, moneda, pagos y confirmaciones existentes. collections-redesign.test.mjs prueba que cancelar no escribe y confirmar escribe una vez. |
+| 6 · Roles | ✓ revisión de código y pruebas existentes | Se conservan visibleAgreements/visibleInstallments y canWrite. Admin ve todos los acuerdos; asesor conserva el filtro por asignación en mock; API mantiene sus permisos del servidor. No se modificó la política. |
+| 6 · Demo | ✓ pruebas de componente; ✗ recorrido real | Se conserva el alta de planes y registro de pagos soportados por mock. No se inventan transacciones ni importes. Falta repetición del flujo en navegador. |
+| Corrección de resumen | ✓ pruebas de cálculo/render | Negro a 1.2fr; resúmenes con mínimo 220 px y montos nowrap. Se quitó Dólares cobrados/Pesos cobrados redundante. Por cobrar este mes suma solo saldo pendiente de cuotas con vencimiento en ese mes, separa ARS/USD, excluye pagadas/canceladas y no suma moneda desconocida. Probado con ambas monedas, moneda null y estados cerrados. |
+| Composición PC/teléfono | ✗ nueva medición | CSS ajustado sin cambiar el marco común; Claude vuelve a medir luego de esta pasada. |
+
+Archivos de esta revisión: admin/cobranzas/page.tsx, collections-redesign.test.mjs y admin-catalog.css.
+
+Evidencia de Claude recibida en el chat: a 1366 y 375, texto normal y Grande, las seis pantallas anteriores dieron 0 encimados, 0 desbordes y sin scroll horizontal. Es evidencia informada por Claude, no ejecutada por Codex. **Los cambios de esta revisión quedan pendientes de nueva medición y capturas por Claude**, incluidos oscuro y reducir movimiento. No se intentó abrir el navegador ni iniciar servidor.
+
+Suite completa: 171 pruebas, 165 aprobadas y solo las 6 fallas conocidas de notifications-worker. Lint: 0 errores/127 advertencias; TypeScript directo: OK. Build: compiló, luego `spawn EPERM` al lanzar TypeScript; no es build OK. Resultados y pendientes centralizados en CODEX-PROGRESO.md. Sin commit, push, deploy ni cambios fuera del frontend y estos informes autorizados.
