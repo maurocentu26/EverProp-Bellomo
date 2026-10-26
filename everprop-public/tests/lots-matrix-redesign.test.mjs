@@ -26,22 +26,31 @@ test('EVP-75 exact codes, accessible native buttons, complete legend and singula
   const render=matrix(),tree=render(),all=nodes(tree);
   for(const code of ['12','12A','12B']) {
     const cell=all.find(n=>n.type==='button' && n.props['aria-label']?.startsWith(`${code} ·`));
-    assert.ok(cell); assert.equal(cell.props.type,'button'); assert.match(cell.props['aria-label'],/Manzana B.*Precio a consultar/);
+    assert.ok(cell); assert.equal(cell.props.type,'button'); assert.match(cell.props['aria-label'],/Manzana B.*Precio a confirmar/);
     assert.equal(text(cell.props.children[0]),code);
   }
   for(const label of ['Disponible','Reservado','Vendido','Alquilado','No vendible','No comercializado','Sin estado informado','1 reservada','1 vendida','1 disponible']) assert.ok(text(tree).includes(label),label);
   all.find(n=>n.type==='button'&&n.props['aria-label']?.startsWith('12A ·')).props.onClick();
-  const sheet=render(); assert.ok(text(sheet).includes('12A')); assert.ok(text(sheet).includes('Precio a consultar')); assert.ok(text(sheet).includes('Frente sin informar')); assert.ok(text(sheet).includes('Sin servicios informados'));
+  const sheet=render(); assert.ok(text(sheet).includes('12A')); assert.ok(text(sheet).includes('Precio a confirmar')); assert.ok(text(sheet).includes('Frente sin informar')); assert.ok(text(sheet).includes('Sin servicios informados'));
   assert.equal(nodes(sheet).find(n=>n.type==='Link').props.href,'/admin/properties/12A');
   assert.equal((text(sheet).match(/Atrás/g)||[]).length,1);
   assert.doesNotMatch(text(sheet),/Manzana Manzana|Datos de muestra|QA/);
+  const summary=nodes(sheet).find(n=>n.props?.className==='lots-selected');
+  for(const value of ['Lote seleccionado','12A','Reservado','Precio a confirmar','Ver ficha'])assert.ok(text(summary).includes(value),value);
+  assert.equal(nodes(sheet).find(n=>n.type==='Sheet').props.open,false);
+  nodes(summary).find(n=>n.type==='button').props.onClick();
+  assert.equal(nodes(render()).find(n=>n.type==='Sheet').props.open,true);
+  nodes(render()).find(n=>n.props?.className==='lots-back').props.onClick();
+  assert.equal(nodes(render()).find(n=>n.type==='Sheet').props.open,false);
 });
 test('EVP-75 sector filter, plural counts, missing sector and supplied details',()=>{
  const render=matrix(); let tree=render({properties:[...properties, {...properties[0],id:'extra'}, {...properties[0],id:'no-sector',sectorName:undefined}]});
  assert.match(text(tree),/2 disponibles/);
+ assert.match(text(nodes(tree).find(n=>n.props?.className==='lots-legend')),/Disponible · 3/);
  nodes(tree).find(n=>n.type==='select').props.onChange({target:{value:'Sin manzana informada'}});
  tree=render({properties:[...properties,{...properties[0],id:'no-sector',sectorName:undefined}]});
  assert.equal(nodes(tree).filter(n=>n.type==='button'&&n.props['aria-label']).length,1);
+ assert.match(text(nodes(tree).find(n=>n.props?.className==='lots-legend')),/Disponible · 1/);
  const detailed=matrix(); tree=detailed({properties:[{...properties[0],area_m2:300,commercialFeatures:{land:{frente_m:12,fondo_m:25,ochava_m2:4}},services:{water:true,internet:true}}]});
  nodes(tree).find(n=>n.type==='button'&&n.props['aria-label']).props.onClick();
  tree=detailed({properties:[]});
@@ -77,14 +86,12 @@ test('EVP-75 initial selection skips empty projects and respects project URL in 
   }
 });
 
-test('EVP-75 375px wraps four cells; 1440px keeps ten columns; Sheet price is prominent',()=>{
-  const css=read('../src/app/admin-design.css');
-  const desktop=css.match(/\.lots-grid \{([^}]+)\}/)[1];
-  const mobile=css.slice(css.lastIndexOf('@media (max-width: 767px)'));
-  assert.match(desktop,/repeat\(10,minmax\(64px,1fr\)\)/);
-  assert.ok(375<=767 && 1440>767);
-  assert.match(mobile,/\.lots-grid \{ grid-template-columns: repeat\(4,minmax\(0,1fr\)\); min-width: 0/);
-  assert.match(mobile,/\.lots-scroll \{ overflow-x: visible/);
-  assert.match(mobile,/\.lots-cell \{[^}]*min-height: 52px/);
-  assert.match(css,/\.lots-sheet-body \.inventory-price \{ font-size: 30px; font-weight: 750/);
+test('EVP-75 current catalog stylesheet keeps flexible cells and moves selected summary below on phone',()=>{
+  const css=read('../src/app/admin-catalog.css');
+  const mobile=css.slice(css.indexOf('@media (width < 768px)'));
+  assert.match(css,/\.lots-grid \{ grid-template-columns: repeat\(auto-fit,minmax\(64px,1fr\)\); min-width: 0/);
+  assert.match(css,/\.lots-content \{ display: grid; grid-template-columns: minmax\(0,1fr\) minmax\(260px,\.45fr\)/);
+  assert.match(mobile,/\.lots-content \{ grid-template-columns: minmax\(0,1fr\)/);
+  assert.match(mobile,/\.lots-page \.lots-cell \{ min-width: 0; width: 100%/);
+  assert.match(css,/\.lots-selected \.inventory-price \{ font-size: 30px; font-weight: 800/);
 });
