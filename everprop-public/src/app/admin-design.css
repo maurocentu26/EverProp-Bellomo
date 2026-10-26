@@ -522,8 +522,8 @@ html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
   .day-guide-editor { inset: auto 0 0; top: auto; left: 0; transform: none; translate: none; width: 100%; max-width: none; border-radius: 24px 24px 0 0; max-height: 92dvh; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
   .advisor-mobile-shell [data-admin-scroll-container] { padding-bottom: calc(112px + env(safe-area-inset-bottom)); background: #f1f5f9; }
   .dark .advisor-mobile-shell [data-admin-scroll-container] { background: var(--background); }
-  .advisor-dock { position: fixed; z-index: 40; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; right: 12px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); padding: 6px; border-radius: 28px; background: #0f172a; color: #cbd5e1; box-shadow: 0 8px 24px #0f172a26; }
-  .advisor-dock :is(a,button) { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; border-radius: 22px; font-size: 15px; font-weight: 650; }
+  .advisor-dock { position: fixed; z-index: 40; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; right: 12px; display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); padding: 6px; border-radius: 28px; background: #0f172a; color: #cbd5e1; box-shadow: 0 8px 24px #0f172a26; }
+  .advisor-dock :is(a,button) { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; min-width: 44px; border-radius: 22px; font-size: 16px; font-weight: 650; white-space: nowrap; word-break: normal; overflow-wrap: normal; }
   .advisor-dock svg { width: 23px; height: 23px; }
   .advisor-dock [aria-current="page"], .advisor-dock [aria-expanded="true"] { background: #334155; color: #fff; }
   .advisor-back { display: inline-flex; align-items: center; min-height: 52px; padding: 10px 16px; border-radius: 999px; background: var(--card); font-size: 17px; font-weight: 700; }
@@ -1426,3 +1426,11 @@ html:not(.dark) .mi-day .day-traffic-card.day-green { background: #d9f1e3; color
 .lead-selected-asset > div { min-width: 12rem; }
 .lead-selected-asset [aria-label="Quitar activo seleccionado"] { width: auto !important; height: auto; min-height: 44px; padding-inline: 14px; white-space: nowrap; }
 @media (width < 768px) { .lead-categories { grid-template-columns: minmax(0, 1fr) !important; } .lead-categories button { flex-direction: row !important; align-items: center !important; min-height: 52px; } }
+
+/* EVP-57: one row of four shortcuts for both roles; the topbar menu covers the rest. */
+@media (width < 768px) {
+  .advisor-dock { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .advisor-dock .relative > span { top: -8px; right: -18px; }
+  .admin-workspace:has(.advisor-dock) [data-admin-scroll-container] { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+  html.wa-chat-open .advisor-dock { display: none; }
+}

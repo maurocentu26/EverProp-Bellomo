@@ -388,6 +388,7 @@ export default function AdvisorCockpit() {
           {user?.role === "ADMIN" && <label>Asesor <select value={globalSelectedAgentId} onChange={e => setGlobalSelectedAgentId(e.target.value)}><option value="all">Todo el equipo</option>{advisors.map(advisor => <option key={advisor.id} value={advisor.id}>{advisor.name}</option>)}</select></label>}
           <Link className="mi-day-secondary" href="/admin/leads/new"><Plus aria-hidden />Nuevo lead</Link>
           <Link className="mi-day-secondary" href="/admin/agenda"><CalendarDays aria-hidden />Mi agenda</Link>
+          <Link className="mi-day-secondary" href="/admin/conversaciones"><MessageCircle aria-hidden />Conversaciones</Link>
           <Button variant="outline" onClick={() => setShowMonthBalance(!showMonthBalance)}>Balance del mes</Button>
         </div>
       </header>
