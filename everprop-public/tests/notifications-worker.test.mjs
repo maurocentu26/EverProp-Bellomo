@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const source = fs.readFileSync(new URL('../public/notifications-sw.js', import.meta.url), 'utf8');
-function worker(windows = []) {
+function worker(windows = [], navigator = {}) {
   const handlers = {}, opened = [], shown = [];
   vm.runInNewContext(source, { URL, self: {
+    navigator,
     location: { origin: 'https://crm.example.com' },
     addEventListener: (name, handler) => { handlers[name] = handler; },
     clients: { matchAll: async () => windows, openWindow: async url => { opened.push(url); } },
@@ -37,3 +38,21 @@ test('malformed push payload still shows a visible notification with sound reque
   assert.equal(w.shown[0].options.silent, false);
   assert.equal(w.shown[0].options.requireInteraction, true);
 });
+for (const rejects of [false, true]) {
+  test(`badges ${rejects ? 'reject without blocking notifications' : 'are set and cleared when supported'}`, async () => {
+    const calls = [];
+    const badge = async name => {
+      calls.push(name);
+      if (rejects) throw Error('Badging unavailable');
+    };
+    const w = worker([], { setAppBadge: () => badge('set'), clearAppBadge: () => badge('clear') });
+    let pending;
+    w.handlers.push({ waitUntil: promise => { pending = promise; } });
+    await pending;
+    w.handlers.notificationclick({ notification: { data: { url: '/admin/notifications' }, close() {} }, waitUntil: promise => { pending = promise; } });
+    await pending;
+    assert.deepEqual(calls, ['set', 'clear']);
+    assert.equal(w.shown.length, 1);
+    assert.deepEqual(w.opened, ['https://crm.example.com/admin/notifications']);
+  });
+}

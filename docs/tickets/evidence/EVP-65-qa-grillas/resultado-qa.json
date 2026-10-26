@@ -1,0 +1,29 @@
+{
+  "ticket": "EVP-65",
+  "branch": "ticket/EVP-65-qa-grillas",
+  "base": "db15a09",
+  "ramiro_content": "62e94b5",
+  "backend_aligned": true,
+  "coverage": "partial",
+  "grid_regressions_passed": 4,
+  "viewport_checks": 134,
+  "document_overflows": 0,
+  "endpoint_not_found": 0,
+  "interactive_checks": 17,
+  "frontend_unit_pass": 175,
+  "frontend_unit_fail_baseline": 6,
+  "build": "pass",
+  "lint_errors": 0,
+  "lint_warnings": 126,
+  "local_fixture_cleaned": true,
+  "local_schema": "66 tables / 143 foreign keys / verified",
+  "unverified": [
+    "Safari/Firefox y dispositivo físico",
+    "WCAG exhaustivo y todos los roles",
+    "subidas a R2, publicación y mensajería externa"
+  ],
+  "frontend_unit_fail": 0,
+  "notification_tests_pass": 8,
+  "notification_fix": "Mock navigator y cobertura de badges exitosos/rechazados",
+  "grid_regression_rerun": "4/4 pass"
+}
