@@ -18,18 +18,55 @@ const card = { exports: {}, require(name) {
 } };
 vm.runInNewContext(compile('../src/components/admin/PropertyList.tsx'), card);
 
+test('EVP-73 mock catalog exposes every contracted type and filters operations without losing reset',async()=>{
+ const rows=['sale','rent','temporal'].map((operation,i)=>({id:String(i),operation,propertyType:'Lote',status:'available'}));
+ const state=[],effects=[];let cursor=0;
+ const components=new Proxy({}, {get:(_,key)=>key});
+ const treeJsx=(type,props)=>({type,props});
+ const context={exports:{},require(name){
+  if(name==='react')return {useState(initial){const i=cursor++;if(!(i in state))state[i]=typeof initial==='function'?initial():initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value;}];},useMemo:fn=>fn(),useEffect:fn=>effects.push(fn),useRef:value=>({current:value})};
+  if(name==='react/jsx-runtime')return {jsx:treeJsx,jsxs:treeJsx};
+  if(name==='@/lib/data-mode')return {isMockDataMode:true};
+  if(name==='@/components/admin/PropertyList')return {default:'PropertyList'};
+  if(name==='@/lib/auth-context')return {useAuth:()=>({invalidateSession(){}})};
+  if(name==='@/hooks/use-current-session')return {useCurrentSession:()=>({isAdvisor:true})};
+  if(name==='@/lib/admin-storage')return {loadPropertyList:()=>rows,loadProjectList:()=>[]};
+  return components;
+ }};
+ vm.runInNewContext(compile('../src/app/admin/properties/page.tsx'),context);
+ const render=()=>{cursor=0;return context.exports.default();};
+ const nodes=t=>!t||typeof t!=='object'?[]:Array.isArray(t)?t.flatMap(nodes):[t,...nodes(t.props?.children)];
+ const text=t=>t==null?'':typeof t!=='object'?String(t):Array.isArray(t)?t.map(text).join(''):text(t.props?.children);
+ render();effects[0]();await Promise.resolve();await Promise.resolve();
+ const select=label=>nodes(nodes(render()).find(n=>n.type==='label'&&text(n).startsWith(label))).find(n=>n.type==='select');
+ const type=select('Tipo');
+ for(const label of ['Lotes','Departamentos','Locales','Cocheras','Casas'])assert.ok(text(type).includes(label),label);
+ const listed=()=>nodes(render()).find(n=>n.type==='PropertyList').props.properties;
+ assert.equal(listed().length,3);
+ for(const operation of ['sale','rent','temporal']) {
+  select('Operación').props.onChange({target:{value:operation}});
+  assert.deepEqual(Array.from(listed(),p=>p.operation),[operation]);
+ }
+ select('Tipo').props.onChange({target:{value:'HOUSE'}});assert.equal(nodes(render()).some(n=>n.type==='PropertyList'),false);
+ nodes(render()).find(n=>n.type==='Button'&&text(n)==='Limpiar filtros').props.onClick();
+ assert.equal(listed().length,3);assert.equal(select('Operación').props.value,'all');
+});
+
 test('EVP-73 renders 12, 12A and 12B as separate cards and preserves Inventory nulls', () => {
   const properties = ['12','12A','12B'].map((code,index) => ({ id: code, unitNumber: code, title: `Unidad ${code}`, propertyType: 'Lote', projectId: 'p1', status: index === 1 ? 'reserved' : 'available', area_m2: 280, price: 0, currency: 'USD', inventoryPrice: index === 2 ? null : 38500, inventoryCurrency: index === 1 ? null : 'USD' }));
   const html = renderToStaticMarkup(React.createElement(card.exports.default, { properties, projects: [{id:'p1',name:'Proyecto prueba'}] }));
   assert.equal((html.match(/<article/g) || []).length, 3);
   for (const code of ['12','12A','12B']) { assert.ok(html.includes(`<h3>${code}</h3>`)); assert.ok(html.includes(`href="/admin/properties/${code}"`)); }
-  assert.match(html, /Moneda sin confirmar/);
-  assert.match(html, /Precio a consultar/);
+  assert.equal((html.match(/Precio a confirmar/g) || []).length, 2);
+  assert.doesNotMatch(html, /Moneda sin confirmar|Precio a consultar/);
   assert.match(html, /USD 38.500/);
   assert.match(html, /Reservado/);
   assert.match(html, /280 m²/);
   assert.doesNotMatch(html, /<table/);
   assert.equal(labels.exports.inventoryPriceLabel({price:0,currency:'ARS'}), 'ARS 0');
+  assert.equal(labels.exports.inventoryPriceLabel({price:123,currency:'USD',inventoryCurrency:null}), 'Precio a confirmar');
+  assert.equal(labels.exports.inventoryPriceLabel({price:123,currency:'USD',inventoryPrice:null}), 'Precio a confirmar');
+  assert.equal(labels.exports.inventoryPriceLabel({price:123,currency:'ARS'}), 'ARS 123');
 });
 
 test('EVP-73 editing reviews all fields, preserves null currency and writes only once after confirmation', async () => {
@@ -92,7 +129,7 @@ test('EVP-73 detail: single identity, location without empty parts, advisor read
   assert.equal(text(all.find(n=>n.type==='h1')),'Unidad 12A');
   assert.ok(text(tree).includes('San Salvador de Jujuy'));
   assert.ok(!text(tree).includes(', San Salvador'));
-  assert.ok(text(tree).includes('Precio a consultar'));
+  assert.ok(text(tree).includes('Precio a confirmar'));
   assert.equal(all.filter(n=>n.props?.['aria-pressed']!==undefined).length,0);
   const manager=all.find(n=>n.props?.title==='Calendario de Visitas');
   assert.equal(manager.props.confirmSchedule({leadName:'Visitante prueba',phone:'555',email:'prueba@example.test',scheduledAt:'2099-01-01T15:00:00Z',notes:'Nota prueba'}),false);

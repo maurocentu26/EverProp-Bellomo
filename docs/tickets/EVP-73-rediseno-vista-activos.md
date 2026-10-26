@@ -70,3 +70,22 @@ Esta sección reemplaza las descripciones anteriores de cabecera y calendario de
 ### Pendientes y riesgos
 
 Quedan pendientes validación visual en navegador, foco/teclado y prueba contra API real. Los seis fallos ajenos de notificaciones siguen abiertos. No se inició Docker, no se leyó configuración privada, no hubo despliegue, migración, commit, push ni PR. No se cambiaron consultas, políticas, contratos de API ni IA, por lo que no aplican revisiones especializadas de tenant/LLM a esta corrección de presentación.
+
+
+## Revisión visual — Codex, 2026-10-26
+
+Rama de integración autorizada: `ticket/EVP-65-rediseno-visual`. Primera pasada implementada; **no terminada ni aprobada visualmente**. Ticket existente y En curso según confirmación expresa del usuario; sin cambios de estado en Jira.
+
+- Referencia: diapositiva 9, captura local `C:/Users/L A T I T U D E/Downloads/bellomo-rediseno-codex/capturas/s10.png` y sección Activos & Unidades del prototipo `prototipos/bellomo-panel-app.html`. Las capturas tienen una lámina inicial adicional; se cotejó el título, no solo el número.
+- Cambios frente a la referencia: Tarjetas blancas de radio 24, precio destacado, disponibilidad en pastillas con palabra, botones redondos y filtros de radio 24. Error del inventario sin «mock». Se conservan códigos completos y el helper de moneda/precio.
+- Archivos de pantalla: everprop-public/src/app/admin/properties/page.tsx. Estilos únicamente en `everprop-public/src/app/admin-catalog.css`, importado inmediatamente después de admin-design.css en layout.tsx; no se editó la hoja compartida.
+- Evidencia anterior existente: docs/tickets/evidence/EVP-73/1-pc-lista.jpg; docs/tickets/evidence/EVP-73/4-telefono-lista.jpg. No se presenta como evidencia de esta pasada.
+- Capturas posteriores requeridas: `docs/tickets/evidence/EVP-73/activos-pc.png` y `activos-telefono.png`: **no generadas**.
+- Solapamiento a 1440 y 375: **no ejecutado**, no se afirma `[]`. Scroll horizontal, palabras partidas, botones solo ícono y horarios: pendientes de comprobar en DOM real.
+- Uso real demo admin/asesor, agregar/editar/confirmar/cancelar, búsqueda/filtros, vacío y error: no verificados en navegador. Las pruebas de componentes existentes no reemplazan estos controles.
+- Oscuro, Grande y reducción de movimiento: reglas conservadas/extendidas, **sin inspección visual**. Objetivos de 17/20,4 px y botones 44/52 px pendientes de medición real.
+- Límite concreto: no hay navegador en CUA. Playwright CLI instalado no puede lanzar su proceso (`spawn EPERM`). Chrome DevTools permite listar una página vacía pero rechaza abrir/navegar con «MCP tool call requires approval, but approval policy is never». No se puede conceder esa aprobación desde esta sesión.
+- Comprobaciones disponibles: suite sin aislamiento de procesos, lint, TypeScript directo y detector; ver resultados finales en `docs/tickets/evidence/CODEX-PROGRESO.md`. Build compiló y falló al lanzar TypeScript (`spawn EPERM`); no es build OK.
+- Límites y diferencias pendientes: No se agregan reservas, plazos ni nombres que el inventario no informa. No se agrega Ofrecer sin flujo existente. Los diálogos, navegación y VisitManager compartidos no se modificaron.
+
+Sin backend, SQL, entornos, secretos, Docker, commit, push ni deploy. No se modificaron primitivas ui, MainLayout, navegación ni archivos de Claude.

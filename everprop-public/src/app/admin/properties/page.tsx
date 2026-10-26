@@ -27,6 +27,13 @@ const statusFilters = [
   { id: "not_marketed", label: "No comercializados" },
   { id: "unknown", label: "Sin estado informado" },
 ] as const;
+const typeFilters = [
+  { id: 'LOT', label: 'Lotes', type: 'Lote' },
+  { id: 'APARTMENT', label: 'Departamentos', type: 'Departamento' },
+  { id: 'LOCAL', label: 'Locales', type: 'Local' },
+  { id: 'GARAGE', label: 'Cocheras', type: 'Cochera' },
+  { id: 'HOUSE', label: 'Casas', type: 'Casa' },
+];
 
 export default function AllPropertiesPage() {
   const { invalidateSession } = useAuth();
@@ -44,6 +51,7 @@ export default function AllPropertiesPage() {
   const [selectedManzana, setSelectedManzana] = useState<string>("all");
   
   const [selectedType, setSelectedType] = useState("all");
+  const [selectedOperation, setSelectedOperation] = useState("all");
   const [loadMoreError, setLoadMoreError] = useState("");
   const [hasMore, setHasMore] = useState(true);
   const requestVersion = useRef(0);
@@ -69,7 +77,7 @@ export default function AllPropertiesPage() {
 
       try {
         const [props, fetchedProjects] = await Promise.all([
-          loadEverpropPropertiesPage(1, { projectId: selectedProjectId, status: activeStatus }),
+          loadEverpropPropertiesPage(1, { projectId: selectedProjectId, status: activeStatus, category: selectedType, operation: selectedOperation }),
           loadEverpropProjects()
         ]);
         
@@ -93,7 +101,7 @@ export default function AllPropertiesPage() {
     return () => {
       active = false;
     };
-  }, [attempt, selectedProjectId, activeStatus, invalidateSession]);
+  }, [attempt, selectedProjectId, activeStatus, selectedType, selectedOperation, invalidateSession]);
 
   const availableManzanas = useMemo(() => {
     const set = new Set<string>();
@@ -108,14 +116,15 @@ export default function AllPropertiesPage() {
     let filtered = allProperties;
     if (isMockDataMode && selectedProjectId !== "all") filtered = filtered.filter(p => p.projectId === selectedProjectId);
     if (isMockDataMode && activeStatus !== "all") filtered = filtered.filter(p => p.status === activeStatus);
-    if (selectedType !== "all") filtered = filtered.filter(p => p.propertyType === selectedType);
+    if (selectedType !== "all" && (isMockDataMode || !typeFilters.some(type => type.id === selectedType))) filtered = filtered.filter(p => p.propertyType === (typeFilters.find(type => type.id === selectedType)?.type ?? selectedType));
+    if (isMockDataMode && selectedOperation !== "all") filtered = filtered.filter(p => p.operation === selectedOperation);
 
     if (selectedManzana !== "all") {
       filtered = filtered.filter(p => p.sectorName === selectedManzana);
     }
 
     return filtered;
-  }, [allProperties, selectedManzana, selectedType, selectedProjectId, activeStatus]);
+  }, [allProperties, selectedManzana, selectedType, selectedOperation, selectedProjectId, activeStatus]);
 
   const handleLoadMore = async () => {
     if (loadingMore.current) return;
@@ -125,7 +134,7 @@ export default function AllPropertiesPage() {
     setLoadMoreError("");
     try {
       const nextPage = page + 1;
-      const newProps = await loadEverpropPropertiesPage(nextPage, { projectId: selectedProjectId, status: activeStatus });
+      const newProps = await loadEverpropPropertiesPage(nextPage, { projectId: selectedProjectId, status: activeStatus, category: selectedType, operation: selectedOperation });
       if (version !== requestVersion.current) return;
       setHasMore(newProps.length === 100);
       if (newProps.length === 0) return;
@@ -149,7 +158,7 @@ export default function AllPropertiesPage() {
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
           <div>
             <h1 className="text-xl font-bold text-foreground">No se pudo cargar el inventario</h1>
-            <p className="mt-2 text-sm text-slate-600">{dataState.message} No se cargaron activos mock.</p>
+            <p className="mt-2 text-sm text-slate-600">No pudimos actualizar las unidades. Volvé a intentar.</p>
             <Button
               type="button"
               variant="outline"
@@ -175,10 +184,11 @@ export default function AllPropertiesPage() {
       </header>
       <section aria-label="Filtros de activos" className="inventory-filters">
         <label>Proyecto<select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}><option value="all">Todos</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-        <label>Tipo<select value={selectedType} onChange={e => setSelectedType(e.target.value)}><option value="all">Todos</option>{Array.from(new Set(allProperties.map(p => p.propertyType))).sort().map(type => <option key={type}>{type}</option>)}</select></label>
+        <label>Tipo<select value={selectedType} onChange={e => setSelectedType(e.target.value)}><option value="all">Todos</option>{typeFilters.map(type => <option key={type.id} value={type.id}>{type.label}</option>)}{Array.from(new Set(allProperties.map(p => p.propertyType))).filter(type => !typeFilters.some(filter => filter.type === type)).sort().map(type => <option key={type}>{type}</option>)}</select></label>
+        <label>Operación<select value={selectedOperation} onChange={e => setSelectedOperation(e.target.value)}><option value="all">Todas</option><option value="sale">Venta</option><option value="rent">Alquiler</option><option value="temporal">Temporal</option><option value="leasing">Leasing</option><option value="unknown">Sin operación informada</option></select></label>
         <label>Disponibilidad<select value={activeStatus} onChange={e => setActiveStatus(e.target.value as typeof activeStatus)}>{statusFilters.map(status => <option key={status.id} value={status.id}>{status.label}</option>)}</select></label>
         <label>Manzana o sector<select value={selectedManzana} onChange={e => setSelectedManzana(e.target.value)}><option value="all">Todas</option>{availableManzanas.map(m => <option key={m}>{m}</option>)}</select></label>
-        <Button variant="outline" onClick={() => {setSelectedProjectId('all'); setSelectedType('all'); setActiveStatus('all'); setSelectedManzana('all');}}><RotateCcw aria-hidden="true" size={20} />Limpiar filtros</Button>
+        <Button variant="outline" onClick={() => {setSelectedProjectId('all'); setSelectedType('all'); setSelectedOperation('all'); setActiveStatus('all'); setSelectedManzana('all');}}><RotateCcw aria-hidden="true" size={20} />Limpiar filtros</Button>
       </section>
       <p>{filteredProperties.length.toLocaleString('es-AR')} {filteredProperties.length === 1 ? 'unidad' : 'unidades'}</p>
       {filteredProperties.length ? <PropertyList properties={filteredProperties} projects={projects} /> : <section className="inventory-empty"><Building2 aria-hidden="true" size={32} /><h2>No hay unidades para mostrar</h2><p>Revisá los filtros o cargá más unidades del inventario.</p></section>}

@@ -15,8 +15,8 @@ export function propertyOperationLabel(operation: Property['operation']) {
 export function inventoryPriceLabel(property: Property) {
   const price = property.inventoryPrice !== undefined ? property.inventoryPrice : property.price;
   const currency = property.inventoryCurrency !== undefined ? property.inventoryCurrency : property.currency;
-  if (price == null) return 'Precio a consultar';
+  if (price == null || currency == null) return 'Precio a confirmar';
   const decimals = Number.isInteger(price) ? 0 : 2;
   const amount = price.toLocaleString('es-AR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-  return currency == null ? `${amount} · Moneda sin confirmar` : `${currency} ${amount}`;
+  return `${currency} ${amount}`;
 }

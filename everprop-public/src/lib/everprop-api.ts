@@ -331,9 +331,12 @@ async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   };
 }
 
-export async function loadEverpropPropertiesPage(page: number, filters?: { projectId?: string; status?: string }): Promise<Property[]> {
+export async function loadEverpropPropertiesPage(page: number, filters?: { projectId?: string; status?: string; category?: string; operation?: string }): Promise<Property[]> {
   let url = `/api/v1/admin/properties?per_page=100&page=${page}`;
   if (filters?.projectId && filters.projectId !== 'all') url += `&project=${filters.projectId}`;
+  // The API validates category against its enum; free-text types from the data only filter locally.
+  if (filters?.category && ['LOT', 'GARAGE', 'LOCAL', 'TRADITIONAL', 'APARTMENT', 'HOUSE'].includes(filters.category)) url +=`&category=${encodeURIComponent(filters.category)}`;
+  if (filters?.operation && filters.operation !== 'all') url += `&operation=${encodeURIComponent(filters.operation === 'temporal' ? 'TEMPORARY' : filters.operation.toUpperCase())}`;
   if (filters?.status && filters.status !== 'all') {
     // If the frontend uses 'reserved' we map it, else pass as is
     const apiStatus = filters.status === 'reserved' ? 'RESERVED' : filters.status.toUpperCase();
