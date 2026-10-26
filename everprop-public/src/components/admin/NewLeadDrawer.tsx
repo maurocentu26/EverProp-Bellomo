@@ -81,7 +81,7 @@ const CATEGORIES: AssetCategoryOption[] = [
   },
   {
     id: "comercial",
-    title: "Comerciales (cochera/locales)",
+    title: "Locales y cocheras",
     subtitle: "Espacios de estacionamiento, locales y oficinas",
     icon: Store,
     color: "text-indigo-300 border-indigo-700 bg-indigo-950/60",
