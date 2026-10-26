@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./admin-design.css";
+import "./admin-catalog.css";
 import "./panel-text-size.css";
 import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
