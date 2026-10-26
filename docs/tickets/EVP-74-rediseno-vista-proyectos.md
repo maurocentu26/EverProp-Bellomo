@@ -54,3 +54,22 @@ Se reutilizaron PropertyList, inventoryPriceLabel, los lectores paginados, la ca
 La escritura real de lotes, la autenticación y los materiales no se probaron contra un entorno desplegado. El helper preexistente de carga masiva convierte `projectId` a número, mientras el catálogo usa `public_id`; debe comprobarse la compatibilidad del identificador en el entorno antes de usar esa escritura. No se alteró la API ni el helper en este ticket.
 
 No se configuró staging ni producción. Las pruebas locales no validan sus dominios, CORS/R2, hosts/Sanctum/cookies, proveedores o storage. La revisión visual en navegador y los seis fallos de notificaciones quedan explícitamente pendientes; no se presenta la suite completa como aprobada.
+
+
+## Revisión visual — Codex, 2026-10-26
+
+Rama de integración autorizada: `ticket/EVP-65-rediseno-visual`. Primera pasada implementada; **no terminada ni aprobada visualmente**. Ticket existente y En curso según confirmación expresa del usuario; sin cambios de estado en Jira.
+
+- Referencia: diapositiva 10, captura local `C:/Users/L A T I T U D E/Downloads/bellomo-rediseno-codex/capturas/s11.png` y sección Proyectos & Desarrollos del prototipo `prototipos/bellomo-panel-app.html`. Las capturas tienen una lámina inicial adicional; se cotejó el título, no solo el número.
+- Cambios frente a la referencia: Portadas de 200 px de alto con imágenes existentes, tarjetas de radio 24, conteos en pastillas pastel, acceso Ver matriz y barra accesible de disponibilidad calculada exclusivamente sobre inventario cargado; animación de 700 ms desactivada al reducir movimiento.
+- Archivos de pantalla: everprop-public/src/components/admin/ProjectCard.tsx; everprop-public/tests/projects-redesign.test.mjs. Estilos únicamente en `everprop-public/src/app/admin-catalog.css`, importado inmediatamente después de admin-design.css en layout.tsx; no se editó la hoja compartida.
+- Evidencia anterior existente: docs/tickets/evidence/EVP-74/1-pc-lista.jpg; docs/tickets/evidence/EVP-74/3-telefono-lista.jpg. No se presenta como evidencia de esta pasada.
+- Capturas posteriores requeridas: `docs/tickets/evidence/EVP-74/proyectos-pc.png` y `proyectos-telefono.png`: **no generadas**.
+- Solapamiento a 1440 y 375: **no ejecutado**, no se afirma `[]`. Scroll horizontal, palabras partidas, botones solo ícono y horarios: pendientes de comprobar en DOM real.
+- Uso real demo admin/asesor, agregar/editar/confirmar/cancelar, búsqueda/filtros, vacío y error: no verificados en navegador. Las pruebas de componentes existentes no reemplazan estos controles.
+- Oscuro, Grande y reducción de movimiento: reglas conservadas/extendidas, **sin inspección visual**. Objetivos de 17/20,4 px y botones 44/52 px pendientes de medición real.
+- Límite concreto: no hay navegador en CUA. Playwright CLI instalado no puede lanzar su proceso (`spawn EPERM`). Chrome DevTools permite listar una página vacía pero rechaza abrir/navegar con «MCP tool call requires approval, but approval policy is never». No se puede conceder esa aprobación desde esta sesión.
+- Comprobaciones disponibles: suite sin aislamiento de procesos, lint, TypeScript directo y detector; ver resultados finales en `docs/tickets/evidence/CODEX-PROGRESO.md`. Build compiló y falló al lanzar TypeScript (`spawn EPERM`); no es build OK.
+- Límites y diferencias pendientes: La barra mide unidades disponibles, no avance de obra ni ventas históricas. Sin inventario, no se muestra barra. Nuevo proyecto sigue oculto en mock porque depende de la API. No se inventan portadas si no hay imagen.
+
+Sin backend, SQL, entornos, secretos, Docker, commit, push ni deploy. No se modificaron primitivas ui, MainLayout, navegación ni archivos de Claude.

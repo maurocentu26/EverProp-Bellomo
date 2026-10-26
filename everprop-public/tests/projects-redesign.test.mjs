@@ -34,6 +34,18 @@ test('EVP-74 project card counts every state and only joins existing location pa
   assert.equal(labels.exports.projectLocationLabel({...project,location:{city:'',province:'Sin provincia informada'}}),'Ubicación sin informar');
   assert.deepEqual(Array.from(labels.exports.projectUnitCounts([])),[0,0,0]);
   assert.deepEqual(Array.from(labels.exports.projectUnitCounts(Array.from({length:150},()=>properties[0]))),[150,0,0]);
+  assert.match(html, /role="meter"[^>]*aria-valuemax="3"[^>]*aria-valuenow="1"/);
+  assert.match(html, /width:33\.33333333333333%/);
+  assert.match(html, /Vendidas: 1 de 3 unidades/);
+  const soldHtml=renderToStaticMarkup(React.createElement(Card,{project,properties:properties.slice(0,2)}));
+  assert.match(soldHtml,/aria-valuemax="2"[^>]*aria-valuenow="0"/);
+  assert.match(soldHtml,/width:0%/);
+  assert.match(html, /\/admin\/inventory-matrix\?projectId=p1/);
+  const emptyHtml=renderToStaticMarkup(React.createElement(Card,{project,properties:[]}));
+  assert.doesNotMatch(emptyHtml,/role="meter"|NaN|Infinity/);
+  const coverHtml=renderToStaticMarkup(React.createElement(Card,{project:{...project,coverImage:'/project-cover.jpg'},properties}));
+  assert.match(coverHtml,/role="img"[^>]*aria-label="Proyecto prueba"/);
+  assert.match(coverHtml,/project-cover.jpg/);
 });
 
 const nodes=t=>!t||typeof t!=='object'?[]:Array.isArray(t)?t.flatMap(nodes):[t,...nodes(t.props?.children)];
@@ -62,7 +74,7 @@ test('EVP-74 detail preserves 12, 12A, 12B and null price/currency; advisor has 
   assert.equal(list.props.readOnly,true);
   const html=renderToStaticMarkup(React.createElement(PropertyList,list.props));
   for(const code of ['12','12A','12B'])assert.ok(html.includes(`<h3>${code}</h3>`));
-  assert.match(html,/Precio a consultar/);assert.match(html,/Moneda sin confirmar/);assert.doesNotMatch(html,/Manzana Manzana/);
+  assert.equal((html.match(/Precio a confirmar/g)||[]).length,2);assert.doesNotMatch(html,/Moneda sin confirmar|Precio a consultar|Manzana Manzana/);
   advisor=false;cursor=0;tree=context.exports.default();
   assert.equal(nodes(tree).find(n=>n.type==='GenerateLotsModal').props.confirmBeforeSave,true);
 });
