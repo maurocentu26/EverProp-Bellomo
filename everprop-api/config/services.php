@@ -54,9 +54,11 @@ return [
 
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
+        'staging_enabled' => (bool) env('GEMINI_STAGING_ENABLED', false),
+        'railway_environment' => env('RAILWAY_ENVIRONMENT_NAME'),
         'input_rate' => env('GEMINI_INPUT_MICROS_PER_TOKEN', 0),
         'output_rate' => env('GEMINI_OUTPUT_MICROS_PER_TOKEN', 0),
-        'local_budget_usd' => env('GEMINI_LOCAL_BUDGET_USD', 10),
+        'local_budget_usd' => env('GEMINI_BUDGET_USD', env('GEMINI_LOCAL_BUDGET_USD', 10)),
     ],
 
     'anthropic' => [

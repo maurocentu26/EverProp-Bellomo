@@ -45,7 +45,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(StartSession::class, StartRevocableSession::class);
         $this->app->singleton(TransportRegistry::class);
-        // EVP-18/EVP-27: local-only copilot providers; explicit rates and budget are required before enabling.
+        // Explicit rates and budget are required; Gemini additionally permits an opted-in staging deployment.
         if (config('agent.llm_provider') === 'openai') {
             config(['agent.input_micros_per_token' => (float) config('services.openai.input_rate'),
                 'agent.output_micros_per_token' => (float) config('services.openai.output_rate')]);
@@ -62,9 +62,10 @@ class AppServiceProvider extends ServiceProvider
                 'conversations.copilot_monthly_usd' => min((float) config('conversations.copilot_monthly_usd'), $cap / 1_000_000)]);
         }
         $this->app->bind(LlmClient::class, fn (): LlmClient => match (config('agent.llm_provider')) {
-            'gemini' => (app()->environment('local')
+            'gemini' => (GeminiChatClient::environmentAllowed()
                 && filled(config('services.gemini.key')) && filled(config('agent.llm_model'))
                 && (float) config('services.gemini.input_rate') >= 0 && (float) config('services.gemini.output_rate') >= 0
+                && (blank(config('services.gemini.railway_environment')) || ((float) config('services.gemini.input_rate') > 0 && (float) config('services.gemini.output_rate') > 0))
                 && (float) config('services.gemini.local_budget_usd') > 0
                 ? new GeminiChatClient((string) config('services.gemini.key'), (string) config('agent.llm_model'), (int) config('agent.timeout_seconds'))
                 : new DisabledLlmClient),

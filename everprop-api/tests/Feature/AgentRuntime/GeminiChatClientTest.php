@@ -6,6 +6,7 @@ use App\Domain\AgentRuntime\Llm\DisabledLlmClient;
 use App\Domain\AgentRuntime\Llm\GeminiChatClient;
 use App\Domain\AgentRuntime\Llm\LlmClient;
 use App\Domain\AgentRuntime\Llm\LlmFailure;
+use App\Providers\AppServiceProvider;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
@@ -13,6 +14,71 @@ use Tests\TestCase;
 
 final class GeminiChatClientTest extends TestCase
 {
+    public function test_staging_requires_explicit_opt_in_and_production_is_always_refused(): void
+    {
+        $this->app['env'] = 'production';
+        Http::preventStrayRequests();
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => 'Test reply']]]]],
+        ])]);
+        config([
+            'agent.llm_provider' => 'gemini', 'agent.llm_model' => 'test-model',
+            'services.gemini.key' => 'test-key', 'services.gemini.input_rate' => 0.075,
+            'services.gemini.output_rate' => 0.30, 'services.gemini.local_budget_usd' => 2,
+        ]);
+
+        foreach ([['staging', false], ['production', true], ['', true], ['preview', true]] as [$environment, $enabled]) {
+            config(['services.gemini.railway_environment' => $environment, 'services.gemini.staging_enabled' => $enabled]);
+            $this->assertInstanceOf(DisabledLlmClient::class, app(LlmClient::class));
+            try {
+                (new GeminiChatClient('test-key', 'test-model', 20))->complete('Test', [], [], 50, false);
+                $this->fail('Expected environment refusal');
+            } catch (LlmFailure $e) {
+                $this->assertFalse($e->billable);
+            }
+        }
+        Http::assertNothingSent();
+
+        config(['services.gemini.railway_environment' => 'staging', 'services.gemini.staging_enabled' => true]);
+        foreach ([false, true] as $automatic) {
+            config(['conversations.ai_enabled' => $automatic]);
+            $client = app(LlmClient::class);
+            $this->assertInstanceOf(GeminiChatClient::class, $client);
+            $this->assertSame('Test reply', $client->complete('Test', [], [], 50, false)->text());
+        }
+        Http::assertSentCount(2);
+
+        config(['services.gemini.input_rate' => 0]);
+        $this->assertInstanceOf(DisabledLlmClient::class, app(LlmClient::class));
+        config(['services.gemini.input_rate' => 0.075, 'services.gemini.output_rate' => 0]);
+        $this->assertInstanceOf(DisabledLlmClient::class, app(LlmClient::class));
+
+        config(['services.gemini.output_rate' => 0.30]);
+        foreach (['services.gemini.key' => '', 'agent.llm_model' => '', 'services.gemini.local_budget_usd' => 0] as $key => $invalid) {
+            $previous = config($key);
+            config([$key => $invalid]);
+            $this->assertInstanceOf(DisabledLlmClient::class, app(LlmClient::class));
+            config([$key => $previous]);
+        }
+
+        $this->app['env'] = 'local';
+        config(['services.gemini.railway_environment' => 'production']);
+        $this->assertInstanceOf(DisabledLlmClient::class, app(LlmClient::class));
+    }
+
+    public function test_gemini_budget_clamps_all_existing_consumption_caps(): void
+    {
+        config([
+            'agent.llm_provider' => 'gemini', 'services.gemini.local_budget_usd' => 2,
+            'usage.global_cap_micros' => 30_000_000, 'usage.default_tenant_cap_micros' => 1_000_000,
+            'conversations.copilot_monthly_usd' => 10,
+        ]);
+        (new AppServiceProvider($this->app))->register();
+        $this->assertSame(2_000_000, config('usage.global_cap_micros'));
+        $this->assertSame(1_000_000, config('usage.default_tenant_cap_micros'));
+        $this->assertSame(2, config('conversations.copilot_monthly_usd'));
+    }
+
     public function test_translates_tool_roundtrip_and_usage(): void
     {
         $this->app['env'] = 'local';
