@@ -13,7 +13,7 @@ export function ResourceGrid({ assets }: { assets: Resource[] }) {
   const pictures = assets.filter(a => ["photo","render","logo"].includes(a.kind));
   const current = selected ? pictures.findIndex(a=>a.id===selected.id) : -1;
   return <>
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="resource-grid">
       {assets.map(asset => {
         const picture = ["photo", "render", "logo"].includes(asset.kind);
         return <article key={asset.id} className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm">

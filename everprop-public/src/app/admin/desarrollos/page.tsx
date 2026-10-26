@@ -144,7 +144,7 @@ export default function DesarrollosPage() {
           </p>
         </div>
       ) : (
-        <div className="inventory-cards">
+        <div className="inventory-cards project-cards">
           {projects.filter(p => filterType === "all" || p.type === filterType).map((project) => (
             <ProjectCard key={project.id} project={project} properties={properties} material={materials?.projects.find(p=>p.operationalIds.includes(project.id))} />
           ))}

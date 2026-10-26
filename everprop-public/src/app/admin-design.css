@@ -848,6 +848,12 @@ html[data-panel-text-size="grande"] :is(.collections-view,.collections-dialog) {
 .inventory-view h1 { font-size: clamp(28px,3vw,34px); font-weight: 750; }
 .inventory-view h2 { font-size: 24px; font-weight: 700; }
 .inventory-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; }
+.inventory-cards.project-cards { display: flex; flex-wrap: wrap; }
+.project-cards > article { flex: 1 1 calc((100% - 40px) / 3); min-width: 0; }
+.resource-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+.resource-grid > article { flex: 1 1 100%; min-width: 0; }
+@media (min-width: 640px) { .resource-grid > article { flex-basis: calc((100% - 16px) / 2); } }
+@media (min-width: 1280px) { .resource-grid > article { flex-basis: calc((100% - 32px) / 3); } }
 .inventory-card { min-width: 0; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); display: flex; flex-direction: column; gap: 12px; }
 .inventory-card-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .inventory-card h3 { font-size: 28px; font-weight: 750; overflow-wrap: break-word; }
@@ -880,12 +886,17 @@ html[data-panel-text-size="grande"] :is(.collections-view,.collections-dialog) {
 .inventory-dialog fieldset[hidden] { display: none; }
 .inventory-dialog[data-slot="dialog-content"] { background: var(--card); color: var(--foreground); }
 html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font-size: 20.4px; }
-@media (max-width: 1100px) { .inventory-cards { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 1100px) {
+ .inventory-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .project-cards > article { flex-basis: calc((100% - 20px) / 2); }
+}
 @media (max-width: 767px) {
  .inventory-cards { grid-template-columns: minmax(0,1fr); }
+ .project-cards > article { flex-basis: 100%; }
  .inventory-card { padding: 20px; }
  .inventory-filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 16px; }
  .inventory-filters > button { grid-column: 1 / -1; }
+ .inventory-filters > label:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
  .inventory-actions, .inventory-detail .flex:has(> button), .inventory-dialog [data-slot="dialog-footer"] { flex-direction: column; align-items: stretch; }
  .inventory-actions > a, .inventory-detail button, .inventory-dialog button { width: 100%; min-height: 52px; }
  .inventory-detail .lg\:grid-cols-3 { grid-template-columns: minmax(0,1fr); }
@@ -1366,7 +1377,8 @@ html:not(.dark) .mi-day .day-traffic-card.day-amber { background: #fde8d3; color
 html:not(.dark) .mi-day .day-traffic-card.day-blue { background: #dceafc; color: #2158b8; }
 html:not(.dark) .mi-day .day-traffic-card.day-green { background: #d9f1e3; color: #17784a; }
 .mi-day.day-board .day-traffic-card[aria-pressed="true"] { outline: 3px solid #141518; outline-offset: 3px; }
-.lead-categories { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.lead-categories { display: flex; flex-wrap: wrap; }
+.lead-categories > button { flex: 1 1 170px; min-width: 0; }
 .lead-categories button span { overflow-wrap: normal; text-wrap: balance; }
 /* Entrada al estilo code.xr Dashboard V16: tarjetas escalonadas y barras que crecen. */
 @media (prefers-reduced-motion: no-preference) {
@@ -1425,4 +1437,4 @@ html:not(.dark) .mi-day .day-traffic-card.day-green { background: #d9f1e3; color
 .admin-workspace [data-slot="sidebar-inner"] footer :is(p, span) { font-size: 15px; }
 .lead-selected-asset > div { min-width: 12rem; }
 .lead-selected-asset [aria-label="Quitar activo seleccionado"] { width: auto !important; height: auto; min-height: 44px; padding-inline: 14px; white-space: nowrap; }
-@media (width < 768px) { .lead-categories { grid-template-columns: minmax(0, 1fr) !important; } .lead-categories button { flex-direction: row !important; align-items: center !important; min-height: 52px; } }
+@media (width < 768px) { .lead-categories button { flex-basis: 100%; flex-direction: row !important; align-items: center !important; min-height: 52px; } }
