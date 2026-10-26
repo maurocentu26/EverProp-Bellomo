@@ -56,3 +56,43 @@ Según los contratos que ya consume el frontend, sin realizar consultas nuevas a
 - Ningún despliegue realizado: no se configuraron accesos de staging o producción. No hay cambios SQL ni variables nuevas. Si se propone pasar a producción, sigue pendiente verificar forwards en `schema_versions`, dominios definitivos, CORS/R2, hosts/Sanctum/cookies y `tenant_domains`, credenciales y permisos de proveedores, base de datos y storage; las pruebas locales no validan producción.
 
 Informe creado en la ruta solicitada fuera de `everprop-public`; los cambios de implementación están limitados a ese proyecto. Todo queda sin commit para revisión.
+
+
+## Revisión visual — Codex, 2026-10-26
+
+Rama de integración autorizada: `ticket/EVP-65-rediseno-visual`. Primera pasada implementada; **no terminada ni aprobada visualmente**. Ticket existente y En curso según confirmación expresa del usuario; sin cambios de estado en Jira.
+
+- Referencia: diapositiva 14, captura local `C:/Users/L A T I T U D E/Downloads/bellomo-rediseno-codex/capturas/s15.png` y sección Configuración del prototipo `prototipos/bellomo-panel-app.html`. Las capturas tienen una lámina inicial adicional; se cotejó el título, no solo el número.
+- Cambios frente a la referencia: Cuenta y Apariencia en dos columnas de tarjetas de radio 24; una columna en teléfono; campos de cuenta suaves y controles redondos. Se eliminaron nombre y correo de relleno: si faltan se muestra Sin datos. Los diálogos de confirmación conservan composición vertical.
+- Archivos de pantalla: everprop-public/src/app/admin/settings/page.tsx. Estilos únicamente en `everprop-public/src/app/admin-catalog.css`, importado inmediatamente después de admin-design.css en layout.tsx; no se editó la hoja compartida.
+- Evidencia anterior existente: docs/tickets/evidence/EVP-78/1-pc-preferencias.jpg; docs/tickets/evidence/EVP-78/3-telefono.jpg. No se presenta como evidencia de esta pasada.
+- Capturas posteriores requeridas: `docs/tickets/evidence/EVP-78/configuracion-pc.png` y `configuracion-telefono.png`: **no generadas**.
+- Solapamiento a 1440 y 375: **no ejecutado**, no se afirma `[]`. Scroll horizontal, palabras partidas, botones solo ícono y horarios: pendientes de comprobar en DOM real.
+- Uso real demo admin/asesor, agregar/editar/confirmar/cancelar, búsqueda/filtros, vacío y error: no verificados en navegador. Las pruebas de componentes existentes no reemplazan estos controles.
+- Oscuro, Grande y reducción de movimiento: reglas conservadas/extendidas, **sin inspección visual**. Objetivos de 17/20,4 px y botones 44/52 px pendientes de medición real.
+- Límite concreto: no hay navegador en CUA. Playwright CLI instalado no puede lanzar su proceso (`spawn EPERM`). Chrome DevTools permite listar una página vacía pero rechaza abrir/navegar con «MCP tool call requires approval, but approval policy is never». No se puede conceder esa aprobación desde esta sesión.
+- Comprobaciones disponibles: suite sin aislamiento de procesos, lint, TypeScript directo y detector; ver resultados finales en `docs/tickets/evidence/CODEX-PROGRESO.md`. Build compiló y falló al lanzar TypeScript (`spawn EPERM`); no es build OK.
+- Límites y diferencias pendientes: Se mantienen las tarjetas de configuración y sus permisos. No se inventan estados de conexión, avisos ni datos del usuario. Los controles compartidos de tema y tamaño se conservan. Falta revisión real en oscuro/Grande.
+
+Sin backend, SQL, entornos, secretos, Docker, commit, push ni deploy. No se modificaron primitivas ui, MainLayout, navegación ni archivos de Claude.
+
+## Conformidad — revisión del certificado, 2026-10-26
+
+Fuente cotejada por extracción del PDF local: `C:/Users/L A T I T U D E/Downloads/RECIBO DE PAGO Y CERTIFICADO DE CONFORMIDAD DE ETAPA.pdf` (8/9/2026), apartados 2–6 aplicables. La transcripción funcional del usuario tiene prioridad sobre el diseño.
+
+✓ significa comprobación de código o prueba automatizada descrita, no aprobación visual ni prueba contra API real. ✗ marca lo pendiente. Persistencia MySQL/Sanctum real: no aplica en mock (usa almacenamiento local); su verificación contra el servidor sigue pendiente.
+
+| Punto aplicable | Estado | Evidencia o límite |
+|---|---|---|
+| Alcance del certificado | ✓ preservación | El certificado no enumera una pantalla de Configuración. Se conservan cuenta, tema/tamaño, notificaciones y configuración de empresa existente. |
+| 6 · Roles | ✓ | settings-redesign.test.mjs verifica que permisos denegados no ofrecen acciones, tanto en API simulada como en mock. No se habilitaron botones de empresa basándose solo en el rol visual. |
+| 6 · Demo | ✓ en pruebas; ✗ uso real nuevo | Las preferencias de notificaciones se mantienen locales; las confirmaciones de IA, horarios y WhatsApp se prueban antes de cualquier escritura. No hay credenciales ni respuestas sensibles en el render. |
+| 5 · Acceso a avisos | ✓ revisión de código | Se conserva Ver mis notificaciones. Campana, contador y pestañas/acciones de notifications son componentes compartidos fuera de este reparto; no se modificaron ni se certifican aquí. |
+| Radio 24 y mayúsculas | ✓ inspección estática; ✗ nueva captura | Cada grupo conserva radio 24. Se inspeccionaron SettingsPage, PushPreferences, OutOfHoursAlerts, WhatsAppConnect, AiSettings y BusinessHoursSettings sin cadenas/títulos uppercase; regla local elimina text-transform y tracking de .uppercase si lo aporta una clase. No se cambiaron los componentes compartidos. |
+| Claro/oscuro/Grande | ✗ revalidación real | Controles y reglas existentes conservados. La medición informada por Claude cubre la pasada previa, no certifica los nuevos cambios. |
+
+Archivos de esta revisión: admin-catalog.css (.settings-view .uppercase); no se editaron componentes compartidos de configuración.
+
+Evidencia de Claude recibida en el chat: a 1366 y 375, texto normal y Grande, las seis pantallas anteriores dieron 0 encimados, 0 desbordes y sin scroll horizontal. Es evidencia informada por Claude, no ejecutada por Codex. **Los cambios de esta revisión quedan pendientes de nueva medición y capturas por Claude**, incluidos oscuro y reducir movimiento. No se intentó abrir el navegador ni iniciar servidor.
+
+Suite completa: 171 pruebas, 165 aprobadas y solo las 6 fallas conocidas de notifications-worker. Lint: 0 errores/127 advertencias; TypeScript directo: OK. Build: compiló, luego `spawn EPERM` al lanzar TypeScript; no es build OK. Resultados y pendientes centralizados en CODEX-PROGRESO.md. Sin commit, push, deploy ni cambios fuera del frontend y estos informes autorizados.

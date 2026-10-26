@@ -1,5 +1,4 @@
 "use client";
-import { isMockDataMode } from "@/lib/data-mode";
 import Link from "next/link";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -15,7 +14,7 @@ export default function SettingsPage() {
     <header><h1 className="text-2xl font-bold tracking-tight">Configuración</h1><p className="mt-2 text-sm text-muted-foreground">Preferencias para usar tu panel Bellomo.</p></header>
     <section className="rounded-2xl border border-border bg-card p-5">
       <h2 className="font-semibold">Tu cuenta</h2><p>Consultá el nombre y correo con los que ingresás al panel.</p>
-      <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">Nombre</dt><dd className="mt-1 break-words font-medium">{user?.name || (isMockDataMode ? "Marcos Villalba" : "Sin informar")}</dd></div><div><dt className="text-muted-foreground">Correo</dt><dd className="mt-1 break-all">{user?.email || (isMockDataMode ? "marcos@example.com" : "Sin informar")}</dd></div></dl>
+      <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">Nombre</dt><dd className="mt-1 break-words font-medium">{user?.name || "Sin datos"}</dd></div><div><dt className="text-muted-foreground">Correo</dt><dd className="mt-1">{user?.email || "Sin datos"}</dd></div></dl>
     </section>
     <section className="rounded-2xl border border-border bg-card p-5">
       <h2 className="font-semibold">Apariencia y lectura</h2><p>Elegí cómo querés ver y leer tu panel.</p>
