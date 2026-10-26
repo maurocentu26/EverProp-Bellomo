@@ -190,6 +190,7 @@ export default function CalendarAgenda() {
       const k = toArgentinaDateTimeInputValue(new Date(it.scheduledAt)).slice(0, 10);
       map.set(k, [...(map.get(k) ?? []), it]);
     });
+    map.forEach(events => events.sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt)));
     return map;
   }, [items]);
 
@@ -263,8 +264,9 @@ export default function CalendarAgenda() {
           <div className={`agenda-days agenda-days-${view}`}>
             {visibleDays.map(({ date, current }, index) => {
               const key = toKey(date), count = (eventsByDay.get(key) ?? []).length, month = view === "month";
-              return <button key={key} className={cn(!current && "agenda-other-month")} aria-pressed={selectedDayKey === key} aria-label={`${dayLabel(date)}, ${count} ${count === 1 ? "actividad" : "actividades"}`} onClick={() => selectDay(date)}>
-                {(!month || index < 7) && <span>{WEEKDAYS[date.getDay()]}</span>}<strong>{date.getDate()}</strong><span>{count > 0 ? `${count} ${count === 1 ? "cita" : "citas"}` : month ? "" : "—"}</span>
+              return <button key={key} className={cn(!current && "agenda-other-month")} aria-current={key === toArgentinaDateTimeInputValue(today).slice(0, 10) ? "date" : undefined} aria-pressed={selectedDayKey === key} aria-label={`${dayLabel(date)}, ${count} ${count === 1 ? "actividad" : "actividades"}`} onClick={() => selectDay(date)}>
+                {(!month || index < 7) && <span>{WEEKDAYS[date.getDay()]}</span>}<strong>{date.getDate()}</strong><span>{count > 0 ? `${count} ${count === 1 ? "cita" : "citas"}` : month ? "" : "Sin citas"}</span>
+                {!month && <span className="agenda-week-events">{(eventsByDay.get(key) ?? []).slice(0, 3).map(event => <span className="agenda-week-event" data-status={event.status} key={event.id}><b>{time(event.scheduledAt)} · {event.id.startsWith("followup-") ? "Llamar" : statusLabel(event.status)}</b><span>{event.leadName}</span></span>)}</span>}
               </button>;
             })}
           </div>
@@ -294,7 +296,7 @@ export default function CalendarAgenda() {
       </div>
       <Dialog open={!!deletingId} onOpenChange={open => { if (!open && !deleting.current) setDeletingId(null); }}>
         <DialogContent className="admin-workspace mi-agenda agenda-dialog">
-          <DialogHeader><DialogTitle>Cancelar cita</DialogTitle><DialogDescription>{isMockDataMode ? "Se eliminará esta cita de las muestras guardadas." : "La cita dejará de estar pendiente y se conservará en el historial."}</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Cancelar cita</DialogTitle><DialogDescription>{isMockDataMode ? "Se eliminará esta cita de tu agenda." : "La cita dejará de estar pendiente y se conservará en el historial."}</DialogDescription></DialogHeader>
           {cancelledItem && <dl className="agenda-review"><dt>Cliente</dt><dd>{cancelledItem.leadName}</dd><dt>Unidad</dt><dd>{cancelledItem.propertyTitle || "Sin unidad vinculada"}</dd><dt>Fecha y hora</dt><dd>{formatArgentinaDateTime(cancelledItem.scheduledAt)}</dd><dt>Asesor</dt><dd>{cancelledItem.agentName || "Sin informar"}</dd><dt>Contacto</dt><dd>{cancelledItem.phone || "Sin teléfono"} · {cancelledItem.email || "Sin correo"}</dd><dt>Notas</dt><dd>{cancelledItem.notes || "Sin notas"}</dd></dl>}
           <DialogFooter><Button variant="outline" disabled={isDeleting} onClick={() => setDeletingId(null)}>Conservar cita</Button><Button className="agenda-primary" disabled={isDeleting || !cancelledItem} onClick={() => deletingId && handleDelete(deletingId)}>{isDeleting ? "Cancelando…" : "Confirmar cancelación"}</Button></DialogFooter>
         </DialogContent>

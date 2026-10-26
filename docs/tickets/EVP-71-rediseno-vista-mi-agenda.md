@@ -56,3 +56,42 @@ No se leyeron entornos ni secretos. Sin Docker, commit, push, PR, merge o despli
 - Verificación posterior: lint PASS (0 errores, 144 advertencias), TypeScript `tsc --noEmit` PASS; suite 126 pruebas: 120 PASS y los mismos 6 FAIL del worker de notificaciones. Las cuatro pruebas de Agenda pasan, incluyendo aislamiento mock/API, fechas relativas, persistencia de cancelaciones y renovación diaria. `git diff --check` PASS. Detector: los mismos tres avisos previos de purple en el CSS compartido, fuera de Agenda.
 - Jira volvió a responder `Unknown tool`; se conserva la confirmación previa de ticket En curso. No hubo commit, push, PR, Docker ni despliegue. Solo archivos bajo `C:\w65`.
 - Pendiente: comprobación visual real a 1440×900 y 375×812; no había servidor en 3000–3003 y no se inició uno. Las pruebas de componentes no certifican geometría ni selectores nativos. Límite temporal: si faltan menos de 90 minutos para medianoche, no es posible tener simultáneamente una visita hoy y a 90 minutos; se conserva hoy a las 12:00. Las muestras se renuevan por día, no desplazan su hora con cada polling.
+
+
+## Revisión visual — Codex, 2026-10-26
+
+Rama de integración autorizada: `ticket/EVP-65-rediseno-visual`. Primera pasada implementada; **no terminada ni aprobada visualmente**. Ticket existente y En curso según confirmación expresa del usuario; sin cambios de estado en Jira.
+
+- Referencia: diapositiva 7, captura local `C:/Users/L A T I T U D E/Downloads/bellomo-rediseno-codex/capturas/s8.png` y sección Mi Agenda del prototipo `prototipos/bellomo-panel-app.html`. Las capturas tienen una lámina inicial adicional; se cotejó el título, no solo el número.
+- Cambios frente a la referencia: Agenda semanal con horas y clientes reales, ordenados cronológicamente; chips pastel por estado, selección negra en los filtros y foco negro con acciones blancas. Se conserva la revisión completa antes de cancelar. Se quitó «muestras» del diálogo de cancelación.
+- Archivos de pantalla: everprop-public/src/components/admin/CalendarAgenda.tsx; everprop-public/tests/agenda-redesign.test.mjs. Estilos únicamente en `everprop-public/src/app/admin-catalog.css`, importado inmediatamente después de admin-design.css en layout.tsx; no se editó la hoja compartida.
+- Evidencia anterior existente: docs/tickets/evidence/EVP-71/1-pc-semana.jpg; docs/tickets/evidence/EVP-71/5-telefono-dia.jpg. No se presenta como evidencia de esta pasada.
+- Capturas posteriores requeridas: `docs/tickets/evidence/EVP-71/mi-agenda-pc.png` y `mi-agenda-telefono.png`: **no generadas**.
+- Solapamiento a 1440 y 375: **no ejecutado**, no se afirma `[]`. Scroll horizontal, palabras partidas, botones solo ícono y horarios: pendientes de comprobar en DOM real.
+- Uso real demo admin/asesor, agregar/editar/confirmar/cancelar, búsqueda/filtros, vacío y error: no verificados en navegador. Las pruebas de componentes existentes no reemplazan estos controles.
+- Oscuro, Grande y reducción de movimiento: reglas conservadas/extendidas, **sin inspección visual**. Objetivos de 17/20,4 px y botones 44/52 px pendientes de medición real.
+- Límite concreto: no hay navegador en CUA. Playwright CLI instalado no puede lanzar su proceso (`spawn EPERM`). Chrome DevTools permite listar una página vacía pero rechaza abrir/navegar con «MCP tool call requires approval, but approval policy is never». No se puede conceder esa aprobación desde esta sesión.
+- Comprobaciones disponibles: suite sin aislamiento de procesos, lint, TypeScript directo y detector; ver resultados finales en `docs/tickets/evidence/CODEX-PROGRESO.md`. Build compiló y falló al lanzar TypeScript (`spawn EPERM`); no es build OK.
+- Límites y diferencias pendientes: La referencia usa una grilla horaria. Esta pasada conserva la selección de día y suma hasta tres actividades visibles por día; no implementa duraciones ni arrastre que la API no entrega. En teléfono propone dos columnas semanales legibles; falta comprobarlas. NewVisitModal es compartido con otras pantallas y conserva el mensaje «modo de muestra»; lo debe decidir Claude.
+
+Sin backend, SQL, entornos, secretos, Docker, commit, push ni deploy. No se modificaron primitivas ui, MainLayout, navegación ni archivos de Claude.
+
+## Conformidad — revisión del certificado, 2026-10-26
+
+Fuente cotejada por extracción del PDF local: `C:/Users/L A T I T U D E/Downloads/RECIBO DE PAGO Y CERTIFICADO DE CONFORMIDAD DE ETAPA.pdf` (8/9/2026), apartados 2–6 aplicables. La transcripción funcional del usuario tiene prioridad sobre el diseño.
+
+✓ significa comprobación de código o prueba automatizada descrita, no aprobación visual ni prueba contra API real. ✗ marca lo pendiente. Persistencia MySQL/Sanctum real: no aplica en mock (usa almacenamiento local); su verificación contra el servidor sigue pendiente.
+
+| Punto aplicable | Estado | Evidencia o límite |
+|---|---|---|
+| 2 · Agenda de visitas | ✓ | Pruebas de alta con cliente/unidad, revisión de datos, volver a editar y bloqueo de envío duplicado en agenda-redesign.test.mjs. Se conserva NewVisitModal y la navegación a fichas. |
+| 3 · Próxima acción con fecha/hora | ✓ en lectura mock | CalendarAgenda conserva los próximos contactos provenientes de seguimientos; no modifica su alta ni la sugerencia de etapa, a cargo de Claude. En API la agenda conserva el contrato de visitas; no se inventa un endpoint de seguimientos. |
+| 6 · Asesor ve lo suyo; admin ve todo | ✓ en mock | Nueva prueba con dos asesores: usr-sales solo ve sus actividades; usr-admin con filtro Todos ve ambas asignaciones. Se conserva el filtro opcional del admin. API depende de la autorización del servidor y no se verificó contra un backend real. |
+| 6 · Demo | ✓ por pruebas de componente; ✗ recorrido real | Fechas relativas, selección de hoy, carga de visitas y aislamiento están probados. El guion completo login→lead→contacto→ficha excede estas pantallas y lo verifica Claude. |
+| Corrección visual de Agenda | ✓ implementación; ✗ nueva medición | Día seleccionado negro/blanco, sin borde azul; hoy lleva aria-current=date y punto rojo. La prueba comprueba el día actual y su selección. |
+
+Archivos de esta revisión: CalendarAgenda.tsx, agenda-redesign.test.mjs y admin-catalog.css. No se modificó NewVisitModal compartido ni los archivos de leads/Claude.
+
+Evidencia de Claude recibida en el chat: a 1366 y 375, texto normal y Grande, las seis pantallas anteriores dieron 0 encimados, 0 desbordes y sin scroll horizontal. Es evidencia informada por Claude, no ejecutada por Codex. **Los cambios de esta revisión quedan pendientes de nueva medición y capturas por Claude**, incluidos oscuro y reducir movimiento. No se intentó abrir el navegador ni iniciar servidor.
+
+Suite completa: 171 pruebas, 165 aprobadas y solo las 6 fallas conocidas de notifications-worker. Lint: 0 errores/127 advertencias; TypeScript directo: OK. Build: compiló, luego `spawn EPERM` al lanzar TypeScript; no es build OK. Resultados y pendientes centralizados en CODEX-PROGRESO.md. Sin commit, push, deploy ni cambios fuera del frontend y estos informes autorizados.

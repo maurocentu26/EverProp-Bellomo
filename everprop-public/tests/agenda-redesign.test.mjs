@@ -90,6 +90,11 @@ test('EVP-71 sorts activities, preserves overdue status and reviews cancellation
   const calls = [];
   const v = view('CalendarAgenda', { '@/lib/everprop-api': { loadEverpropVisits: async () => rows, cancelEverpropVisit: async id => calls.push(id) } });
   v.render(); await v.callbacks[0]();
+  const week = v.find(v.render(), node => node.props?.className === 'agenda-days agenda-days-week');
+  assert.ok(v.text(week).indexOf('Cliente temprano') < v.text(week).indexOf('Cliente tarde'), v.text(week));
+  assert.ok(v.text(week).includes('10:00'));
+  const currentDay = v.find(week, node => node.type === 'button' && node.props?.['aria-current'] === 'date');
+  assert.ok(currentDay); assert.equal(currentDay.props['aria-pressed'], true);
   const list = v.find(v.render(), node => node.props?.className === 'agenda-list');
   assert.ok(v.text(list).indexOf('Cliente temprano') < v.text(list).indexOf('Cliente tarde'));
   v.find(list, node => node.type === 'button' && v.text(node) === 'Cancelar cita').props.onClick();
@@ -107,6 +112,25 @@ test('EVP-71 sorts activities, preserves overdue status and reviews cancellation
   assert.ok(v.text(pastList).includes('Programada'));
   assert.ok(v.text(pastList).includes('Anterior'));
   assert.ok(v.find(pastList, node => node.type === 'button' && v.text(node) === 'Cancelar cita'));
+});
+
+test('EVP-71 mock agenda isolates advisor activities while admin can see every assignment',async()=>{
+ const today=dates.exports.toArgentinaDateTimeInputValue().slice(0,10);
+ const leads=['usr-sales','other-advisor'].map((agentId,index)=>({id:`l${index}`,name:agentId,agentId,visits:[{id:`v${index}`,leadName:agentId,agentId,scheduledAt:`${today}T10:00:00-03:00`,status:'scheduled'}]}));
+ for(const admin of [false,true]) {
+  const v=view('CalendarAgenda',{
+   '@/hooks/use-current-session':{useCurrentSession:()=>({user:{id:admin?'usr-admin':'usr-sales'},isAdvisor:!admin,isAdmin:admin})},
+   '@/lib/data-mode':{isMockDataMode:true},
+   '@/lib/admin-storage':{loadLeadList:()=>leads,loadPropertyList:()=>[],loadLeadFollowUpList:()=>[]},
+   '@/data/admin-sample':{leads,properties:[]},
+   '@/data/auth-sample':{getAdvisor:id=>({name:id})},
+   '@/lib/mock-agenda':{seedMockAgenda(){}},
+  });
+  v.render();await v.callbacks[0]();
+  const list=v.find(v.render(),n=>n.props?.className==='agenda-list');
+  assert.ok(v.text(list).includes('usr-sales'));
+  assert.equal(v.text(list).includes('other-advisor'),admin);
+ }
 });
 
 test('EVP-71 creating a visit reviews all fields, supports editing and blocks duplicate submissions', async () => {
