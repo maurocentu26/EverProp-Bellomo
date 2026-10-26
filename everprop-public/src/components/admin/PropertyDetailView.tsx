@@ -274,7 +274,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
               Precio
             </span>
-            <div className="mt-1.5 text-2xl sm:text-3xl font-extrabold text-slate-900">
+            <div className="inventory-detail-price mt-1.5 font-extrabold text-slate-900">
               {inventoryPriceLabel(property)}
             </div>
 

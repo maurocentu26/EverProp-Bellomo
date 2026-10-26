@@ -89,3 +89,28 @@ Rama de integración autorizada: `ticket/EVP-65-rediseno-visual`. Primera pasada
 - Límites y diferencias pendientes: No se agregan reservas, plazos ni nombres que el inventario no informa. No se agrega Ofrecer sin flujo existente. Los diálogos, navegación y VisitManager compartidos no se modificaron.
 
 Sin backend, SQL, entornos, secretos, Docker, commit, push ni deploy. No se modificaron primitivas ui, MainLayout, navegación ni archivos de Claude.
+
+
+### Revisión visual — corrección acotada de Comercial y fichas, 2026-10-26
+
+Autorización del usuario: EVP-73 existente y En curso, trabajo en la rama de integración EVP-65, sin operaciones Git de escritura. Confirmación de Jira aportada por el usuario; no se consultó ni actualizó Jira.
+
+- `/admin/comercial`: las tablas tenían `whitespace-nowrap`, desplazamiento horizontal y vacío dentro de una celda. Ahora usan `data-label` en las diez celdas de datos; bajo 1100 px de ancho de contenedor cada fila se apila con rótulos, espacio entre filas y radio 24, siguiendo el patrón lead-installments. La consulta al contenedor considera el espacio que deja el menú a 1366 px. No se ocultan columnas. Vacíos independientes con role=status. Enlaces «Ver [unidad]» para teclado, altas y permisos conservados. Se reutilizan inventoryPriceLabel y propertyStatusLabel: precio/moneda del inventario, moneda null → «Precio a confirmar», vendido → «Vendido» y estado ausente → «Sin estado informado».
+- `/admin/properties/[id]`: cotejo con la diapositiva 9 (s10.png) y sección Activos del HTML aprobado. El precio existente crece a 2em (1,7em en teléfono); el encabezado usa radio 24 y la disponibilidad, pastilla con palabra y tonos disponible/reservado. No se agrega una tarjeta negra sin una prioridad real. Acciones y confirmaciones existentes conservadas.
+- `/admin/properties/new`: mantiene el formulario y sus validaciones; se incorpora a inventory-view para tipografía 17/20,4 px y controles 44/52 px existentes. Tarjeta de radio 24, superficie del tema y sin sombra grande. No se cambió el selector de categorías ni la lógica de alta.
+- Estilos escritos exclusivamente en `everprop-public/src/app/admin-catalog.css`. No se editaron admin-design.css ni componentes reservados a Claude; sus cambios concurrentes permanecen.
+- Antes: reporte de desborde 1366/375 aportado por el usuario para Comercial, sin captura anterior específica disponible. Evidencia histórica de ficha: `docs/tickets/evidence/EVP-73/2-pc-ficha.jpg` y `5-telefono-ficha.jpg`; no representa esta pasada.
+- Después pendiente de Claude: `docs/tickets/evidence/EVP-73/comercial-pc.png`, `comercial-telefono.png`, `activo-ficha-pc.png`, `activo-ficha-telefono.png`, `activo-nuevo-pc.png`, `activo-nuevo-telefono.png`. No generadas por Codex, por instrucción expresa de no abrir el navegador.
+- Solapamientos y scrollWidth en 1366/1440 y 375: pendientes; no se afirma `[]`. Oscuro, Grande, reducción de movimiento y uso real de agregar/editar/confirmar/cancelar: pendientes de Claude. No se añadió animación nueva; las reglas existentes de movimiento reducido cubren inventory-view.
+
+#### Conformidad de esta pasada
+
+- ✓ Inventario USD/ARS y moneda null: prueba ejecutable de filas comerciales usando los helpers reales; los precios legacy no pisan los valores del inventario.
+- ✓ Disponibilidad con palabra y código completo: prueba con 12A/12B y estado vendido/ausente, sin convertir vendido en alquilado.
+- ✓ Roles: la prueba verifica que el asesor no ve altas y el admin conserva las cuatro entradas existentes; no cambia autorización backend.
+- ✓ Vacío y error: prueba de dos estados vacíos fuera de tablas y error de carga con role=alert.
+- ✗ Apariencia, foco real, ausencia de cortes/solapamientos y controles de 44/52 px: falta medición en navegador por Claude.
+- ✗ Alta/edición y confirmaciones reales de ficha/formulario: lógica conservada; falta recorrido visual de esta pasada.
+- No aplica en mock: persistencia API/BD y disponibilidad real del servidor; no se cambiaron contratos ni backend.
+
+Suite: `node --test tests/*.test.mjs` bloqueado por `spawn EPERM`; ejecutada con `node --test --test-isolation=none tests/*.test.mjs`: 173 pruebas, 167 aprobadas y solo las 6 fallas conocidas de notifications-worker. `npx tsc --noEmit --incremental false`: OK. Detector Impeccable sobre los cinco archivos de interfaz: `[]`. Lint: OK, 0 errores y 126 advertencias. Logs: docs/tickets/evidence/EVP-73/codex-acotado-{tests,lint,tsc,design}.log. Build no ejecutado en esta pasada acotada (se solicitaron tests, lint y tsc); no se declara build OK.
