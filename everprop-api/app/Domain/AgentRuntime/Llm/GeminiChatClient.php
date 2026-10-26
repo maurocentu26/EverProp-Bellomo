@@ -6,7 +6,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
-/** Local copilot adapter for Google Gemini. Never logs credentials or provider response bodies. */
+/** Gemini adapter for local and explicitly enabled Railway staging. Never logs credentials or response bodies. */
 final class GeminiChatClient implements LlmClient
 {
     public function __construct(
@@ -15,9 +15,19 @@ final class GeminiChatClient implements LlmClient
         private readonly int $timeoutSeconds
     ) {}
 
+    public static function environmentAllowed(): bool
+    {
+        $railwayEnvironment = config('services.gemini.railway_environment');
+
+        // Railway staging retains Laravel's production hardening; deployment identity controls this exception.
+        return filled($railwayEnvironment)
+            ? $railwayEnvironment === 'staging' && config('services.gemini.staging_enabled') === true
+            : app()->environment('local');
+    }
+
     public function complete(string $system, array $messages, array $tools, int $maxOutputTokens, bool $allowTools): LlmResponse
     {
-        if (! app()->environment('local')) {
+        if (! self::environmentAllowed()) {
             throw new LlmFailure('LOCAL_COPILOT_ONLY', retryable: false, billable: false);
         }
 
