@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
+import { LeadMessagesLink } from "@/components/admin/LeadMessagesLink";
 
 export const STAGE_OPTIONS: { id: Lead["stage"]; label: string; class: string }[] = [
   { id: "new", label: "Nuevo", class: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" },
@@ -40,6 +41,7 @@ function LeadActions({ lead, onView, onFollowUp, showLabels = true }: LeadAction
 
   return (
     <div className={cn("flex flex-wrap items-center justify-end gap-2", showLabels && "lead-actions-expanded")}>
+      <LeadMessagesLink lead={lead} />
       {whatsappNumber && (
         <Button
           variant="ghost"

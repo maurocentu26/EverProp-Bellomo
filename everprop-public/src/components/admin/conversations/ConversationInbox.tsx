@@ -46,7 +46,7 @@ import {
   type HandoffSummary,
 } from "@/lib/conversations-api";
 
-import { CONVERSATION_TABS, conversationTab, conversationReason, type ConversationTab } from "@/lib/conversation-presentation";
+import { CONVERSATION_TABS, conversationTab, conversationReason, conversationSearchFromHash, visibleConversations, type ConversationTab } from "@/lib/conversation-presentation";
 import { VisitRequestsBoard } from "@/components/admin/assistant/VisitRequestsBoard";
 
 const FILTERS: [ConversationFilter, string][] = [
@@ -182,11 +182,24 @@ export function ConversationInbox() {
   // What the user types, and the term actually sent once they pause typing.
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
+  const [searchReady, setSearchReady] = useState(false);
+  useEffect(() => {
+    const readSearch = () => {
+      const term = conversationSearchFromHash(window.location.hash);
+      setQuery(term);
+      setSearch(term);
+      setSearchReady(true);
+    };
+    readSearch();
+    window.addEventListener("hashchange", readSearch);
+    return () => window.removeEventListener("hashchange", readSearch);
+  }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(query.trim().length >= MIN_SEARCH ? query.trim() : ""), 300);
     return () => window.clearTimeout(timer);
   }, [query]);
   const [items, setItems] = useState<ConversationSummary[]>([]);
+  const [listKey, setListKey] = useState<string | null>(null);
   const [listError, setListError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
@@ -237,18 +250,23 @@ export function ConversationInbox() {
   const { replies, load: loadReplies, save: saveReplies } = useQuickReplies(user?.id);
 
   const refreshList = useCallback(async () => {
-    if (!user) return;
+    if (!user || !searchReady) return;
     const request = ++listRequest.current;
+    setListError("");
     try {
       const response = await listConversations(filter, search);
       if (request !== listRequest.current) return; // a newer filter/refresh already answered
       setItems(response.data);
+      setListKey(`${filter}:${search}`);
       setListError("");
       setRefreshedAt(new Date().toISOString());
     } catch {
+      if (request !== listRequest.current) return;
+      setItems([]);
+      setListKey(`${filter}:${search}`);
       setListError("No pudimos actualizar la bandeja. Reintentamos en unos segundos.");
     }
-  }, [filter, search, user]);
+  }, [filter, search, user, searchReady]);
 
   const refreshThread = useCallback(async () => {
     const conversation = selected;
@@ -485,7 +503,8 @@ export function ConversationInbox() {
   // A reply queued just before the window closed still shows up in the thread through polling.
   const windowClosed = replyWindow !== null && replyWindow.closes_at === null;
 
-  const visibleItems = items.filter(item => conversationTab(item.state) === tab);
+  const resultsReady = searchReady && listKey === `${filter}:${search}` && (query.trim().length >= MIN_SEARCH ? query.trim() : "") === search;
+  const visibleItems = resultsReady ? visibleConversations(items, tab, search) : [];
 
   return (
     <section className="wa-inbox mx-auto flex w-full max-w-none min-w-0 flex-col gap-4 pb-6 md:min-h-0 md:flex-1 md:pb-0">
@@ -514,13 +533,13 @@ export function ConversationInbox() {
                 className="min-h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-base sm:text-sm" />
             </div>
           </div>
-          <div role="group" aria-label="Bandejas de conversaciones" title="Cantidades del filtro actual" className="conversation-tabs">
+          {search ? <p role="status" className="break-words px-3 pb-2 text-sm text-muted-foreground">Resultados en todas las bandejas. Elegí la conversación del cliente para ver sus mensajes.</p> : <div role="group" aria-label="Bandejas de conversaciones" title="Cantidades del filtro actual" className="conversation-tabs">
             {CONVERSATION_TABS.map(([id, label]) => (
               <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>
                 {label} <span>{items.filter(item => conversationTab(item.state) === id).length}</span>
               </button>
             ))}
-          </div>
+          </div>}
           <label className="conversation-filter">Mostrar
             <select value={filter} onChange={event => setFilter(event.target.value as ConversationFilter)}>
               {FILTERS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
@@ -528,7 +547,8 @@ export function ConversationInbox() {
           </label>
           {listError && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{listError} <button type="button" disabled={refreshing} onClick={() => void refreshNow()} className="conversation-secondary mt-2">{refreshing ? "Reintentando…" : "Reintentar"}</button></p>}
           <ul role="list" className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
-            {visibleItems.length === 0 && !listError && (
+            {!resultsReady && !listError && <li role="status" className="p-6 text-center text-sm text-muted-foreground">Buscando conversaciones…</li>}
+            {resultsReady && visibleItems.length === 0 && !listError && (
               <li className="p-6 text-center text-sm text-muted-foreground">
                 {search ? `Nada coincide con “${search}” en este filtro.` : "No hay conversaciones en este filtro."}
               </li>

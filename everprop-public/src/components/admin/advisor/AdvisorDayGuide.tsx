@@ -6,6 +6,7 @@ import { ArrowRight, Check, ClipboardCheck, Phone } from "lucide-react";
 import type { Lead, LeadFollowUp } from "@/data/admin-sample";
 import { dayPriorities, leadInitials, priorityReason, type DayPriority } from "@/lib/advisor-day-guide";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
+import { LeadMessagesLink } from "@/components/admin/LeadMessagesLink";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -61,6 +62,8 @@ export function AdvisorDayGuide({ userId, day, queue, ready, onSave }: {
           {item && <>
             <div className="day-guide-client"><span className="day-avatar day-blue" aria-hidden>{leadInitials(item.lead.name)}</span><DialogTitle>{item.lead.name}</DialogTitle><DialogDescription className={`day-chip ${item.isOverdue ? "day-rose" : "day-amber"}`}>{priorityReason(item)}</DialogDescription><p className="day-muted">{item.lead.phone || "Sin teléfono registrado"}</p></div>
             {recorded ? <><p role="status" className="day-save-success"><Check aria-hidden />Listo · seguimiento guardado</p><Button className="mi-day-primary day-guide-complete" onClick={() => setStep(step + 1)}>Listo · seguir <ArrowRight aria-hidden /></Button></> : <>
+              <LeadMessagesLink lead={item.lead} className="w-full bg-muted" />
+              <p className="day-muted">Mensajes se abre en otra pestaña. Volvé acá para continuar este contacto y registrar el resultado.</p>
               {phone ? <a className="mi-day-primary day-guide-action" href={`tel:${phone}`} onClick={() => setRecording(item.lead)}><Phone aria-hidden />Llamar a {item.lead.name.split(" ")[0]}</a> : <Link className="mi-day-primary" href={`/admin/leads/${item.lead.id}`}>Completar datos del cliente</Link>}
               <Button className="mi-day-secondary" onClick={() => setRecording(item.lead)}>¿Qué pasó? Registrar resultado</Button>
               <Button variant="ghost" onClick={() => { setResults(previous => ({ ...previous, [item.lead.id]: "skipped" })); setStep(step + 1); }}>Saltar por ahora</Button>
