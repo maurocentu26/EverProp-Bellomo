@@ -452,6 +452,7 @@ html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
 .day-help { grid-column: 1; grid-row: 4; }
 .day-help summary { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
 .day-help p { margin: 12px 0; }
+.mi-day.day-board .day-help .mi-day-secondary { max-width: 100%; white-space: normal; text-align: center; }
 .day-mobile-title { display: none; }
 .day-alert { padding: 16px; border-radius: 16px; color: #92400e; background: #fef3c7; margin-bottom: 20px; }
 .day-grid > * { animation: day-rise 350ms ease-out both; }
@@ -1125,7 +1126,7 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
 .mi-day.day-board .day-heading .day-muted { font-size: 17px; }
 .mi-day.day-board .day-heading .day-muted::first-letter { text-transform: uppercase; }
 .mi-day.day-board .day-parts { display: inline-flex; flex-wrap: wrap; column-gap: 6px; max-width: 100%; }
-.mi-day.day-board .day-parts > span { white-space: nowrap; }
+.mi-day.day-board .day-parts > span { white-space: normal; overflow-wrap: anywhere; }
 .mi-day.day-board .day-parts > span:not(:last-child)::after { content: "\00a0·"; }
 .mi-day.day-board .day-property-pills button { max-width: 100%; }
 .mi-day.day-board .day-section-head .day-meta { flex-basis: 100%; margin-top: -8px; }
@@ -1153,16 +1154,17 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
 .mi-day.day-board .day-property strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mi-day.day-board .day-meta { color: var(--muted-foreground); font-size: 15px; }
 .mi-day.day-board .day-property-pills { margin-top: 4px; }
-.mi-day.day-board .day-property-pills button { min-height: 40px; font-size: 15px; padding: 6px 12px; background: var(--card); color: var(--foreground); text-align: left; }
+.mi-day.day-board .day-property-pills button { font-size: 15px; padding: 6px 12px; background: var(--card); color: var(--foreground); text-align: left; }
 .mi-day.day-board .day-property-pills button[aria-pressed="true"] { background: var(--foreground); color: var(--background); border-color: var(--foreground); }
-.mi-day.day-board .day-row-actions { grid-column: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 0; width: 280px; }
+.mi-day.day-board .day-row-actions { grid-column: 3; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 8px; margin-top: 0; width: 280px; }
 .mi-day.day-board .day-row-actions .day-record { grid-column: 1 / -1; justify-content: center; color: var(--foreground); text-decoration: underline; text-underline-offset: 4px; }
+.mi-day.day-board .day-row-actions > :is(button, a), .mi-day.day-board .day-property-pills button { min-height: 44px; }
 .mi-day.day-board .day-agenda-row h3 { font-weight: 650; }
 .mi-day.day-board .day-agenda-row .day-chip { font-variant-numeric: tabular-nums; }
 .mi-day.day-board .day-messages .day-empty h3, .mi-day.day-board .day-dues .day-muted { font-size: 17px; }
 @media (width < 1200px) {
   .mi-day.day-board .day-next-row { grid-template-columns: 48px minmax(0, 1fr); }
-  .mi-day.day-board .day-row-actions { grid-column: 2; width: 100%; max-width: 360px; margin-top: 12px; }
+  .mi-day.day-board .day-row-actions { grid-column: 1 / -1; width: 100%; max-width: 360px; margin-top: 12px; }
 }
 @media (width < 1024px) {
   .mi-day.day-board .day-grid { display: flex; flex-direction: column; align-items: stretch; }
@@ -1179,6 +1181,7 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
   .mi-day.day-board .day-side { order: 1; }
   .mi-day.day-board .day-next-row { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; }
   .mi-day.day-board .day-row-actions { grid-column: 1 / -1; max-width: none; }
+  .mi-day.day-board .day-row-actions > :is(button, a), .mi-day.day-board .day-property-pills button { min-height: 52px; }
 }
 
 /* Estadísticas y Conocimiento IA, dirección final: mismo lenguaje que Mi Día (tarjeta negra = lo urgente, tarjetas blancas, pastillas, pastel siempre con texto). */

@@ -1,0 +1,61 @@
+{
+  "grande": [
+    {
+      "issues": [],
+      "size": "grande",
+      "width": 320
+    },
+    {
+      "issues": [],
+      "size": "grande",
+      "width": 375
+    },
+    {
+      "issues": [],
+      "size": "grande",
+      "width": 390
+    },
+    {
+      "issues": [],
+      "size": "grande",
+      "width": 480
+    },
+    {
+      "issues": [],
+      "size": "grande",
+      "width": 768
+    },
+    {
+      "issues": [],
+      "size": "grande",
+      "width": 1024
+    },
+    {
+      "issues": [],
+      "size": "grande",
+      "width": 1440
+    }
+  ],
+  "normal": [
+    {
+      "issues": [],
+      "size": "actual",
+      "width": 320
+    },
+    {
+      "issues": [],
+      "size": "actual",
+      "width": 768
+    },
+    {
+      "issues": [],
+      "size": "actual",
+      "width": 1024
+    },
+    {
+      "issues": [],
+      "size": "actual",
+      "width": 1440
+    }
+  ]
+}
