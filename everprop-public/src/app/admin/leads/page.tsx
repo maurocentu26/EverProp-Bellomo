@@ -58,6 +58,10 @@ const FOLLOW_UP_FILTERS: { id: FollowUpFilter; label: string }[] = [
   { id: "overdue", label: "Vencidos" },
 ];
 
+function normalizeLeadSearch(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
 export default function LeadsPage() {
   const { user } = useCurrentSession();
   return user?.role === "ROTATOR" ? <RotatorLeadQueue /> : <AllLeadsPage />;
@@ -164,15 +168,15 @@ function AllLeadsPage() {
 
   const filteredLeads = useMemo(() => {
     let filtered = allLeads;
-    const query = searchQuery.toLowerCase().trim();
+    const query = normalizeLeadSearch(searchQuery);
 
     // 1. Search Query
     if (query) {
       filtered = filtered.filter(l => {
-        const matchesName = l.name.toLowerCase().includes(query);
-        const matchesEmail = l.email?.toLowerCase().includes(query);
+        const matchesName = normalizeLeadSearch(l.name).includes(query);
+        const matchesEmail = normalizeLeadSearch(l.email || "").includes(query);
         const matchesPhone = l.phone?.includes(query);
-        const linkedProps = l.propertyIds.map(pid => catalogProperties.find(p => p.id === pid)?.title.toLowerCase() || "");
+        const linkedProps = l.propertyIds.map(pid => normalizeLeadSearch(catalogProperties.find(p => p.id === pid)?.title || ""));
         const matchesProp = linkedProps.some(title => title.includes(query));
 
         return matchesName || matchesEmail || matchesPhone || matchesProp;
