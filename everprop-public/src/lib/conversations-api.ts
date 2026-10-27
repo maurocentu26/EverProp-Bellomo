@@ -301,6 +301,32 @@ export async function suggestReply(id: string) {
 }
 
 
+/** EVP-24: what the assistant did on each turn. Tenant admin only; texts are plain text, never HTML. */
+export type AssistantRun = {
+  mode: "AUTO" | "COPILOT"; decision: string; status: string; error_code: string | null;
+  question: { sequence: number; text: string | null } | null; reply: { sequence: number; text: string | null } | null;
+  sources: { id: string; document: string | null; heading?: string | null; excerpt?: string }[];
+  tools: { name: string | null; ok: boolean; code: string | null; replayed: boolean }[];
+  guard: string[];
+  model: { provider: string | null; name: string | null; prompt_version: string | null };
+  usage: { calls: number; input_tokens: number | null; output_tokens: number | null; cost: string | null; currency: string | null; latency_ms: number | null };
+  started_at: string;
+};
+
+export async function getAssistantTrace(id: string) {
+  if (isMockDataMode) {
+    return { data: [{ mode: "AUTO", decision: "REPLY", status: "SUCCEEDED", error_code: null,
+      question: { sequence: 1, text: "¿La unidad 12 de Las Moras sigue disponible?" },
+      reply: { sequence: 2, text: "Sí, la unidad 12 está disponible. ¿Querés coordinar una visita?" },
+      sources: [{ id: "mock-doc#1", document: "Las Moras · condiciones", heading: "Formas de pago", excerpt: "Anticipo del 30 % y saldo en 36 cuotas." }],
+      tools: [{ name: "consultar_propiedad", ok: true, code: null, replayed: false }], guard: [],
+      model: { provider: "anthropic", name: "modelo-demo", prompt_version: "v-demo" },
+      usage: { calls: 2, input_tokens: 1840, output_tokens: 96, cost: "0.00210000", currency: "USD", latency_ms: 2300 },
+      started_at: new Date().toISOString() }] satisfies AssistantRun[] };
+  }
+  return apiFetch<{ data: AssistantRun[] }>(`/api/v1/admin/conversations/${encodeURIComponent(id)}/trace`);
+}
+
 // QA samples are synthetic and live only in memory during an explicit mock session.
 const mockNow = new Date().toISOString();
 const mockConversations: ConversationSummary[] = isMockDataMode ? [

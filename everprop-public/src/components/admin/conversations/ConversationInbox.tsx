@@ -5,6 +5,7 @@ import { ArrowDown, ArrowLeft, Bot, ChevronDown, ChevronUp, FileText, Paperclip,
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useCurrentSession } from "@/hooks/use-current-session";
+import { AssistantTrace } from "./AssistantTrace";
 import {
   CHANNEL_LABELS,
   MESSAGE_PAGE,
@@ -176,6 +177,7 @@ export function ConversationInbox() {
   const { user } = useCurrentSession();
   const router = useRouter();
   const readOnly = user?.apiRole === "READ_ONLY";
+  const isAdmin = user?.apiRole === "TENANT_ADMIN";
   const [filter, setFilter] = useState<ConversationFilter>("all");
   const [tab, setTab] = useState<ConversationTab>("human");
   const [showClient, setShowClient] = useState(false);
@@ -229,6 +231,7 @@ export function ConversationInbox() {
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [resumeReason, setResumeReason] = useState("");
   const [showResume, setShowResume] = useState(false);
+  const [showTrace, setShowTrace] = useState(false);
   const [handoffDismissed, setHandoffDismissed] = useState(false);
   const [handoffExpanded, setHandoffExpanded] = useState(false);
   const [note, setNote] = useState("");
@@ -880,6 +883,7 @@ export function ConversationInbox() {
                 </div>
               )}
 
+              {isAdmin && selected && <AssistantTrace conversation={selected} open={showTrace} onOpenChange={setShowTrace} />}
               {/* Menú Contextual Desplegable del FAB */}
               {!readOnly && showActionsMenu && (
                 <div role="menu" aria-label="Acciones disponibles"
@@ -905,6 +909,18 @@ export function ConversationInbox() {
                         <span className="block text-[11px] font-normal text-muted-foreground">Gestionar o crear lead comercial</span>
                       </div>
                     </button>
+
+                    {isAdmin && (
+                      <button type="button" role="menuitem"
+                        onClick={() => { setShowActionsMenu(false); setShowTrace(true); }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted">
+                        <FileText className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+                        <div>
+                          <span className="block">Traza del asistente</span>
+                          <span className="block text-[11px] font-normal text-muted-foreground">Qué consultó y respondió la IA</span>
+                        </div>
+                      </button>
+                    )}
 
                     {/* Pasar a IA (si está en control humano y la IA está habilitada) */}
                     {humanInControl && aiEnabled && (

@@ -241,4 +241,27 @@ final class CopilotTest extends TestCase
         Http::assertSent(fn ($r) => str_contains($r['messages'][0]['content'], 'acceso pavimentado'));
         $this->assertSame(1, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'COMMITTED')->count());
     }
+
+    public function test_trace_shows_the_turn_to_the_tenant_admin_only(): void
+    {
+        $f = $this->inControl();
+        $g = $this->inControl();
+        $this->llm([ScriptedLlm::tool('buscar_propiedades', ['unit_code' => 'L-101']), ScriptedLlm::text('El L-101 sale USD 85.000.')]);
+        $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk();
+        DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->update(['error_message' => 'SECRETO-PROVEEDOR-991']);
+        $trace = fn (User $u, Tenant $t, string $c) => $this->actingAs($u)->withHeaders($this->tenantHeaders($t))->getJson("/api/v1/admin/conversations/$c/trace");
+
+        $admin = $this->user($f['tenant'], RoleCode::TENANT_ADMIN);
+        $res = $trace($admin, $f['tenant'], $f['conversation'])->assertOk()
+            ->assertJsonPath('data.0.mode', 'COPILOT')->assertJsonPath('data.0.status', 'SUCCEEDED')
+            ->assertJsonPath('data.0.question.text', '¿Cuánto sale el L-101?')
+            ->assertJsonPath('data.0.tools.0.name', 'buscar_propiedades')->assertJsonPath('data.0.tools.0.ok', true)
+            ->assertJsonPath('data.0.usage.calls', 2);
+        $this->assertStringNotContainsString('SECRETO-PROVEEDOR-991', $res->getContent(), 'provider errors never leave the run');
+
+        $trace($f['advisor'], $f['tenant'], $f['conversation'])->assertForbidden();
+        $trace($this->user($f['tenant'], RoleCode::SALES_MANAGER), $f['tenant'], $f['conversation'])->assertForbidden();
+        // Another tenant's admin cannot reach this conversation, even with its public id.
+        $trace($this->user($g['tenant'], RoleCode::TENANT_ADMIN), $g['tenant'], $f['conversation'])->assertNotFound();
+    }
 }

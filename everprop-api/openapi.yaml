@@ -47,6 +47,64 @@
     ],
     "security": [],
     "paths": {
+        "/api/v1/admin/conversations/{conversation}/trace": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/TenantHeader"
+                },
+                {
+                    "name": "conversation",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                }
+            ],
+            "get": {
+                "tags": [
+                    "Conversations"
+                ],
+                "operationId": "conversationAssistantTrace",
+                "summary": "Assistant trace of the last 20 turns of a conversation",
+                "description": "Tenant admin only (403 otherwise; 404 for another tenant's conversation). Per run: mode, decision, status, error code, customer question and reply text, retrieved knowledge sources (resolved in the same tenant), tool calls with result codes, output guard violations, model, prompt version, tokens and cost. Provider error messages and tool arguments are never returned.",
+                "security": [
+                    {
+                        "cookieAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Runs, newest first",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not a tenant admin"
+                    },
+                    "404": {
+                        "description": "Conversation not visible in this tenant"
+                    }
+                }
+            }
+        },
         "/api/v1/admin/conversations/{conversation}/reopen": {
             "parameters": [
                 {

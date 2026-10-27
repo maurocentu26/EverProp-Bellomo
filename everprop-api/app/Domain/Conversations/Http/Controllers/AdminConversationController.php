@@ -444,6 +444,53 @@ final class AdminConversationController extends Controller
         return response()->json(['data' => ['resolved' => $jobs->count(), 'warning' => 'Un mensaje anterior podría llegar tarde al cliente.']]);
     }
 
+    /**
+     * EVP-24: what the assistant did on each turn (question, sources, tools, reply, guard, cost). Tenant admin only.
+     * Ids and codes only, plus texts the tenant already sees in the inbox; provider error messages never leave the run.
+     */
+    public function trace(Request $request, string $conversation): JsonResponse
+    {
+        $user = $this->viewer($request);
+        abort_unless($user->role() === RoleCode::TENANT_ADMIN, 403);
+        $row = $this->find($user, $conversation);
+        $tenantId = (int) $row->tenant_id;
+        $runs = DB::table('chatbot_runs')->where('tenant_id', $tenantId)->where('conversation_id', $row->id)
+            ->orderByDesc('id')->limit(20)->get();
+        $texts = DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $row->id)
+            ->whereIn('id', $runs->pluck('input_message_id')->merge($runs->pluck('output_message_id'))->filter()->all())
+            ->get(['id', 'sequence', 'text_body'])->keyBy('id');
+        $tools = DB::table('tool_executions')->where('tenant_id', $tenantId)->whereIn('run_id', $runs->pluck('id')->all())
+            ->orderBy('id')->get(['run_id', 'tool_name', 'status'])->groupBy('run_id');
+        $traces = $runs->mapWithKeys(fn ($r) => [$r->id => json_decode((string) $r->trace_json, true) ?: []]);
+        // source_id = document public_id#ordinal (KnowledgeService); resolved inside this tenant only.
+        $sourceIds = $traces->flatMap(fn ($t) => $t['sources'] ?? [])->unique()->values();
+        $chunks = $sourceIds->isEmpty() ? collect() : DB::table('knowledge_chunks as c')
+            ->join('knowledge_documents as d', fn ($j) => $j->on('d.id', '=', 'c.document_id')->on('d.tenant_id', '=', 'c.tenant_id')
+                ->on('d.version', '=', 'c.document_version'))
+            // Same visibility as retrieval: a revoked document shows as "ya no disponible", never its body.
+            ->where('c.tenant_id', $tenantId)->where('d.status', 'APPROVED')->whereNull('d.revoked_at')->whereIn('d.public_id', $sourceIds->map(fn ($s) => strtok((string) $s, '#'))->unique()->all())
+            ->get(['d.public_id', 'd.title', 'c.ordinal', 'c.heading', 'c.body'])->keyBy(fn ($c) => $c->public_id.'#'.$c->ordinal);
+        $message = fn ($id) => $id !== null && isset($texts[$id]) ? ['sequence' => (int) $texts[$id]->sequence, 'text' => $texts[$id]->text_body] : null;
+
+        return response()->json(['data' => $runs->map(fn ($r) => [
+            'mode' => ($traces[$r->id]['mode'] ?? null) === 'COPILOT' ? 'COPILOT' : 'AUTO',
+            'decision' => $r->decision, 'status' => $r->status, 'error_code' => $r->error_code,
+            'question' => $message($r->input_message_id), 'reply' => $message($r->output_message_id),
+            'sources' => array_map(fn ($s) => isset($chunks[$s]) ? ['id' => $s, 'document' => $chunks[$s]->title,
+                'heading' => $chunks[$s]->heading, 'excerpt' => mb_substr((string) $chunks[$s]->body, 0, 600)] : ['id' => $s, 'document' => null],
+                array_values($traces[$r->id]['sources'] ?? [])),
+            'tools' => array_map(fn ($t) => ['name' => $t['name'] ?? null, 'ok' => (bool) ($t['ok'] ?? false), 'code' => $t['code'] ?? null,
+                'replayed' => (bool) ($t['replayed'] ?? false)], array_values($traces[$r->id]['tools'] ?? [])),
+            'executions' => ($tools[$r->id] ?? collect())->map(fn ($t) => ['name' => $t->tool_name, 'status' => $t->status])->values()->all(),
+            // Codes only: anything that is not a CODE_LIKE string never leaves the server.
+            'guard' => array_values(array_filter((array) ($traces[$r->id]['guard'] ?? []), fn ($g) => is_string($g) && preg_match('/^[A-Z0-9_]{1,64}$/', $g) === 1)),
+            'model' => ['provider' => $r->model_provider, 'name' => $r->model_name, 'prompt_version' => $r->prompt_version],
+            'usage' => ['calls' => (int) ($traces[$r->id]['calls'] ?? 0), 'input_tokens' => $r->input_tokens, 'output_tokens' => $r->output_tokens,
+                'cost' => $r->estimated_cost, 'currency' => $r->currency_code, 'latency_ms' => $r->latency_ms],
+            'started_at' => CarbonImmutable::parse($r->started_at, 'UTC')->toISOString(),
+        ])->all()]);
+    }
+
     private function viewer(Request $request): User
     {
         $user = $request->user();
