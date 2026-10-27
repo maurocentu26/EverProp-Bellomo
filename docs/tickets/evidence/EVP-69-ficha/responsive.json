@@ -1,0 +1,186 @@
+{
+  "beforeGrande320": {
+    "sectionWidth": 278,
+    "buttonWidth": 284.375,
+    "buttonRight": 322.375,
+    "sectionOverflow": true
+  },
+  "grande": [
+    {
+      "button": {
+        "font": "20.4px",
+        "height": 83.21875,
+        "scrollWidth": 232,
+        "whiteSpace": "normal",
+        "width": 232
+      },
+      "clippedChildren": [],
+      "section": {
+        "scrollWidth": 274,
+        "width": 274
+      },
+      "viewport": 320
+    },
+    {
+      "button": {
+        "font": "20.4px",
+        "height": 52.609375,
+        "scrollWidth": 287,
+        "whiteSpace": "normal",
+        "width": 287
+      },
+      "clippedChildren": [],
+      "section": {
+        "scrollWidth": 329,
+        "width": 329
+      },
+      "viewport": 375
+    },
+    {
+      "button": {
+        "font": "20.4px",
+        "height": 52.609375,
+        "scrollWidth": 302,
+        "whiteSpace": "normal",
+        "width": 302
+      },
+      "clippedChildren": [],
+      "section": {
+        "scrollWidth": 344,
+        "width": 344
+      },
+      "viewport": 390
+    },
+    {
+      "button": {
+        "font": "20.4px",
+        "height": 52.609375,
+        "scrollWidth": 292,
+        "whiteSpace": "normal",
+        "width": 292
+      },
+      "clippedChildren": [],
+      "section": {
+        "scrollWidth": 334,
+        "width": 334
+      },
+      "viewport": 768
+    },
+    {
+      "button": {
+        "font": "20.4px",
+        "height": 83.21875,
+        "scrollWidth": 257,
+        "whiteSpace": "normal",
+        "width": 257
+      },
+      "clippedChildren": [],
+      "section": {
+        "scrollWidth": 299,
+        "width": 299
+      },
+      "viewport": 1024
+    },
+    {
+      "button": {
+        "font": "20.4px",
+        "height": 52.609375,
+        "scrollWidth": 465,
+        "whiteSpace": "normal",
+        "width": 465
+      },
+      "clippedChildren": [],
+      "section": {
+        "scrollWidth": 507,
+        "width": 507
+      },
+      "viewport": 1440
+    }
+  ],
+  "normal": [
+    {
+      "button": {
+        "font": "17px",
+        "height": 73,
+        "scrollWidth": 232,
+        "width": 232
+      },
+      "clippedChildren": 0,
+      "section": {
+        "scrollWidth": 274,
+        "width": 274
+      },
+      "viewport": 320
+    },
+    {
+      "button": {
+        "font": "17px",
+        "height": 52,
+        "scrollWidth": 287,
+        "width": 287
+      },
+      "clippedChildren": 0,
+      "section": {
+        "scrollWidth": 329,
+        "width": 329
+      },
+      "viewport": 375
+    },
+    {
+      "button": {
+        "font": "17px",
+        "height": 52,
+        "scrollWidth": 302,
+        "width": 302
+      },
+      "clippedChildren": 0,
+      "section": {
+        "scrollWidth": 344,
+        "width": 344
+      },
+      "viewport": 390
+    },
+    {
+      "button": {
+        "font": "17px",
+        "height": 47.5,
+        "scrollWidth": 297,
+        "width": 297
+      },
+      "clippedChildren": 0,
+      "section": {
+        "scrollWidth": 339,
+        "width": 339
+      },
+      "viewport": 768
+    },
+    {
+      "button": {
+        "font": "17px",
+        "height": 47.5,
+        "scrollWidth": 289,
+        "width": 289
+      },
+      "clippedChildren": 0,
+      "section": {
+        "scrollWidth": 331,
+        "width": 331
+      },
+      "viewport": 1024
+    },
+    {
+      "button": {
+        "font": "17px",
+        "height": 47.5,
+        "scrollWidth": 497,
+        "width": 497
+      },
+      "clippedChildren": 0,
+      "section": {
+        "scrollWidth": 539,
+        "width": 539
+      },
+      "viewport": 1440
+    }
+  ]
+}
