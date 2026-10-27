@@ -221,6 +221,7 @@ final class InstagramOnboardingTest extends TestCase
             'subscription' => ['graph.instagram.com/v24.0/123456/subscribed_apps' => Http::response(['success' => false])],
             'expiry' => ['graph.instagram.com/access_token*' => Http::response(['access_token' => 'invalid-expiry'])],
             'connection' => ['api.instagram.com/oauth/access_token' => Http::failedConnection()],
+            default => throw new \LogicException('Unknown Instagram failure scenario.'),
         };
         $this->meta($override);
         $this->postJson(self::BASE.'/connect', ['state' => $this->begin(), 'code' => 'retry'])->assertStatus(502);
