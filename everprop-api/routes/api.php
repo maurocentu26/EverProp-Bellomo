@@ -22,6 +22,7 @@ use App\Domain\Identity\Http\Controllers\PasswordRecoveryController;
 use App\Domain\Identity\Http\Controllers\WebPushController;
 use App\Domain\Identity\Http\Middleware\TouchLastActive;
 use App\Domain\Identity\RotatorRoleBoundary;
+use App\Domain\Integrations\Http\Controllers\InstagramConnectionController;
 use App\Domain\Integrations\Http\Controllers\ReceiveWebhookController;
 use App\Domain\Integrations\Http\Controllers\WhatsAppConnectionController;
 use App\Domain\Inventory\Http\Controllers\AdminProjectController;
@@ -51,6 +52,10 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
 
     Route::prefix('admin')->name('admin.')->middleware(RotatorRoleBoundary::class)->group(function (): void {
         Route::get('/users', [AdminUserController::class, 'index']);
+        Route::get('/integrations/instagram/config', [InstagramConnectionController::class, 'config']);
+        Route::post('/integrations/instagram/authorize', [InstagramConnectionController::class, 'authorize'])->middleware('throttle:6,1');
+        Route::post('/integrations/instagram/connect', [InstagramConnectionController::class, 'connect'])->middleware('throttle:6,1');
+        Route::post('/integrations/instagram/{integration}/refresh', [InstagramConnectionController::class, 'refresh'])->whereUuid('integration')->middleware('throttle:6,1');
         Route::post('/users', [AdminUserController::class, 'store']);
         Route::patch('/users/{user}/role', [AdminUserController::class, 'changeRole'])->whereUuid('user');
         Route::post('/users/{user}/activation', [AdminUserController::class, 'renew']);
