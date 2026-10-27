@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 // Run the real composer handlers with hooks in memory, without network or effects.
-function inbox() {
+function inbox({ readOnly = false } = {}) {
   const state = [];
   Object.assign(state, { 5: [{ id: 'chat', state: 'HUMAN_ACTIVE', channel: 'WEB_CHAT', contact_name: 'Cliente' }], 9: 'chat', 11: 'HUMAN_ACTIVE', 14: true, 20: 'Mi borrador' });
   const refs = [];
@@ -25,19 +25,20 @@ function inbox() {
   const deps = {
     'react/jsx-runtime': { jsx, jsxs: jsx },
     react: {
-      Fragment: 'Fragment', useEffect: () => {}, useCallback: fn => fn,
+      Fragment: 'Fragment', useEffect: () => {}, useLayoutEffect: () => {}, useCallback: fn => fn,
       useState: initial => { const i = cursor++; if (!(i in state)) state[i] = initial; return [state[i], value => { state[i] = typeof value === 'function' ? value(state[i]) : value; }]; },
       useRef: initial => { const i = refCursor++; return refs[i] ??= { current: i === 3 ? 'chat' : initial }; },
     },
     'lucide-react': new Proxy({}, { get: () => 'Icon' }),
     sonner: { toast: { success: () => {}, error: error => { throw new Error(error); } } },
     'next/navigation': { useRouter: () => ({}) },
-    '@/hooks/use-current-session': { useCurrentSession: () => ({ user: { id: 'advisor', apiRole: 'ADVISOR' } }) },
+    '@/hooks/use-current-session': { useCurrentSession: () => ({ user: { id: 'advisor', apiRole: readOnly ? 'READ_ONLY' : 'ADVISOR' } }) },
     '@/lib/conversations-api': api,
     '@/lib/conversation-presentation': api,
+    '@/components/ui/dialog': { Dialog: 'Dialog', DialogContent: 'DialogContent', DialogTitle: 'DialogTitle', DialogDescription: 'DialogDescription' },
     '@/components/admin/assistant/VisitRequestsBoard': { VisitRequestsBoard: 'VisitRequestsBoard' },
   };
-  const context = { exports: {}, require: name => deps[name], window: { setTimeout: () => {} } };
+  const context = { exports: {}, require: name => deps[name], window: { setTimeout: () => {}, matchMedia: () => ({ matches: false }) } };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('../src/components/admin/conversations/ConversationInbox.tsx', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
   }).outputText, context);
@@ -82,4 +83,34 @@ test('discard preserves draft; unused suggestion is not attributed to manual rep
   await view.send();
   assert.equal(view.sends[0][1], 'Mi borrador');
   assert.equal(view.sends[0][3], undefined);
+});
+
+test('internal note disables attachments and preserves the client draft', () => {
+  const view = inbox();
+  view.button('Nota interna').props.onClick();
+  assert.equal(view.button('Adjuntar').props.disabled, true);
+  assert.match(view.text(view.button('Adjuntar')), /Volvé a responder al cliente/);
+  view.button('Responder al cliente').props.onClick();
+  assert.equal(view.draft(), 'Mi borrador');
+});
+
+test('read-only users can inspect the client but cannot send or mutate conversations', () => {
+  const view = inbox({ readOnly: true });
+  assert.equal(view.find(view.render(), node => node.type === 'textarea'), undefined);
+  assert.equal(view.button('Ver cliente').props.disabled, false);
+  for (const label of ['Respuestas rápidas', 'Nota interna', 'Adjuntar', 'Sugerir', 'Tomar control', 'Pasar a IA', 'Cerrar conversación']) {
+    assert.equal(view.button(label).props.disabled, true, label);
+    assert.match(view.text(view.button(label)), /Permiso de solo lectura/);
+  }
+});
+
+test('client action restores focus to the visible client panel; cancellation returns to actions', () => {
+  const view = inbox();
+  const trigger = {}, clientBack = {};
+  view.button('Acciones').props.ref.current = trigger;
+  view.button('Atrás al chat').props.ref.current = clientBack;
+  view.button('Ver cliente').props.onClick();
+  const popup = view.find(view.render(), node => node.type === 'DialogContent');
+  assert.equal(popup.props.finalFocus(), clientBack);
+  assert.equal(popup.props.finalFocus(), trigger);
 });

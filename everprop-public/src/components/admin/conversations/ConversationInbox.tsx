@@ -1,14 +1,14 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, Bot, ChevronDown, ChevronUp, FileText, Paperclip, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, MoreVertical, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import {
   CHANNEL_LABELS,
   MESSAGE_PAGE,
-  STATE_LABELS,
   addNote,
   clockTime,
   closeConversation,
@@ -126,24 +126,47 @@ function useFullscreenChat(open: boolean, onSystemBack: () => void) {
     if (!open || window.matchMedia(SPLIT_VIEW).matches) return;
     const root = document.documentElement;
     const viewport = window.visualViewport;
+    let frame = 0;
+    let lastHeight = -1;
+    let lastTop = -1;
     const fit = () => {
+      frame = 0;
+      // Pinch zoom belongs to the browser, not to the keyboard layout.
+      if (viewport && viewport.scale !== 1) return;
       const height = viewport?.height ?? window.innerHeight;
-      root.style.setProperty("--wa-chat-height", `${height}px`);
-      root.style.setProperty("--wa-chat-top", `${viewport?.offsetTop ?? 0}px`);
-      root.classList.toggle("wa-keyboard", window.innerHeight - height > 120);
+      const keyboard = window.innerHeight - height > 120;
+      const top = keyboard ? viewport?.offsetTop ?? 0 : 0;
+      if (height !== lastHeight) root.style.setProperty("--wa-chat-height", `${height}px`);
+      if (top !== lastTop) root.style.setProperty("--wa-chat-top", `${top}px`);
+      lastHeight = height;
+      lastTop = top;
+      root.classList.toggle("wa-keyboard", keyboard);
+    };
+    const scheduleFit = () => { if (!frame) frame = window.requestAnimationFrame(fit); };
+    const onViewportScroll = () => {
+      if (window.innerHeight - (viewport?.height ?? window.innerHeight) > 120) scheduleFit();
     };
     fit();
     root.classList.add("wa-chat-open");
-    viewport?.addEventListener("resize", fit);
-    viewport?.addEventListener("scroll", fit);
+    viewport?.addEventListener("resize", scheduleFit);
+    viewport?.addEventListener("scroll", onViewportScroll);
+    window.addEventListener("resize", scheduleFit);
+    const physicalFocus = (event: KeyboardEvent) => { if (event.key === "Tab") root.classList.add("wa-physical-focus"); };
+    const pointerFocus = () => root.classList.remove("wa-physical-focus");
+    window.addEventListener("keydown", physicalFocus);
+    window.addEventListener("pointerdown", pointerFocus);
     window.history.pushState({ waChat: true }, "");
     const onPop = () => back.current();
     window.addEventListener("popstate", onPop);
     return () => {
-      viewport?.removeEventListener("resize", fit);
-      viewport?.removeEventListener("scroll", fit);
+      viewport?.removeEventListener("resize", scheduleFit);
+      viewport?.removeEventListener("scroll", onViewportScroll);
+      window.removeEventListener("resize", scheduleFit);
+      window.removeEventListener("keydown", physicalFocus);
+      window.removeEventListener("pointerdown", pointerFocus);
+      window.cancelAnimationFrame(frame);
       window.removeEventListener("popstate", onPop);
-      root.classList.remove("wa-chat-open", "wa-keyboard");
+      root.classList.remove("wa-chat-open", "wa-keyboard", "wa-physical-focus");
       root.style.removeProperty("--wa-chat-height");
       root.style.removeProperty("--wa-chat-top");
       // Closed from the app's own arrow: drop the history entry pushed on open.
@@ -200,7 +223,7 @@ export function ConversationInbox() {
   // The copilot draft currently in the composer (to report whether it was sent as is or edited).
   const [suggestion, setSuggestion] = useState<{ id: string; text: string; applied: boolean } | null>(null);
   // WhatsApp only: when the 24 h service window closes (null closes_at = already closed).
-  const [replyWindow, setReplyWindow] = useState<{ closes_at: string | null } | null>(null);
+  const [replyWindow, setReplyWindow] = useState<{ closes_at: string | null; remaining_ms: number } | null>(null);
   const [handoff, setHandoff] = useState<HandoffSummary | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const messagesRef = useRef<ConversationMessage[]>([]);
@@ -228,13 +251,28 @@ export function ConversationInbox() {
   // Same rule as replies: the key belongs to the exact text it was created for.
   const noteKey = useRef({ key: newKey(), text: "" });
   const clientBack = useRef<HTMLButtonElement>(null);
-  useEffect(() => { if (showClient) clientBack.current?.focus(); }, [showClient]);
-  const threadHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (showClient) {
+      if (window.matchMedia("(min-width: 1200px)").matches) document.getElementById("conversation-client")?.focus();
+      else clientBack.current?.focus();
+    }
+  }, [showClient]);
+  const threadHeading = useRef<HTMLButtonElement>(null);
   const thread = useRef<HTMLOListElement>(null);
   const atBottom = useRef(true);
   const [unseen, setUnseen] = useState(0);
   const [showQuick, setShowQuick] = useState(false);
   const { replies, load: loadReplies, save: saveReplies } = useQuickReplies(user?.id);
+
+  const actionsButton = useRef<HTMLButtonElement>(null);
+  const actionFocus = useRef<"composer" | "client" | "resume" | null>(null);
+
+  useLayoutEffect(() => {
+    const input = document.getElementById("reply");
+    if (!(input instanceof HTMLTextAreaElement)) return;
+    input.style.height = "auto";
+    input.style.height = `${input.scrollHeight}px`;
+  }, [draft, note, noteMode, selected, state]);
 
   const refreshList = useCallback(async () => {
     if (!user) return;
@@ -274,7 +312,8 @@ export function ConversationInbox() {
       setEpoch(response.conversation.epoch);
       setAiEnabled(response.conversation.ai_enabled);
       setCopilotEnabled(response.conversation.copilot_enabled === true);
-      setReplyWindow(response.conversation.reply_window ?? null);
+      const serviceWindow = response.conversation.reply_window;
+      setReplyWindow(serviceWindow ? { ...serviceWindow, remaining_ms: serviceWindow.closes_at ? Date.parse(serviceWindow.closes_at) - Date.now() : 0 } : null);
       setHandoff(response.conversation.handoff ?? null);
       setThreadError("");
     } catch {
@@ -286,9 +325,20 @@ export function ConversationInbox() {
   useVisiblePolling(useCallback(() => void refreshThread(), [refreshThread]), 3000);
 
   // Follow new messages only when already at the bottom; otherwise offer a jump instead of moving the reader.
-  useEffect(() => {
-    if (atBottom.current) thread.current?.scrollTo({ top: thread.current.scrollHeight });
+  useLayoutEffect(() => {
+    if (atBottom.current) thread.current?.scrollTo({ top: thread.current.scrollHeight, behavior: "instant" });
   }, [messages]);
+
+  // Viewport, composer and loaded media can resize the history without a new message.
+  useEffect(() => {
+    const el = thread.current;
+    if (!el) return;
+    const follow = () => { if (atBottom.current) el.scrollTo({ top: el.scrollHeight, behavior: "instant" }); };
+    const observer = new ResizeObserver(follow);
+    observer.observe(el);
+    el.addEventListener("load", follow, true);
+    return () => { observer.disconnect(); el.removeEventListener("load", follow, true); };
+  }, [selected]);
 
   function onThreadScroll() {
     const el = thread.current;
@@ -470,6 +520,10 @@ export function ConversationInbox() {
     }, "Plantilla enviada. Si el cliente responde, se reabre la conversación.");
   }
 
+  function openAttachment() {
+    document.getElementById("conversation-attachment")?.click();
+  }
+
   function focusComposer() {
     window.setTimeout(() => document.getElementById("reply")?.focus(), 0);
   }
@@ -484,6 +538,8 @@ export function ConversationInbox() {
   const humanInControl = state === "HUMAN_ACTIVE";
   // A reply queued just before the window closed still shows up in the thread through polling.
   const windowClosed = replyWindow !== null && replyWindow.closes_at === null;
+  const replyRemaining = replyWindow?.remaining_ms ?? 0;
+  const replyUrgent = replyRemaining > 0 && replyRemaining < 2 * 60 * 60 * 1000;
 
   const visibleItems = items.filter(item => conversationTab(item.state) === tab);
 
@@ -579,26 +635,27 @@ export function ConversationInbox() {
             </div>
           ) : (
             <>
-              <div className="conversation-header wa-bar flex items-center gap-2 rounded-t-2xl border-b border-border p-2 sm:p-3">
-                <button type="button" onClick={backToList} aria-label="Volver a la bandeja" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full md:hidden">
-                  <ArrowLeft className="h-5 w-5" aria-hidden /> Atrás
+              <div className="conversation-header wa-bar">
+                <button type="button" onClick={backToList} aria-label="Volver a la bandeja" className="conversation-back">
+                  <ArrowLeft className="h-5 w-5" aria-hidden />
                 </button>
-                <span aria-hidden className="wa-accent inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
-                  {initials(current ? displayName(current) : "?")}
-                </span>
-                <div className="mr-auto min-w-0">
-                  <h2 ref={threadHeading} tabIndex={-1} className="truncate text-base font-bold outline-none">
-                    {current ? displayName(current) : "Conversación"}
-                  </h2>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {current ? (CHANNEL_LABELS[current.channel] ?? current.channel) : ""}
-                    {replyWindow?.closes_at ? ` · podés responder hasta ${dayLabel(replyWindow.closes_at).toLowerCase()} ${clockTime(replyWindow.closes_at)}` : ""}
-                  </p>
-                </div>
-                {state && <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${STATE_STYLES[state]}`}>{humanInControl ? "Ahora atendés vos" : STATE_LABELS[state]}</span>}
-                {!readOnly && humanInControl && aiEnabled && <button type="button" disabled={busy !== null} onClick={() => setShowResume(true)} className="conversation-secondary">Devolver a la IA</button>}
-                <button type="button" aria-expanded={showClient} id="conversation-client-toggle" aria-controls="conversation-client" onClick={() => setShowClient(value => !value)} className="conversation-secondary conversation-client-toggle">{showClient ? "Volver al chat" : "Ver cliente"}</button>
+                <button type="button" ref={threadHeading} className="conversation-contact" aria-label={`Información del contacto: ${current ? displayName(current) : "Conversación"}`} onClick={() => setShowClient(true)}>
+                  <span aria-hidden className="wa-accent conversation-avatar">{initials(current ? displayName(current) : "?")}</span>
+                  <span className="conversation-identity">
+                    <span role="heading" aria-level={2} className="conversation-name" title={current ? displayName(current) : "Conversación"}>
+                      {current ? displayName(current) : "Conversación"}
+                    </span>
+                    <span className="conversation-status">
+                      {current ? CHANNEL_LABELS[current.channel] ?? current.channel : ""} · {humanInControl ? "Atendés vos" : state === "AI_ACTIVE" || state === "WAITING_TOOL" ? "Responde la IA" : state === "WAITING_HUMAN" ? "Espera asesor" : state === "CLOSED" ? "Cerrada" : "Enviando…"}
+                    </span>
+                  </span>
+                </button>
+                <button ref={actionsButton} type="button" aria-expanded={showActionsMenu} aria-haspopup="dialog" aria-label="Acciones de la conversación"
+                  onClick={() => { actionFocus.current = null; document.getElementById("reply")?.blur(); setShowActionsMenu(true); }} className="conversation-actions-trigger" title="Acciones">
+                  <MoreVertical className="h-6 w-6" aria-hidden /><span className="sr-only">Acciones</span>
+                </button>
               </div>
+              {replyUrgent && replyWindow?.closes_at && <p className="conversation-window-notice" role="status" title={`Responder antes de ${dayLabel(replyWindow.closes_at)} ${clockTime(replyWindow.closes_at)}`}>Responder antes de {clockTime(replyWindow.closes_at)}</p>}
 
               {handoff && !handoffDismissed && (state === "WAITING_HUMAN" || state === "HUMAN_ACTIVE") && (
                 // Model-written: plain text only (React escapes it), for the team, never sent to the visitor.
@@ -631,18 +688,12 @@ export function ConversationInbox() {
                 <div role="status" className="m-3 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100">
                   <p className="font-semibold">Hay un mensaje de la IA en envío.</p>
                   <p className="mt-1">Vas a poder responder cuando se confirme. Si el envío quedó sin confirmar, podés liberarlo: no se reenvía, pero podría llegarle tarde al cliente.</p>
-                  {!readOnly && (
-                    <button type="button" disabled={busy !== null} onClick={() => void run("unknown", async () => {
-                      const result = await resolveUnknownSends(selected);
-                      if (result.data.resolved === 0) toast.info("No había envíos sin confirmar; esperá unos segundos.");
-                    })} className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg border border-sky-300 px-3 font-semibold">
-                      <XCircle className="h-4 w-4" aria-hidden /> Liberar envío sin confirmar
-                    </button>
-                  )}
+
                 </div>
               )}
               {threadError && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-500/10 dark:text-red-200">{threadError}</p>}
 
+              <div className="conversation-history relative flex min-h-0 flex-1 flex-col">
               <ol ref={thread} onScroll={onThreadScroll} aria-label="Mensajes" aria-live="polite" className="wa-thread min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-10">
                 {messages.map((message, index) => {
                   const previous = messages[index - 1];
@@ -678,7 +729,7 @@ export function ConversationInbox() {
                       {separator}
                       <li className={`flex ${mine ? "justify-end" : "justify-start"} ${first ? "mt-2" : "mt-0.5"}`}>
                         <div className={`wa-bubble ${message.sender === "BOT" ? "conversation-ai" : mine ? "wa-out" : "wa-in"} max-w-[85%] rounded-lg px-2.5 pb-1 pt-1.5 text-sm sm:max-w-[65%] ${first ? (mine ? "rounded-tr-none" : "rounded-tl-none") : ""} ${message.status === "CANCELLED" ? "opacity-60" : ""}`}>
-                          <p className="conversation-sender">{message.sender === "BOT" && <Bot className="h-4 w-4" aria-hidden />}{who}</p>
+                          <p className={who === "Cliente" ? "sr-only" : "conversation-sender"}>{message.sender === "BOT" && <Bot className="h-4 w-4" aria-hidden />}{who}</p>
                           {message.media && <MediaPreview media={message.media} />}
                           {(message.text || !message.media) && (
                             <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{message.text ?? "[contenido no textual]"}</p>
@@ -695,20 +746,22 @@ export function ConversationInbox() {
               </ol>
               {unseen > 0 && (
                 <button type="button" onClick={jumpToLatest}
-                  className="wa-accent absolute bottom-28 left-1/2 inline-flex min-h-10 -translate-x-1/2 items-center gap-1 rounded-full px-4 text-sm font-semibold shadow-lg">
+                  className="wa-accent absolute bottom-3 left-1/2 inline-flex min-h-10 -translate-x-1/2 items-center gap-1 rounded-full px-4 text-sm font-semibold shadow-lg">
                   <ArrowDown className="h-4 w-4" aria-hidden /> {unseen === 1 ? "1 mensaje nuevo" : `${unseen} mensajes nuevos`}
                 </button>
               )}
 
+              </div>
+
               {!readOnly && (
-                <div className="border-t border-border">
+                <div className="conversation-compose-area border-t border-border">
                   {showQuick && !noteMode && (
                     <div className="max-h-56 overflow-y-auto border-b border-border p-2" role="group" aria-label="Respuestas rápidas">
                       <ul className="space-y-1">
                         {replies.map((reply, index) => (
                           <li key={`${index}-${reply}`} className="flex items-start gap-1">
                             <button type="button" onClick={() => insertQuickReply(reply)} className="min-h-10 flex-1 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">{reply}</button>
-                            <button type="button" aria-label={`Borrar respuesta rápida: ${reply}`} onClick={() => saveReplies(replies.filter((_, i) => i !== index))}
+                            <button type="button" aria-label={`Borrar respuesta rápida: ${reply}`} onClick={() => { if (window.confirm("¿Borrar esta respuesta rápida guardada?")) saveReplies(replies.filter((_, i) => i !== index)); }}
                               className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted">
                               <X className="h-4 w-4" aria-hidden />
                             </button>
@@ -726,14 +779,9 @@ export function ConversationInbox() {
                   <p role="status" className={windowClosed && humanInControl && !noteMode ? "wa-bar px-4 pt-3 text-xs font-semibold text-amber-800 dark:text-amber-300" : "sr-only"}>
                     {windowClosed && humanInControl ? "Pasaron más de 24 horas desde el último mensaje del cliente. Solo podés escribirle con una plantilla aprobada." : ""}
                   </p>
-                  {windowClosed && humanInControl && !noteMode && (
+                  {windowClosed && humanInControl && !noteMode && templates !== null && (
                     <div className="wa-bar space-y-2 px-3 pt-2">
-                      {templates === null ? (
-                        <button type="button" disabled={busy !== null} onClick={() => void openTemplates()}
-                          className="wa-accent inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-60">
-                          <MessageSquareText className="h-4 w-4" aria-hidden /> {busy === "templates" ? "Buscando plantillas…" : "Escribir con plantilla"}
-                        </button>
-                      ) : templates.length === 0 ? (
+                      {templates.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No hay plantillas aprobadas para este número. Se crean en WhatsApp Manager y Meta las revisa.</p>
                       ) : !template ? (
                         <ul className="max-h-56 space-y-1 overflow-y-auto" aria-label="Plantillas aprobadas">
@@ -776,185 +824,99 @@ export function ConversationInbox() {
                         </div>
                       </section>
                     )}
-                  {!humanInControl && !noteMode ? (
-                    // Not in control: where the composer goes, the one action that makes it appear.
-                    <div className="wa-bar flex items-center gap-2 px-2 py-2 sm:px-3">
-                      <button type="button" aria-label="Escribir una nota interna" onClick={() => { setNoteMode(true); focusComposer(); }}
-                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted">
-                        <StickyNote className="h-5 w-5" aria-hidden /> {noteMode ? "Responder" : "Nota"}
-                      </button>
-                      {state && state !== "CLOSED" ? (
-                        <button type="button" disabled={busy !== null || state === "TRANSITION_PENDING"} onClick={() => void run("takeover", async () => {
-                          await takeOver(selected);
-                          window.setTimeout(focusComposer, 300);
-                        }, "Tomaste el control. La IA dejó de responder.")}
-                          className="wa-accent inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-60">
-                          <Hand className="h-4 w-4" aria-hidden /> Tomar control para responder
+                  <form onSubmit={(event) => { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); }} className="conversation-composer wa-bar">
+
+                      {!noteMode && !humanInControl && !readOnly && state !== "CLOSED" && state !== "TRANSITION_PENDING" && state ? (
+                        // IA in control: one tap takes the chat, instead of sending the user to the actions menu.
+                        <button type="button" disabled={busy !== null} className="wa-accent conversation-take min-h-11 flex-1 rounded-full px-4 font-semibold"
+                          onClick={() => void run("takeover", async () => { await takeOver(selected); focusComposer(); }, "Tomaste el control. La IA dejó de responder.")}>
+                          <Hand className="mr-2 inline h-5 w-5" aria-hidden />Responder yo
                         </button>
-                      ) : (
-                        <p className="flex-1 text-center text-sm text-muted-foreground">{state === "CLOSED" ? "Conversación cerrada." : "Cargando…"}</p>
-                      )}
-                      {!readOnly && (
-                        <button type="button" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
-                          onClick={() => setShowActionsMenu((open) => !open)}
-                          className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border transition-colors ${showActionsMenu ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-                          {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />} Más
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                    <form onSubmit={(event) => { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); }} className="conversation-composer wa-bar flex items-end gap-1.5 px-2 py-2 sm:px-3">
-                      {!noteMode && (
-                        <button type="button" aria-expanded={showQuick} aria-label="Respuestas rápidas" onClick={() => { if (!showQuick) loadReplies(); setShowQuick(!showQuick); }}
-                          className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${showQuick ? "bg-muted" : ""}`}>
-                          <MessageSquareText className="h-5 w-5" aria-hidden /> Rápidas
-                        </button>
-                      )}
-                      <button type="button" aria-pressed={noteMode} aria-label={noteMode ? "Volver a responder al cliente" : "Escribir una nota interna"}
-                        onClick={() => { setNoteMode(!noteMode); setShowQuick(false); focusComposer(); }}
-                        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-muted ${noteMode ? "wa-note-mode" : "text-muted-foreground"}`}>
-                        <StickyNote className="h-5 w-5" aria-hidden /> {noteMode ? "Responder" : "Nota"}
-                      </button>
-                      {!noteMode && (current?.channel === "WEB_CHAT" || current?.channel === "WHATSAPP") && (
-                        <label className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-muted ${busy !== null ? "pointer-events-none opacity-50" : ""}`}>
-                          <span>{busy === "attach" ? "Enviando…" : "Adjuntar"}</span>
-                          <Paperclip className={`h-5 w-5 ${busy === "attach" ? "animate-pulse motion-reduce:animate-none" : ""}`} aria-hidden />
-                          <input type="file" accept={ATTACHMENT_TYPES} className="sr-only" disabled={busy !== null}
-                            onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void sendFile(file); }} />
-                        </label>
-                      )}
-                      {!noteMode && copilotEnabled && (
-                        <button type="button" disabled={busy !== null} onClick={() => void suggestDraft()}
-                          aria-label={busy === "suggest" ? "Pidiendo una sugerencia a la IA" : "Sugerir respuesta con IA"}
-                          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-violet-700 hover:bg-muted disabled:opacity-50 dark:text-violet-300">
-                          <Sparkles className={`h-5 w-5 ${busy === "suggest" ? "animate-pulse motion-reduce:animate-none" : ""}`} aria-hidden /> Sugerir
-                        </button>
-                      )}
+                      ) : <>
                       <label htmlFor="reply" className="sr-only">{noteMode ? "Nota interna para el equipo" : "Respuesta al cliente"}</label>
-                      <textarea id="reply" value={noteMode ? note : draft} maxLength={4096} rows={1} enterKeyHint="enter"
+                      <textarea id="reply" value={noteMode ? note : draft} maxLength={4096} rows={1} enterKeyHint="send" inputMode="text" autoComplete="off" disabled={!noteMode && !humanInControl}
                         onChange={(event) => { if (noteMode) setNote(event.target.value); else setDraft(event.target.value); }}
                         // The keyboard shrinks the chat: keep the latest message in view, as WhatsApp does.
                         onFocus={() => { if (atBottom.current) window.setTimeout(() => thread.current?.scrollTo({ top: thread.current.scrollHeight }), 250); }}
                         // On a phone keyboard Enter is a line break; there the Send button sends.
-                        onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !isTouch()) { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); } }}
+                        onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && !isTouch()) { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); } }}
                         className={`${noteMode ? "wa-note-mode" : "wa-input"} field-sizing-content max-h-36 min-h-11 min-w-0 flex-1 resize-none rounded-3xl px-4 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-accent)] sm:text-sm`}
-                        placeholder={noteMode ? "Nota interna: solo la ve el equipo" : "Escribí un mensaje"} />
-                      <button type="submit" disabled={busy !== null || (noteMode ? note.trim() === "" : draft.trim() === "" || windowClosed)}
+                        placeholder={noteMode ? "Nota interna: solo la ve el equipo" : humanInControl ? "Escribí un mensaje" : "No disponible"} />
+                      <button type="submit" disabled={busy !== null || (!noteMode && !humanInControl) || (noteMode ? note.trim() === "" : draft.trim() === "" || windowClosed)}
                         aria-label={noteMode ? "Guardar nota" : "Enviar respuesta"}
                         className="conversation-send wa-accent inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 disabled:opacity-50">
-                        {noteMode ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />} {noteMode ? "Guardar" : "Enviar"}
+                        {noteMode ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}<span className="sr-only">{noteMode ? "Guardar" : "Enviar"}</span>
                       </button>
-
-                      {/* Botón Flotante de Acciones (FAB) */}
-                      {!readOnly && (
-                        <button type="button" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
-                          onClick={() => setShowActionsMenu((open) => !open)}
-                          className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border transition-colors ${showActionsMenu ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-                          {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />} Más
-                        </button>
-                      )}
+                      </>}
                     </form>
-                    </>
-                  )}
                 </div>
               )}
-
-              {/* Menú Contextual Desplegable del FAB */}
-              {!readOnly && showActionsMenu && (
-                <div role="menu" aria-label="Acciones disponibles"
-                  className="absolute bottom-18 right-3 z-30 w-64 rounded-2xl border border-border bg-card p-1.5 shadow-xl transition-all">
-                  <div className="border-b border-border px-3 py-1.5">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Acciones del chat</p>
-                  </div>
-                  <div className="space-y-0.5 py-1">
-                    {/* Lead y visita */}
-                    <button type="button" role="menuitem" disabled={busy !== null}
-                      onClick={() => {
-                        setShowActionsMenu(false);
-                        void run("lead", async () => {
-                          const { data } = await openConversationLead(selected);
-                          toast.success(data.created ? "Lead creado. Cargá la propiedad y agendá la visita." : "Abriendo el lead del cliente.");
-                          router.push(`/admin/leads/${data.lead_id}`);
-                        });
-                      }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
-                      <UserPlus className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
-                      <div>
-                        <span className="block">Lead y visita</span>
-                        <span className="block text-[11px] font-normal text-muted-foreground">Gestionar o crear lead comercial</span>
-                      </div>
-                    </button>
-
-                    {/* Pasar a IA (si está en control humano y la IA está habilitada) */}
-                    {humanInControl && aiEnabled && (
-                      <button type="button" role="menuitem" disabled={busy !== null}
-                        onClick={() => {
-                          setShowActionsMenu(false);
-                          setShowResume(true);
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-violet-50 hover:text-violet-900 disabled:opacity-60 dark:hover:bg-violet-500/20 dark:hover:text-violet-100">
-                        <Bot className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
-                        <div>
-                          <span className="block">Pasar a IA</span>
-                          <span className="block text-[11px] font-normal text-muted-foreground">Reanudar atención automática</span>
-                        </div>
-                      </button>
-                    )}
-
-                    {/* Tomar control (cuando no está en control humano y no está cerrada) */}
-                    {!humanInControl && state && state !== "CLOSED" && (
-                      <button type="button" role="menuitem" disabled={busy !== null || state === "TRANSITION_PENDING"}
-                        onClick={() => {
-                          setShowActionsMenu(false);
-                          void run("takeover", async () => {
-                            await takeOver(selected);
-                            window.setTimeout(focusComposer, 300);
-                          }, "Tomaste el control. La IA dejó de responder.");
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-emerald-50 hover:text-emerald-900 disabled:opacity-60 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-100">
-                        <Hand className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                        <div>
-                          <span className="block">Tomar control</span>
-                          <span className="block text-[11px] font-normal text-muted-foreground">Pausar la IA y responder</span>
-                        </div>
-                      </button>
-                    )}
-
-                    {/* Reabrir conversación (cuando está cerrada) */}
-                    {state === "CLOSED" && (
-                      <button type="button" role="menuitem" disabled={busy !== null}
-                        onClick={() => {
-                          setShowActionsMenu(false);
-                          void run("reopen", () => reopenConversation(selected, epoch), "Conversación reabierta.");
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
-                        <RefreshCw className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
-                        <div>
-                          <span className="block">Reabrir conversación</span>
-                          <span className="block text-[11px] font-normal text-muted-foreground">Habilitar respuestas en este chat</span>
-                        </div>
-                      </button>
-                    )}
-
-                    {/* Cerrar conversación (cuando está en control humano) */}
-                    {humanInControl && (
-                      <button type="button" role="menuitem" disabled={busy !== null}
-                        onClick={() => {
-                          setShowActionsMenu(false);
-                          void run("close", () => closeConversation(selected), "Conversación cerrada.");
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-xl border-t border-border px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-500/20">
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
-                        <div>
-                          <span className="block">Cerrar conversación</span>
-                          <span className="block text-[11px] font-normal text-rose-500/80 dark:text-rose-400/80">Marcar como finalizada</span>
-                        </div>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              <input id="conversation-attachment" type="file" accept={ATTACHMENT_TYPES} className="sr-only" tabIndex={-1} aria-label="Archivo adjunto" disabled={readOnly || busy !== null}
+                onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void sendFile(file); }} />
+              <Dialog open={showActionsMenu} onOpenChange={setShowActionsMenu}>
+                <DialogContent className="wa-inbox conversation-actions" finalFocus={() => {
+                  const destination = actionFocus.current;
+                  actionFocus.current = null;
+                  if (destination === "client") return window.matchMedia("(min-width: 1200px)").matches ? document.getElementById("conversation-client") : clientBack.current;
+                  if (destination === "resume") return document.getElementById("resume-reason");
+                  if (destination === "composer") return document.getElementById("reply");
+                  return actionsButton.current;
+                }}>
+                  <DialogTitle>Acciones de la conversación</DialogTitle>
+                  <DialogDescription>{replyWindow?.closes_at ? `Responder antes de ${dayLabel(replyWindow.closes_at)} ${clockTime(replyWindow.closes_at)}` : "Elegí cómo continuar. El borrador se conserva."}</DialogDescription>
+                  <h3 className="conversation-action-group">Mensaje</h3>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : !humanInControl ? "Primero tomá el control" : windowClosed ? "La ventana de respuesta está cerrada" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); loadReplies(); setNoteMode(false); setShowQuick(true); }}>
+                    <MessageSquareText className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Respuestas rápidas"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : !humanInControl ? "Primero tomá el control" : windowClosed ? "La ventana de respuesta está cerrada" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Insertar una respuesta guardada"))}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : noteMode && !humanInControl ? "Primero tomá el control" : "")} className="conversation-action-item"
+                    onClick={() => { actionFocus.current = "composer"; setShowActionsMenu(false); setNoteMode(!noteMode); setShowQuick(false); }}>
+                    <StickyNote className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{noteMode ? "Responder al cliente" : "Nota interna"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : noteMode && !humanInControl ? "Primero tomá el control" : "") || (busy !== null ? "Esperá a que termine la acción actual" : (noteMode ? "Volver al borrador del cliente" : "Solo la ve el equipo"))}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : !humanInControl ? "Primero tomá el control" : noteMode ? "Volvé a responder al cliente antes de adjuntar" : windowClosed ? "La ventana de respuesta está cerrada" : current?.channel !== "WEB_CHAT" && current?.channel !== "WHATSAPP" ? "El canal no admite adjuntos" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); openAttachment(); }}>
+                    <Paperclip className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Adjuntar"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : !humanInControl ? "Primero tomá el control" : noteMode ? "Volvé a responder al cliente antes de adjuntar" : windowClosed ? "La ventana de respuesta está cerrada" : current?.channel !== "WEB_CHAT" && current?.channel !== "WHATSAPP" ? "El canal no admite adjuntos" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Foto o PDF; se respetan los límites del canal"))}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : !copilotEnabled ? "Copiloto no habilitado" : !humanInControl ? "Primero tomá el control" : windowClosed ? "La ventana de respuesta está cerrada" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); setNoteMode(false); void suggestDraft(); }}>
+                    <Sparkles className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Sugerir respuesta con IA"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : !copilotEnabled ? "Copiloto no habilitado" : !humanInControl ? "Primero tomá el control" : windowClosed ? "La ventana de respuesta está cerrada" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Revisar una sugerencia antes de enviarla"))}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : current?.channel !== "WHATSAPP" ? "Solo disponible en WhatsApp" : !humanInControl ? "Primero tomá el control" : !windowClosed ? "Usá el campo de mensaje mientras la ventana esté abierta" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); setNoteMode(false); void openTemplates(); }}>
+                    <MessageSquareText className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Escribir con plantilla"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : current?.channel !== "WHATSAPP" ? "Solo disponible en WhatsApp" : !humanInControl ? "Primero tomá el control" : !windowClosed ? "Usá el campo de mensaje mientras la ventana esté abierta" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Usar una plantilla aprobada de WhatsApp"))}</span></span>
+                  </button>
+                  <h3 className="conversation-action-group">Cliente</h3>
+                  <button type="button" disabled={busy !== null} className="conversation-action-item"
+                    onClick={() => { actionFocus.current = "client"; setShowActionsMenu(false); setShowClient(true); }}>
+                    <MessageSquare className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Ver cliente"}</span><span className="block text-muted-foreground">{busy !== null ? "Esperá a que termine la acción actual" : "Información y solicitudes de visita"}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); void run("lead", async () => { const { data } = await openConversationLead(selected); router.push(`/admin/leads/${data.lead_id}`); }); }}>
+                    <UserPlus className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Lead y visita"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Gestionar o crear el lead comercial"))}</span></span>
+                  </button>
+                  <h3 className="conversation-action-group">Atención</h3>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : humanInControl ? "Ya atendés vos" : state === "CLOSED" ? "Primero reabrí la conversación" : state === "TRANSITION_PENDING" || !state ? "Esperá a que termine el envío" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); void run("takeover", async () => { await takeOver(selected); focusComposer(); }, "Tomaste el control. La IA dejó de responder."); }}>
+                    <Hand className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Tomar control"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : humanInControl ? "Ya atendés vos" : state === "CLOSED" ? "Primero reabrí la conversación" : state === "TRANSITION_PENDING" || !state ? "Esperá a que termine el envío" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Pausar la IA y responder"))}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : !aiEnabled ? "IA no habilitada" : !humanInControl ? "Primero tomá el control" : "")} className="conversation-action-item"
+                    onClick={() => { actionFocus.current = "resume"; setShowActionsMenu(false); setShowResume(true); }}>
+                    <Bot className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Pasar a IA"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : !aiEnabled ? "IA no habilitada" : !humanInControl ? "Primero tomá el control" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Confirmar el motivo para reanudar la atención"))}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : state !== "TRANSITION_PENDING" ? "No hay una transición pendiente" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); if (window.confirm("¿Liberar el envío? No se reenviará, pero podría llegar tarde al cliente.")) void run("unknown", () => resolveUnknownSends(selected)); }}>
+                    <XCircle className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Liberar envío sin confirmar"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : state !== "TRANSITION_PENDING" ? "No hay una transición pendiente" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("No se reenvía; podría llegar tarde al cliente"))}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : state !== "CLOSED" ? "La conversación está abierta" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); void run("reopen", () => reopenConversation(selected, epoch), "Conversación reabierta."); }}>
+                    <RefreshCw className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Reabrir conversación"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : state !== "CLOSED" ? "La conversación está abierta" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Habilitar nuevamente la atención"))}</span></span>
+                  </button>
+                  <button type="button" disabled={busy !== null || !!(readOnly ? "Permiso de solo lectura" : !humanInControl ? "Primero tomá el control" : "")} className="conversation-action-item"
+                    onClick={() => { setShowActionsMenu(false); if (window.confirm("¿Cerrar esta conversación?")) void run("close", () => closeConversation(selected), "Conversación cerrada."); }}>
+                    <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden /><span><span className="block font-semibold">{"Cerrar conversación"}</span><span className="block text-muted-foreground">{(readOnly ? "Permiso de solo lectura" : !humanInControl ? "Primero tomá el control" : "") || (busy !== null ? "Esperá a que termine la acción actual" : ("Marcar la atención como finalizada"))}</span></span>
+                  </button>
+                </DialogContent>
+              </Dialog>
 
               {/* Formulario / Diálogo Inline para Reanudar IA */}
               {!readOnly && showResume && (
@@ -992,14 +954,10 @@ export function ConversationInbox() {
             </>
           )}
         </div>
-        <aside id="conversation-client" className={`conversation-client ${showClient ? "conversation-client-open" : ""}`} aria-label="Panel del cliente">
-          <button ref={clientBack} type="button" className="conversation-secondary conversation-client-toggle" onClick={() => { setShowClient(false); window.setTimeout(() => document.getElementById("conversation-client-toggle")?.focus(), 0); }}><ArrowLeft className="h-5 w-5" aria-hidden /> Atrás al chat</button>
+        <aside id="conversation-client" tabIndex={-1} className={`conversation-client ${showClient ? "conversation-client-open" : ""}`} aria-label="Panel del cliente">
+          <button ref={clientBack} type="button" className="conversation-secondary conversation-client-toggle" onClick={() => { setShowClient(false); window.setTimeout(() => actionsButton.current?.focus(), 0); }}><ArrowLeft className="h-5 w-5" aria-hidden /> Atrás al chat</button>
           {selected ? <>
             <VisitRequestsBoard key={selected} conversationId={selected} channelLabel={current ? (CHANNEL_LABELS[current.channel] ?? current.channel) : "Sin informar"} />
-            {!readOnly && <button type="button" disabled={busy !== null} className="conversation-secondary w-full" onClick={() => void run("lead", async () => {
-              const { data } = await openConversationLead(selected);
-              router.push(`/admin/leads/${data.lead_id}`);
-            })}>Abrir ficha del cliente</button>}
           </> : <div className="conversation-client-empty"><h2>Datos del cliente</h2><p>Elegí una conversación para ver su información y las visitas solicitadas.</p></div>}
         </aside>
       </div>
