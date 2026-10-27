@@ -463,7 +463,7 @@ final class AdminConversationController extends Controller
             ->orderBy('id')->get(['run_id', 'tool_name', 'status'])->groupBy('run_id');
         $traces = $runs->mapWithKeys(fn ($r) => [$r->id => json_decode((string) $r->trace_json, true) ?: []]);
         // source_id = document public_id#ordinal (KnowledgeService); resolved inside this tenant only.
-        $sourceIds = $traces->flatMap(fn ($t) => $t['sources'] ?? [])->unique()->values();
+        $sourceIds = collect(array_merge(...$traces->map(fn ($t) => array_values((array) ($t['sources'] ?? [])))->values()->all()))->unique()->values();
         $chunks = $sourceIds->isEmpty() ? collect() : DB::table('knowledge_chunks as c')
             ->join('knowledge_documents as d', fn ($j) => $j->on('d.id', '=', 'c.document_id')->on('d.tenant_id', '=', 'c.tenant_id')
                 ->on('d.version', '=', 'c.document_version'))
