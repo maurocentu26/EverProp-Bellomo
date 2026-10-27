@@ -1,0 +1,164 @@
+[
+  {
+    "buttons": [
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Seguir completando"
+      },
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 83.21875,
+        "text": "Sí, limpiar formulario"
+      }
+    ],
+    "clippedText": false,
+    "dialog": {
+      "bottom": 461.984375,
+      "clientWidth": 288,
+      "left": 16,
+      "right": 304,
+      "scrollWidth": 288,
+      "top": 16,
+      "width": 288
+    },
+    "viewport": 320
+  },
+  {
+    "buttons": [
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Seguir completando"
+      },
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Sí, limpiar formulario"
+      }
+    ],
+    "clippedText": false,
+    "dialog": {
+      "bottom": 395.59375,
+      "clientWidth": 342,
+      "left": 16,
+      "right": 358.09375,
+      "scrollWidth": 342,
+      "top": 16,
+      "width": 342.09375
+    },
+    "viewport": 375
+  },
+  {
+    "buttons": [
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Seguir completando"
+      },
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Sí, limpiar formulario"
+      }
+    ],
+    "clippedText": false,
+    "dialog": {
+      "bottom": 364.984375,
+      "clientWidth": 358,
+      "left": 16,
+      "right": 373.734375,
+      "scrollWidth": 358,
+      "top": 16,
+      "width": 357.734375
+    },
+    "viewport": 390
+  },
+  {
+    "buttons": [
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Seguir completando"
+      },
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Sí, limpiar formulario"
+      }
+    ],
+    "clippedText": false,
+    "dialog": {
+      "bottom": 578.0859375,
+      "clientWidth": 614,
+      "left": 76.8046875,
+      "right": 691.1953125,
+      "scrollWidth": 614,
+      "top": 321.9140625,
+      "width": 614.390625
+    },
+    "viewport": 768
+  },
+  {
+    "buttons": [
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Seguir completando"
+      },
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Sí, limpiar formulario"
+      }
+    ],
+    "clippedText": false,
+    "dialog": {
+      "bottom": 578.0859375,
+      "clientWidth": 614,
+      "left": 204.8046875,
+      "right": 819.1953125,
+      "scrollWidth": 614,
+      "top": 321.9140625,
+      "width": 614.390625
+    },
+    "viewport": 1024
+  },
+  {
+    "buttons": [
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Seguir completando"
+      },
+      {
+        "clipped": false,
+        "font": "20.4px",
+        "height": 52.609375,
+        "text": "Sí, limpiar formulario"
+      }
+    ],
+    "clippedText": false,
+    "dialog": {
+      "bottom": 578.0859375,
+      "clientWidth": 614,
+      "left": 412.8046875,
+      "right": 1027.1953125,
+      "scrollWidth": 614,
+      "top": 321.9140625,
+      "width": 614.390625
+    },
+    "viewport": 1440
+  }
+]

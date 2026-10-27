@@ -148,6 +148,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [review, setReview] = useState<FormValues | null>(null);
   const savingReview = useRef(false);
+  const [resetPending, setResetPending] = useState(false);
 
   const { advisors: advisorList, error: advisorsError } = useLeadAdvisors(!isAdvisor);
 
@@ -246,6 +247,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       agentId: isAdvisor ? user?.id : "",
     },
   });
+  const hasDraft = form.formState.isDirty || Boolean(selectedCategory || selectedProjectId || selectedAsset || assetSearchQuery.trim());
 
   useEffect(() => {
     if (activeLead) {
@@ -1001,7 +1003,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={handleReset}
+                  onClick={() => { if (hasDraft) setResetPending(true); }}
+                  disabled={isSubmitting || !hasDraft}
                   className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                 >
                   Limpiar formulario
@@ -1013,7 +1016,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                 disabled={isSubmitting}
                 className="h-10 bg-blue-600 px-6 text-xs font-bold text-white hover:bg-blue-700 shadow-sm disabled:opacity-50"
               >
-                {isSubmitting ? "Guardando..." : isEditing ? "Guardar y completar ficha" : "Revisar y guardar lead"}
+                {isSubmitting ? "Guardando..." : isEditing ? "Revisar cambios" : "Revisar lead"}
               </Button>
             </div>
           </CardFooter>
@@ -1046,6 +1049,16 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               savingReview.current = true;
               try { await onSubmit(review); } finally { savingReview.current = false; }
             }}>{isSubmitting ? "Guardando…" : "Confirmar y guardar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={resetPending} onOpenChange={setResetPending}>
+        <DialogContent showCloseButton={false} className="mi-day leads-workspace lead-review sm:max-w-lg">
+          <DialogTitle>¿Limpiar el formulario?</DialogTitle>
+          <DialogDescription>Se borrarán los datos ingresados en este formulario. No se elimina ningún cliente guardado.</DialogDescription>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setResetPending(false)}>Seguir completando</Button>
+            <Button type="button" variant="destructive" onClick={() => { handleReset(); setResetPending(false); }}>Sí, limpiar formulario</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
