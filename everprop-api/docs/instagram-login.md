@@ -32,9 +32,11 @@ Los POST tienen límite de 6 solicitudes/minuto con el middleware existente. `te
 
 El navegador solicita solo `instagram_business_basic` y `instagram_business_manage_messages`. El servidor contrasta el ID del canje con `/me`; no confía en una cuenta enviada por el navegador. Suscribe `messages,messaging_seen`. La identidad visible viene de esa respuesta. El lock global por cuenta coincide con `everprop:instagram:connect-own`: ninguna cuenta puede reasignarse entre tenants. Reconectar la misma cuenta conserva canal, integración e historial.
 
-`IntegrationTokens` cifra el token y guarda `token_expires_at` a partir del `expires_in` confirmado por Meta. Un fallo no borra la conexión previa ni devuelve textos de error de Meta. Renovación y alta auditadas, sin tokens/códigos en la auditoría. El callback elimina query/fragmento de la barra, no usa storage y tiene `no-referrer`/`noindex`. Mantener desactivada la captura de query/body sensibles en logs, trazas y analítica del proxy/hosting del callback; no agregar scripts de terceros a esa ruta.
+`IntegrationTokens` cifra el token y guarda `token_expires_at` a partir del `expires_in` confirmado por Meta. Un fallo no borra la conexión previa ni devuelve textos de error de Meta. Renovación y alta auditadas, sin tokens/códigos en la auditoría. El callback elimina query/fragmento de la barra, no usa storage y usa `Referrer-Policy: origin` y `noindex`: conserva únicamente el origen para la sesión Sanctum, nunca path/query/fragmento. Mantener desactivada la captura de query/body sensibles en logs, trazas y analítica del proxy/hosting del callback; no agregar scripts de terceros a esa ruta.
 
 El flag de onboarding impide **altas y reconexiones**; no impide renovar un acceso existente. Eso permite mantener el canal operativo al suspender nuevas altas. Desactivar envíos usa el control existente `META_SEND_ENABLED`; el flag de onboarding no revoca credenciales.
+
+El `user_id` del canje OAuth es el ID de usuario acotado a la app. Se contrasta con `/me.id`; `/me.user_id` es el ID de la cuenta profesional usado por los webhooks y el canal. No se comparan como si fueran el mismo ID.
 
 ## Vigencia y recuperación
 

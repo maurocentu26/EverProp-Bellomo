@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
       {
         source: "/integrations/instagram/callback",
         headers: [
-          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Referrer-Policy", value: "origin" },
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },

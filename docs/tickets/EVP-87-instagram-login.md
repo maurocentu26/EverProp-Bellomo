@@ -59,3 +59,21 @@ Se separaron los cuatro escenarios con `#[TestWith]`: cada caso conecta su fixtu
 4. Mantener monitorizada la fecha de acceso y renovarlo manualmente antes del vencimiento. Un acceso retirado/vencido necesita nueva autorización. No hay renovación automática.
 5. Preparar credenciales dedicadas de EverProp para el revisor y videos reales. Completar cuestionario de datos, alinear política publicada con IA y confirmar facturación/tratamiento del proyecto Gemini con quien administra la clave. No declarar App Review enviada/aprobada.
 6. Siguen fuera de este ticket la deriva histórica `cache/cache_locks/sessions`, métricas de costoUNKNOWN y preparación de producción. Antes de proponer producción faltará validar forwards, dominios/CORS/R2, tenant hosts/Sanctum/cookies, credenciales/permisos, base y storage.
+
+
+## Seguimiento del callback real — 27/10/2026
+
+Rama `ticket/EVP-87-instagram-callback` desde `origin/develop` `c4bc308`. PR80 ya integrado y desplegado; este seguimiento aún es local, sin nueva publicación.
+
+En staging, el login normal de la cuenta de pruebas funciona. El consentimiento real de Centu retorna al callback, pero el POST respondió HTTP502 y la navegación posterior terminó en login. El token existente responde `/me` con `id` y `user_id` distintos; no se muestran secretos.
+
+Dos correcciones acotadas:
+
+- El ID recibido en el canje OAuth está acotado a la app: se compara con `/me.id`. El canal sigue usando `/me.user_id`, ID profesional de los webhooks. Ambos IDs se validan y la cuenta mantiene exclusividad global entre tenants. La fixture anterior igualaba ambos IDs y ocultaba el fallo; ahora son distintos y existe un negativo de ID de app discordante.
+- El callback usa `Referrer-Policy: origin` en cabecera y metadata. El GET inicial de AuthProvider necesita un origen reconocible para Sanctum; `no-referrer` lo dejaba sin Referer ni Origin y recibía401. La política nueva transmite solo el origen, sin código/state/path/query/fragmento. No cambia CORS, cookies, CSRF, autenticación, permisos ni límites de solicitudes.
+
+Verificación: PHP8.4/MySQL8.4/Redis en copia aislada `/tmp/evp87-callback`, reutilizando contenedores existentes sin editar el checkout montado. La prueba de identidad falla antes del cambio con502 y pasa después:15tests/231aserciones. Navegador Firefox aislado contra el build Next de producción local y API Laravel real: reproduciendo la política anterior, auth/me401; política nueva, auth/me200, Referer soloorigen y retorno a Ajustes autenticado. Cancelación y state sintéticos, sin llamadas a Meta. E2E de CI existente ampliado con esos dos controles; no se declara ejecutado completo localmente por este ensayo focal. BuildWebpack,5testsdecomponente,Pint y PHPStan focal aprobados. Regresión Conversations+Integrations:213tests/2851aserciones aprobadas. Revisión independiente Codex del diff actual: sin bloqueantes; no revisó su propio código.
+
+Fuente oficial de identidad: https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/business-login y https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/get-started (consultadas27oct2026 mediante MCPMeta).
+
+Pendiente: revisión, autorización de commit/push/PR y merge/despliegue de este ajuste concreto; luego repetir OAuthCentu para confirmar perfil/vigencia y mensaje real. No asumir que un test de proveedor simulado valida esa conexión.
