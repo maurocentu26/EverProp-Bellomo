@@ -23,3 +23,13 @@ Rojo: prueba del segundo destinatario falla sin la corrección. Verde: nueve pru
 Publicar corrección mediante commit/PR revisado y despliegue autorizado. Configurar la nueva lista de tres wa_id únicamente en API/worker de bellomito-staging, mantener el Phone Number ID actual y la excepción legacy para compatibilidad. Verificar config efectiva.
 
 Para probar automático: verificar proveedor/modelo, clave presente sin exponerla, presupuesto y límites; activar CONVERSATIONS_AI_ENABLED en API/worker de staging y modo del tenant si procede. Usar la acción existente de devolver a IA en las tres conversaciones de prueba. Los testers deben enviar mensajes nuevos; comprobar generación, aceptación Meta, delivery webhook y recepción humana por separado para los tres números. No se da por aprobado ningún E2E automático aún. No reenviar mensajes UNKNOWN ni disparar retroactivamente respuestas a conversaciones reales. Reversión: vaciar la lista y desactivar automático mediante despliegue de configuración.
+
+## Ajuste de arranque descubierto al desplegar (rama ticket/EVP-86-gemini-startup)
+
+PR77 pasó CI y se integró como 5a48369. Al activar automático, API no supera el arranque: `everprop:production-check` exige Anthropic exclusivamente, aunque EVP-81 ya permite Gemini en staging. Evidencia en logs del despliegue API 26600db7-3c5f-48b0-99fb-052591254e50: `FAIL Assistant: LLM provider configured`. No se omite el preflight.
+
+Cambio adicional acotado: ProductionCheck resuelve el binding LlmClient existente y acepta los adaptadores Anthropic/Gemini efectivamente configurados. Reutiliza íntegramente el gate de AppServiceProvider para ambiente, credenciales, tasas y presupuesto. No habilita OpenAI ni Gemini en producción.
+
+Rojo confirmado con nueva regresión. Verde: nueva prueba de arranque 1/17 aserciones; GeminiChatClient y controles negativos cubren staging válido y rechazo por producción, gate apagado, clave/modelo vacíos, tasas o presupuesto cero. Anthropic sigue aceptado. Regresión Conversations/Integrations/Gemini: 199/1323 pasan. Revisión independiente de seguridad IA sin bloqueos. La prueba preexistente de ProductionEnvironment con --connections falla por forwards ausentes en la base local (collection email sequence, project landing, project intakes), no por el gate; no se cambió el esquema para ocultarlo. CI debe validar esa prueba con su esquema completo.
+
+Publicación, revisión y despliegue de este ajuste adicional pendientes de autorización. No dar por aprobado E2E automático hasta generación/entrega/recepción verificadas en los tres teléfonos.
