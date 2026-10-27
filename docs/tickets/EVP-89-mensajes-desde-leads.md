@@ -1,6 +1,6 @@
 # EVP-89 — Mensajes desde el listado y el contacto guiado
 
-Rama `ticket/EVP-89-mensajes-desde-leads`, desde `origin/develop` 0844b88. Fecha 2026-10-27. Implementación local: Codex para Álvaro. Sin commit, push ni despliegue.
+Rama `ticket/EVP-89-mensajes-desde-leads`, desde `origin/develop` 0844b88. Fecha 2026-10-27. Implementación: Codex para Álvaro, commit `bec86e0`. Álvaro autorizó commit, push y PR hacia develop; merge y despliegue no autorizados.
 
 ## 1. Pedido y alcance
 
@@ -41,6 +41,6 @@ Este ticket abre conversaciones existentes; no crea hilos ni habilita mensajes p
 
 ## 5. Pendientes y riesgos
 
-Falta validación autenticada contra staging con teléfono/email de prueba, permisos efectivos y resultado real del cliente; el mock no tiene teléfonos/email en sus hilos. No se envió ningún mensaje real ni se desplegó. La autorización actual cubre preparación local; publicación e integración requieren aprobación expresa. El ticket se mantiene En curso.
+Falta validación autenticada contra staging con teléfono/email de prueba, permisos efectivos y resultado real del cliente; el mock no tiene teléfonos/email en sus hilos. No se envió ningún mensaje real ni se desplegó. Álvaro autorizó publicar la rama y abrir el PR para revisión. La integración y el despliegue requieren autorización expresa adicional. El ticket se mantiene En curso.
 
 Zoom200%, teclado móvil y celular físico pendientes. No hay certificación de responsive de todo el panel: estas evidencias cubren el listado y guiado afectados por EVP89. El resto de la reunión se organizó como propuestas fuera del repo, sin crear/reasignar tickets adicionales ni inventar datos comerciales.
