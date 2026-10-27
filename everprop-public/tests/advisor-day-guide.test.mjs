@@ -125,6 +125,9 @@ test('guide skips without saving and finishes honestly without a success check',
   assert.match(guide.text(guide.render()), /0 seguimientos registrados · 2 contactos saltados/);
   assert.match(guide.text(guide.render()), /Quedan 2 contactos prioritarios/);
   assert.doesNotMatch(guide.text(guide.render()), /Listo|resueltos/);
+  assert.match(guide.text(guide.render()), /No se guardaron seguimientos en esta ronda/);
+  assert.doesNotMatch(guide.text(guide.render()), /quedaron en el historial/);
+  assert.match(guide.text(guide.render()), /«A quién llamar»/);
 });
 
 test('guide records only after successful persistence; failure/cancel keep the client and draft editor', async () => {
@@ -151,6 +154,10 @@ test('guide records only after successful persistence; failure/cancel keep the c
   editor.props.onClose();
   assert.equal(guide.state[2], 1);
   assert.equal(guide.state[3]['lead-1'], undefined);
+  guide.button('Saltar por ahora').props.onClick();
+  assert.match(guide.text(guide.render()), /1 seguimiento registrado · 1 contacto saltado/);
+  assert.match(guide.text(guide.render()), /Los seguimientos guardados quedaron en el historial/);
+  assert.doesNotMatch(guide.text(guide.render()), /No se guardaron seguimientos/);
 });
 
 test('refreshing the queue does not reorder the captured round', () => {

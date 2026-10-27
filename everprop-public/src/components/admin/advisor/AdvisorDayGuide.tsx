@@ -69,7 +69,7 @@ export function AdvisorDayGuide({ userId, day, queue, ready, onSave }: {
               <Button variant="ghost" onClick={() => { setResults(previous => ({ ...previous, [item.lead.id]: "skipped" })); setStep(step + 1); }}>Saltar por ahora</Button>
             </>}
           </>}
-          {step >= round.length && step >= 0 && <><p className="day-muted">Los resultados quedaron en el historial de cada cliente. Los contactos pendientes siguen en «Tu próximo paso».</p><Button className="mi-day-primary" onClick={() => setOpen(false)}>Volver a Mi Día</Button></>}
+          {step >= round.length && step >= 0 && <><p className="day-muted">{recordedCount > 0 ? "Los seguimientos guardados quedaron en el historial del cliente correspondiente." : "No se guardaron seguimientos en esta ronda."} Los contactos pendientes siguen en «A quién llamar».</p><Button className="mi-day-primary" onClick={() => setOpen(false)}>Volver a Mi Día</Button></>}
         </div>
         {recording && <LeadFollowUpEditor className="mi-day day-guide-editor" title="¿Qué pasó?" lead={recording} onClose={() => setRecording(null)} onConfirm={async followUp => {
           await onSave(followUp, recording);
