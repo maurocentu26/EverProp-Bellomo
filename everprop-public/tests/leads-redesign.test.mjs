@@ -6,7 +6,7 @@ import ts from 'typescript';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const source = fs.readFileSync(new URL('../src/components/admin/NewLeadForm.tsx', import.meta.url), 'utf8');
-function formView({ fail = false } = {}) {
+function formView({ fail = false, dirty = false } = {}) {
   const state = [], calls = [], errors = [];
   let cursor = 0, values = { name: 'Cliente ejemplo', phone: '3415550100', email: '', origin: 'WhatsApp', stage: 'new', priority: 'NORMAL', budget: '1200', currency: 'USD', notes: 'Consultar lote', agentId: 'a1' };
   const jsx = (type, props) => ({ type, props });
@@ -15,7 +15,7 @@ function formView({ fail = false } = {}) {
   const dependencies = {
     react: { useState: initial => { const index = cursor++; if (!(index in state)) state[index] = initial; return [state[index], value => { state[index] = value; }]; }, useEffect: () => {}, useMemo: fn => fn(), useRef: initial => { const index = cursor++; if (!(index in state)) state[index] = { current: initial }; return state[index]; } },
     'react/jsx-runtime': { jsx, jsxs: jsx },
-    'react-hook-form': { Controller: 'Controller', useForm: () => ({ control: {}, register: () => ({}), watch: name => values[name], formState: { errors: {} }, handleSubmit: (onValid, onError) => () => { const parsed = schema.safeParse(values); return parsed.success ? onValid(parsed.data) : onError({ phone: { message: 'Contacto inválido' } }); } }) },
+    'react-hook-form': { Controller: 'Controller', useForm: () => ({ control: {}, register: () => ({}), watch: name => values[name], reset: data => { calls.push(['reset']); values = { ...data }; dirty = false; }, formState: { errors: {}, isDirty: dirty }, handleSubmit: (onValid, onError) => () => { const parsed = schema.safeParse(values); return parsed.success ? onValid(parsed.data) : onError({ phone: { message: 'Contacto inválido' } }); } }) },
     '@hookform/resolvers/zod': { zodResolver: value => { schema = value; } },
     zod: require('zod'),
     'next/navigation': { useRouter: () => ({ push: url => calls.push(['navigate', url]), refresh: () => {} }) },
@@ -41,8 +41,46 @@ function formView({ fail = false } = {}) {
   }
   const submit = () => find(render(), node => node.type === 'form').props.onSubmit();
   const button = label => find(render(), node => node.type === 'Button' && text(node).includes(label));
-  return { render, submit, button, text, find, calls, errors, setValues: data => { values = { ...values, ...data }; } };
+  return { render, submit, button, text, find, calls, errors, getValues: () => values, setValues: data => { values = { ...values, ...data }; } };
 }
+
+test('EVP-69 clearing a draft requires confirmation and cancelling preserves it', () => {
+  const view = formView({ dirty: true });
+  const openDialog = () => view.find(view.render(), node => node.type === 'Dialog' && node.props.open);
+  view.button('Limpiar formulario').props.onClick();
+  assert.equal(view.calls.length, 0);
+  assert.ok(openDialog());
+  view.button('Seguir completando').props.onClick();
+  assert.equal(openDialog(), undefined);
+  assert.equal(view.getValues().name, 'Cliente ejemplo');
+  assert.equal(view.getValues().notes, 'Consultar lote');
+  view.button('Limpiar formulario').props.onClick();
+  openDialog().props.onOpenChange(false);
+  assert.equal(view.calls.length, 0);
+  assert.equal(view.getValues().name, 'Cliente ejemplo');
+  view.button('Limpiar formulario').props.onClick();
+  view.button('Sí, limpiar formulario').props.onClick();
+  assert.deepEqual(view.calls, [['reset']]);
+  assert.equal(view.getValues().name, '');
+  assert.equal(view.getValues().notes, '');
+  assert.equal(openDialog(), undefined);
+  assert.equal(view.button('Limpiar formulario').props.disabled, true);
+});
+
+test('EVP-69 clearing protects an interest selection even when form fields are clean', () => {
+  const view = formView();
+  const category = () => view.find(view.render(), node => node.type === 'button' && view.text(node).trim().startsWith('Loteos'));
+  category().props.onClick();
+  assert.equal(category().props['aria-pressed'], true);
+  view.button('Limpiar formulario').props.onClick();
+  assert.equal(view.calls.length, 0);
+  view.button('Seguir completando').props.onClick();
+  assert.equal(category().props['aria-pressed'], true);
+  view.button('Limpiar formulario').props.onClick();
+  view.button('Sí, limpiar formulario').props.onClick();
+  assert.equal(category().props['aria-pressed'], false);
+  assert.deepEqual(view.calls, [['reset']]);
+});
 
 test('EVP-69 validates contact, reviews every value, cancels without writing and confirms the reviewed data', async () => {
   const view = formView();
