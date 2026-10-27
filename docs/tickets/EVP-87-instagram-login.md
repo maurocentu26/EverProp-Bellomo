@@ -1,6 +1,6 @@
 # EVP-87 — Instagram Login y cuenta conectada para App Review
 
-Rama `ticket/EVP-87-instagram-login`, base `origin/develop` `c0afe0c9ca6915916765d3d22cd3efdde56fbc64`. Preparación local 26/10/2026 (Argentina); verificaciones desde 27/10 UTC. Autor: Codex para Álvaro. Commit, push y apertura de PR autorizados por Álvaro el26/10/2026. Merge y despliegue pendientes de autorización.
+Rama `ticket/EVP-87-instagram-login`, base `origin/develop` `c0afe0c9ca6915916765d3d22cd3efdde56fbc64`. Preparación local 26/10/2026 (Argentina); verificaciones desde 27/10 UTC. Autor: Codex para Álvaro. Commit, push y apertura de PR autorizados por Álvaro el26/10/2026. Corrección de CI, actualización del PR80 y merge/staging si los checks pasan autorizados el27/10/2026.
 
 ## 1. Qué pedía el ticket
 
@@ -39,15 +39,21 @@ Docker existente PHP8.4.26, MySQL8.4 y Redis; código copiado a `/tmp/evp87`, ba
 - Negativos: mismo actor con otra sesión, otro actor y tenant, TTL, consumo único y lock Redis contendido, permisos faltantes, identidad discordante, suscripción fallida, vigencia faltante, conexión a Meta caída, cuenta ajena, renovación prematura, token sin vigencia, revocación o rotación mientras responde Meta y actor/tenant revocados antes de persistir. Sin reemplazo de credenciales previas ante fallos.
 - `php vendor/bin/pint` sobre los PHP modificados: aprobado. `php vendor/bin/phpstan analyse --no-progress --memory-limit=1G --debug`: global sin errores. Se usó1GiB y modo secuencial tras agotar256MiB en workers del entorno local.
 - `node --test tests/instagram-connect.test.mjs tests/settings-redesign.test.mjs`: **12 tests**, sin fallos. ESLint dirigido a todos los TS/TSX modificados: sin errores ni advertencias.
-- `npx next build --webpack`: aprobado, incluidos TypeScript y prerender del callback. `npm run build` con Turbopack falló por el `node_modules` enlazado fuera del root de este checkout; no se alteró configuración de producción para esconder esa limitación local. CI aún no ejecutado para este cambio no publicado.
+- `npx next build --webpack`: aprobado, incluidos TypeScript y prerender del callback. `npm run build` con Turbopack falló por el `node_modules` enlazado fuera del root de este checkout; no se alteró configuración de producción para esconder esa limitación local. El check web del PR80 aprobó el build limpio en GitHub.
 - Playwright/Firefox sobre build de producción local: Ajustes muestra identidad y vigencia desconocida; confirmar/cancelar funciona; callback limpia la URL, realiza exactamente un POST y muestra la cuenta. Headers `Referrer-Policy: no-referrer` y `X-Robots-Tag: noindex, nofollow` verificados. APIs interceptadas con datos sintéticos: prueba de UI, no OAuth real ni demostración de cookies reales/Meta.
 - Revisión independiente `tenant-isolation-reviewer` (agente Codex): sin bloqueos en backend/frontend; se incorporaron sus negativos y limpieza del lock con finally. No se invocó ni reactivó Claude.
 
 Evidencia fuera del repo: `cierre-meta/evp87-regression.xml`, `evp87-onboarding.xml`, `evp87-instagram-ajustes-local.png` y `evp87-instagram-callback-local.png`, en el directorio de visualizaciones de esta sesión. `git diff --check` aprobado.
 
+### Corrección de CI, 27/10/2026
+
+El primer API quality del PR80 (run40441376134, head44644d7) tuvo510 tests aprobados,1 omitido y1 fallo: el bucle de errores de Meta excedió el throttle del actor y recibió429 al iniciar OAuth. Reproducido localmente con `APP_ENV=testing CACHE_STORE=redis`: avanzar Carbon61s no vence un TTL real de Redis. La pasada local inicial no cubría esa combinación de arranque del rate limiter.
+
+Se separaron los cuatro escenarios con `#[TestWith]`: cada caso conecta su fixture y comprueba que el intento fallido conserva el token y un único canal. Se eliminó el avance artificial del tiempo; no se cambió ni deshabilitó throttle, middleware o comportamiento de la API. Regresión focal con Redis: **14 tests/217 aserciones**, sin fallos. Pint y PHPStan del test aprobados; revisión independiente incremental antes de actualizar el PR. CI del nuevo commit debe aprobar antes de merge.
+
 ## 5. Pendientes y riesgos
 
-1. Publicar commit/push/PR autorizados; después revisar CI y obtener autorización aplicable antes de merge/despliegue. El ticket conserva En curso (este proyecto no tiene En revisión).
+1. Actualizar PR80 con la corrección de CI autorizada; esperar todos los checks y revisión satisfactorios antes de ejecutar el merge/staging autorizados. El ticket conserva En curso (este proyecto no tiene En revisión).
 2. En staging, registrar el callback literal indicado en `everprop-api/docs/instagram-login.md`, configurar las tres variables y comprobar dominios/Sanctum/cookies desde el navegador. `META_INSTAGRAM_APP_ID` debe ser el ID de Instagram, no el principal de Meta.
 3. Reconectar Centu con la nueva pantalla para obtener username y vigencia confirmados. Verificar DM de Álvaro, respuesta y entrega reales; solo entonces grabar el recorrido exigido por App Review. El código local no prueba esa conexión real.
 4. Mantener monitorizada la fecha de acceso y renovarlo manualmente antes del vencimiento. Un acceso retirado/vencido necesita nueva autorización. No hay renovación automática.

@@ -13,6 +13,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Feature\Conversations\ConversationTestSupport;
 use Tests\TestCase;
 
@@ -205,23 +206,25 @@ final class InstagramOnboardingTest extends TestCase
         Http::assertSentCount(4);
     }
 
-    public function test_identity_subscription_and_expiry_fail_closed_preserving_the_existing_connection(): void
+    #[TestWith(['identity'])]
+    #[TestWith(['subscription'])]
+    #[TestWith(['expiry'])]
+    #[TestWith(['connection'])]
+    public function test_identity_subscription_and_expiry_fail_closed_preserving_the_existing_connection(string $failure): void
     {
         [$tenant] = $this->admin();
         $this->meta();
         $id = $this->postJson(self::BASE.'/connect', ['state' => $this->begin(), 'code' => 'first'])->assertCreated()->json('data.id');
         $row = DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('public_id', $id)->first();
-        foreach ([
-            ['graph.instagram.com/v24.0/me*' => Http::response(['user_id' => '999', 'username' => 'wrong'])],
-            ['graph.instagram.com/v24.0/123456/subscribed_apps' => Http::response(['success' => false])],
-            ['graph.instagram.com/access_token*' => Http::response(['access_token' => 'invalid-expiry'])],
-            ['api.instagram.com/oauth/access_token' => Http::failedConnection()],
-        ] as $override) {
-            $this->meta($override);
-            $this->postJson(self::BASE.'/connect', ['state' => $this->begin(), 'code' => 'retry'])->assertStatus(502);
-            $this->assertSame($row->access_token_ciphertext, DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('id', $row->id)->value('access_token_ciphertext'));
-            $this->travel(61)->seconds();
-        }
+        $override = match ($failure) {
+            'identity' => ['graph.instagram.com/v24.0/me*' => Http::response(['user_id' => '999', 'username' => 'wrong'])],
+            'subscription' => ['graph.instagram.com/v24.0/123456/subscribed_apps' => Http::response(['success' => false])],
+            'expiry' => ['graph.instagram.com/access_token*' => Http::response(['access_token' => 'invalid-expiry'])],
+            'connection' => ['api.instagram.com/oauth/access_token' => Http::failedConnection()],
+        };
+        $this->meta($override);
+        $this->postJson(self::BASE.'/connect', ['state' => $this->begin(), 'code' => 'retry'])->assertStatus(502);
+        $this->assertSame($row->access_token_ciphertext, DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('id', $row->id)->value('access_token_ciphertext'));
         $this->assertSame(1, DB::table('channel_accounts')->where('tenant_id', $tenant->id)->where('channel_type', 'INSTAGRAM_DM')->count());
     }
 
