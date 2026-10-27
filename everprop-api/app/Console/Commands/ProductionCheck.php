@@ -2,6 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\AgentRuntime\Llm\AnthropicMessagesClient;
+use App\Domain\AgentRuntime\Llm\GeminiChatClient;
+use App\Domain\AgentRuntime\Llm\LlmClient;
 use App\Support\ProductionDependencies;
 use Illuminate\Console\Command;
 use Illuminate\Encryption\Encrypter;
@@ -66,8 +69,11 @@ final class ProductionCheck extends Command
             // The assistant needs a real worker (turn lock, delayed retries) and an approved provider.
             $checks['Assistant: asynchronous queue'] = in_array(config('queue.connections.'.config('queue.default').'.driver'), ['database', 'redis'], true);
             $checks['Assistant: queue retry_after above turn lock'] = (int) config('queue.connections.'.config('queue.default').'.retry_after', 0) > (int) config('agent.turn_lock_seconds');
-            $checks['Assistant: LLM provider configured'] = config('agent.llm_provider') === 'anthropic'
-                && filled(config('services.anthropic.key')) && filled(config('agent.llm_model'));
+            // Resolve the runtime binding so Gemini retains its staging, credentials and budget guards.
+            /** @var LlmClient $client */
+            $client = app(LlmClient::class);
+            $checks['Assistant: LLM provider configured'] = in_array($client::class,
+                [AnthropicMessagesClient::class, GeminiChatClient::class], true);
         }
         if ($this->option('connections')) {
             try {
