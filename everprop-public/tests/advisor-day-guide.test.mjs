@@ -49,6 +49,7 @@ test('guide welcome pluralizes round and pending counts independently', () => {
       'lucide-react': {},
       '@/lib/advisor-day-guide': context.exports,
       '@/components/admin/LeadFollowUpEditor': { LeadFollowUpEditor: 'Editor' },
+    '@/components/admin/LeadMessagesLink': { LeadMessagesLink: 'LeadMessagesLink' },
       '@/components/ui/button': { Button: 'Button' },
       '@/components/ui/dialog': Object.fromEntries(['Dialog', 'DialogContent', 'DialogDescription', 'DialogTitle', 'DialogTrigger'].map(key => [key, key])),
     };
@@ -85,6 +86,7 @@ function guideHarness(queue, onSave = async () => {}) {
     react: { useState: () => { const index = hook++; return [state[index], value => { state[index] = typeof value === 'function' ? value(state[index]) : value; }]; }, useRef: () => ({ current: null }), useEffect: () => {} },
     'next/link': { default: 'Link' }, 'lucide-react': {}, '@/lib/advisor-day-guide': context.exports,
     '@/components/admin/LeadFollowUpEditor': { LeadFollowUpEditor: 'Editor' },
+    '@/components/admin/LeadMessagesLink': { LeadMessagesLink: 'LeadMessagesLink' },
     '@/components/ui/button': { Button: 'Button' },
     '@/components/ui/dialog': Object.fromEntries(['Dialog', 'DialogContent', 'DialogDescription', 'DialogTitle', 'DialogTrigger'].map(key => [key, key])),
   };
@@ -158,4 +160,16 @@ test('refreshing the queue does not reorder the captured round', () => {
   queue.reverse();
   assert.equal(guide.state[1][0].lead.id, 'lead-0');
   assert.match(guide.text(guide.render()), /Cliente 0/);
+});
+
+
+test('messages carries the current client without saving or advancing the guided round', () => {
+  let saves = 0;
+  const guide = guideHarness(roundQueue(), async () => { saves++; });
+  guide.button('Empezar').props.onClick();
+  const action = guide.nodes(guide.render()).find(node => node.type === 'LeadMessagesLink');
+  assert.equal(action.props.lead.id, 'lead-0');
+  assert.equal(guide.state[2], 0);
+  assert.equal(saves, 0);
+  assert.equal(Object.keys(guide.state[3]).length, 0);
 });
