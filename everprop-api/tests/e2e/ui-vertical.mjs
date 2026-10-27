@@ -125,7 +125,8 @@ try {
   // EVP-84: actions are buttons in a sheet; closing asks for confirmation.
   pp.once("dialog", (dialog) => dialog.accept());
   await pp.getByRole("button", { name: /^Cerrar conversación/ }).click();
-  await pp.getByText("Conversación cerrada.").first().waitFor({ timeout: 15000 });
+  // The header status is stable; the confirmation toast can be gone before the check runs.
+  await pp.getByText(/· Cerrada$/).first().waitFor({ timeout: 15000 });
   await actions.click();
   const reopen = pp.getByRole("button", { name: /^Reabrir conversación/ });
   await reopen.waitFor({ timeout: 15000 });

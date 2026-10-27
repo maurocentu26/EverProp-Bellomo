@@ -841,7 +841,7 @@ export function ConversationInbox() {
                         // On a phone keyboard Enter is a line break; there the Send button sends.
                         onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && !isTouch()) { event.preventDefault(); void (noteMode ? saveNote() : sendDraft()); } }}
                         className={`${noteMode ? "wa-note-mode" : "wa-input"} field-sizing-content max-h-36 min-h-11 min-w-0 flex-1 resize-none rounded-3xl px-4 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-accent)] sm:text-sm`}
-                        placeholder={noteMode ? "Nota interna: solo la ve el equipo" : humanInControl ? "Escribí un mensaje" : "No disponible"} />
+                        placeholder={noteMode ? "Nota interna: solo la ve el equipo" : humanInControl ? "Escribí un mensaje" : state === "CLOSED" ? "Conversación cerrada: reabrila desde ⋮" : "No disponible"} />
                       <button type="submit" disabled={busy !== null || (!noteMode && !humanInControl) || (noteMode ? note.trim() === "" : draft.trim() === "" || windowClosed)}
                         aria-label={noteMode ? "Guardar nota" : "Enviar respuesta"}
                         className="conversation-send wa-accent inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 disabled:opacity-50">
