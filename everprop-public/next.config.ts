@@ -20,6 +20,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/integrations/instagram/callback",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
         source: "/((?!widget/).*)",
         headers: [
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },

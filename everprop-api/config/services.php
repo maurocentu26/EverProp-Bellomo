@@ -70,6 +70,9 @@ return [
     'meta' => [
         'app_secret' => env('META_APP_SECRET'),
         'instagram_app_secret' => env('META_INSTAGRAM_APP_SECRET'),
+        'instagram_app_id' => env('META_INSTAGRAM_APP_ID'),
+        'instagram_redirect_uri' => env('META_INSTAGRAM_REDIRECT_URI'),
+        'instagram_onboarding_enabled' => (bool) env('META_INSTAGRAM_ONBOARDING_ENABLED', false),
         'instagram_webhook_verify_token' => env('META_INSTAGRAM_WEBHOOK_VERIFY_TOKEN'),
         'webhook_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
         'graph_version' => env('META_GRAPH_VERSION', 'v24.0'), // v24 (2025-10-08): status webhooks drop `conversation` (unused here)
