@@ -32,6 +32,7 @@ final class InstagramOnboardingTest extends TestCase
         parent::setUp();
         config(['services.meta.instagram_onboarding_enabled' => true, 'services.meta.instagram_app_id' => '111',
             'services.meta.instagram_app_secret' => 'synthetic-secret', 'services.meta.instagram_redirect_uri' => self::REDIRECT,
+            'services.meta.instagram_redirect_uris' => [],
             'services.meta.graph_version' => 'v24.0', 'cache.default' => 'array', 'session.driver' => 'array', 'sanctum.stateful' => ['localhost:5173']]);
         Http::preventStrayRequests();
     }
@@ -73,6 +74,47 @@ final class InstagramOnboardingTest extends TestCase
             'graph.instagram.com/v24.0/123456/subscribed_apps' => Http::response(['success' => true]),
             'graph.instagram.com/refresh_access_token*' => Http::response(['access_token' => 'refreshed-token', 'expires_in' => 5184000]),
         ]);
+    }
+
+    public function test_tenant_specific_callback_keeps_the_default_and_is_used_in_the_exchange(): void
+    {
+        [$internal] = $this->admin();
+        $review = Tenant::factory()->create();
+        $reviewer = $this->user($review, RoleCode::TENANT_ADMIN);
+        $redirect = 'https://review.example.test/integrations/instagram/callback';
+        config(['services.meta.instagram_redirect_uris' => [$review->slug => $redirect],
+            'tenancy.hosts' => ['localhost' => $internal->slug, 'review.example.test' => $review->slug]]);
+        $this->begin(); // The internal tenant retains its existing callback.
+        $this->actingAs($reviewer)->withHeaders($this->tenantHeaders($review));
+        $url = $this->postJson('https://review.example.test'.self::BASE.'/authorize')->assertOk()->json('data.authorization_url');
+        parse_str(parse_url($url, PHP_URL_QUERY), $params);
+        $this->assertSame($redirect, $params['redirect_uri']);
+        $this->withCookie(config('session.cookie'), app('session')->getId());
+        $this->meta();
+        $this->postJson('https://review.example.test'.self::BASE.'/connect', ['state' => $params['state'], 'code' => 'synthetic-code'])->assertCreated();
+        Http::assertSent(fn (Request $r) => $r->url() === 'https://api.instagram.com/oauth/access_token' && $r['redirect_uri'] === $redirect);
+        $this->assertDatabaseHas('channel_accounts', ['tenant_id' => $review->id, 'provider_account_id' => '123456']);
+        $this->assertDatabaseMissing('channel_accounts', ['tenant_id' => $internal->id, 'provider_account_id' => '123456']);
+    }
+
+    public function test_changing_a_callback_after_authorizing_invalidates_the_state_before_meta(): void
+    {
+        [$tenant] = $this->admin();
+        $state = $this->begin();
+        config(['services.meta.instagram_redirect_uris' => [$tenant->slug => 'https://new.example.test/integrations/instagram/callback'],
+            'tenancy.hosts' => ['localhost' => $tenant->slug, 'new.example.test' => $tenant->slug]]);
+        $this->postJson(self::BASE.'/connect', ['state' => $state, 'code' => 'synthetic-code'])->assertStatus(422)->assertJsonPath('error.code', 'INVALID_STATE');
+        Http::assertNothingSent();
+    }
+
+    public function test_a_tenant_override_cannot_target_another_tenants_callback(): void
+    {
+        [$tenant] = $this->admin();
+        $other = Tenant::factory()->create();
+        config(['services.meta.instagram_redirect_uris' => [$tenant->slug => 'https://foreign.example.test/integrations/instagram/callback'],
+            'tenancy.hosts' => ['localhost' => $tenant->slug, 'foreign.example.test' => $other->slug]]);
+        $this->postJson(self::BASE.'/authorize')->assertStatus(503);
+        Http::assertNothingSent();
     }
 
     public function test_oauth_connects_once_and_lists_real_identity_expiry_without_secrets(): void

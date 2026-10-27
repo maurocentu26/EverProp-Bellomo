@@ -72,6 +72,7 @@ return [
         'instagram_app_secret' => env('META_INSTAGRAM_APP_SECRET'),
         'instagram_app_id' => env('META_INSTAGRAM_APP_ID'),
         'instagram_redirect_uri' => env('META_INSTAGRAM_REDIRECT_URI'),
+        'instagram_redirect_uris' => json_decode((string) env('META_INSTAGRAM_REDIRECT_URIS_JSON', '{}'), true),
         'instagram_onboarding_enabled' => (bool) env('META_INSTAGRAM_ONBOARDING_ENABLED', false),
         'instagram_webhook_verify_token' => env('META_INSTAGRAM_WEBHOOK_VERIFY_TOKEN'),
         'webhook_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),

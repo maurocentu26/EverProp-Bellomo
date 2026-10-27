@@ -22,7 +22,7 @@ final class InstagramOnboarding
 
     public function enabled(Tenant $tenant): bool
     {
-        $uri = (string) config('services.meta.instagram_redirect_uri');
+        $uri = $this->redirectUri($tenant);
         $host = parse_url($uri, PHP_URL_HOST);
         $selector = config('tenancy.hosts', [])[$host ?? ''] ?? null;
         $scheme = parse_url($uri, PHP_URL_SCHEME);
@@ -41,13 +41,14 @@ final class InstagramOnboarding
     public function authorize(Tenant $tenant, User $user, string $sessionId): string
     {
         $this->requireEnabled($tenant);
+        $redirect = $this->redirectUri($tenant);
         $state = bin2hex(random_bytes(32));
         Cache::put($this->stateKey($tenant->id, $user->id, $state), [
-            'session' => hash('sha256', $sessionId), 'redirect' => config('services.meta.instagram_redirect_uri'),
+            'session' => hash('sha256', $sessionId), 'redirect' => $redirect,
         ], now()->addMinutes(10));
 
         return 'https://www.instagram.com/oauth/authorize?'.http_build_query([
-            'client_id' => config('services.meta.instagram_app_id'), 'redirect_uri' => config('services.meta.instagram_redirect_uri'),
+            'client_id' => config('services.meta.instagram_app_id'), 'redirect_uri' => $redirect,
             'response_type' => 'code', 'scope' => 'instagram_business_basic,instagram_business_manage_messages', 'state' => $state,
         ], '', '&', PHP_QUERY_RFC3986);
     }
@@ -56,11 +57,12 @@ final class InstagramOnboarding
     public function connect(Tenant $tenant, User $user, string $sessionId, #[SensitiveParameter] string $state, #[SensitiveParameter] ?string $code, bool $cancelled): array
     {
         $this->requireEnabled($tenant);
+        $redirect = $this->redirectUri($tenant);
         $key = $this->stateKey($tenant->id, $user->id, $state);
-        $consumed = Cache::lock($key.':consume', 10)->get(function () use ($key, $sessionId): bool {
+        $consumed = Cache::lock($key.':consume', 10)->get(function () use ($key, $sessionId, $redirect): bool {
             $entry = Cache::get($key);
             if (! is_array($entry) || ! hash_equals((string) ($entry['session'] ?? ''), hash('sha256', $sessionId))
-                || ($entry['redirect'] ?? null) !== config('services.meta.instagram_redirect_uri')) {
+                || ($entry['redirect'] ?? null) !== $redirect) {
                 return false;
             }
             Cache::forget($key);
@@ -75,7 +77,7 @@ final class InstagramOnboarding
         }
         $exchange = Http::asForm()->timeout(10)->post('https://api.instagram.com/oauth/access_token', [
             'client_id' => config('services.meta.instagram_app_id'), 'client_secret' => config('services.meta.instagram_app_secret'),
-            'grant_type' => 'authorization_code', 'redirect_uri' => config('services.meta.instagram_redirect_uri'), 'code' => $code,
+            'grant_type' => 'authorization_code', 'redirect_uri' => $redirect, 'code' => $code,
         ]);
         $this->successful($exchange);
         $short = $exchange->json('data.0', $exchange->json());
@@ -214,6 +216,17 @@ final class InstagramOnboarding
         $publicId = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->value('public_id');
 
         return array_values(array_filter($this->connections($tenantId), fn ($row) => $row['id'] === $publicId))[0];
+    }
+
+    private function redirectUri(Tenant $tenant): string
+    {
+        $overrides = config('services.meta.instagram_redirect_uris', []);
+        if (! is_array($overrides)) {
+            return '';
+        }
+        $uri = $overrides[$tenant->slug] ?? config('services.meta.instagram_redirect_uri');
+
+        return is_string($uri) ? $uri : '';
     }
 
     private function requireEnabled(Tenant $tenant): void
