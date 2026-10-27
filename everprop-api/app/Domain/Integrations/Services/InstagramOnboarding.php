@@ -95,15 +95,18 @@ final class InstagramOnboarding
         $this->successful($long);
         $token = $this->token($long->json('access_token'));
         $expires = $this->expires($long);
-        $identityResponse = Http::withToken($token)->timeout(10)->get($this->url('me'), ['fields' => 'user_id,username']);
+        $identityResponse = Http::withToken($token)->timeout(10)->get($this->url('me'), ['fields' => 'id,user_id,username']);
         $this->successful($identityResponse);
         $identity = $identityResponse->json('data.0', $identityResponse->json());
         if (! is_array($identity)) {
             throw new OnboardingFailed('IDENTITY_FAILED', 'Meta no confirmó la identidad de la cuenta profesional. Volvé a conectar.', 502);
         }
         $accountId = (string) ($identity['user_id'] ?? '');
+        $appScopedId = (string) ($identity['id'] ?? '');
         $username = $identity['username'] ?? null;
-        if (! preg_match('/^\d{1,32}$/', $accountId) || $accountId !== (string) ($short['user_id'] ?? '')
+        // OAuth returns the app-scoped ID; webhooks and channel routing use the professional account ID.
+        if (! preg_match('/^\d{1,32}$/', $accountId) || ! preg_match('/^\d{1,32}$/', $appScopedId)
+            || $appScopedId !== (string) ($short['user_id'] ?? '')
             || ! is_string($username) || ! preg_match('/^[a-zA-Z0-9_.]{1,30}$/', $username)) {
             throw new OnboardingFailed('IDENTITY_FAILED', 'Meta no confirmó la identidad de la cuenta profesional. Volvé a conectar.', 502);
         }

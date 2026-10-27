@@ -146,6 +146,16 @@ try {
   const overlap = box && btn && !(btn.y >= box.y + box.height || btn.y + btn.height <= box.y || btn.x >= box.x + box.width || btn.x + btn.width <= box.x);
   await shot(ms, "05-widget-movil");
   check("U9", "móvil 390px: bandeja sin scroll horizontal; widget sin superponerse al botón", inboxOk && (await noOverflow(ms)) && !overlap && box.width <= 390);
+  // A public OAuth callback still restores the existing Sanctum session through GET /auth/me.
+  // A fake cancellation exercises the browser boundary without a real provider request or credential.
+  const restored = pp.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/auth/me");
+  await pp.goto(`${PANEL}/integrations/instagram/callback?error=access_denied&state=${"a".repeat(64)}`);
+  const restoredResponse = await restored;
+  const restoredHeaders = await restoredResponse.request().allHeaders();
+  check("U12", "callback conserva sesión sin filtrar código/state en Referer", restoredResponse.status() === 200 && restoredHeaders.referer === `${new URL(PANEL).origin}/`);
+  await pp.getByRole("link", { name: "Volver a Ajustes" }).click();
+  await pp.getByRole("heading", { name: "Configuración", exact: true }).waitFor();
+  check("U13", "volver del callback no redirige al login", new URL(pp.url()).pathname === "/admin/settings");
 } catch (error) {
   check("UX", "el recorrido terminó sin errores", false, String(error?.message ?? error).split("\n")[0]);
   // Every open page at the moment of failure, so a CI-only timeout shows which screen was stuck.
@@ -157,4 +167,4 @@ try {
 
 const passed = results.filter((r) => r.ok).length;
 console.log(`\n${passed}/${results.length} PASS`);
-process.exit(passed === results.length && results.length === 11 ? 0 : 1);
+process.exit(passed === results.length && results.length === 13 ? 0 : 1);

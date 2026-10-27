@@ -66,10 +66,10 @@ final class InstagramOnboardingTest extends TestCase
         Http::swap(new Factory);
         Http::preventStrayRequests();
         Http::fake($overrides + [
-            'api.instagram.com/oauth/access_token' => Http::response(['data' => [['access_token' => 'short-token', 'user_id' => '123456',
+            'api.instagram.com/oauth/access_token' => Http::response(['data' => [['access_token' => 'short-token', 'user_id' => '987654321',
                 'permissions' => 'instagram_business_basic,instagram_business_manage_messages']]]),
             'graph.instagram.com/access_token*' => Http::response(['access_token' => self::TOKEN, 'expires_in' => 5184000]),
-            'graph.instagram.com/v24.0/me*' => Http::response(['user_id' => '123456', 'username' => 'synthetic_business']),
+            'graph.instagram.com/v24.0/me*' => Http::response(['id' => '987654321', 'user_id' => '123456', 'username' => 'synthetic_business']),
             'graph.instagram.com/v24.0/123456/subscribed_apps' => Http::response(['success' => true]),
             'graph.instagram.com/refresh_access_token*' => Http::response(['access_token' => 'refreshed-token', 'expires_in' => 5184000]),
         ]);
@@ -207,6 +207,7 @@ final class InstagramOnboardingTest extends TestCase
     }
 
     #[TestWith(['identity'])]
+    #[TestWith(['app_identity'])]
     #[TestWith(['subscription'])]
     #[TestWith(['expiry'])]
     #[TestWith(['connection'])]
@@ -218,6 +219,7 @@ final class InstagramOnboardingTest extends TestCase
         $row = DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('public_id', $id)->first();
         $override = match ($failure) {
             'identity' => ['graph.instagram.com/v24.0/me*' => Http::response(['user_id' => '999', 'username' => 'wrong'])],
+            'app_identity' => ['graph.instagram.com/v24.0/me*' => Http::response(['id' => '999', 'user_id' => '123456', 'username' => 'synthetic_business'])],
             'subscription' => ['graph.instagram.com/v24.0/123456/subscribed_apps' => Http::response(['success' => false])],
             'expiry' => ['graph.instagram.com/access_token*' => Http::response(['access_token' => 'invalid-expiry'])],
             'connection' => ['api.instagram.com/oauth/access_token' => Http::failedConnection()],
