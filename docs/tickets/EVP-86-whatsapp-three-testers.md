@@ -1,35 +1,68 @@
-# EVP-86 — Tres destinatarios sandbox y prueba automática
+# EVP-86 — WhatsApp sandbox y validación automática
 
-Rama `ticket/EVP-86-whatsapp-three-testers`, base develop f42017a, 2026-10-26. Álvaro con Codex. Commit/push/PR autorizados por Álvaro; despliegue pendiente.
+Continuación: rama `ticket/EVP-86-automated-validation`, base develop `70ff6fc`, 2026-10-26. Álvaro con Codex. Commit, push y PR autorizados por Álvaro para revisión; sin merge ni despliegue de esta continuación.
 
-## 1. Pedido y evidencia
+## 1. Pedido y resultado esperado
 
-Los tres destinatarios ya aparecen en la lista de prueba de Meta. EVP-80 conserva un único par FROM/TO, por lo que los otros dos wa_id no reciben la excepción de formato. Develop y el worker de staging ya ejecutan EVP-81 (f42017a). Proveedor runtime confirmado: Gemini gemini-3.1-flash-lite, clave presente, presupuesto compartido USD10 y tasas 0.25/1.50; sin mostrar la clave. Runtime observado: `conversations.ai_enabled=false`, copiloto y gate Gemini habilitados. Las tres conversaciones WhatsApp están en atención humana. No confundir copiloto con respuesta automática.
+Configurar tres destinatarios sandbox y validar respuestas en staging. PR77 y PR78 ya están integrados y desplegados. Los tres destinatarios recibieron pruebas de bandeja; Álvaro confirmó también una respuesta automática Gemini. Se observó Google HTTP503 seguido de HTTP200; el aviso de derivación también llegó.
+
+Álvaro pidió continuar las pruebas manuales solo con su número y automatizar lo que no necesita teléfonos. Esta continuación agrega validación de colas, aislamiento, fallos, idempotencia y un reporte agregado. No exige nueva participación de Mauro/Ramiro.
 
 ## 2. Implementación
 
-Nueva variable opcional `META_WHATSAPP_SANDBOX_RECIPIENTS`: lista separada por comas de wa_id entrantes aprobados. Se compara estrictamente, solo en el Phone Number ID sandbox configurado y solo texto libre. Para cada coincidencia, valida `549` más diez dígitos y deriva exactamente el mismo número sin el 9 móvil. No permite configurar un destino arbitrario. El par legacy conserva prioridad y validación; no se cambian identidades persistidas, outbox, tokens, esquema ni canales restantes. Sin dependencias.
+Ya desplegado:
+
+- PR77: lista explícita META_WHATSAPP_SANDBOX_RECIPIENTS. Solo el Phone Number ID sandbox y texto libre usan la excepción. Valida 549 más diez dígitos y deriva el mismo número sin el 9 móvil; el par legacy conserva prioridad y validación. No cambia identidades persistidas ni destinatarios ajenos.
+- PR78: ProductionCheck valida el binding real LlmClient y conserva gates de Gemini staging, credenciales, tarifas y presupuesto. No permite Gemini en producción.
+- Staging: API/worker con IA global, Gemini y lista de tres; tenant ficticio en respuestas automáticas. Secretos cifrados y fuera del informe.
+
+Nuevo en esta rama:
+
+- WhatsAppGeminiFlowTest.php: cinco pruebas del webhook firmado → receipt durable → cola MySQL → Gemini → outbox → estados Meta. Verifica tool roundtrip/thoughtSignature, retry503, duplicados, estados fuera de orden, fallo persistente/handoff, reservas UNKNOWN, contención Redis, entrega incierta sin reenvío y ráfaga de 50 chats entre dos tenants.
+- WhatsAppParallelQueueTest.php: 200 chats sintéticos con duplicados y dos tenants; cuatro procesos PHP independientes sobre MySQL/Redis, al menos dos deben consumir. Verifica una respuesta correcta por chat y cero jobs fallidos. Gemini/Meta simulados y tráfico externo bloqueado en cada hijo. Antes de fixtures, el padre exige testing y DB bellomo_crm_test o bellomo_crm_evpNN_qa; los hijos exigen testing y la misma DB. Finally detiene hijos y limpia script temporal, cola y tenants propios.
+- ConversationKpis.php: agrega automatic al comando existente: turnos, estados, errores, entrega actual de respuestas generadas y costo estimado. Tenant y fechas filtran runs y mensajes; excluye suggest:. Sin textos, teléfonos, payloads ni secretos.
+- ConversationKpisTest.php y las pruebas de flujo verifican JSON vacío, filtros de tenant/fechas/copiloto y generación frente a entrega.
+
+Sin dependencias, esquema, flags adicionales ni cambios al comportamiento del runtime.
 
 ## 3. Motivo y límites
 
-La lista explícita satisface los tres testers sin normalización universal. No es una regla general de telefonía argentina. No guardar números personales en Git/Jira. Producción fuera de alcance; adjuntos y plantillas conservan su comportamiento.
+Se reutilizan PHPUnit/Laravel, ConversationTestSupport, adaptador Gemini, ledger, coordinador, transportes, MySQL/Redis y Symfony Process instalados. El workflow .github/workflows/api.yml descubre los tests automáticamente una vez publicado el cambio. No necesita una automatización programada adicional.
 
-## 4. Verificación
+Los proveedores simulados hacen la regresión determinista y sin consumo de cuota ni mensajes a personas. Los procesos y el almacenamiento del ensayo paralelo son reales; los límites y latencias de Google/Meta no están simulados como evidencia de producción.
 
-Rojo: prueba del segundo destinatario falla sin la corrección. Verde: nueve pruebas específicas /36 aserciones. Regresión inicial Conversations + Integrations: 191 pruebas /1273 aserciones pasan; posteriormente se añadió un negativo de destinatario malformado y se probó lista con legacy vacío. Pint/PHPStan pasan. Entorno: Docker PHP8.4/MySQL8.4, copia aislada /tmp/evp80, base local de pruebas con transacciones. Sin tocar el stack de preview ni esquema. Revisión independiente de aislamiento sin bloqueos; sugerencias de cobertura incorporadas.
+## 4. Verificación y repetición
 
-## 5. Pendientes y riesgos reales
+Docker PHP8.4/MySQL8.4/Redis, copia /tmp/evp80 en el contenedor existente. DB dedicada bellomo_crm_evp86_qa creada con baseline SHA256 canónico 4C8B170BC6F8B6827E9B85E756ACB2254CCF392B0FF4C11459C775366BAE472D verificado y todos los forwards en orden. No se modificaron bases existentes ni se inició/detuvo otro stack. everprop:schema:verify pasó.
 
-Publicar corrección mediante commit/PR revisado y despliegue autorizado. Configurar la nueva lista de tres wa_id únicamente en API/worker de bellomito-staging, mantener el Phone Number ID actual y la excepción legacy para compatibilidad. Verificar config efectiva.
+- TDD reporte: primero falló por ausencia de automatic, luego pasó.
+- Flujos nuevos y KPI: 7 tests /344 aserciones antes de añadir el paralelo.
+- Paralelo inicial: 1 test /1014 aserciones, 16,73 s; luego se incorporaron guarda previa del padre y canales aleatorios sugeridos en revisión.
+- Regresión final AgentRuntime + Conversations + Integrations + ProductionEnvironment: **259 tests /3088 aserciones, 34,47 s**, todos aprobados.
+- Pint: cuatro PHP aprobados. PHPStan global: sin errores. Dataset: 202 casos válidos. git diff --check aprobado.
+- Negativo de seguridad adicional: DB ficticia no permitida rechazada antes de fixtures/acceso SQL.
+- Revisiones independientes de aislamiento e IA: sin bloqueos pendientes; la guarda previa a fixtures quedó corregida. Los revisores no ejecutaron tests; los resultados anteriores fueron ejecutados por Codex.
+- Primera regresión amplia sobre la DB local antigua: 13 fallos por project_landing ausente. Se repitió en QA completa y pasó; no se ocultó ni parcheó el fallo en tests.
 
-Para probar automático: verificar proveedor/modelo, clave presente sin exponerla, presupuesto y límites; activar CONVERSATIONS_AI_ENABLED en API/worker de staging y modo del tenant si procede. Usar la acción existente de devolver a IA en las tres conversaciones de prueba. Los testers deben enviar mensajes nuevos; comprobar generación, aceptación Meta, delivery webhook y recepción humana por separado para los tres números. No se da por aprobado ningún E2E automático aún. No reenviar mensajes UNKNOWN ni disparar retroactivamente respuestas a conversaciones reales. Reversión: vaciar la lista y desactivar automático mediante despliegue de configuración.
+Desde everprop-api/, dentro del PHP de un entorno de tests con MySQL/Redis preparado:
 
-## Ajuste de arranque descubierto al desplegar (rama ticket/EVP-86-gemini-startup)
+```sh
+php artisan test --filter='WhatsApp(GeminiFlow|ParallelQueue)Test'
+php artisan test tests/Feature/AgentRuntime tests/Feature/Conversations tests/Feature/Integrations tests/Feature/ProductionEnvironmentTest.php --log-junit=storage/logs/conversations-junit.xml
+```
 
-PR77 pasó CI y se integró como 5a48369. Al activar automático, API no supera el arranque: `everprop:production-check` exige Anthropic exclusivamente, aunque EVP-81 ya permite Gemini en staging. Evidencia en logs del despliegue API 26600db7-3c5f-48b0-99fb-052591254e50: `FAIL Assistant: LLM provider configured`. No se omite el preflight.
+El segundo comando produce JUnit para CI. Reporte de operación de solo lectura, después de desplegar esta continuación:
 
-Cambio adicional acotado: ProductionCheck resuelve el binding LlmClient existente y acepta los adaptadores Anthropic/Gemini efectivamente configurados. Reutiliza íntegramente el gate de AppServiceProvider para ambiente, credenciales, tasas y presupuesto. No habilita OpenAI ni Gemini en producción.
+```sh
+php artisan everprop:conversations:kpis --tenant=bellomito-staging --from=2026-10-26 --to=2026-10-28
+```
 
-Rojo confirmado con nueva regresión. Verde: nueva prueba de arranque 1/17 aserciones; GeminiChatClient y controles negativos cubren staging válido y rechazo por producción, gate apagado, clave/modelo vacíos, tasas o presupuesto cero. Anthropic sigue aceptado. Regresión Conversations/Integrations/Gemini: 199/1323 pasan. Revisión independiente de seguridad IA sin bloqueos. La prueba preexistente de ProductionEnvironment con --connections falla por forwards ausentes en la base local (collection email sequence, project landing, project intakes), no por el gate; no se cambió el esquema para ocultarlo. CI debe validar esa prueba con su esquema completo.
+Rango [from,to) UTC; el ejemplo cubre la prueba nocturna local. Entrega muestra el estado al ejecutar el reporte. Generación exitosa no equivale a entrega ni recepción humana. estimated_cost_usd suma estimaciones de runs, excluye reservas UNKNOWN y no es facturación definitiva ni máximo comprometido. El ledger mantiene reservas y límites.
 
-Publicación, revisión y despliegue de este ajuste adicional pendientes de autorización. No dar por aprobado E2E automático hasta generación/entrega/recepción verificadas en los tres teléfonos.
+## 5. Pendientes y riesgos
+
+- Continuación preparada para revisión mediante PR autorizado. Merge y deploy requieren una autorización posterior según CLAUDE.md. Las pruebas reales anteriores y esta regresión son evidencias distintas.
+- Paralelo requiere procesos PHP/MySQL/Redis y una DB de tests aislada por ejecución. Timeout60s puede señalar runner lento; finally mantiene limpieza.
+- 200 chats locales con procesos concurrentes y proveedores simulados no certifican mil usuarios simultáneos, capacidad de Railway ni cuotas/latencia de Meta/Gemini. Un ensayo de carga del destino requiere límites y medición propios.
+- El 503 de Gemini puede reaparecer: se verifica retry acotado y handoff, sin cambiar disponibilidad de Google ni añadir reintentos ilimitados. El token temporal de WhatsApp requiere renovación al vencer.
+- Producción, adjuntos y storage fuera de alcance. Antes de producción faltan verificar dominios/CORS/Sanctum/cookies/tenant_domains, schema_versions/forwards, credenciales/permisos, DB y storage.

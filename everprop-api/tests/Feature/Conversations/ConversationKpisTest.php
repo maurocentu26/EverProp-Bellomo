@@ -135,6 +135,7 @@ final class ConversationKpisTest extends TestCase
 
         $this->assertSame(0, Artisan::call('everprop:conversations:kpis', ['--tenant' => $tenant->slug, '--from' => '2026-01-05', '--to' => '2026-01-12']));
         $output = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
-        $this->assertSame(['tenant_id', 'from', 'to_exclusive', 'timezone', 'by_channel', 'duplicates', 'copilot'], array_keys($output));
+        $this->assertSame(['tenant_id', 'from', 'to_exclusive', 'timezone', 'by_channel', 'duplicates', 'copilot', 'automatic'], array_keys($output));
+        $this->assertSame(['runs' => 0, 'by_status' => [], 'errors' => [], 'reply_delivery' => [], 'estimated_cost_usd' => '0.00000000'], $output['automatic']);
     }
 }

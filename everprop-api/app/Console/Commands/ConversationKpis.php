@@ -126,6 +126,28 @@ final class ConversationKpis extends Command
             'by_channel' => $byChannel,
             'duplicates' => ['contacts_with_several_leads' => $leads->filter(fn ($l) => $l->count() > 1)->count(), 'advisor_messages_sent_twice' => (int) $duplicateSends],
             'copilot' => $this->copilot($tenantId, $from, $to),
+            'automatic' => $this->automatic($tenantId, $from, $to),
+        ];
+    }
+
+    /** Automatic runs started in the range; delivery is their generated replies' current state, not proof of human receipt.
+     * @return array<string, mixed>
+     */
+    private function automatic(int $tenantId, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $runs = DB::table('chatbot_runs')->where('tenant_id', $tenantId)->where('provider_run_id', 'like', 'turn:%')
+            ->where('started_at', '>=', $from)->where('started_at', '<', $to);
+        $outcomes = (clone $runs)->selectRaw('status, error_code, COUNT(*) AS total')->groupBy('status', 'error_code')->get();
+        $delivery = DB::table('messages')->where('tenant_id', $tenantId)
+            ->whereIn('id', (clone $runs)->whereNotNull('output_message_id')->select('output_message_id'))
+            ->selectRaw('delivery_status, COUNT(*) AS total')->groupBy('delivery_status')->get();
+
+        return [
+            'runs' => (int) $outcomes->sum('total'),
+            'by_status' => $outcomes->groupBy('status')->map(fn ($rows) => (int) $rows->sum('total'))->all(),
+            'errors' => $outcomes->whereNotNull('error_code')->groupBy('error_code')->map(fn ($rows) => (int) $rows->sum('total'))->all(),
+            'reply_delivery' => $delivery->mapWithKeys(fn ($row) => [$row->delivery_status => (int) $row->total])->all(),
+            'estimated_cost_usd' => number_format((float) (clone $runs)->sum('estimated_cost'), 8, '.', ''),
         ];
     }
 
