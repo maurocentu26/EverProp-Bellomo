@@ -35,7 +35,7 @@ function renderCockpit({ rows = leads, contacts = records, properties = [], proj
     '@/lib/lead-follow-up': followUp, '@/lib/data-mode': { isMockDataMode: false }, '@/lib/everprop-api': {},
     '@/hooks/use-current-session': { useCurrentSession: () => ({ user: { id: 'u', name: 'Nombre Completo', role: 'ADVISOR' } }) },
     '@/lib/dashboard-context': { useDashboardMode: () => ({ globalSelectedAgentId: 'all' }) }, '@/hooks/use-lead-advisors': { useLeadAdvisors: () => ({ advisors: [] }) },
-    '@/components/admin/LeadFollowUpEditor': {}, '@/components/admin/LeadStageUpdateModal': {}, '@/components/admin/advisor/AdminMonthBalanceWidget': {}, '@/components/admin/advisor/AdvisorDayGuide': {},
+    '@/components/admin/LeadFollowUpEditor': {}, '@/components/admin/LeadConversationLink': { LeadConversationLink: () => null }, '@/components/admin/LeadStageUpdateModal': {}, '@/components/admin/advisor/AdminMonthBalanceWidget': {}, '@/components/admin/advisor/AdvisorDayGuide': {},
     '@/lib/advisor-day-guide': { leadInitials: name => name[0] }, '@/components/ui/button': {}, '@/lib/utils': { cn: (...parts) => parts.join(' ') }, '@/lib/inventory-labels': load('src/lib/inventory-labels.ts'),
   });
   return component.default();
