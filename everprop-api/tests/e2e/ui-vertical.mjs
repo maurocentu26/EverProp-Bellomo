@@ -104,7 +104,8 @@ try {
   await item.click();
   // The text shows twice (list preview and thread): any of them proves it arrived.
   await pp.getByText(text1).first().waitFor({ timeout: 15000 });
-  await pp.getByRole("button", { name: /Tomar control/ }).click();
+  // EVP-83: with the IA in control the composer offers a single "Responder yo" to take the chat.
+  await pp.getByRole("button", { name: /Responder yo/ }).click();
   // By its accessible label, not the placeholder (the WhatsApp-style composer changed it).
   const reply = pp.getByLabel("Respuesta al cliente");
   await reply.waitFor({ timeout: 15000 });
@@ -121,10 +122,12 @@ try {
   // EVP-46: cerrar y reabrir viven en el menú de acciones de la conversación.
   const actions = pp.getByRole("button", { name: "Acciones de la conversación" });
   await actions.click();
-  await pp.getByRole("menuitem", { name: /^Cerrar conversación/ }).click();
+  // EVP-84: actions are buttons in a sheet; closing asks for confirmation.
+  pp.once("dialog", (dialog) => dialog.accept());
+  await pp.getByRole("button", { name: /^Cerrar conversación/ }).click();
   await pp.getByText("Conversación cerrada.").first().waitFor({ timeout: 15000 });
   await actions.click();
-  const reopen = pp.getByRole("menuitem", { name: /^Reabrir conversación/ });
+  const reopen = pp.getByRole("button", { name: /^Reabrir conversación/ });
   await reopen.waitFor({ timeout: 15000 });
   check("U8a", "un cierre conserva el hilo y ofrece Reabrir", await pp.getByText(answer).first().isVisible() && await reopen.isEnabled());
   await reopen.click();
