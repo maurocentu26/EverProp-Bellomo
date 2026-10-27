@@ -1,0 +1,690 @@
+{
+  "normal": [
+    {
+      "cards": [
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 125.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 125.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 125.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 125.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 125.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 125.5
+        }
+      ],
+      "columns": "125.5px 125.5px",
+      "gridWidth": 263,
+      "pageOverflow": false,
+      "scrollWidth": 263,
+      "viewport": 320
+    },
+    {
+      "cards": [
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 153
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 153
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 153
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 153
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 153
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 153
+        }
+      ],
+      "columns": "153px 153px",
+      "gridWidth": 318,
+      "pageOverflow": false,
+      "scrollWidth": 318,
+      "viewport": 375
+    },
+    {
+      "cards": [
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 160.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 160.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 160.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 160.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 160.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 160.5
+        }
+      ],
+      "columns": "160.5px 160.5px",
+      "gridWidth": 333,
+      "pageOverflow": false,
+      "scrollWidth": 333,
+      "viewport": 390
+    },
+    {
+      "cards": [
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 223.65625
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 223.671875
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 223.671875
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 223.65625
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 223.671875
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 223.671875
+        }
+      ],
+      "columns": "223.656px 223.672px 223.672px",
+      "gridWidth": 695,
+      "pageOverflow": false,
+      "scrollWidth": 695,
+      "viewport": 768
+    },
+    {
+      "cards": [
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 218.328125
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 218.328125
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 218.328125
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 218.328125
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 218.328125
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 218.328125
+        }
+      ],
+      "columns": "218.328px 218.328px 218.328px",
+      "gridWidth": 679,
+      "pageOverflow": false,
+      "scrollWidth": 679,
+      "viewport": 1024
+    },
+    {
+      "cards": [
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 172.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 172.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 172.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 172.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 172.5
+        },
+        {
+          "font": "17px",
+          "height": 107.5,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 172.5
+        }
+      ],
+      "columns": "172.5px 172.5px 172.5px 172.5px 172.5px 172.5px",
+      "gridWidth": 1095,
+      "pageOverflow": false,
+      "scrollWidth": 1095,
+      "viewport": 1440
+    }
+  ],
+  "grande": [
+    {
+      "cards": [
+        {
+          "font": "20.4px",
+          "height": 143.21875,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 125.5
+        },
+        {
+          "font": "20.4px",
+          "height": 143.21875,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 125.5
+        },
+        {
+          "font": "20.4px",
+          "height": 143.21875,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 125.5
+        },
+        {
+          "font": "20.4px",
+          "height": 143.21875,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 125.5
+        },
+        {
+          "font": "20.4px",
+          "height": 143.21875,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 125.5
+        },
+        {
+          "font": "20.4px",
+          "height": 143.21875,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 125.5
+        }
+      ],
+      "columns": "125.5px 125.5px",
+      "gridWidth": 263,
+      "pageOverflow": false,
+      "scrollWidth": 263,
+      "viewport": 320
+    },
+    {
+      "cards": [
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 153
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 153
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 153
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 153
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 153
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 153
+        }
+      ],
+      "columns": "153px 153px",
+      "gridWidth": 318,
+      "pageOverflow": false,
+      "scrollWidth": 318,
+      "viewport": 375
+    },
+    {
+      "cards": [
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 160.5
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 160.5
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 160.5
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 160.5
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 160.5
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 160.5
+        }
+      ],
+      "columns": "160.5px 160.5px",
+      "gridWidth": 333,
+      "pageOverflow": false,
+      "scrollWidth": 333,
+      "viewport": 390
+    },
+    {
+      "cards": [
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 220.46875
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 220.46875
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 220.46875
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 220.46875
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 220.46875
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 220.46875
+        }
+      ],
+      "columns": "220.469px 220.469px 220.469px",
+      "gridWidth": 685,
+      "pageOverflow": false,
+      "scrollWidth": 685,
+      "viewport": 768
+    },
+    {
+      "cards": [
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 197
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 197.015625
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 197.015625
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 197
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 197.015625
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 197.015625
+        }
+      ],
+      "columns": "197px 197.016px 197.016px",
+      "gridWidth": 615,
+      "pageOverflow": false,
+      "scrollWidth": 615,
+      "viewport": 1024
+    },
+    {
+      "cards": [
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Nuevos\n2",
+          "width": 161.828125
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Contactados\n3",
+          "width": 161.84375
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Visitas\n2",
+          "width": 161.84375
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Negociación\n2",
+          "width": 161.828125
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Cerrados\n1",
+          "width": 161.84375
+        },
+        {
+          "font": "20.4px",
+          "height": 112.609375,
+          "labelOverflow": false,
+          "overflow": false,
+          "text": "Descartados\n0",
+          "width": 161.84375
+        }
+      ],
+      "columns": "161.828px 161.844px 161.844px 161.828px 161.844px 161.844px",
+      "gridWidth": 1031,
+      "pageOverflow": false,
+      "scrollWidth": 1031,
+      "viewport": 1440
+    }
+  ]
+}
