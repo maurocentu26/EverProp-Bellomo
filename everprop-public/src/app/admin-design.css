@@ -480,6 +480,7 @@ html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
 .mi-day .day-guide-complete { background: #047857; border-color: #047857; }
 .day-save-success { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; border-radius: 16px; background: #d1fae5; color: #065f46; }
 .day-guide-editor { border-radius: 24px; }
+.mi-day.day-guide-editor button[aria-label="Cerrar modal"] { min-width: 52px; min-height: 52px !important; flex-shrink: 0; }
 .advisor-dock, .advisor-back { display: none; }
 @keyframes day-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes day-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -520,7 +521,7 @@ html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
   .mi-day-guide[data-slot="dialog-content"] { inset: 0 !important; top: 0 !important; left: 0 !important; --tw-translate-x: 0px !important; --tw-translate-y: 0px !important; transform: none !important; width: 100%; max-width: none; height: 100dvh; max-height: none; border-radius: 0; padding: max(16px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); }
   .day-guide-body { min-height: 0; gap: 20px; }
   .mi-day-guide [data-slot="dialog-title"] { font-size: 32px; }
-  .day-guide-editor { inset: auto 0 0; top: auto; left: 0; transform: none; translate: none; width: 100%; max-width: none; border-radius: 24px 24px 0 0; max-height: 92dvh; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .day-guide-editor { inset: auto 0 0; top: auto; left: 0; transform: none; translate: none !important; width: 100%; max-width: none; border-radius: 24px 24px 0 0; max-height: 92dvh; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
   .advisor-mobile-shell [data-admin-scroll-container] { padding-bottom: calc(112px + env(safe-area-inset-bottom)); background: #f1f5f9; }
   .dark .advisor-mobile-shell [data-admin-scroll-container] { background: var(--background); }
   .advisor-dock { position: fixed; z-index: 40; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; right: 12px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); padding: 6px; border-radius: 28px; background: #0f172a; color: #cbd5e1; box-shadow: 0 8px 24px #0f172a26; }
