@@ -29,10 +29,45 @@ final class ProjectLandingController extends InventoryController
         $projects = $this->access->scopeProjects(Project::query(), $user)->orderBy('name')->limit(1001)->get();
         abort_if($projects->count() > 1000, 503, 'El catálogo supera el límite del contrato 1.0.');
 
-        return response()->json(['data' => $projects->map(fn ($p) => [
-            'public_id' => $p->public_id, 'name' => $p->name,
-            'can_edit' => $this->policy->update($user, $p), 'can_publish' => $this->policy->publish($user, $p),
-        ])])->header('Cache-Control', 'private, no-store');
+        $landingRows = DB::table('project_landing')
+            ->where('tenant_id', $this->tenantContext->id())
+            ->whereIn('project_id', $projects->pluck('id'))
+            ->get()
+            ->keyBy('project_id');
+
+        return response()->json(['data' => $projects->map(function ($p) use ($user, $landingRows) {
+            $landing = $landingRows->get($p->id);
+            $content = $landing ? json_decode($landing->content, true) : null;
+
+            return [
+                'public_id' => $p->public_id,
+                'name' => $content['name'] ?? $p->name,
+                'can_edit' => $this->policy->update($user, $p),
+                'can_publish' => $this->policy->publish($user, $p),
+                'slug' => $landing->slug ?? '',
+                'is_visible' => (bool) ($landing->is_visible ?? false),
+                'sort_order' => (int) ($landing->sort_order ?? 0),
+                'summary' => $content['summary'] ?? '',
+                'description' => $content['description'] ?? ($p->description ?? ''),
+                'category' => $content['category'] ?? match ($p->project_type->value) {
+                    'BUILDING' => 'HUASI',
+                    'LAND_DEVELOPMENT' => 'LAND_DEVELOPMENT',
+                    default => 'COMMERCIAL',
+                },
+                'status_label' => $content['status_label'] ?? null,
+                'is_featured' => (bool) ($content['is_featured'] ?? false),
+                'featured_order' => (int) ($content['featured_order'] ?? 0),
+                'location' => $content['location'] ?? [
+                    'city' => $p->city,
+                    'province' => $p->province,
+                    'address' => $p->address,
+                ],
+                'cover' => $content['cover'] ?? null,
+                'logo' => $content['logo'] ?? null,
+                'gallery' => $content['gallery'] ?? [],
+                'features' => $content['features'] ?? [],
+            ];
+        })])->header('Cache-Control', 'private, no-store');
     }
 
     public function show(Request $request, string $project): JsonResponse
