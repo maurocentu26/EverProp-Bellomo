@@ -2,6 +2,27 @@ import { apiFetch } from "@/lib/everprop-api";
 
 export type LandingImage = { url: string; alt: string; kind: "PHOTO" | "RENDER" };
 export type LandingAsset = { url: string; title: string; mime_type: string };
+export type ProjectOption = {
+  public_id: string;
+  name: string;
+  can_edit: boolean;
+  can_publish: boolean;
+  slug?: string;
+  is_visible?: boolean;
+  sort_order?: number;
+  summary?: string;
+  description?: string;
+  category?: "HUASI" | "LAND_DEVELOPMENT" | "COMMERCIAL";
+  status_label?: string | null;
+  is_featured?: boolean;
+  featured_order?: number;
+  location?: { city: string; province: string; address: string | null };
+  cover?: LandingImage | null;
+  logo?: { url: string; alt: string } | null;
+  gallery?: LandingImage[];
+  features?: string[];
+};
+
 export type LandingProject = {
   public_id: string; slug: string; name: string; summary: string; description: string;
   category: "HUASI" | "LAND_DEVELOPMENT" | "COMMERCIAL";
@@ -17,8 +38,6 @@ export function landingPayload(project: LandingProject) {
   void public_id; void updated_at;
   return payload;
 }
-
-
 
 export async function uploadLandingAsset(projectId: string, file: File) {
   if (!["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"].includes(file.type) || file.size < 1 || file.size > 15 * 1024 * 1024) {
