@@ -80,6 +80,10 @@ Cambiar la vista de proyectos en el módulo web del panel de administración (`/
   - API local de EverProp corriendo en `http://localhost:18080`.
   - Panel administrativo Next.js corriendo en `http://localhost:3000/admin/web`.
   - Landing de Bellomo corriendo en `http://localhost:3001/desarrollos` y `/proyectos/el-rocio`, respondiendo con código 200 OK y consumiendo los datos de la API.
+- **Auditoría de Dependencias (CVE-2026-45070)**:
+  - Packagist publicó hoy el aviso de seguridad CVE-2026-45070 que afectaba a `symfony/mime` < 8.1.10.
+  - Se actualizó quirúrgicamente `composer.lock` a `v8.1.10`.
+  - Verificado con `composer validate --strict` y `composer audit --locked` arrojando 0 vulnerabilidades.
 
 ---
 
