@@ -86,15 +86,15 @@ Cambiar la vista de proyectos en el módulo web del panel de administración (`/
   - Verificado con `composer validate --strict` y `composer audit --locked` arrojando 0 vulnerabilidades.
 - **Siembra y Verificación en Staging (Railway)**:
   - Se creó el comando Artisan `php artisan everprop:seed-bellomo-copy` (`SeedBellomoOfficialCopy.php`).
-  - Se ejecutó en el contenedor `api` de Railway sobre `bellomo_crm`.
-  - Conteo verificado con Tinker: `Projects: 32 | Landing: 32`.
-  - Comprobación en vivo en `https://panel-staging-staging-62ec.up.railway.app/admin/web`: 32 proyectos renderizados con tarjetas descriptivas, filtros (Todos 32, Loteos 20, Huasi 9, Comercial 3) y modal de vista previa de landing funcionando.
+  - Se mapearon las URLs reales y verificadas de Cloudflare R2 (`pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev`) para portada (`cover`), logotipo (`logo`) y galería (`gallery`) de los 32 proyectos de Bellomo, actualizando también `masterplan_image_url` en la tabla `projects`.
+  - Se comprobaron todas las URLs contra el bucket con HTTP 200 OK (corrigiendo rutas de Huasi VII a `imag 1x.jpg` y Huasi IX a `02.jpg`).
+  - Se ejecutó en local y en el contenedor `api` de Railway sobre `bellomo_crm`.
+  - Conteo verificado con Tinker: `Projects: 32 | Landing: 32 | Cover: 32 | Logo: 32`.
+  - Comprobación en vivo en `https://panel-staging-staging-62ec.up.railway.app/admin/web`: 32 proyectos renderizados con fotos de portada reales, logotipos oficiales flotantes, filtros (Todos 32, Loteos 20, Huasi 9, Comercial 3) y modal de vista previa de landing funcionando.
 
 ---
 
 ## 5. Pendientes y Riesgos
 
-- **Imágenes en Cloudflare R2**:
-  - Aunque los logos y fotos están mapeados en el seed local, en staging y producción se debe verificar que los nombres de archivo y rutas en el bucket R2 correspondan con los IDs registrados en `project_landing_assets`.
 - **Regla estricta de Merges**:
   - La rama `ticket/EVP-90-web-projects-redesign` se subirá al repositorio remoto y se abrirá el Pull Request correspondiente hacia `develop`, quedando a la espera de la revisión y aprobación expresa del usuario.

@@ -10,7 +10,7 @@ final class SeedBellomoOfficialCopy extends Command
 {
     protected $signature = 'everprop:seed-bellomo-copy {--tenant=1 : ID numérico del tenant (default 1)}';
 
-    protected $description = 'Siembra los 32 proyectos oficiales de Bellomo con copy, categorización y presentación para landing.';
+    protected $description = 'Siembra los 32 proyectos oficiales de Bellomo con copy, categorización, portadas y logos para landing.';
 
     /**
      * @var array<string, array{
@@ -20,7 +20,9 @@ final class SeedBellomoOfficialCopy extends Command
      *     description: string,
      *     category: 'LAND_DEVELOPMENT'|'HUASI'|'COMMERCIAL',
      *     features: list<string>,
-     *     location: array{city: string, province: string, address: string}
+     *     location: array{city: string, province: string, address: string},
+     *     cover_url: string,
+     *     logo_url: string
      * }>
      */
     private const OFFICIAL_PROJECTS = [
@@ -33,6 +35,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Cloaca', 'Apertura de calles', 'Cordón cuneta', '100% vendido · 80% habitado', 'Con escritura'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Ruta Nacional N° 9 entre Capital y Los Alisos'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/las-colinas/vista-aerea.webp',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Las%20Colinas%20color.png',
         ],
         'las-colinas-2' => [
             'name' => 'Las Colinas 2',
@@ -42,6 +46,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Frente a Av. La Quiaca con acceso sobre RN 9'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/COLINAS%20II/render%2002.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/colinas2.png',
         ],
         'el-arrabal' => [
             'name' => 'El Arrabal',
@@ -51,6 +57,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 200 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta'],
             'location' => ['city' => 'Monterrico', 'province' => 'Jujuy', 'address' => 'San Vicente, camino a Monterrico'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/land-field.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Arrabal.png',
         ],
         'la-arbolada' => [
             'name' => 'La Arbolada 1',
@@ -60,6 +68,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Cloaca', 'Apertura de calles', 'Cordón cuneta', '90% vendido · 60% habitado', 'Con escritura'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Sargento Cabral'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/la-arbolada/vista-aerea-actual.webp',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20color.png',
         ],
         'la-arbolada-2' => [
             'name' => 'La Arbolada 2',
@@ -69,6 +79,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '30% vendido'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Sargento Cabral'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/la%20arbolada%202.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20color.png',
         ],
         'loteo-arenales' => [
             'name' => 'Los Arenales',
@@ -78,6 +90,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Los Arenales'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOTEO%20ARENALES/01.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Arenales%20color.png',
         ],
         'el-rocio' => [
             'name' => 'El Rocío',
@@ -87,6 +101,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '70% vendido', 'Con posesión precaria'],
             'location' => ['city' => 'El Carmen', 'province' => 'Jujuy', 'address' => 'RN N° 9 pasando Rotonda de Cafrune'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/el-rocio/vista-aerea.webp',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/El%20Rocio%20color.png',
         ],
         'loteo-san-pablo-1' => [
             'name' => 'San Pablo 1',
@@ -96,6 +112,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '40% vendido', 'Próxima posesión precaria'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Coronel Arias, faldas del cerro'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20color.png',
         ],
         'loteo-san-pablo-2' => [
             'name' => 'San Pablo 2',
@@ -105,6 +123,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', 'Próxima posesión precaria'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Coronel Arias'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20color.png',
         ],
         'valle-verde' => [
             'name' => 'Valle Verde',
@@ -114,6 +134,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '50% vendido'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Cercanías Barrio Sargento Cabral y RN 9'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/valle-verde/vista-aerea.webp',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Valle%20Verde%20color.png',
         ],
         'los-cardinales' => [
             'name' => 'Los Cardinales',
@@ -123,6 +145,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '30% vendido', 'Convenio Colegio de Psicólogos'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Sargento Cabral / Alto Comedero'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-1.webp',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Cardinales.png',
         ],
         'santa-emilia' => [
             'name' => 'Santa Emilia',
@@ -132,6 +156,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 200 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '80% vendido'],
             'location' => ['city' => 'Monterrico', 'province' => 'Jujuy', 'address' => 'Entrada a Monterrico, a pocas cuadras del centro'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/santa-emilia/paisaje.webp',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Santa%20Emilia%20color.png',
         ],
         'loteo-los-perales' => [
             'name' => 'Los Perales',
@@ -141,6 +167,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Cloaca', 'Apertura de calles', 'Cordón cuneta', '100% vendido', 'Servicios habilitados'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Los Perales'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/land-field.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Perales%20color.png',
         ],
         'rincones-lotes-e-infraestruc' => [
             'name' => 'Rincones de San Pedrito 1',
@@ -150,6 +178,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Agua potable', 'Cloaca', 'Red eléctrica', 'Gas', 'Cordón cuneta', 'Enripiado de calles', '100% vendido'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio San Pedrito, cercanías Av. Eva Perón'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-altos-hornos.png',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/rinconesdesp1_coloe.png',
         ],
         'rincones-2' => [
             'name' => 'Rincones de San Pedrito 2',
@@ -159,6 +189,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Agua potable', 'Cloaca', 'Red eléctrica', 'Gas', 'Cordón cuneta', 'Enripiado de calles', '100% vendido'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio San Pedrito'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-altos-hornos.png',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/rinconesdesp_color.png',
         ],
         'loteo-palpala' => [
             'name' => 'Loteo Palpalá',
@@ -168,6 +200,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes de 200 m² a 900 m²', 'Energía eléctrica', 'Agua potable', 'Cloaca', 'Gas', 'Cordón cuneta', '100% vendido'],
             'location' => ['city' => 'Palpalá', 'province' => 'Jujuy', 'address' => 'Ruta Provincial N° 1, frente al Paseo de las Flores'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/land-field.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/loteopalpal%C3%A1_color-.png',
         ],
         'loteo-martin-raul-galan' => [
             'name' => 'Loteo Martín Raúl Galán',
@@ -177,6 +211,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 200 m²', 'Energía eléctrica', 'Agua potable', 'Cloaca', 'Gas', 'Cordón cuneta', '100% vendido', 'Próximo a escritura'],
             'location' => ['city' => 'Palpalá', 'province' => 'Jujuy', 'address' => 'Ruta Provincial N° 1, Palpalá'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/land-field.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/loteomrgal%C3%A1n_color.png',
         ],
         'quintas-san-antonio' => [
             'name' => 'Quintas de San Antonio',
@@ -186,6 +222,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta'],
             'location' => ['city' => 'San Antonio', 'province' => 'Jujuy', 'address' => 'Ruta Provincial N° 2 al norte de San Antonio'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%201.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20color.png',
         ],
         'la-toma-loteo' => [
             'name' => 'Loteo La Toma',
@@ -195,6 +233,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta'],
             'location' => ['city' => 'San Antonio', 'province' => 'Jujuy', 'address' => 'Ruta Provincial N° 2 al norte de San Antonio'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/SAN%20ANTONIO-%20QUINTAS/RENDER%202.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Quintas%20color.png',
         ],
         'loteo-el-remanso' => [
             'name' => 'Loteo El Remanso',
@@ -204,6 +244,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 200 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta'],
             'location' => ['city' => 'Palpalá', 'province' => 'Jujuy', 'address' => 'A pocos metros de Ruta Provincial N° 1'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/land-field.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/loteopalpal%C3%A1_color-.png',
         ],
 
         // --- EDIFICIOS HUASI ---
@@ -215,6 +257,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['26 Departamentos', '3 y 4 dormitorios', 'Cocheras en subsuelo', 'Locales comerciales', 'Pileta y solario en terraza'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Belgrano N° 566, B° Centro'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-huasi-facade.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-1.png',
         ],
         'edificio-huasi-2' => [
             'name' => 'Huasi II',
@@ -224,6 +268,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['8 Departamentos', '3 dormitorios', '2 baños', 'Pisos de parquet', 'San Pedro de Jujuy'],
             'location' => ['city' => 'San Pedro de Jujuy', 'province' => 'Jujuy', 'address' => 'San Martín N° 344, Centro'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-huasi-residential.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-2.png',
         ],
         'edificio-huasi-3' => [
             'name' => 'Huasi III',
@@ -233,6 +279,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['48 Departamentos', '2 dormitorios', '8 Locales comerciales', 'Boxes de tendedero individuales', 'Cocheras'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Las Vicuñas N° 587, B° Chijra'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-huasi-facade.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-3.png',
         ],
         'edificio-huasi-4' => [
             'name' => 'Huasi IV',
@@ -242,6 +290,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['12 Departamentos', '1 y 2 dormitorios', 'Ascensor', 'Calefacción central', 'SUM y patio', 'Quincho con asador en azotea'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'República del Uruguay N° 1851, B° Alto Padilla'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-huasi-residential.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-4.png',
         ],
         'edificio-huasi-5' => [
             'name' => 'Huasi V (Córdoba)',
@@ -251,6 +301,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['33 Departamentos', '1 y 2 dormitorios', 'Dúplex 68 m²', '10 Locales comerciales en PB', 'Mobiliario completo'],
             'location' => ['city' => 'Córdoba', 'province' => 'Córdoba', 'address' => 'Cervantes esq. Fragueiro, Alta Córdoba'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/FOTOS%20HUASIS/H-5%20b.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-5.png',
         ],
         'edificio-huasi-6' => [
             'name' => 'Huasi VI',
@@ -260,6 +312,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['15 Departamentos', 'Monoambientes, 1 y 2 dormitorios', 'Carpintería de aluminio DVH', 'Calefacción central', '10 Cocheras en subsuelo', 'Terraza accesible'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'República del Uruguay N° 1687, B° Alto Padilla'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/site/official-huasi-facade.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-6.png',
         ],
         'edificio-huasi-7' => [
             'name' => 'Huasi VII',
@@ -269,6 +323,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['19 Departamentos', '16 Cocheras en subsuelo', 'Ascensor', 'Calefacción central', 'A metros de Ciudad Cultural'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'República del Uruguay N° 1821 esq. Río Iguazú, B° Alto Padilla'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/H7%20-%20ALTO%20PADILLA/RENDERS/imag%201x.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-7.png',
         ],
         'edificio-huasi-8' => [
             'name' => 'Huasi VIII',
@@ -278,6 +334,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['4 Locales comerciales', 'Cochera comercial', 'Ascensor', '3 Plantas de oficinas y departamentos', 'Ubicación céntrica estratégica'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Alvear N° 1376, B° Centro'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/01%20OK.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-8.png',
         ],
         'torre-departamentos-h9' => [
             'name' => 'Huasi IX (Córdoba)',
@@ -287,6 +345,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'HUASI',
             'features' => ['41 Departamentos', '1 y 2 dormitorios', 'Dúplex exclusivo', '10 Cocheras', 'Asador en azotea', 'Casona histórica restaurada'],
             'location' => ['city' => 'Córdoba', 'province' => 'Córdoba', 'address' => 'Calle 27 de Abril N° 960, Centro'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/HUASI%20IX/02.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-9.png',
         ],
 
         // --- COMERCIALES / ALQUILER ---
@@ -298,6 +358,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'COMMERCIAL',
             'features' => ['36 Locales comerciales', 'Chijra', 'Alta afluencia de público'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Chijra'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/01.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-logo.png',
         ],
         'galeria-norte-2' => [
             'name' => 'Galería Norte 2',
@@ -307,6 +369,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'COMMERCIAL',
             'features' => ['80 Locales comerciales', 'Chijra', 'Paseo comercial moderno'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Chijra'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/GALERIA%20CHIJRA%20II/RENDERS/02.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-logo.png',
         ],
         'cochera-alvear' => [
             'name' => 'Cocheras Alvear',
@@ -316,6 +380,8 @@ final class SeedBellomoOfficialCopy extends Command
             'category' => 'COMMERCIAL',
             'features' => ['Alquiler mensual', 'Alquiler por hora', 'Seguridad', 'Ubicación céntrica'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Calle Alvear, Centro'],
+            'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/EDIFICIO%20ALVEAR/03%20OK.jpg',
+            'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LOGOS%20HUASIS/huasi-logo.png',
         ],
     ];
 
@@ -330,13 +396,24 @@ final class SeedBellomoOfficialCopy extends Command
             return self::FAILURE;
         }
 
-        $this->info("Iniciando carga de 32 proyectos oficiales para el tenant {$tenantId} ({$tenant->slug})...");
+        $this->info("Iniciando carga de 32 proyectos oficiales con portadas y logos para el tenant {$tenantId} ({$tenant->slug})...");
 
         DB::transaction(function () use ($tenantId): void {
             $order = 0;
 
             foreach (self::OFFICIAL_PROJECTS as $slug => $data) {
                 $order++;
+
+                $cover = [
+                    'url' => $data['cover_url'],
+                    'alt' => "Portada {$data['name']}",
+                    'kind' => 'PHOTO',
+                ];
+
+                $logo = [
+                    'url' => $data['logo_url'],
+                    'alt' => "Logo {$data['name']}",
+                ];
 
                 // 1. Buscar o crear el proyecto base en la tabla 'projects'
                 $project = DB::table('projects')
@@ -369,11 +446,18 @@ final class SeedBellomoOfficialCopy extends Command
                         'province' => $data['location']['province'],
                         'address' => $data['location']['address'],
                         'description' => $data['description'],
+                        'masterplan_image_url' => $data['cover_url'],
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
                 } else {
                     $projectId = (int) $project->id;
+                    DB::table('projects')
+                        ->where('id', $projectId)
+                        ->update([
+                            'masterplan_image_url' => $data['cover_url'],
+                            'updated_at' => now(),
+                        ]);
                 }
 
                 // 2. Buscar o crear la ficha en 'project_landing'
@@ -382,23 +466,23 @@ final class SeedBellomoOfficialCopy extends Command
                     ->where('slug', $slug)
                     ->first();
 
-                if (! $landingRow) {
-                    $content = [
-                        'name' => $data['name'],
-                        'summary' => $data['summary'],
-                        'description' => $data['description'],
-                        'category' => $data['category'],
-                        'location' => $data['location'],
-                        'status_label' => $data['status_label'],
-                        'is_featured' => false,
-                        'featured_order' => $order,
-                        'cover' => null,
-                        'logo' => null,
-                        'gallery' => [],
-                        'features' => $data['features'],
-                        'documents' => [],
-                    ];
+                $content = [
+                    'name' => $data['name'],
+                    'summary' => $data['summary'],
+                    'description' => $data['description'],
+                    'category' => $data['category'],
+                    'location' => $data['location'],
+                    'status_label' => $data['status_label'],
+                    'is_featured' => ($order <= 6),
+                    'featured_order' => $order,
+                    'cover' => $cover,
+                    'logo' => $logo,
+                    'gallery' => [$cover],
+                    'features' => $data['features'],
+                    'documents' => [],
+                ];
 
+                if (! $landingRow) {
                     DB::table('project_landing')->insert([
                         'tenant_id' => $tenantId,
                         'project_id' => $projectId,
@@ -410,20 +494,8 @@ final class SeedBellomoOfficialCopy extends Command
                         'updated_at' => now(),
                     ]);
 
-                    $this->line("  [+] Creado proyecto y landing: {$data['name']} ({$slug})");
+                    $this->line("  [+] Creado con fotos y logo: {$data['name']} ({$slug})");
                 } else {
-                    $oldContent = json_decode((string) $landingRow->content, true) ?: [];
-                    $content = array_merge($oldContent, [
-                        'name' => $data['name'],
-                        'summary' => $data['summary'],
-                        'description' => $data['description'],
-                        'category' => $data['category'],
-                        'location' => $data['location'],
-                        'status_label' => $data['status_label'],
-                        'features' => $data['features'],
-                        'is_featured' => false,
-                    ]);
-
                     DB::table('project_landing')
                         ->where('id', $landingRow->id)
                         ->update([
@@ -434,12 +506,12 @@ final class SeedBellomoOfficialCopy extends Command
                             'updated_at' => now(),
                         ]);
 
-                    $this->line("  [*] Actualizado landing: {$data['name']} ({$slug})");
+                    $this->line("  [*] Actualizado con fotos y logo: {$data['name']} ({$slug})");
                 }
             }
         });
 
-        $this->info('Carga de proyectos finalizada con éxito.');
+        $this->info('Carga de proyectos con fotos y logos de Cloudflare finalizada con éxito.');
 
         return self::SUCCESS;
     }
