@@ -84,6 +84,11 @@ Cambiar la vista de proyectos en el módulo web del panel de administración (`/
   - Packagist publicó hoy el aviso de seguridad CVE-2026-45070 que afectaba a `symfony/mime` < 8.1.10.
   - Se actualizó quirúrgicamente `composer.lock` a `v8.1.10`.
   - Verificado con `composer validate --strict` y `composer audit --locked` arrojando 0 vulnerabilidades.
+- **Siembra y Verificación en Staging (Railway)**:
+  - Se creó el comando Artisan `php artisan everprop:seed-bellomo-copy` (`SeedBellomoOfficialCopy.php`).
+  - Se ejecutó en el contenedor `api` de Railway sobre `bellomo_crm`.
+  - Conteo verificado con Tinker: `Projects: 32 | Landing: 32`.
+  - Comprobación en vivo en `https://panel-staging-staging-62ec.up.railway.app/admin/web`: 32 proyectos renderizados con tarjetas descriptivas, filtros (Todos 32, Loteos 20, Huasi 9, Comercial 3) y modal de vista previa de landing funcionando.
 
 ---
 
