@@ -40,6 +40,7 @@ import {
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { useDashboardMode } from "@/lib/dashboard-context";
 import { useLeadAdvisors } from "@/hooks/use-lead-advisors";
+import { LeadConversationLink } from "@/components/admin/LeadConversationLink";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 import { AdminMonthBalanceWidget } from "@/components/admin/advisor/AdminMonthBalanceWidget";
@@ -388,6 +389,7 @@ export default function AdvisorCockpit() {
           {user?.role === "ADMIN" && <label>Asesor <select value={globalSelectedAgentId} onChange={e => setGlobalSelectedAgentId(e.target.value)}><option value="all">Todo el equipo</option>{advisors.map(advisor => <option key={advisor.id} value={advisor.id}>{advisor.name}</option>)}</select></label>}
           <Link className="mi-day-secondary" href="/admin/leads/new"><Plus aria-hidden />Nuevo lead</Link>
           <Link className="mi-day-secondary" href="/admin/agenda"><CalendarDays aria-hidden />Mi agenda</Link>
+          <Link className="mi-day-secondary" href="/admin/conversaciones"><MessageCircle aria-hidden />Conversaciones</Link>
           <Button variant="outline" onClick={() => setShowMonthBalance(!showMonthBalance)}>Balance del mes</Button>
         </div>
       </header>
@@ -437,6 +439,7 @@ export default function AdvisorCockpit() {
                   })}</div>}
                   <label className="day-stage">Etapa<select value={interest?.status || lead.stage} onChange={event => void handleStageChange(lead.id, event.target.value as Lead["stage"], propertyId)}>{STAGE_OPTIONS.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label></div>
                 <div className="day-row-actions">
+                  <LeadConversationLink key={lead.id} lead={lead} />
                   {phone ? <><a className="mi-day-secondary" href={`https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer"><MessageCircle aria-hidden />WhatsApp</a><a className="mi-day-primary" href={`tel:${phone}`} onClick={() => setFollowUpLead(lead)}><Phone aria-hidden />Llamar</a></> : <Link className="mi-day-primary" href={`/admin/leads/${lead.id}`}>Ver cliente</Link>}
                   <Button variant="ghost" className="day-record" onClick={() => setFollowUpLead(lead)}><ClipboardCheck aria-hidden />Registrar resultado</Button>
                 </div>

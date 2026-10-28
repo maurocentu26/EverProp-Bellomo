@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
-import { Bell, Check, ExternalLink, Home, Inbox, Menu, MessagesSquare, Users, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
+import { Bell, CalendarDays, Check, ExternalLink, Home, Inbox, Menu, MessagesSquare, Users, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
 import { clearAllNotifications, fetchNotifications, isNotificationForUser, markAllNotificationsAsRead, markNotificationAsRead, showDesktopNotification, type AppNotification } from "@/lib/notifications";
+import { listConversations } from "@/lib/conversations-api";
 import { apiFetch } from "@/lib/everprop-api";
 import { isMockDataMode } from "@/lib/data-mode";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,10 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [conversationCount, setConversationCount] = useState(0);
+  const canViewConversations = isAdmin || isAdvisor;
+  const conversationLabel = conversationCount > 0 ? `Conversaciones, ${conversationCount} pendientes` : "Conversaciones";
+  const conversationBadge = conversationCount > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 min-w-6 rounded-full bg-red-600 px-1 text-center text-base font-bold leading-6 text-white">{conversationCount}</span>;
   const [soundEnabled, setSoundEnabled] = useState(false);
   const soundEnabledRef = useRef(false);
   const seenNotificationIds = useRef<Set<string> | null>(null);
@@ -47,6 +52,31 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const prevUnreadRef = useRef(0);
   const latestIdRef = useRef<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setConversationCount(0);
+    if (!user?.id || !canViewConversations) return;
+    let mounted = true;
+    let refreshing = false;
+    const refresh = async () => {
+      if (!mounted || refreshing) return;
+      refreshing = true;
+      try {
+        const [waiting, unread] = await Promise.all([listConversations("waiting"), listConversations("unread")]);
+        if (mounted) setConversationCount(new Set([...waiting.data, ...unread.data].map(item => item.id)).size);
+      } catch {
+        if (mounted) setConversationCount(0);
+      } finally { refreshing = false; }
+    };
+    void refresh();
+    const poll = window.setInterval(() => void refresh(), 60_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      mounted = false;
+      window.clearInterval(poll);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [user?.id, canViewConversations]);
 
   // Live database refresh; the demo SSE stream is isolated from API sessions.
   useEffect(() => {
@@ -264,10 +294,15 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
             <ThemeToggle />
             <PanelTextSizeControl />
 
+            {canViewConversations && <Link href="/admin/conversaciones" aria-label={conversationLabel} className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <MessagesSquare className="h-4 w-4" aria-hidden="true" />
+              {conversationBadge}
+            </Link>}
+
             {/* Notifications Drawer (Sheet) */}
             <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
               <SheetTrigger
-                className="relative inline-flex size-9 sm:size-10 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Notificaciones"
               >
                 <motion.div animate={bellControls}>
@@ -423,11 +458,11 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
 
       </header>
 
-      {isAdvisor && <nav className="advisor-dock" aria-label="Navegación principal">
+      {canViewConversations && <nav className="advisor-dock" aria-label="Navegación principal">
         <Link href="/admin" aria-current={pathname === "/admin" ? "page" : undefined}><Home aria-hidden />Mi Día</Link>
-        <Link href="/admin/conversaciones" aria-current={pathname.startsWith("/admin/conversaciones") ? "page" : undefined}><MessagesSquare aria-hidden />Mensajes</Link>
+        <Link href="/admin/conversaciones" aria-label={conversationLabel} aria-current={pathname.startsWith("/admin/conversaciones") ? "page" : undefined}><span className="relative"><MessagesSquare aria-hidden />{conversationBadge}</span>Mensajes</Link>
         <Link href="/admin/leads" aria-current={pathname.startsWith("/admin/leads") ? "page" : undefined}><Users aria-hidden />Leads</Link>
-        <button type="button" onClick={() => setIsMenuOpen(true)} aria-expanded={isMenuOpen}><Menu aria-hidden />Más</button>
+        <Link href="/admin/agenda" aria-current={pathname.startsWith("/admin/agenda") ? "page" : undefined}><CalendarDays aria-hidden />Agenda</Link>
       </nav>}
       {isMobile && <AdminFullscreenMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} />}
     </>

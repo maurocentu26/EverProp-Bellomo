@@ -61,6 +61,7 @@ import Badge from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import VisitManager from "@/components/admin/VisitManager";
+import { LeadConversationLink } from "@/components/admin/LeadConversationLink";
 import FinancingCalculator from "@/components/admin/FinancingCalculator";
 import { LeadInterestEditor } from "@/components/admin/LeadInterestEditor";
 import { LeadProfileEditor } from "@/components/admin/LeadProfileEditor";
@@ -521,6 +522,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                 <span className="font-semibold text-slate-900 dark:text-slate-100">Teléfono:</span>
                 <span className="text-right">{lead.phone || "Sin informar"}</span>
               </div>
+              <LeadConversationLink key={lead.id} lead={lead} />
               {cleanPhone && (
                 <a
                   href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
@@ -530,7 +532,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline"
+                  className="inline-flex min-h-11 items-center gap-1.5 text-base font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline"
                 >
                   Abrir conversación en WhatsApp →
                 </a>
@@ -605,10 +607,6 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
 
         {/* ── Main Column (8 cols): Deep content ── */}
         <div className="lead-detail-main min-w-0 space-y-6">
-          <section className="lead-stage-panel" aria-labelledby="lead-stage-title">
-            <h2 id="lead-stage-title">Etapa comercial</h2>
-            <div className="lead-stage-line">{Object.entries(STAGE_LABELS).map(([stage, label]) => <span key={stage} aria-current={lead.stage === stage ? "step" : undefined}>{label}</span>)}</div>
-          </section>
           {/* Interests Section */}
           <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm sm:p-6" aria-labelledby="lead-interests-title">
             <div className="flex flex-col gap-3 border-b border-slate-200 dark:border-slate-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -700,6 +698,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             <div className="mt-5">
               <LeadFollowUpTimeline leadId={lead.id} companyId={lead.companyId} followUps={followUps} />
             </div>
+          </section>
+
+          <section className="lead-stage-panel" aria-labelledby="lead-stage-title">
+            <h2 id="lead-stage-title">Etapa comercial</h2>
+            <div className="lead-stage-line">{Object.entries(STAGE_LABELS).map(([stage, label]) => <span key={stage} aria-current={lead.stage === stage ? "step" : undefined}>{label}</span>)}</div>
           </section>
 
           {/* Pending Info Alert */}
