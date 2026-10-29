@@ -13,6 +13,7 @@ use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Conversations\Services\OutboundDispatcher;
 use App\Domain\Conversations\Services\WhatsAppMediaFetcher;
 use App\Domain\Conversations\Services\WhatsAppTemplates;
+use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\Services\CreateOrGetOpenLeadProcedure;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
@@ -381,6 +382,93 @@ final class AdminConversationController extends Controller
         }
 
         return response()->json(['data' => ['sequence' => $result['sequence'], 'replayed' => $result['replayed']]], $result['replayed'] ? 200 : 202);
+    }
+
+    /**
+     * EVP-91: the lead's WhatsApp thread on the tenant's number, or what is needed to start one. Read only:
+     * opening «Mensajes» never sends. `reason` explains why a chat cannot be started.
+     */
+    public function leadWhatsapp(Request $request, string $lead, WhatsAppTemplates $templates): JsonResponse
+    {
+        $user = $this->viewer($request);
+        [$row, $channel, $waId] = $this->leadTarget($user, $lead);
+        $conversation = null;
+        if ($channel !== null && $waId !== null) {
+            $thread = DB::table('conversations')->where('tenant_id', $row->tenant_id)->where('channel_account_id', $channel['id'])
+                ->where('provider_thread_id', 'wa:'.$waId)->first(['public_id']);
+            if ($thread !== null) {
+                $visible = $this->visible($user)->where('c.public_id', $thread->public_id)->exists();
+                $conversation = ['id' => $visible ? (string) $thread->public_id : null, 'visible' => $visible];
+            }
+        }
+        $offered = $conversation === null && $channel !== null && $waId !== null ? $templates->forChannel((int) $row->tenant_id, (int) $channel['id']) : [];
+        $reason = match (true) {
+            $waId === null => 'NO_PHONE',
+            $channel === null => 'NO_CHANNEL',
+            $conversation !== null && ! $conversation['visible'] => 'CONVERSATION_OF_ANOTHER_ADVISOR',
+            $conversation === null && $offered === [] => 'NO_TEMPLATES',
+            default => null,
+        };
+
+        return response()->json(['data' => ['conversation_id' => $conversation['id'] ?? null, 'phone' => $waId === null ? null : '+'.$waId,
+            'templates' => $offered, 'reason' => $reason]]);
+    }
+
+    /** EVP-91: starts the lead's WhatsApp chat with an approved template, after the advisor confirms it. */
+    public function startLeadWhatsapp(Request $request, string $lead, WhatsAppTemplates $templates): JsonResponse
+    {
+        $user = $this->writer($request);
+        $data = $request->validate(['name' => 'required|string|max:512', 'language' => 'required|string|max:15',
+            'params' => 'present|array|max:10', 'params.*' => 'required|string|min:1|max:200', 'idempotency_key' => 'required|string|min:16|max:120']);
+        [$row, $channel, $waId] = $this->leadTarget($user, $lead);
+        if ($waId === null || $channel === null) {
+            return response()->json(['error' => ['code' => $waId === null ? 'NO_PHONE' : 'NO_CHANNEL',
+                'message' => $waId === null ? 'El lead no tiene un teléfono válido para WhatsApp.' : 'No hay un número de WhatsApp Business conectado.']], 422);
+        }
+        $template = collect($templates->forChannel((int) $row->tenant_id, (int) $channel['id']))
+            ->first(fn (array $t): bool => $t['name'] === $data['name'] && $t['language'] === $data['language']);
+        if ($template === null || count($data['params']) !== $template['params']) {
+            return response()->json(['error' => ['code' => 'TEMPLATE_NOT_APPROVED', 'message' => 'Esa plantilla no está aprobada o le faltan datos.']], 422);
+        }
+        $params = array_map(fn (string $p): string => trim((string) preg_replace('/\s+/u', ' ', $p)), array_values($data['params']));
+        $result = $this->control->startWithTemplate((int) $row->tenant_id, $channel, (int) $row->contact_id, $waId, $user, $template, $params, $data['idempotency_key']);
+        if (! $result['replayed']) {
+            DispatchOutboundJob::dispatch((int) $row->tenant_id, $result['job_id']);
+        }
+
+        return response()->json(['data' => ['conversation_id' => $result['conversation_public_id'], 'replayed' => $result['replayed']]], $result['replayed'] ? 200 : 201);
+    }
+
+    /**
+     * The lead (with the same visibility as Leads), the tenant's ACTIVE WhatsApp number and the contact's wa_id.
+     *
+     * @return array{0: object, 1: array<string, mixed>|null, 2: string|null}
+     */
+    private function leadTarget(User $user, string $leadPublicId): array
+    {
+        $row = DB::table('leads')->join('contacts', 'contacts.id', '=', 'leads.contact_id')
+            ->where('leads.tenant_id', $this->tenantId())->where('leads.public_id', $leadPublicId)->whereNull('leads.deleted_at')
+            ->first(['leads.tenant_id', 'leads.assigned_user_id', 'leads.contact_id', 'contacts.phone_e164']);
+        abort_unless($row !== null && (new LeadAccessPolicy)->view($user, $this->tenantId(), $row), 404);
+        // shortcut: first ACTIVE WhatsApp number of the tenant; add a picker when a tenant connects several.
+        $channel = DB::table('channel_accounts')->where('tenant_id', $row->tenant_id)->where('channel_type', 'WHATSAPP')
+            ->where('status', 'ACTIVE')->orderBy('id')->first();
+
+        return [$row, $channel === null ? null : (array) $channel, self::waId($row->phone_e164)];
+    }
+
+    /**
+     * WhatsApp id of a stored phone: digits only; Argentine numbers get the mobile 9 that Meta's wa_id carries
+     * (inbound wa_id is 549..., so the thread matches the one a reply would create). Null when not plausible.
+     */
+    public static function waId(?string $phone): ?string
+    {
+        $digits = (string) preg_replace('/\D+/', '', (string) $phone);
+        if (str_starts_with($digits, '54') && ! str_starts_with($digits, '549')) {
+            $digits = '549'.substr($digits, 2);
+        }
+
+        return preg_match('/\A[1-9][0-9]{9,14}\z/', $digits) === 1 ? $digits : null;
     }
 
     /** The file of a message, for whoever can see the conversation. */

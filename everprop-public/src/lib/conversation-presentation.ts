@@ -8,17 +8,27 @@ export const CONVERSATION_TABS = [
 
 export type ConversationTab = typeof CONVERSATION_TABS[number][0];
 
-export function leadConversationHref(lead: { phone?: string | null; email?: string | null }): string | null {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function leadConversationHref(lead: { id?: string; phone?: string | null; email?: string | null }): string | null {
   const phone = lead.phone?.replace(/\D/g, "") ?? "";
   // Search by suffix tolerates country/mobile prefixes; the advisor still chooses the thread.
   const term = (phone.length >= 4 ? phone.slice(-8) : lead.email?.trim() ?? "").slice(0, 100);
+  if (term.length < 2) return null;
+  // EVP-91: the lead lets the inbox find its exact WhatsApp thread on the server, or offer to start one.
+  const params = new URLSearchParams({ q: term, ...(lead.id && UUID.test(lead.id) ? { lead: lead.id } : {}) });
   // Fragments stay out of server access logs and HTTP referrers.
-  return term.length >= 2 ? `/admin/conversaciones#${new URLSearchParams({ q: term })}` : null;
+  return `/admin/conversaciones#${params}`;
 }
 
 export function conversationSearchFromHash(hash: string): string {
   const term = new URLSearchParams(hash.replace(/^#/, "")).get("q")?.trim().slice(0, 100) ?? "";
   return term.length >= 2 ? term : "";
+}
+
+export function conversationLeadFromHash(hash: string): string | null {
+  const lead = new URLSearchParams(hash.replace(/^#/, "")).get("lead") ?? "";
+  return UUID.test(lead) ? lead : null;
 }
 
 export function visibleConversations(items: ConversationSummary[], tab: ConversationTab, search: string): ConversationSummary[] {

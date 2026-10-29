@@ -7,7 +7,7 @@ import ts from 'typescript';
 // Run the real composer handlers with hooks in memory, without network or effects.
 function inbox() {
   const state = [];
-  Object.assign(state, { 5: true, 6: [{ id: 'chat', state: 'HUMAN_ACTIVE', channel: 'WEB_CHAT', contact_name: 'Cliente' }], 7: 'all:', 11: 'chat', 13: 'HUMAN_ACTIVE', 16: true, 22: 'Mi borrador' });
+  Object.assign(state, { 5: true, 7: [{ id: 'chat', state: 'HUMAN_ACTIVE', channel: 'WEB_CHAT', contact_name: 'Cliente' }], 8: 'all:', 12: 'chat', 14: 'HUMAN_ACTIVE', 17: true, 23: 'Mi borrador' });
   const refs = [];
   let cursor = 0, refCursor = 0;
   const sends = [];
@@ -16,7 +16,7 @@ function inbox() {
     CONVERSATION_TABS: [], CHANNEL_LABELS: {}, STATE_LABELS: {},
     conversationTab: () => 'human', conversationReason: () => '',
     initials: () => 'C', previewText: () => '', sameDay: () => true, clockTime: () => '',
-    listConversations: async () => ({ data: state[6] }),
+    listConversations: async () => ({ data: state[7] }),
     visibleConversations: items => items,
     suggestReply: async () => ({ data: { suggestion_id: 'suggestion', text: 'Respuesta sugerida' } }),
     sendReply: async (...args) => sends.push(args),
