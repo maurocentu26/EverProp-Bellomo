@@ -267,6 +267,25 @@ export async function sendTemplate(id: string, template: WhatsAppTemplate, param
   );
 }
 
+export type LeadWhatsapp = { conversation_id: string | null; phone: string | null; templates: WhatsAppTemplate[];
+  reason: "NO_PHONE" | "NO_CHANNEL" | "NO_TEMPLATES" | "CONVERSATION_OF_ANOTHER_ADVISOR" | null };
+
+/** EVP-91: the lead's WhatsApp thread on the business number, or the approved templates to start one. Never sends. */
+export async function getLeadWhatsapp(leadId: string) {
+  if (isMockDataMode) return { data: { conversation_id: null, phone: "+5493880000000", reason: null,
+    templates: [{ name: "primer_contacto", language: "es_AR", category: "UTILITY", body: "Hola {{1}}, te escribe tu asesor de Bellomo.", params: 1 }] } satisfies LeadWhatsapp };
+  return apiFetch<{ data: LeadWhatsapp }>(`/api/v1/admin/leads/${encodeURIComponent(leadId)}/whatsapp`);
+}
+
+/** EVP-91: starts the lead's WhatsApp chat with an approved template (Meta allows nothing else to open one). */
+export async function startLeadWhatsapp(leadId: string, template: WhatsAppTemplate, params: string[], idempotencyKey: string) {
+  if (isMockDataMode) throw new Error("Iniciar un chat requiere modo API; esta muestra no envía mensajes.");
+  return apiFetch<{ data: { conversation_id: string; replayed: boolean } }>(
+    `/api/v1/admin/leads/${encodeURIComponent(leadId)}/whatsapp`,
+    { method: "POST", body: JSON.stringify({ name: template.name, language: template.language, params, idempotency_key: idempotencyKey }) },
+  );
+}
+
 /** Body with {{n}} replaced by what the advisor typed (empty ones stay visible as {{n}}). */
 export function renderTemplate(body: string, params: string[]): string {
   return body.replace(/\{\{(\d+)\}\}/g, (all, n: string) => params[Number(n) - 1]?.trim() || all);

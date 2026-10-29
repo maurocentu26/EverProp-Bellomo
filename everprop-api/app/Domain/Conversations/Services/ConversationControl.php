@@ -364,6 +364,67 @@ final class ConversationControl
     }
 
     /**
+     * EVP-91: first WhatsApp message to a lead's contact that has no thread yet on this number. Meta only accepts
+     * an approved template to open a conversation, so the thread is created under the advisor's control together
+     * with that template. A replay of the same key returns the first result; an existing thread is never reused.
+     *
+     * @param  array<string, mixed>  $channel  ACTIVE WhatsApp channel_accounts row of the tenant
+     * @param  array{name: string, language: string, body: string}  $template
+     * @param  list<string>  $params
+     * @return array{conversation_public_id: string, message_id: int, job_id: int, sequence: int, replayed: bool}
+     */
+    public function startWithTemplate(int $tenantId, array $channel, int $contactId, string $waId, User $user, array $template, array $params, string $idempotencyKey): array
+    {
+        return DB::transaction(function () use ($tenantId, $channel, $contactId, $waId, $user, $template, $params, $idempotencyKey): array {
+            $key = 'user:'.$user->id.':start:'.$channel['id'].':'.$waId.':'.$idempotencyKey;
+            $text = WhatsAppTemplates::render($template['body'], $params);
+            $payload = ['name' => $template['name'], 'language' => $template['language'], 'params' => $params];
+            $thread = fn () => DB::table('conversations')->where('tenant_id', $tenantId)->where('channel_account_id', $channel['id'])
+                ->where('provider_thread_id', 'wa:'.$waId)->lockForUpdate()->first();
+            // Serialize starters on the channel row, like inbound creation does.
+            DB::table('channel_accounts')->where('tenant_id', $tenantId)->where('id', $channel['id'])->lockForUpdate()->first();
+            $conversation = $thread();
+            if ($conversation !== null) {
+                if (DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('idempotency_key', $key)->exists()) {
+                    return ['conversation_public_id' => (string) $conversation->public_id]
+                        + $this->queueOutbound($conversation, $text, 'USER', $user->id, null, $key, template: $payload);
+                }
+                throw new ConversationConflict('CONVERSATION_EXISTS', 'Este cliente ya tiene una conversación: abrila desde la bandeja.');
+            }
+            $blocked = app(ChannelPolicy::class)->check($tenantId, 0, $channel, $template['name']);
+            if ($blocked !== null) {
+                throw new ConversationConflict($blocked, $blocked === 'TEMPLATE_NOT_APPROVED'
+                    ? 'Esa plantilla no está aprobada para este número. Actualizá la lista de plantillas.' : 'Este canal no está disponible para enviar mensajes.');
+            }
+            $identity = DB::table('contact_identities')->where('tenant_id', $tenantId)->where('channel_type', 'WHATSAPP')
+                ->where('provider_scope_id', '')->where('provider_user_id', $waId)->value('contact_id');
+            if ($identity !== null && (int) $identity !== $contactId) {
+                throw new ConversationConflict('IDENTITY_OF_ANOTHER_CONTACT', 'Ese número de WhatsApp pertenece a otro contacto: revisalo en Leads.');
+            }
+            $now = CarbonImmutable::now('UTC')->format('Y-m-d H:i:s.v');
+            if ($identity === null) {
+                // So the client's reply resolves to the lead's contact instead of creating a new one.
+                DB::table('contact_identities')->insert([
+                    'tenant_id' => $tenantId, 'contact_id' => $contactId, 'channel_type' => 'WHATSAPP', 'provider_scope_id' => '',
+                    'provider_user_id' => $waId, 'identity_hash' => hash('sha256', "WHATSAPP\0".$waId, true),
+                    'is_primary' => 0, 'is_verified' => 0, 'first_seen_at' => $now, 'last_seen_at' => $now,
+                ]);
+            }
+            DB::table('conversations')->insert([
+                'tenant_id' => $tenantId, 'public_id' => (string) Str::uuid(), 'contact_id' => $contactId,
+                'channel_account_id' => $channel['id'], 'provider_thread_id' => 'wa:'.$waId, 'status' => 'OPEN',
+                'bot_mode' => 'HUMAN_ONLY', 'control_state' => 'HUMAN_ACTIVE', 'controlled_by_user_id' => $user->id,
+                'assigned_user_id' => $user->id, 'last_activity_at' => $now,
+            ]);
+            $conversation = $thread();
+            $this->outbox($tenantId, (int) $conversation->id, 'CONVERSATION_STARTED_BY_USER', ['user_id' => $user->id, 'template' => $template['name']]);
+
+            return ['conversation_public_id' => (string) $conversation->public_id]
+                + $this->queueOutbound($conversation, $text, 'USER', $user->id, null, $key, template: $payload);
+        }, 3);
+    }
+
+    /**
      * Internal note (S04). Stored as an INTERNAL message in the thread's sequence: the widget, the
      * assistant's history and the transports only read INBOUND/OUTBOUND, so it never leaves the team.
      * Idempotent per author and key through the existing unique provider_message_id.

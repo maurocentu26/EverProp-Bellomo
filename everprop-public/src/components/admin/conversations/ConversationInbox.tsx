@@ -47,7 +47,8 @@ import {
   type HandoffSummary,
 } from "@/lib/conversations-api";
 
-import { CONVERSATION_TABS, conversationTab, conversationReason, conversationSearchFromHash, visibleConversations, type ConversationTab } from "@/lib/conversation-presentation";
+import { LeadWhatsappStart } from "@/components/admin/conversations/LeadWhatsappStart";
+import { CONVERSATION_TABS, conversationLeadFromHash, conversationTab, conversationReason, conversationSearchFromHash, visibleConversations, type ConversationTab } from "@/lib/conversation-presentation";
 import { VisitRequestsBoard } from "@/components/admin/assistant/VisitRequestsBoard";
 
 const FILTERS: [ConversationFilter, string][] = [
@@ -185,11 +186,14 @@ export function ConversationInbox() {
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [searchReady, setSearchReady] = useState(false);
+  // EVP-91: lead from «Mensajes», to open its WhatsApp thread or start one.
+  const [linkedLead, setLinkedLead] = useState<string | null>(null);
   useEffect(() => {
     const readSearch = () => {
       const term = conversationSearchFromHash(window.location.hash);
       setQuery(term);
       setSearch(term);
+      setLinkedLead(conversationLeadFromHash(window.location.hash));
       setSearchReady(true);
     };
     readSearch();
@@ -536,6 +540,11 @@ export function ConversationInbox() {
                 className="min-h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-base sm:text-sm" />
             </div>
           </div>
+          {linkedLead && <div className="px-2 pb-2"><LeadWhatsappStart leadId={linkedLead} readOnly={readOnly} onOpen={(id) => {
+            setLinkedLead(null);
+            setFilter("all");
+            open(id);
+          }} /></div>}
           {search ? <p role="status" className="break-words px-3 pb-2 text-sm text-muted-foreground">Resultados en todas las bandejas. Elegí la conversación del cliente para ver sus mensajes.</p> : <div role="group" aria-label="Bandejas de conversaciones" title="Cantidades del filtro actual" className="conversation-tabs">
             {CONVERSATION_TABS.map(([id, label]) => (
               <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>

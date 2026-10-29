@@ -3,7 +3,7 @@ import { type Lead } from "@/data/admin-sample";
 import { leadConversationHref } from "@/lib/conversation-presentation";
 import { cn } from "@/lib/utils";
 
-export function LeadMessagesLink({ lead, className }: { lead: Pick<Lead, "name" | "phone" | "email">; className?: string }) {
+export function LeadMessagesLink({ lead, className }: { lead: Pick<Lead, "id" | "name" | "phone" | "email">; className?: string }) {
   const href = leadConversationHref(lead);
   if (!href) return <span className="text-sm text-muted-foreground">Sin teléfono ni email para buscar mensajes</span>;
 

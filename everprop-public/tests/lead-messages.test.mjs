@@ -8,7 +8,7 @@ const context = { exports: {}, URLSearchParams };
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('../src/lib/conversation-presentation.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, context);
-const { leadConversationHref, conversationSearchFromHash, visibleConversations } = context.exports;
+const { leadConversationHref, conversationSearchFromHash, conversationLeadFromHash, visibleConversations } = context.exports;
 
 test('lead navigation carries an encoded search in the fragment, not in the server query', () => {
   const href = leadConversationHref({ phone: '+54 (11) 5555-0123', email: 'ignored@example.test' });
@@ -20,6 +20,17 @@ test('lead navigation carries an encoded search in the fragment, not in the serv
   assert.equal(conversationSearchFromHash(new URL(leadConversationHref({ phone: '---', email: ' ana+ventas@example.test ' }), url).hash), 'ana+ventas@example.test');
   assert.equal(leadConversationHref({ phone: '12', email: '' }), null);
   assert.equal(leadConversationHref({}), null);
+});
+
+test('EVP-91: the lead id travels in the fragment only when it is a UUID', () => {
+  const id = '6f1c2b3a-1d2e-4f50-8a9b-0c1d2e3f4a5b';
+  const url = new URL(leadConversationHref({ id, phone: '+54 388 123-4567' }), 'https://panel.example.test');
+  assert.equal(url.search, '');
+  assert.equal(conversationLeadFromHash(url.hash), id);
+  assert.equal(conversationSearchFromHash(url.hash), '81234567');
+  assert.equal(conversationLeadFromHash(new URL(leadConversationHref({ id: 'L-1', phone: '+54 388 123-4567' }), url).hash), null);
+  assert.equal(conversationLeadFromHash('#lead=../../x'), null);
+  assert.equal(conversationLeadFromHash(''), null);
 });
 
 test('fragment search is bounded, ignores short terms and cannot select a conversation', () => {
