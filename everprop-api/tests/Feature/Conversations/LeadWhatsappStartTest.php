@@ -9,9 +9,11 @@ use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /** EVP-91: «Mensajes» from a lead opens its WhatsApp thread or starts one with an approved template (Meta simulated). */
@@ -52,7 +54,12 @@ final class LeadWhatsappStartTest extends TestCase
         return ['lead' => $lead, 'contact' => $contact];
     }
 
-    private function start(array $f, string $key = 'start-key-000000001', array $params = ['Ana'])
+    /**
+     * @param  array{tenant: Tenant, advisor: User, lead: string}  $f
+     * @param  list<string>  $params
+     * @return TestResponse<Response>
+     */
+    private function start(array $f, string $key = 'start-key-000000001', array $params = ['Ana']): TestResponse
     {
         return $this->actingAs($f['advisor'])->withHeaders($this->tenantHeaders($f['tenant']))->postJson("/api/v1/admin/leads/{$f['lead']}/whatsapp",
             ['name' => 'primer_contacto', 'language' => 'es_AR', 'params' => $params, 'idempotency_key' => $key]);
