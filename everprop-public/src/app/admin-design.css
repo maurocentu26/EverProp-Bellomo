@@ -1367,6 +1367,10 @@ html:not(.dark) .admin-workspace {
 .admin-workspace nav[aria-label="Navegación administrativa"] a[aria-current="page"] svg { color: #fff !important; }
 .dark .admin-workspace nav[aria-label="Navegación administrativa"] a[aria-current="page"] { background: #f2f4f3 !important; color: #141518 !important; }
 .dark .admin-workspace nav[aria-label="Navegación administrativa"] a[aria-current="page"] svg { color: #141518 !important; }
+/* Navegación lateral colapsada: cápsula sin padding y enlace activo edge-to-edge (EVP-102) */
+.admin-workspace [data-state="collapsed"] [data-slot="sidebar-content"] nav[aria-label="Navegación administrativa"] > section { padding: 0; overflow: hidden; }
+.admin-workspace [data-state="collapsed"] nav[aria-label="Navegación administrativa"] a { width: 100%; border-radius: 0 !important; min-height: 48px; }
+.admin-workspace [data-state="collapsed"] nav[aria-label="Navegación administrativa"] .space-y-1 > :not([hidden]) ~ :not([hidden]) { margin-top: 0; }
 .admin-workspace .admin-topbar { background: var(--background); border-bottom: 0; }
 .admin-workspace .admin-topbar :is(button, a):not([data-slot="sidebar-trigger"]) { border-radius: 999px; }
 .admin-workspace main#admin-content { background: var(--background); }
