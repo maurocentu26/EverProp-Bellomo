@@ -19,6 +19,7 @@ type Props = {
 
 export default function MainLayout({ children }: Props) {
     const pathname = usePathname();
+    const conversationsWorkspace = pathname === "/admin/conversaciones";
     const router = useRouter();
     const { currentUser, isLoaded, invalidateSession } = useAuth();
     const currentUserId = currentUser?.id;
@@ -122,14 +123,14 @@ export default function MainLayout({ children }: Props) {
 
     return (
         <PanelTextSizeProvider key={currentUser.id} userId={currentUser.id}>
-        <div className={`admin-workspace min-h-screen overflow-x-hidden bg-background text-foreground ${currentUser.role === "ADVISOR" ? "advisor-mobile-shell" : ""}`}>
+        <div className={`admin-workspace min-h-screen overflow-x-hidden bg-background text-foreground ${conversationsWorkspace ? "conversations-workspace" : ""} ${currentUser.role === "ADVISOR" ? "advisor-mobile-shell" : ""}`}>
             <SidebarProvider defaultOpen>
                 <div className="flex h-dvh w-full overflow-hidden">
-                    <AppSidebar />
+                    {!conversationsWorkspace && <AppSidebar />}
                     <div className="flex min-w-0 flex-1 flex-col">
-                        <AdminNavbar />
-                        <main id="admin-content" tabIndex={-1} data-admin-scroll-container="true" className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 ${pathname === "/admin/conversaciones" ? "md:overflow-hidden" : ""}`}>
-                            <div className={`admin-page-width mx-auto w-full max-w-[100rem] space-y-6 ${pathname === "/admin/conversaciones" ? "md:flex md:h-full md:min-h-0 md:flex-col" : ""}`}>
+                        {!conversationsWorkspace && <AdminNavbar />}
+                        <main id="admin-content" tabIndex={-1} data-admin-scroll-container="true" className={`min-h-0 flex-1 overflow-x-hidden bg-background ${conversationsWorkspace ? "overflow-hidden" : "overflow-y-auto p-4 sm:p-6 lg:p-8"}`}>
+                            <div className={conversationsWorkspace ? "flex h-full min-h-0 w-full flex-col" : "admin-page-width mx-auto w-full max-w-[100rem] space-y-6"}>
                                 {currentUser.role === "ADVISOR" && !["/admin", "/admin/leads", "/admin/conversaciones"].includes(pathname) && <Link href={pathname.startsWith("/admin/leads/") ? "/admin/leads" : "/admin"} className="advisor-back">‹ Atrás</Link>}
                                 {currentUser.role === "ROTATOR" && !rotatorRouteAllowed ? <p>Abriendo asignación de leads…</p> : children}
                             </div>

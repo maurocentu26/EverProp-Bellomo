@@ -33,6 +33,10 @@ function inbox() {
     'lucide-react': new Proxy({}, { get: () => 'Icon' }),
     sonner: { toast: { success: () => {}, error: error => { throw new Error(error); } } },
     'next/navigation': { useRouter: () => ({}) },
+    'next/link': { default: 'Link' },
+    '@base-ui/react/dialog': { Dialog: { Popup: 'SheetPopup', Portal: 'SheetPortal', Backdrop: 'SheetBackdrop' } },
+    '@/components/ui/sheet': Object.fromEntries(['Sheet','SheetTrigger','SheetPortal','SheetOverlay','SheetClose','SheetTitle','SheetDescription'].map(name => [name,name])),
+    '@/components/theme/PanelTextSize': { PanelTextSizeControl: 'TextSizeControl' },
     '@/hooks/use-current-session': { useCurrentSession: () => ({ user: { id: 'advisor', apiRole: 'ADVISOR' } }) },
     '@/lib/conversations-api': api,
     '@/lib/conversation-presentation': api,
@@ -83,4 +87,18 @@ test('discard preserves draft; unused suggestion is not attributed to manual rep
   await view.send();
   assert.equal(view.sends[0][1], 'Mi borrador');
   assert.equal(view.sends[0][3], undefined);
+});
+
+test('client drawer stays mounted and opening or dismissing it preserves the reply draft', () => {
+  const view = inbox();
+  assert.equal(view.render().type, 'Sheet');
+  assert.equal(view.render().props.open, false);
+  assert.equal(view.find(view.render(), node => node.type === 'SheetPortal').props.keepMounted, true);
+  view.render().props.onOpenChange(true);
+  assert.equal(view.render().props.open, true);
+  assert.equal(view.draft(), 'Mi borrador');
+  view.render().props.onOpenChange(false);
+  assert.equal(view.render().props.open, false);
+  assert.equal(view.draft(), 'Mi borrador');
+  assert.equal(view.sends.length, 0);
 });

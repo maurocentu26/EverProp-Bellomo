@@ -4,6 +4,10 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, Bot, ChevronDown, ChevronUp, FileText, Paperclip, Sparkles, UserPlus, Check, CheckCheck, CheckCircle2, CircleAlert, Clock, Hand, MessageSquare, MessageSquareText, MoreVertical, Plus, RefreshCw, Search, Send, StickyNote, TriangleAlert, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
+import { Sheet, SheetTrigger, SheetClose, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { PanelTextSizeControl } from "@/components/theme/PanelTextSize";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { AssistantTrace } from "./AssistantTrace";
 import {
@@ -247,8 +251,6 @@ export function ConversationInbox() {
   const [templateParams, setTemplateParams] = useState<string[]>([]);
   // Same rule as replies: the key belongs to the exact text it was created for.
   const noteKey = useRef({ key: newKey(), text: "" });
-  const clientBack = useRef<HTMLButtonElement>(null);
-  useEffect(() => { if (showClient) clientBack.current?.focus(); }, [showClient]);
   const threadHeading = useRef<HTMLHeadingElement>(null);
   const thread = useRef<HTMLOListElement>(null);
   const atBottom = useRef(true);
@@ -514,16 +516,19 @@ export function ConversationInbox() {
   const visibleItems = resultsReady ? visibleConversations(items, tab, search) : [];
 
   return (
-    <section className="wa-inbox mx-auto flex w-full max-w-none min-w-0 flex-col gap-4 pb-6 md:min-h-0 md:flex-1 md:pb-0">
-      <header className={`${selected ? "hidden md:flex" : "flex"} shrink-0 flex-wrap items-end justify-between gap-3`}>
+    <Sheet open={showClient} onOpenChange={setShowClient}>
+    <section className="wa-inbox conversation-workspace-inbox mx-auto flex w-full max-w-none min-w-0 flex-col min-h-0 flex-1">
+      <header className={`${selected ? "hidden md:flex" : "flex"} conversation-workspace-heading shrink-0 flex-wrap items-center justify-between gap-3`}>
+        <Link href="/admin" className="conversation-secondary"><ArrowLeft className="h-5 w-5" aria-hidden /> Volver al panel</Link>
         <div>
           <h1 className="text-2xl font-bold">Conversaciones</h1>
-          <p className="mt-1 hidden text-sm text-muted-foreground sm:block">WhatsApp y chat web en una sola bandeja. La IA se detiene cuando tomás el control.</p>
         </div>
+        <div className="flex items-center gap-2"><PanelTextSizeControl />
         <button type="button" disabled={refreshing} onClick={() => void refreshNow()} aria-describedby="inbox-refresh-status"
           className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold disabled:opacity-70">
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden /> {refreshing ? "Actualizando…" : "Actualizar"}
         </button>
+        </div>
         <p id="inbox-refresh-status" role="status" className="sr-only">
           {refreshedAt ? `Actualizado ${clockTime(refreshedAt)} · se actualiza solo` : "Se actualiza solo cada pocos segundos"}
         </p>
@@ -629,7 +634,7 @@ export function ConversationInbox() {
                 </div>
                 {state && <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${STATE_STYLES[state]}`}>{humanInControl ? "Ahora atendés vos" : STATE_LABELS[state]}</span>}
                 {!readOnly && humanInControl && aiEnabled && <button type="button" disabled={busy !== null} onClick={() => setShowResume(true)} className="conversation-secondary">Devolver a la IA</button>}
-                <button type="button" aria-expanded={showClient} id="conversation-client-toggle" aria-controls="conversation-client" onClick={() => setShowClient(value => !value)} className="conversation-secondary conversation-client-toggle">{showClient ? "Volver al chat" : "Ver cliente"}</button>
+                <SheetTrigger id="conversation-client-toggle" render={<button type="button" className="conversation-secondary conversation-client-toggle" />}>Ver cliente</SheetTrigger>
               </div>
 
               {handoff && !handoffDismissed && (state === "WAITING_HUMAN" || state === "HUMAN_ACTIVE") && (
@@ -1037,8 +1042,15 @@ export function ConversationInbox() {
             </>
           )}
         </div>
-        <aside id="conversation-client" className={`conversation-client ${showClient ? "conversation-client-open" : ""}`} aria-label="Panel del cliente">
-          <button ref={clientBack} type="button" className="conversation-secondary conversation-client-toggle" onClick={() => { setShowClient(false); window.setTimeout(() => document.getElementById("conversation-client-toggle")?.focus(), 0); }}><ArrowLeft className="h-5 w-5" aria-hidden /> Atrás al chat</button>
+        {/* Keep visit edits mounted while the drawer is closed, as in the previous client panel. */}
+        <SheetPrimitive.Portal keepMounted>
+          <SheetPrimitive.Backdrop className="conversation-client-backdrop" />
+          <SheetPrimitive.Popup className="admin-workspace wa-inbox conversation-client-drawer">
+          <header className="conversation-client-drawer-heading">
+            <div><SheetTitle>Datos del cliente</SheetTitle><SheetDescription>Información y visitas de la conversación seleccionada.</SheetDescription></div>
+            <SheetClose render={<button type="button" className="conversation-secondary" />}>Cerrar</SheetClose>
+          </header>
+          <div className="conversation-client-drawer-body">
           {selected ? <>
             <VisitRequestsBoard key={selected} conversationId={selected} channelLabel={current ? (CHANNEL_LABELS[current.channel] ?? current.channel) : "Sin informar"} />
             {!readOnly && <button type="button" disabled={busy !== null} className="conversation-secondary w-full" onClick={() => void run("lead", async () => {
@@ -1046,9 +1058,12 @@ export function ConversationInbox() {
               router.push(`/admin/leads/${data.lead_id}`);
             })}>Abrir ficha del cliente</button>}
           </> : <div className="conversation-client-empty"><h2>Datos del cliente</h2><p>Elegí una conversación para ver su información y las visitas solicitadas.</p></div>}
-        </aside>
+          </div>
+          </SheetPrimitive.Popup>
+        </SheetPrimitive.Portal>
       </div>
     </section>
+    </Sheet>
   );
 }
 
