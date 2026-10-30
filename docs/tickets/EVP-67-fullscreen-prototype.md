@@ -31,3 +31,10 @@ Recover chrome space instead of shrinking content. Reuse existing components and
 Native review consent/outcome, user acceptance, push/PR and deployment are separate. Real backend integration and physical mobile keyboard not tested. No production readiness claim. Removing this unit restores previous shell/client presentation without data rollback. Earlier prototype320px correction was not rechecked; real integrated320px geometry was checked independently of that prototype.
 
 Risk: item3 (shared MainLayout; sibling routes and session gate verified against baseline).
+
+## Typography QA correction
+User reported disproportionate sizes. Browser reproduced Grande tab label15/count20.4, editor16.8/body20.4 and title38.016px. Root cause: blanket span sizing plus later global Grande compatibility overrides. Added a scoped stylesheet loaded after compatibility, semantic roles and conditional dialog scope. Body17/20.4, controls15/18, metadata13/15.6, section20/24 and title24/28.8; touch targets44/52 preserved.
+
+Six live DOM samples (1440,768,320px × Actual/Grande) passed `node tests/ui-conversation-typography.mjs --snapshot <captured-json>`. The same harness can drive a local mock browser with an existing Playwright installation; that runner branch was not executed here. Parent used CUA for actual measurements. Actions menu labels15/help14 verified at320px; client drawer and confirmation text verified. Found and fixed confirmation behind drawer (z50vs71); popup now81, optional overlay80. Opened/cancelled confirmation without scheduling a visit. No messaging or data logic changed.
+
+Independent scratch verifier:22tests, typecheck and production webpack mock build37pages passed; standalone VisitRequestsBoard render unchanged after class-whitespace normalization. Focused lint:0errors,3preexisting effect warnings in inspected components. Physical iOS keyboard, live API and admin trace dialog rendering were not tested. Native review still pending; no push/deploy.

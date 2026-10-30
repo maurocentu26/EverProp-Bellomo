@@ -229,7 +229,7 @@ export function VisitRequestsBoard({ conversationId, channelLabel }: { conversat
         </section>}
       </>}
       {!readOnly && <Dialog open={Boolean(confirmation)} onOpenChange={open => { if (!open && !confirming) setConfirmation(null); }}>
-        <DialogContent showCloseButton={false} className="admin-workspace mi-day mi-day-guide sm:max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6">
+        <DialogContent showCloseButton={false} className={`admin-workspace mi-day mi-day-guide ${conversationId ? "wa-inbox" : ""} sm:max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6`}>
           <DialogTitle className="text-2xl font-bold">¿Confirmamos la visita?</DialogTitle>
           <DialogDescription>Revisá los datos antes de agendar. Después avisale al cliente desde la conversación.</DialogDescription>
           {confirmation && <dl className="space-y-3 break-words">

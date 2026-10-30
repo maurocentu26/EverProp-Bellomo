@@ -581,16 +581,16 @@ export function ConversationInbox() {
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="flex items-center justify-between gap-2">
-                        <span className={`truncate ${item.unread > 0 ? "font-bold" : "font-semibold"}`}>{displayName(item)}</span>
-                        <time dateTime={item.last_activity_at} className={`shrink-0 text-xs ${item.unread > 0 ? "font-semibold text-[var(--wa-accent)]" : "text-muted-foreground"}`}>
+                        <span className={`conversation-contact-name truncate ${item.unread > 0 ? "font-bold" : "font-semibold"}`}>{displayName(item)}</span>
+                        <time dateTime={item.last_activity_at} className={`conversation-timestamp shrink-0 text-xs ${item.unread > 0 ? "font-semibold text-[var(--wa-accent)]" : "text-muted-foreground"}`}>
                           {sameDay(item.last_activity_at, new Date().toISOString()) ? clockTime(item.last_activity_at) : dayLabel(item.last_activity_at)}
                         </time>
                       </span>
                       <span className="flex items-center justify-between gap-2">
-                        <span className={`truncate text-sm ${item.unread > 0 ? "text-foreground" : "text-muted-foreground"}`}>{preview || "Sin mensajes"}</span>
+                        <span className={`conversation-preview truncate text-sm ${item.unread > 0 ? "text-foreground" : "text-muted-foreground"}`}>{preview || "Sin mensajes"}</span>
                         {item.unread > 0 && <span className="wa-accent shrink-0 rounded-full px-2 py-0.5 text-xs font-bold" aria-label={`${item.unread} sin leer`}>{item.unread}</span>}
                       </span>
-                      <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="conversation-contact-meta flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_STYLES[item.state]}`}>{conversationReason(item)}</span>
                         <span>{CHANNEL_LABELS[item.channel] ?? item.channel}</span>
                         {item.assigned_user && <span className="truncate">· {item.assigned_user.name}</span>}
@@ -632,7 +632,7 @@ export function ConversationInbox() {
                     {replyWindow?.closes_at ? ` · podés responder hasta ${dayLabel(replyWindow.closes_at).toLowerCase()} ${clockTime(replyWindow.closes_at)}` : ""}
                   </p>
                 </div>
-                {state && <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${STATE_STYLES[state]}`}>{humanInControl ? "Ahora atendés vos" : STATE_LABELS[state]}</span>}
+                {state && <span className={`conversation-state-badge shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${STATE_STYLES[state]}`}>{humanInControl ? "Ahora atendés vos" : STATE_LABELS[state]}</span>}
                 {!readOnly && humanInControl && aiEnabled && <button type="button" disabled={busy !== null} onClick={() => setShowResume(true)} className="conversation-secondary">Devolver a la IA</button>}
                 <SheetTrigger id="conversation-client-toggle" render={<button type="button" className="conversation-secondary conversation-client-toggle" />}>Ver cliente</SheetTrigger>
               </div>
@@ -920,7 +920,7 @@ export function ConversationInbox() {
                       <UserPlus className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
                       <div>
                         <span className="block">Lead y visita</span>
-                        <span className="block text-[11px] font-normal text-muted-foreground">Gestionar o crear lead comercial</span>
+                        <span className="conversation-action-description block text-[11px] font-normal text-muted-foreground">Gestionar o crear lead comercial</span>
                       </div>
                     </button>
 
@@ -931,7 +931,7 @@ export function ConversationInbox() {
                         <FileText className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
                         <div>
                           <span className="block">Traza del asistente</span>
-                          <span className="block text-[11px] font-normal text-muted-foreground">Qué consultó y respondió la IA</span>
+                          <span className="conversation-action-description block text-[11px] font-normal text-muted-foreground">Qué consultó y respondió la IA</span>
                         </div>
                       </button>
                     )}
@@ -947,7 +947,7 @@ export function ConversationInbox() {
                         <Bot className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
                         <div>
                           <span className="block">Pasar a IA</span>
-                          <span className="block text-[11px] font-normal text-muted-foreground">Reanudar atención automática</span>
+                          <span className="conversation-action-description block text-[11px] font-normal text-muted-foreground">Reanudar atención automática</span>
                         </div>
                       </button>
                     )}
@@ -966,7 +966,7 @@ export function ConversationInbox() {
                         <Hand className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                         <div>
                           <span className="block">Tomar control</span>
-                          <span className="block text-[11px] font-normal text-muted-foreground">Pausar la IA y responder</span>
+                          <span className="conversation-action-description block text-[11px] font-normal text-muted-foreground">Pausar la IA y responder</span>
                         </div>
                       </button>
                     )}
@@ -982,7 +982,7 @@ export function ConversationInbox() {
                         <RefreshCw className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
                         <div>
                           <span className="block">Reabrir conversación</span>
-                          <span className="block text-[11px] font-normal text-muted-foreground">Habilitar respuestas en este chat</span>
+                          <span className="conversation-action-description block text-[11px] font-normal text-muted-foreground">Habilitar respuestas en este chat</span>
                         </div>
                       </button>
                     )}
@@ -998,7 +998,7 @@ export function ConversationInbox() {
                         <CheckCircle2 className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
                         <div>
                           <span className="block">Cerrar conversación</span>
-                          <span className="block text-[11px] font-normal text-rose-500/80 dark:text-rose-400/80">Marcar como finalizada</span>
+                          <span className="conversation-action-description block text-[11px] font-normal text-rose-500/80 dark:text-rose-400/80">Marcar como finalizada</span>
                         </div>
                       </button>
                     )}
