@@ -2,6 +2,8 @@
 
 Branch: `ticket/EVP-67-rediseno-vista-conversaciones`; base `d87d2d7`; isolated worktree `EverProp-EVP-67`. Date: 2026-10-30.
 
+Update: user requested proceeding with this implementation directly. Local ticket branch now includes current `origin/develop` fc8bb32, including EVP102 sidebar fixes. No separate EVP65 branch incorporated; latest fetch did not confirm that branch as an ancestor of develop. Implementation commit eb4d5d9; 22 focused tests pass after synchronization. No protected branch was merged or pushed. Native review remains pending; the earlier consent target is stale for any newly selected candidate.
+
 ## 1. Requested outcome
 The user selected two columns with an on-demand client drawer after comparing prototypes. Use the viewport while retaining large controls. Preserve messaging, permissions, conversation state and visit actions. No push, merge, staging or production deployment authorized.
 
