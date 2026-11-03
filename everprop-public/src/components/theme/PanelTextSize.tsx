@@ -49,7 +49,7 @@ export function PanelTextSizeControl({ showLabel = false }: { showLabel?: boolea
       <PopoverTrigger
         aria-label={`Tamaño de texto: ${size === "grande" ? "Grande" : "Actual"}`}
         title="Tamaño de texto"
-        className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-card-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", showLabel && "min-h-11 w-auto px-4 gap-2")}
+        className={cn("inline-flex size-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-card-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", showLabel && "min-h-11 w-auto px-4 gap-2")}
       >
         <ALargeSmall className="size-5" aria-hidden="true" />{showLabel && (size === "grande" ? "Grande" : "Actual")}
       </PopoverTrigger>

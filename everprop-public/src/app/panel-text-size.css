@@ -1,8 +1,8 @@
 /* Root rem scaling also reaches portalled menus and dialogs. The attribute is
    owned by the authenticated panel and removed on logout/unmount. */
 html[data-panel-text-size="grande"] { font-size: 120%; }
-html[data-panel-text-size="grande"] .admin-workspace { font-size: 16.8px; }
-html[data-panel-text-size="grande"] .admin-workspace h1 { font-size: clamp(1.5rem, 2.64vw, 2rem); }
+html[data-panel-text-size="grande"] .admin-workspace { --panel-scale: 1.2; --day-text: 20.4px; --agenda-text: 20.4px; --conversation-text: 20.4px; font-size: 20.4px; }
+html[data-panel-text-size="grande"] .admin-workspace h1 { font-size: var(--panel-h1, 40.8px); }
 html[data-panel-text-size="grande"] .admin-workspace table { font-size: 15.6px; }
 html[data-panel-text-size="grande"] .admin-workspace table th { font-size: 13.2px; }
 html[data-panel-text-size="grande"] .admin-sidebar nav h2 { font-size: 12px; }
@@ -12,7 +12,7 @@ html[data-panel-text-size="grande"] .admin-workspace .daily-metrics p:nth-child(
 html[data-panel-text-size="grande"] .admin-workspace .daily-metrics p:last-child { font-size: 13.2px; }
 html[data-panel-text-size="grande"] .daily-metrics > :is(button, a) { grid-template-columns: 1fr; }
 html[data-panel-text-size="grande"] .daily-metrics > :is(button, a) > div:first-child { flex-direction: row; }
-html[data-panel-text-size="grande"] .admin-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, [data-slot="button"]) { min-height: 2.5rem; }
+html[data-panel-text-size="grande"] .admin-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, [data-slot="button"]) { min-height: 44px; }
 html[data-panel-text-size="grande"] .admin-workspace [data-slot="input-group"] { min-height: 2.75rem; }
 html[data-panel-text-size="grande"] .admin-workspace [data-slot="input-group"] input { min-height: 0; }
 html[data-panel-text-size="grande"] .admin-workspace table { min-width: 60rem; }
@@ -20,7 +20,7 @@ html[data-panel-text-size="grande"] .admin-workspace table:has(td[data-label]) {
 html[data-panel-text-size="grande"] .admin-topbar > div { flex-wrap: wrap; }
 html[data-panel-text-size="grande"] .admin-topbar > div > div:first-child { min-width: min(100%, 14rem); }
 @media (max-width: 767px) {
-  html[data-panel-text-size="grande"] .admin-workspace :is(input, textarea) { font-size: 19.2px; }
+  html[data-panel-text-size="grande"] .admin-workspace :is(input, textarea) { font-size: 20.4px; } html[data-panel-text-size="grande"] .admin-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]), select, [data-slot="button"]) { min-height: 52px; }
 }
 
 /* Compatibility with fixed-pixel Tailwind text classes in existing screens. */
