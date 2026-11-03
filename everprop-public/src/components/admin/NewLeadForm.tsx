@@ -297,6 +297,15 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     }
   }, [activeLead, allProperties, selectedAsset, selectedCategory, selectedProjectId]);
 
+  const draftStorageKey = !isEditing ? `everprop:new-lead-draft:${companyId}` : "";
+  const watchedName = form.watch("name");
+  const watchedOrigin = form.watch("origin");
+  const watchedStage = form.watch("stage");
+  const watchedPriority = form.watch("priority");
+  const watchedBudget = form.watch("budget");
+  const watchedCurrency = form.watch("currency");
+  const watchedNotes = form.watch("notes");
+  const watchedAgentId = form.watch("agentId");
   const watchedPhone = form.watch("phone");
   const watchedEmail = form.watch("email");
   const isContactModified = useMemo(() => {
@@ -305,6 +314,73 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     const emailChanged = (watchedEmail?.trim() || "") !== (activeLead.email?.trim() || "");
     return phoneChanged || emailChanged;
   }, [isEditing, activeLead, watchedPhone, watchedEmail]);
+
+  useEffect(() => {
+    if (!draftStorageKey || typeof sessionStorage === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(draftStorageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved?.values && typeof saved.values === "object") {
+        form.reset({
+          name: "",
+          origin: "WhatsApp",
+          email: "",
+          phone: "",
+          stage: "new",
+          priority: "NORMAL",
+          budget: "",
+          currency: "USD",
+          notes: "",
+          agentId: isAdvisor ? user?.id : "",
+          ...saved.values,
+        });
+      }
+      if (saved?.selectedCategory) setSelectedCategory(saved.selectedCategory);
+      if (saved?.selectedProjectId) setSelectedProjectId(saved.selectedProjectId);
+      if (saved?.assetSearchQuery) setAssetSearchQuery(saved.assetSearchQuery);
+    } catch { /* ignore */ }
+  }, [draftStorageKey, form, isAdvisor, user?.id]);
+
+  useEffect(() => {
+    if (!draftStorageKey || typeof sessionStorage === "undefined") return;
+    try {
+      const hasAnyValue = Boolean(
+        watchedName?.trim() || watchedPhone?.trim() || watchedEmail?.trim() || watchedBudget?.trim() || watchedNotes?.trim() || selectedCategory || selectedProjectId || assetSearchQuery.trim()
+      );
+      if (!hasAnyValue) return;
+      sessionStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({
+          values: {
+            name: watchedName || "",
+            origin: watchedOrigin || "WhatsApp",
+            email: watchedEmail || "",
+            phone: watchedPhone || "",
+            stage: watchedStage || "new",
+            priority: watchedPriority || "NORMAL",
+            budget: watchedBudget || "",
+            currency: watchedCurrency || "USD",
+            notes: watchedNotes || "",
+            agentId: watchedAgentId || (isAdvisor ? user?.id : ""),
+          },
+          selectedCategory,
+          selectedProjectId,
+          assetSearchQuery,
+        })
+      );
+    } catch { /* ignore */ }
+  }, [draftStorageKey, watchedName, watchedOrigin, watchedEmail, watchedPhone, watchedStage, watchedPriority, watchedBudget, watchedCurrency, watchedNotes, watchedAgentId, selectedCategory, selectedProjectId, assetSearchQuery, isAdvisor, user?.id]);
+
+  useEffect(() => {
+    if (!hasDraft || typeof window === "undefined") return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasDraft]);
 
   const availableProjects = useMemo(() => {
     if (!selectedCategory) {
@@ -369,6 +445,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   };
 
   const handleReset = () => {
+    if (draftStorageKey && typeof sessionStorage !== "undefined") {
+      try { sessionStorage.removeItem(draftStorageKey); } catch { /* ignore */ }
+    }
     setSelectedCategory(null);
     setSelectedProjectId("");
     setSelectedAsset(null);
@@ -564,6 +643,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           : `${trimmedName} se registró correctamente en el pipeline.`,
       });
 
+      if (draftStorageKey && typeof sessionStorage !== "undefined") {
+        try { sessionStorage.removeItem(draftStorageKey); } catch { /* ignore */ }
+      }
       router.push("/admin/leads");
     } catch {
       toast.error("No pudimos guardar el lead en almacenamiento local");
@@ -992,7 +1074,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push(isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads")}
+              onClick={() => {
+                if (hasDraft && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Tenés datos sin guardar en el borrador. ¿Querés salir y descartarlos?")) return;
+                if (draftStorageKey && typeof sessionStorage !== "undefined") {
+                  try { sessionStorage.removeItem(draftStorageKey); } catch { /* ignore */ }
+                }
+                router.push(isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads");
+              }}
               className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-muted dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Cancelar
