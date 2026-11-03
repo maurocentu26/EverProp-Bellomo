@@ -80,4 +80,10 @@ test('Inventory adapter preserves exact codes, null currency and missing prices 
  assert.equal(mapped[1].inventoryCurrency,null);
  assert.equal(mapped[2].inventoryPrice,null);
  assert.equal(mapped[0].inventoryPrice,0);
+ const projectApi=client(()=>({data:[{public_id:'proj-1',name:'LOTEO SAN PABLO 1',project_type:'LAND_DEVELOPMENT',status:'PRE_SALE',properties_count:123,available_units_count:32,reserved_units_count:0,sold_units_count:91}]}));
+ const [mappedProject]=await projectApi.loadEverpropProjects();
+ assert.equal(mappedProject.propertiesCount,123);
+ assert.equal(mappedProject.availableUnitsCount,32);
+ assert.equal(mappedProject.reservedUnitsCount,0);
+ assert.equal(mappedProject.soldUnitsCount,91);
 });

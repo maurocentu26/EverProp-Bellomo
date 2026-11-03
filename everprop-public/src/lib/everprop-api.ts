@@ -45,6 +45,9 @@ type ApiProject = {
   description?: string | null;
   masterplan_image_url?: string | null;
   properties_count?: number;
+  available_units_count?: number;
+  reserved_units_count?: number;
+  sold_units_count?: number;
 };
 
 type ApiProperty = {
@@ -212,7 +215,10 @@ function mapProject(project: ApiProject): Project {
     description: project.description || undefined,
     masterplanImage: project.masterplan_image_url || undefined,
     coverImage: project.masterplan_image_url || undefined,
-    propertiesCount: project.properties_count || 0,
+    propertiesCount: project.properties_count ?? 0,
+    availableUnitsCount: project.available_units_count,
+    reservedUnitsCount: project.reserved_units_count,
+    soldUnitsCount: project.sold_units_count,
   };
 }
 

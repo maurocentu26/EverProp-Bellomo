@@ -53,7 +53,7 @@ export default function DesarrollosPage() {
 
       try {
         const fetchedProjects = await loadEverpropProjects();
-        const units = await Promise.all(fetchedProjects.map(project => loadEverpropPropertiesByProject(project.id)));
+        const units = await Promise.all(fetchedProjects.filter(project => project.availableUnitsCount == null).map(project => loadEverpropPropertiesByProject(project.id)));
         if (!active) return;
         setProjects(fetchedProjects);
         setProperties(units.flat());
