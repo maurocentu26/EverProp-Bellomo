@@ -53,5 +53,4 @@ Entorno sintético aislado MySQL 8.4 y Redis; PHP 8.4 Docker. Sin `.env` real, l
 
 Risk: items 1, 2, 4 — autorización de persistencia y estado compartido; contrato DTO aditivo revisado con aislamiento.
 
-
-
+PR abierto: https://github.com/maurocentu26/EverProp-Bellomo/pull/99 (base develop). Sin merge ni despliegue; CI pendiente al publicar.

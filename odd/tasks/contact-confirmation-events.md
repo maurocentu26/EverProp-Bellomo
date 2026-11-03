@@ -36,4 +36,4 @@ Checks: PHP PHPUnit unit/isolated MySQL feature tests, Node conversation tests, 
 
 
 - Delivery boundaries:00b1500 (contact consent+scoped email guard, rollback together); fcf3a9a (provider classification+DTO+UI, rollback together). Documentation-only closing unit records verification and explicit size exception. No new native review for unchanged declined source; no PASS receipt fabricated.
-
+- Published by explicit authorization: PR https://github.com/maurocentu26/EverProp-Bellomo/pull/99 targeting develop; commits00b1500/fcf3a9a/5ab2eab. No merge/deploy. Jira workflow has no En revisión transition; leave En curso and link review evidence in comment. CI is running, not yet certified.
