@@ -113,7 +113,7 @@ export function LeadStageUpdateModal({
                 Actualizar etapa del prospecto
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Acabás de registrar un contacto con <strong className="text-foreground">{leadName}</strong>. ¿A qué etapa comercial avanza?
+                ¿A qué etapa comercial avanza <strong className="text-foreground">{leadName}</strong>?
               </DialogDescription>
             </div>
           </div>

@@ -29,6 +29,8 @@ export function EditPropertyModal({
   const savingRef = useRef(false);
   const [reviewing, setReviewing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     title: property.title,
     price: property.inventoryPrice === null ? "" : String(property.inventoryPrice ?? property.price),
@@ -104,7 +106,10 @@ export function EditPropertyModal({
       onSuccess(updatedData);
       onOpenChange(false);
     } catch (err: any) {
-      toast.error("Error al actualizar la propiedad: " + (err.message || "Error desconocido"));
+      const msg = "Error al actualizar la propiedad: " + (err.message || "Error desconocido");
+      setError(msg);
+      errorRef.current?.focus();
+      toast.error(msg);
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -112,7 +117,12 @@ export function EditPropertyModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!isSaving) onOpenChange(next); }}>
+    <Dialog open={open} onOpenChange={(next) => {
+      if (isSaving) return;
+      const isDirty = formData.title !== property.title || formData.description !== (property.description || "") || formData.city !== (property.city || "") || formData.neighborhood !== (property.neighborhood || "");
+      if (!next && isDirty && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Hay cambios sin guardar en este activo. ¿Querés cerrar y descartarlos?")) return;
+      onOpenChange(next);
+    }}>
       <DialogContent className="admin-workspace inventory-view inventory-dialog w-[calc(100%-2rem)] sm:max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-5">
           <DialogHeader className="pb-3 pr-6 border-b border-slate-100 dark:border-slate-800">
@@ -285,13 +295,18 @@ export function EditPropertyModal({
           </fieldset>
           {reviewing && <section aria-label="Confirmación completa"><h2>Revisar cambios</h2><dl className="inventory-review">{Object.entries(formData).map(([key, value]) => <div key={key}><dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie (m²)",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt><dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a consultar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd></div>)}</dl><Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button></section>}
 
+          {error && <div ref={errorRef} tabIndex={-1} role="alert" aria-live="assertive" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-200">{error}</div>}
           <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               disabled={isSaving}
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                const isDirty = formData.title !== property.title || formData.description !== (property.description || "") || formData.city !== (property.city || "") || formData.neighborhood !== (property.neighborhood || "");
+                if (isDirty && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Hay cambios sin guardar en este activo. ¿Querés cancelar y descartarlos?")) return;
+                onOpenChange(false);
+              }}
               className="h-9 px-4 text-xs font-semibold dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Cancelar

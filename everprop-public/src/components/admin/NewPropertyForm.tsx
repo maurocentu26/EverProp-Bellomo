@@ -103,7 +103,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
     }
   }, [paramCategory, paramType]);
 
-  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isDirty }, reset } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       propertyType: "Casa",
@@ -123,6 +123,20 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
     });
   }, [category, paramCategory, paramType]);
 
+  const errorRef = useRef<HTMLDivElement>(null);
+  const draftKey = `everprop:new-property-draft:${companyId}`;
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+  useEffect(() => {
+    if (!isDirty || typeof window === "undefined") return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
   // Sync activeTab to form
   useEffect(() => {
     setValue("propertyType", activeTab);
@@ -212,6 +226,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
         savePropertyList([nextProperty, ...existingProperties]);
       }
 
+      if (typeof sessionStorage !== "undefined") { try { sessionStorage.removeItem(draftKey); } catch { /* ignore */ } }
       if (onSaved) onSaved();
       else router.push("/admin/properties");
     } catch (e: any) {
@@ -236,7 +251,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
 
   return (
     <div className="inventory-view inventory-form max-w-4xl mx-auto space-y-6">
-      {!initialCategory && <button disabled={isSaving} onClick={() => setStep(1)} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">
+      {!initialCategory && <button disabled={isSaving} onClick={() => { if (isDirty && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Hay cambios sin guardar en el activo. ¿Querés volver y descartarlos?")) return; setStep(1); }} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Volver a categorías
       </button>}
 
@@ -379,10 +394,10 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
 
             </FieldGroup>
 
-            {error && <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-xs font-semibold">{error}</div>}
+            {error && <div ref={errorRef} tabIndex={-1} role="alert" aria-live="assertive" className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold">{error}</div>}
 
             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-              {!initialCategory && <Button type="button" variant="outline" size="sm" className="rounded-lg px-4 h-9 text-xs font-semibold" disabled={isSaving} onClick={() => setStep(1)}>
+              {!initialCategory && <Button type="button" variant="outline" size="sm" className="rounded-lg px-4 h-9 text-xs font-semibold" disabled={isSaving} onClick={() => { if (isDirty && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Hay cambios sin guardar en el activo. ¿Querés cancelar y descartarlos?")) return; setStep(1); }}>
                 Cancelar
               </Button>}
               <Button type="submit" size="sm" disabled={isSaving} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 h-9 text-xs font-semibold shadow-sm">

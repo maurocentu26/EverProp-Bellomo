@@ -224,7 +224,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                 setIsMenuOpen(false);
                 toggleSidebar();
               }}
-              className={cn("size-9 sm:size-10 p-0 shrink-0 rounded-xl hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors", isAdvisor && "advisor-top-menu")}
+              className={cn("size-11 min-h-11 min-w-11 p-0 shrink-0 rounded-xl hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors", isAdvisor && "advisor-top-menu")}
               aria-label={
                 isMobile
                   ? "Abrir menú principal"
@@ -244,7 +244,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden items-center gap-2 xl:inline-flex"
+                className="hidden min-h-11 items-center gap-2 xl:inline-flex"
                 onClick={() => router.push("/admin/properties/new")}
               >
                 <Plus className="h-4 w-4" /> Activo
@@ -253,7 +253,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
             {!isEngineer && (
               <Button
                 size="sm"
-                className="hidden items-center gap-2 bg-blue-600 text-white hover:bg-blue-700 xl:inline-flex"
+                className="hidden min-h-11 items-center gap-2 bg-blue-600 text-white hover:bg-blue-700 xl:inline-flex"
                 onClick={() => router.push("/admin/leads/new")}
               >
                 <Plus className="h-4 w-4" /> Lead
@@ -267,7 +267,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
             {/* Notifications Drawer (Sheet) */}
             <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
               <SheetTrigger
-                className="relative inline-flex size-9 sm:size-10 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="relative inline-flex size-11 min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Notificaciones"
               >
                 <motion.div animate={bellControls}>
