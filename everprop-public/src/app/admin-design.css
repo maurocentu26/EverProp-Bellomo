@@ -647,16 +647,38 @@ html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
 .leads-workspace .leads-table td { padding: 20px 12px; vertical-align: top; }
 .leads-workspace .lead-actions-expanded :is(button, a) { width: auto; height: auto; min-height: 44px; display: inline-flex; gap: 6px; padding: 8px 12px; border-radius: 999px; }
 .leads-workspace .leads-table article { padding: 20px; }
-.lead-detail-grid { display: grid; grid-template-columns: minmax(240px, 280px) minmax(0, 1fr) minmax(260px, 300px); grid-template-areas: "identity main next"; gap: 24px; align-items: start; }
-.lead-detail-sidebar { grid-area: identity; }
-.lead-detail-main { grid-area: main; }
-.lead-detail-next { grid-area: next; }
-.lead-stage-panel { padding: 24px; background: var(--card); border: 1px solid var(--border); }
-.lead-stage-line { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 16px; }
-.lead-stage-line span { padding: 10px 14px; background: var(--muted); border-radius: 12px; }
-.lead-stage-line [aria-current="step"] { background: #0f172a; color: #fff; font-weight: 750; }
-.lead-next-step { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 20px; background: var(--card); border: 2px solid #2563eb; border-radius: 24px; }
-.lead-detail .lead-next-step [data-slot="button"] { height: auto; white-space: normal; }
+/* Ficha del cliente: cabecera y columna de gestión fijas; en móvil las acciones van en una barra inferior. */
+/* Chrome descuenta el padding del contenedor de scroll: el top negativo pega la cabecera a la barra superior. */
+.lead-record-header { top: -16px; }
+/* Excepción deliberada al H1 de página: en una cabecera fija el contrato de 34px y 40.8px corta el nombre. */
+.admin-workspace .lead-record-header h1#lead-name { font-size: calc(var(--panel-text) * 1.4); line-height: 1.2; }
+@media (min-width: 640px) {
+  .lead-record-header { top: -24px; }
+}
+@media (min-width: 1024px) {
+  .lead-record-header { top: -32px; }
+}
+/* La columna solo es fija si entra en pantalla; en Grande o pantallas bajas se desplaza con la página. */
+@media (min-width: 1280px) and (min-height: 860px) {
+  html:not([data-panel-text-size="grande"]) .lead-record-rail { position: sticky; top: 58px; max-height: calc(100dvh - 180px); overflow-y: auto; }
+}
+html[data-panel-text-size="grande"] .lead-record-rail dl > div { flex-direction: column; align-items: stretch; gap: 2px; }
+html[data-panel-text-size="grande"] .lead-record-rail dd { justify-content: space-between; text-align: left; }
+@media (max-width: 1535px) {
+  html[data-panel-text-size="grande"] .lead-record-actions > a > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@media (max-width: 767px) {
+  .lead-record-actions { position: fixed; inset-inline: 0; bottom: 0; z-index: 30; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--border); }
+  .lead-record-actions > :is(a, button) { min-height: 52px; min-width: 52px; }
+  .lead-record-actions > [data-slot="button"] { flex: 1 1 0; min-width: 0; padding-inline: 8px; gap: 4px; }
+  html[data-panel-text-size="grande"] .lead-record-actions > [data-slot="button"] > svg { display: none; }
+  .advisor-mobile-shell .lead-record-actions { inset-inline: 12px; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 88px); padding: 8px; border: 1px solid var(--border); border-radius: 16px; }
+}
+/* Teléfonos angostos: "Seguimiento" no entra en el botón; queda el ícono con su nombre accesible. */
+@media (max-width: 359px) {
+  html[data-panel-text-size="grande"] .lead-record-actions > [data-slot="button"] > svg { display: block; }
+  .lead-record-actions > [data-slot="button"] > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 .lead-financing { border: 1px solid var(--border); border-radius: 24px; padding: 24px; background: var(--card); }
 .lead-financing summary { cursor: pointer; font-weight: 750; min-height: 44px; }
 .lead-financing > div { margin-top: 20px; }
@@ -667,14 +689,12 @@ html[data-panel-text-size="grande"] .mi-day { --day-text: 20.4px; }
 .lead-review-data dt { color: var(--muted-foreground); font-weight: 650; }
 .lead-review-data dd { white-space: pre-wrap; overflow-wrap: break-word; }
 @media (max-width: 1199px) {
-  .lead-detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "identity next" "main main"; }
   .leads-stage-counts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 767px) {
   .leads-stage-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-workspace:has(.leads-workspace) [data-admin-scroll-container] { padding-left: 16px; padding-right: 16px; }
   .leads-focus { align-items: stretch; flex-direction: column; gap: 16px; padding: 20px; }
-  .lead-detail-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "identity" "next" "main"; }
   .leads-workspace h1 { font-size: var(--panel-h1); }
   .advisor-mobile-shell .leads-workspace a[href="/admin/leads"] { display: none; }
   .leads-filter-line > .leads-tabs { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; border-radius: 20px; }
@@ -1418,11 +1438,6 @@ html:not(.dark) .mi-day .day-traffic-card.day-green { background: #d9f1e3; color
   html[data-panel-text-size="grande"] .day-traffic { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Ficha del lead: 3 columnas solo con ancho real; en notebooks, intereses y cuotas a todo el ancho. */
-@media (max-width: 1599px) and (min-width: 768px) {
-  .lead-detail-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "identity next" "main main"; }
-}
-.lead-detail-main section > .grid.md\:grid-cols-2 { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 .lead-detail :is(h2, h3, p, span, dt, dd, a, button) { overflow-wrap: break-word; word-break: normal; }
 .lead-detail a[href^="mailto:"], .lead-detail .lead-email { overflow-wrap: anywhere; }
 .lead-detail [data-slot="button"] { white-space: nowrap; }
@@ -1439,7 +1454,7 @@ html:not(.dark) .mi-day .day-traffic-card.day-green { background: #d9f1e3; color
 .admin-workspace .admin-topbar :is(button, a, input, [data-slot="button"]) { font-size: var(--panel-text); min-height: 44px; }
 .admin-workspace .admin-topbar input::placeholder { font-size: var(--panel-text); }
 .admin-workspace .admin-topbar [data-slot="button"] { min-height: 44px; }
-.admin-workspace .admin-topbar :is(button, a)[class*="size-"] { min-width: 44px; min-height: 44px; width: 44px; height: 44px; }
+.admin-workspace .admin-topbar :is(button, a).size-11 { min-width: 44px; min-height: 44px; width: 44px; height: 44px; }
 .admin-workspace .admin-topbar svg { width: 20px; height: 20px; }
 .admin-workspace nav[aria-label="Navegación administrativa"] a { font-size: var(--panel-text) !important; min-height: 48px; }
 .admin-workspace nav[aria-label="Navegación administrativa"] a svg { width: 20px; height: 20px; }

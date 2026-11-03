@@ -2,7 +2,7 @@
 
 ## 1. Resumen del ticket
 - **Clave Jira:** `EVP-104`
-- **Estado:** En revisión
+- **Estado:** En curso (ampliado el 2026-11-03)
 - **Rama:** `ticket/EVP-104-qa-ux-ui-integral` (creada desde `develop`)
 - **Objetivo:** Resolver de forma transversal los 14 hallazgos documentados en el diagnóstico **"EverProp — QA UX/UI integral: diagnóstico y cobertura"** (`UI-01` a `UI-08` y `CODE-01` a `CODE-06`), unificando el contrato de escala tipográfica (`Actual` y `Grande` `1.2x`), las áreas táctiles mínimas (`44px` escritorio / `52px` móvil), la semántica de teclado en overlays y tablas, la persistencia/confirmación de borradores y el manejo de errores/rollback en el tablero Kanban.
 
@@ -28,6 +28,15 @@
   - `src/components/admin/NewLeadForm.tsx`: persistencia de borrador en `sessionStorage` (`everprop:new-lead-draft:${companyId}`), restauración al volver al módulo y confirmación al cancelar (`UI-05`, `CODE-06`).
   - `tests/qa-ux-ui-regression.test.mjs`: suite de regresión para los contratos UX/UI y de código de `EVP-104`.
 
+- **Ampliación del 2026-11-03 (ficha del cliente, sin commitear al momento de este informe):**
+  - `src/components/admin/LeadDetailView.tsx`: nuevo layout con cabecera fija (nombre, etapa editable, llamar, WhatsApp, seguimiento y menú «Más acciones»), columna de gestión (asesor, presupuesto, prioridad, origen, contacto, notas y datos faltantes; desplegable en móvil), franja «Próximo paso» y tres pestañas operables con flechas, `Home` y `End`: Actividad (historial y visitas), Intereses y Financiación. Se eliminan «Resumen principal» y «Ficha y gestión» como pestañas; eliminar cliente pasa al menú, solo para `ADMIN`.
+  - `formatMoney` en la misma vista: un precio o presupuesto sin moneda se muestra como «moneda no confirmada» en lugar de asumir USD.
+  - `src/components/admin/LeadStageUpdateModal.tsx`: texto neutro, porque el diálogo ahora también se abre a mano desde la cabecera y no solo después de registrar un contacto. Afecta también a `/admin/leads` y a `AdvisorCockpit`.
+  - `src/app/admin-design.css`: estilos de la cabecera, la columna y la barra inferior móvil (elevada sobre `.advisor-dock` para asesores); se borran las reglas del layout anterior que quedaron sin uso.
+  - `src/app/admin-design.css`: corrección de una regresión del primer commit de este ticket. `.admin-topbar :is(button, a)[class*="size-"]` también matcheaba botones con texto, porque `Button` incluye `size-` en sus variantes, y recortaba «+ Lead» y «+ Activo» a 44px. Ahora apunta a `.size-11`.
+  - Ajustes tras revisar la ficha en Actual y Grande: título de la cabecera en 1.4 veces el texto base, una excepción deliberada al H1 de página porque 34px y 40.8px cortaban el nombre; las acciones bajan de fila cuando no entran y sus rótulos se ocultan en anchos intermedios; la etapa larga ya no desborda; la columna pasa a dos columnas recién desde 1280px, es fija solo en Actual con pantalla alta y sin scroll interno en Grande, con etiqueta sobre valor; «Seguimiento» entra en la barra móvil, y bajo 360px queda el ícono con su nombre accesible; las pestañas bajan de línea en vez de hacer scroll; `LeadFollowUpTimeline.tsx` deja de truncar «Próximo». `VisitManager.tsx`: el email de la visita ahora corta dentro de su tarjeta, porque desbordaba a 320px en Grande.
+  - `tests/qa-ux-ui-regression.test.mjs`: el test de la ficha se reescribe para el nuevo layout.
+
 ## 4. Cómo se probó
 - **Tests unitarios y de regresión:**
   - `node --test tests/qa-ux-ui-regression.test.mjs` -> 4/4 tests en verde.
@@ -35,7 +44,21 @@
 - **Build de producción Next.js:**
   - `npm run build` -> compilación y generación de rutas exitosa sin errores de tipos.
 
+- **Verificación completa tras la ampliación (2026-11-03):** `tsc --noEmit` sin errores; `node --test tests/*.test.mjs` 199/200; `eslint src tests` 0 errores y 123 advertencias; `npm run build` compila.
+  - El test que falla es `tests/assistant-trace.test.mjs` y no viene de este ticket: `AssistantTrace.tsx` es idéntico a `develop`. La expresión del test matchea la palabra `innerHTML` en un comentario del componente (línea 10), que justamente prohíbe usarlo; no se encontró uso real.
+  - `npm run lint` sin acotar a `src` y `tests` da 92 errores, todos en `.agents/skills/remotion-*`, sin versionar y ajenos al ticket.
+- **Ampliación de la ficha, navegador local (`localhost:3000`, API local, cuentas de prueba `ADMIN` y `ADVISOR`, 2026-11-03):**
+  - 1440×900: cabecera de 74px en Actual y 83px en Grande; contenido desde el píxel 386 y 440; nombre sin cortar en 1440, 1280, 1024, 768, 375 y 320px en ambos tamaños, con un lead de nombre corto; cabecera fija al hacer scroll.
+  - Pestañas: `ArrowRight`, `ArrowLeft`, `End` y el ciclo entre extremos mueven foco y panel. Eventos de teclado despachados por script, no con teclado físico.
+  - 375×812 con `ADVISOR`: la barra de acciones no se superpone con `.advisor-dock`. 320×700 con `ADMIN`, en Actual y Grande: sin desborde horizontal de la página.
+  - Diálogo de etapa y menú «Más acciones»: se abren con sus opciones. No se guardó ningún cambio de etapa, asesor ni eliminación desde la nueva vista.
+  - Moneda: «moneda no confirmada» verificada solo por test de código; el lead de prueba no tenía intereses con precio.
+
 ## 5. Riesgos y pendientes
+- En Grande, chips y contadores de la ficha siguen más chicos que en Actual (12 a 13px contra 17px): la causa está en reglas globales de tamaño y se trata en EVP-105, igual que la jerarquía tipográfica plana.
+- A 1024px la cabecera ocupa dos filas (130px en Actual, 146px en Grande), y el contenido arranca más abajo que a 1280px o más.
+- `FinancingCalculator` sigue recibiendo `USD` como moneda inicial cuando el activo no la tiene (`primaryProperty?.currency ?? "USD"`): es un valor editable del simulador, no se cambió aquí, y conviene revisarlo.
+- Historial y visitas quedan apilados dentro de Actividad; fusionarlos en una sola línea de tiempo queda para otro ticket, si hace falta.
 - Este cambio es puramente de frontend en `everprop-public` (no incluye forwards SQL ni cambios de variables de entorno).
 - Queda pendiente la validación con API real autenticada y lector de pantalla físico en los flujos de edición Web y alta de usuarios/asesores que estaban restringidos en el entorno demo.
 - **Recordatorio para producción:** antes de cualquier pase a producción, verificar/configurar los accesos de producción (`schema_versions` vs forwards SQL pendientes, dominios definitivos, CORS/R2, hosts/Sanctum/cookies en `tenant_domains`, credenciales y permisos de proveedores, base de datos y storage).

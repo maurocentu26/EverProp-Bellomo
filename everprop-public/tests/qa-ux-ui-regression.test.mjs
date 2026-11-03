@@ -70,3 +70,43 @@ test('EVP-104 (UI-05, CODE-04, CODE-05, CODE-06): LeadTable semantic links, asse
   assert.match(newPropertyForm, /beforeunload/);
   assert.match(editPropertyModal, /Hay cambios sin guardar en este activo/);
 });
+
+test('EVP-104: la ficha del cliente tiene gestion visible, tres pestanas y moneda sin asumir', () => {
+  const leadDetail = read('../src/components/admin/LeadDetailView.tsx');
+  const css = read('../src/app/admin-design.css');
+
+  // Tres pestanas operables con flechas; Resumen y Ficha ya no son pestanas.
+  assert.match(leadDetail, /type LeadDetailSection = "activity" \| "interests" \| "financing"/);
+  assert.match(leadDetail, /role="tablist"/);
+  assert.match(leadDetail, /ArrowRight:[\s\S]*ArrowLeft:[\s\S]*Home:[\s\S]*End:/);
+  assert.match(leadDetail, /tabIndex=\{isActive \? 0 : -1\}/);
+  assert.doesNotMatch(leadDetail, /Resumen principal|Ficha y gestión/);
+
+  // Etapa y asesor se cambian sin salir de la pestana activa.
+  assert.match(leadDetail, /aria-label="Gestión del cliente"/);
+  assert.match(leadDetail, /Etapa: \$\{[^}]+\}\. Cambiar etapa/);
+  assert.match(leadDetail, /Asignar asesor/);
+  assert.match(leadDetail, /aria-expanded=\{railOpen\}/);
+
+  // Funciones que no pueden perderse con el nuevo layout.
+  for (const required of ['LeadFollowUpTimeline', 'VisitManager', 'LeadFinancingAgreements', 'FinancingCalculator', 'setLeadToDelete(true)', 'setInterestToDelete(interest)']) {
+    assert.ok(leadDetail.includes(required), `falta ${required}`);
+  }
+
+  // Moneda nula = no confirmada, nunca USD asumido.
+  assert.match(leadDetail, /moneda no confirmada/);
+  assert.doesNotMatch(leadDetail, /\.currency \|\| "USD"/);
+
+  // Los botones con texto de la barra superior no se recortan a 44px (Button incluye [class*='size-'] en sus variantes).
+  assert.doesNotMatch(css, /admin-topbar :is\(button, a\)\[class\*="size-"\]/);
+
+  // En Grande: el nombre no se corta, la columna no tiene scroll interno y Seguimiento entra en su boton.
+  assert.match(css, /\.lead-record-header h1#lead-name \{ font-size: calc\(var\(--panel-text\) \* 1\.4\)/);
+  assert.match(leadDetail, /lead-record-header sticky z-20 flex flex-wrap/);
+  assert.match(css, /html:not\(\[data-panel-text-size="grande"\]\) \.lead-record-rail \{ position: sticky;/);
+  assert.match(css, /html\[data-panel-text-size="grande"\] \.lead-record-rail dl > div \{ flex-direction: column;/);
+
+  // Cabecera fija y barra inferior en movil.
+  assert.match(leadDetail, /lead-record-header sticky/);
+  assert.match(css, /\.lead-record-actions \{ position: fixed;/);
+});
