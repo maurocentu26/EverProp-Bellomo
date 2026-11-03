@@ -2,7 +2,7 @@
 
 ## 1. Resumen del ticket
 - **Clave Jira:** `EVP-104`
-- **Estado:** En curso (ampliado el 2026-11-03)
+- **Estado:** En revisión (ampliado el 2026-11-03)
 - **Rama:** `ticket/EVP-104-qa-ux-ui-integral` (creada desde `develop`)
 - **Objetivo:** Resolver de forma transversal los 14 hallazgos documentados en el diagnóstico **"EverProp — QA UX/UI integral: diagnóstico y cobertura"** (`UI-01` a `UI-08` y `CODE-01` a `CODE-06`), unificando el contrato de escala tipográfica (`Actual` y `Grande` `1.2x`), las áreas táctiles mínimas (`44px` escritorio / `52px` móvil), la semántica de teclado en overlays y tablas, la persistencia/confirmación de borradores y el manejo de errores/rollback en el tablero Kanban.
 
@@ -28,7 +28,7 @@
   - `src/components/admin/NewLeadForm.tsx`: persistencia de borrador en `sessionStorage` (`everprop:new-lead-draft:${companyId}`), restauración al volver al módulo y confirmación al cancelar (`UI-05`, `CODE-06`).
   - `tests/qa-ux-ui-regression.test.mjs`: suite de regresión para los contratos UX/UI y de código de `EVP-104`.
 
-- **Ampliación del 2026-11-03 (ficha del cliente, sin commitear al momento de este informe):**
+- **Ampliación del 2026-11-03 (ficha del cliente, commit `87716ed`):**
   - `src/components/admin/LeadDetailView.tsx`: nuevo layout con cabecera fija (nombre, etapa editable, llamar, WhatsApp, seguimiento y menú «Más acciones»), columna de gestión (asesor, presupuesto, prioridad, origen, contacto, notas y datos faltantes; desplegable en móvil), franja «Próximo paso» y tres pestañas operables con flechas, `Home` y `End`: Actividad (historial y visitas), Intereses y Financiación. Se eliminan «Resumen principal» y «Ficha y gestión» como pestañas; eliminar cliente pasa al menú, solo para `ADMIN`.
   - `formatMoney` en la misma vista: un precio o presupuesto sin moneda se muestra como «moneda no confirmada» en lugar de asumir USD.
   - `src/components/admin/LeadStageUpdateModal.tsx`: texto neutro, porque el diálogo ahora también se abre a mano desde la cabecera y no solo después de registrar un contacto. Afecta también a `/admin/leads` y a `AdvisorCockpit`.
@@ -53,6 +53,8 @@
   - 375×812 con `ADVISOR`: la barra de acciones no se superpone con `.advisor-dock`. 320×700 con `ADMIN`, en Actual y Grande: sin desborde horizontal de la página.
   - Diálogo de etapa y menú «Más acciones»: se abren con sus opciones. No se guardó ningún cambio de etapa, asesor ni eliminación desde la nueva vista.
   - Moneda: «moneda no confirmada» verificada solo por test de código; el lead de prueba no tenía intereses con precio.
+
+- **Entorno:** verificado solo en local. No se desplegó a staging, no hay forwards SQL ni variables nuevas, y no cambian dominios, CORS, Sanctum ni proveedores. Falta probar el flujo en el navegador de staging después del merge.
 
 ## 5. Riesgos y pendientes
 - En Grande, chips y contadores de la ficha siguen más chicos que en Actual (12 a 13px contra 17px): la causa está en reglas globales de tamaño y se trata en EVP-105, igual que la jerarquía tipográfica plana.
