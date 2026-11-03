@@ -31,7 +31,7 @@ final class RegistrarInteres implements AgentTool
     public function description(): string
     {
         return 'Registra el interés del visitante en una propiedad y da de alta el lead para que un asesor lo contacte. '
-            .'IMPORTANTE: Invocá esta herramienta ÚNICAMENTE después de haberle mostrado al visitante en el chat los datos que se van a ingresar (nombre, teléfono/email y propiedad) y de que el visitante haya confirmado explícitamente que son correctos. '
+            .'Primero prepara un resumen de los datos y la propiedad; el sistema solicita la confirmación explícita del cliente y solo entonces registra el interés. '
             .'En el chat web pedí antes un teléfono o email y pasalo en contact_phone o contact_email. No inventes datos de contacto.'.PublicInventory::PROPERTY_REF_HINT;
     }
 
@@ -55,6 +55,7 @@ final class RegistrarInteres implements AgentTool
     {
         $propertyId = $this->inventory->idOrFail($context->tenantId, $arguments['property_id'], $context->channelType === 'WEB_CHAT');
         $this->contacts->assertReachable($context, $arguments);
+        app(ContactConfirmation::class)->requireConfirmed($context, $this->name(), $arguments);
         // Cheap fence before creating a lead; the authoritative check runs again under lock.
         $state = DB::table('conversations')->where('tenant_id', $context->tenantId)->where('id', $context->conversationId)->first(['control_epoch']);
         if ((int) $state->control_epoch !== $context->epoch) {

@@ -7,6 +7,7 @@ use App\Domain\AgentRuntime\Jobs\RunAgentJob;
 use App\Domain\AgentRuntime\Knowledge\KnowledgeService;
 use App\Domain\AgentRuntime\Llm\LlmClient;
 use App\Domain\AgentRuntime\Llm\LlmFailure;
+use App\Domain\AgentRuntime\Tools\ContactConfirmation;
 use App\Domain\AgentRuntime\Tools\ToolContext;
 use App\Domain\AgentRuntime\Tools\ToolGateway;
 use App\Domain\Conversations\Services\ConversationControl;
@@ -170,6 +171,7 @@ final class AgentTurnTest extends TestCase
         $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
 
         $args = ['property_id' => $f['priced'], 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234', 'contact_name' => 'Ana'];
+        $context = $this->confirmInterest($context, $args);
         $first = $gateway->execute($context, 'registrar_interes', $args);
         $again = $gateway->execute($context, 'registrar_interes', $args);
 
@@ -185,7 +187,9 @@ final class AgentTurnTest extends TestCase
         $this->assertContains('phone_e164', json_decode($contact->profile_json, true)['unverified_fields']);
 
         // A later, different phone never overwrites what the CRM already has.
-        $gateway->execute($context, 'registrar_interes', ['property_id' => $f['no_price'], 'interest_level' => 'LOW', 'contact_phone' => '+54 11 4000 0000']);
+        $other = ['property_id' => $f['no_price'], 'interest_level' => 'LOW', 'contact_phone' => '+54 11 4000 0000'];
+        $context = $this->confirmInterest($context, $other);
+        $this->assertTrue($gateway->execute($context, 'registrar_interes', $other)['ok']);
         $this->assertSame('+5493885551234', DB::table('contacts')->where('id', $context->contactId)->value('phone_e164'));
     }
 
@@ -228,6 +232,7 @@ final class AgentTurnTest extends TestCase
         $this->assertSame(0, DB::table('domain_outbox')->whereIn('tenant_id', [$t, $otherTenant->id])->where('event_type', 'LEAD_INTEREST_REGISTERED')->count(), 'outbox');
 
         // By code and by id are the same request: one effect, the second is a replay.
+        $context = $this->confirmInterest($context, ['property_id' => $f['priced'], 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234']);
         $byCode = $gateway->execute($context, 'registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234']);
         $byId = $gateway->execute($context, 'registrar_interes', ['property_id' => $f['priced'], 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234']);
         $this->assertTrue($byCode['ok']);
@@ -250,7 +255,7 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('NOT_FOUND', $gateway->execute($context, 'consultar_propiedad', ['unit_code' => 'L-101'])['error']['code'], 'still never shown once sold');
     }
 
-    public function test_one_turn_registers_interest_by_unit_code(): void
+    public function test_interest_by_unit_code_requires_the_next_explicit_confirmation(): void
     {
         $f = $this->fixture();
         // One tool round per turn: the model names the unit by the code the visitor said, no search first.
@@ -259,9 +264,34 @@ final class AgentTurnTest extends TestCase
             ScriptedLlm::text('Listo, anoté tu interés en el L-101. Un asesor te va a contactar.'),
         ]);
         $this->visitorSays($f, 'Anotame en el L-101, mi cel es 388 555-1234');
-
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+        $this->assertStringContainsString('Confirmo mis datos', last($this->visible($f)));
+        $this->visitorSays($f, 'Confirmo mis datos');
         $this->assertSame(1, DB::table('lead_properties')->where('tenant_id', $f['tenant']->id)->count());
-        $this->assertContains('Listo, anoté tu interés en el L-101. Un asesor te va a contactar.', $this->visible($f));
+        $this->assertContains('Los datos fueron registrados. Un asesor podrá continuar con tu consulta.', $this->visible($f));
+    }
+
+    public function test_correction_gets_a_new_summary_and_confirmation_persists_that_snapshot_without_calling_the_model(): void
+    {
+        $f = $this->fixture();
+        $llm = $this->llm([
+            ScriptedLlm::tool('registrar_contacto', ['contact_name' => 'Ana', 'contact_email' => 'first@example.test', 'notes' => 'Consulta inicial']),
+            ScriptedLlm::tool('registrar_contacto', ['contact_name' => 'Ana', 'contact_email' => 'second@example.test', 'notes' => 'Consulta corregida']),
+        ]);
+        $this->visitorSays($f, 'Soy Ana, mi correo es first@example.test');
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+        $this->assertStringContainsString('first@example.test', last($this->visible($f)));
+        $this->visitorSays($f, 'Mi correo correcto es second@example.test');
+        $summary = last($this->visible($f));
+        $this->assertStringContainsString('second@example.test', $summary);
+        $this->assertStringNotContainsString('first@example.test', $summary);
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+        $this->visitorSays($f, '  CONFIRMO MIS DATOS  ');
+        $this->assertCount(2, $llm->calls, 'confirmation must not ask the model to reinterpret the snapshot');
+        $this->assertSame(1, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+        $this->assertSame('second@example.test', DB::table('contacts')->where('tenant_id', $f['tenant']->id)->value('email'));
+        $payload = json_decode(DB::table('domain_outbox')->where('tenant_id', $f['tenant']->id)->where('event_type', 'LEAD_CONTACT_CAPTURED')->value('payload_json'), true);
+        $this->assertSame('Consulta corregida', $payload['notes']);
     }
 
     public function test_visit_is_only_requested_and_validated(): void
@@ -318,7 +348,9 @@ final class AgentTurnTest extends TestCase
         $gateway = app(ToolGateway::class);
         $context = $this->context($f);
 
-        $ok = $gateway->execute($context, 'registrar_interes', ['property_id' => $f['priced'], 'interest_level' => 'MEDIUM', 'contact_phone' => '0388 15 412-3456']);
+        $args = ['property_id' => $f['priced'], 'interest_level' => 'MEDIUM', 'contact_phone' => '0388 15 412-3456'];
+        $context = $this->confirmInterest($context, $args);
+        $ok = $gateway->execute($context, 'registrar_interes', $args);
 
         $this->assertTrue($ok['ok']);
         $contact = DB::table('contacts')->where('id', $context->contactId)->first();
@@ -327,7 +359,9 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('0388 15 412-3456', $profile['declared_phone']);
         $this->assertContains('declared_phone', $profile['unverified_fields']);
         // The declared phone makes the visitor reachable for the next tool without asking again.
-        $this->assertTrue($gateway->execute($context, 'registrar_interes', ['property_id' => $f['no_price'], 'interest_level' => 'LOW'])['ok']);
+        $args = ['property_id' => $f['no_price'], 'interest_level' => 'LOW'];
+        $context = $this->confirmInterest($context, $args);
+        $this->assertTrue($gateway->execute($context, 'registrar_interes', $args)['ok']);
     }
 
     public function test_a_turn_that_dies_hands_off_instead_of_leaving_silence(): void
@@ -371,6 +405,7 @@ final class AgentTurnTest extends TestCase
             ScriptedLlm::text('Listo, registré tu interés en el L-101.'),
         ]);
         $this->visitorSays($f, 'Me interesa el L-101, mi cel es 3885550000');
+        $this->visitorSays($f, 'Confirmo mis datos');
         $this->llm([ScriptedLlm::tool('derivar_a_asesor', ['reason' => 'USER_REQUEST', 'summary' => 'Pide asesor'])]);
         $epochBefore = (int) $this->state($f)->control_epoch;
 
@@ -601,6 +636,35 @@ final class AgentTurnTest extends TestCase
         return new ToolContext((int) $f['tenant']->id, (int) $c->id, (int) $c->contact_id, (int) $c->channel_account_id, 'WEB_CHAT',
             (int) DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->value('id'), (int) $c->control_epoch + $epochOffset,
             (int) $c->next_sequence - 1, (string) Str::uuid());
+    }
+
+    /** Prepares and confirms through the same public tool/service boundaries as a real turn. */
+    /** @param array<string, mixed> $args */
+    private function confirmInterest(ToolContext $context, array $args): ToolContext
+    {
+        $append = function (ToolContext $previous, string $text): ToolContext {
+            $sequence = (int) DB::table('messages')->where('tenant_id', $previous->tenantId)->where('conversation_id', $previous->conversationId)->max('sequence') + 1;
+            DB::table('messages')->insert(['tenant_id' => $previous->tenantId, 'conversation_id' => $previous->conversationId,
+                'channel_account_id' => $previous->channelAccountId, 'sequence' => $sequence, 'direction' => 'INBOUND', 'sender_type' => 'CONTACT',
+                'message_type' => 'TEXT', 'text_body' => $text, 'occurred_at' => now()]);
+            DB::table('conversations')->where('id', $previous->conversationId)->update(['next_sequence' => $sequence + 1]);
+
+            return new ToolContext($previous->tenantId, $previous->conversationId, $previous->contactId, $previous->channelAccountId,
+                $previous->channelType, $previous->runId, $previous->epoch, $sequence, $previous->traceId);
+        };
+        $confirmation = app(ContactConfirmation::class);
+        $context = $append($context, 'Nueva consulta');
+        $confirmation->receive($context);
+        $this->assertFalse(app(ToolGateway::class)->execute($context, 'registrar_interes', $args)['ok']);
+        $summary = $confirmation->summary($context);
+        $this->assertNotNull($summary);
+        $reply = app(ConversationControl::class)->proposeBotReply($context->tenantId, $context->conversationId, $context->epoch, $summary, 'confirmation:'.$context->inputSequence);
+        $confirmation->bind($context, $summary, $reply);
+        DB::table('messages')->where('id', $reply['message_id'])->update(['delivery_status' => 'SENT']);
+        $context = $append($context, ContactConfirmation::PHRASE);
+        $this->assertEquals(['tool' => 'registrar_interes', 'arguments' => $args], $confirmation->receive($context));
+
+        return $context;
     }
 
     /** @param list<\Closure> $steps */
