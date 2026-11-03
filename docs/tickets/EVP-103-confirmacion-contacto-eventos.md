@@ -54,3 +54,12 @@ Entorno sintético aislado MySQL 8.4 y Redis; PHP 8.4 Docker. Sin `.env` real, l
 Risk: items 1, 2, 4 — autorización de persistencia y estado compartido; contrato DTO aditivo revisado con aislamiento.
 
 PR abierto: https://github.com/maurocentu26/EverProp-Bellomo/pull/99 (base develop). Sin merge ni despliegue; CI pendiente al publicar.
+### Corrección de checks del PR
+
+CI `41674146900`: 538 pasaron, dos fallaron y uno omitido. Causa: la expectativa exacta del preview no incluía `event_kind: null`; el self-check del runner intentaba registrar interés sin confirmación. Se actualizaron ambos tests sin modificar código productivo: el eval ahora comprueba ausencia de alta antes de confirmar, confirmación real y reintento sin duplicados.
+
+RED reproducido:9 tests/59 assertions,2 fallos,1 omitido. GREEN focalizado:9 tests/87 assertions,0 fallos,1 omitido. Pint/PHPStan de ambos archivos correctos; dataset202 válido.
+
+Suite local completa intentada: primero42 fallos por guardas de nombre de base sintética; corregido el entorno externo a `bellomo_crm_test`, quedaron541 tests/4462 assertions,5 fallos,1 error y1 omitido. Fallos restantes en StatisticsDemo, CollectionSchema, Collections, ImportLandingContent y parsing de stdout de WhatsAppParallelQueue; no clasificados como preexistentes ni atribuibles al cambio. No se afirma suite completa local verde. Contenedores de prueba detenidos. La nueva ejecución de CI del PR debe corroborar el conjunto en su entorno canónico.
+
+Risk: none — corrección limitada a expectativas y escenarios de tests, sin cambiar producción.
