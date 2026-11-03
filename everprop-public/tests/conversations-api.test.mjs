@@ -60,6 +60,7 @@ test('WhatsApp-style thread helpers: day separators, bubble time and avatar lett
   assert.equal(api.dayLabel(new Date(2026, 9, 4, 23, 59).toISOString(), now), 'Ayer');
   assert.match(api.dayLabel(new Date(2026, 9, 1, 10).toISOString(), now), /1 de octubre/);
   assert.match(api.dayLabel(new Date(2025, 9, 1, 10).toISOString(), now), /2025/);
+  assert.doesNotMatch(api.dayLabel(new Date(2026, 9, 1, 10).toISOString(), now, 'short'), /octubre|jueves/);
   assert.equal(api.sameDay(new Date(2026, 9, 5, 0, 1).toISOString(), new Date(2026, 9, 5, 23, 59).toISOString()), true);
   assert.equal(api.sameDay(new Date(2026, 9, 4, 23, 59).toISOString(), new Date(2026, 9, 5, 0, 1).toISOString()), false);
   assert.match(api.clockTime(new Date(2026, 9, 5, 9, 5).toISOString()), /^09:05$/);

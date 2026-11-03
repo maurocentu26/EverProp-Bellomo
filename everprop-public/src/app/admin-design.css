@@ -679,6 +679,11 @@ html[data-panel-text-size="grande"] .lead-record-rail dd { justify-content: spac
   html[data-panel-text-size="grande"] .lead-record-actions > [data-slot="button"] > svg { display: block; }
   .lead-record-actions > [data-slot="button"] > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
+/* La barra superior sube fuera de la pantalla al bajar; el margen la saca del flujo y el contenido gana su alto. */
+.admin-topbar { transition: margin-top 200ms ease; }
+@media (prefers-reduced-motion: reduce) {
+  .admin-topbar { transition: none; }
+}
 .lead-financing { border: 1px solid var(--border); border-radius: 24px; padding: 24px; background: var(--card); }
 .lead-financing summary { cursor: pointer; font-weight: 750; min-height: 44px; }
 .lead-financing > div { margin-top: 20px; }

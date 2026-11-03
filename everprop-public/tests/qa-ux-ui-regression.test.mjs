@@ -110,3 +110,30 @@ test('EVP-104: la ficha del cliente tiene gestion visible, tres pestanas y moned
   assert.match(leadDetail, /lead-record-header sticky/);
   assert.match(css, /\.lead-record-actions \{ position: fixed;/);
 });
+
+test('EVP-105: tamaños Chica y Grande, textos fijos sin achicarse y botones completos', () => {
+  const textSizeCss = read('../src/app/panel-text-size.css');
+  const control = read('../src/components/theme/PanelTextSize.tsx');
+  const settings = read('../src/app/admin/settings/page.tsx');
+  const preference = read('../src/lib/text-size-preference.ts');
+  const navigation = read('../src/components/admin/AdminNavigationMenu.tsx');
+  const navbar = read('../src/components/admin/AdminNavbar.tsx');
+
+  // Cambia el rótulo, no el valor guardado: las preferencias existentes se conservan.
+  assert.match(control, /\["actual", "Chica", "Tamaño habitual"\]/);
+  assert.doesNotMatch(control, /"Actual"/);
+  assert.match(settings, /Chica o Grande/);
+  assert.match(preference, /export type PanelTextSize = "actual" \| "grande"/);
+
+  // Los textos chicos fijos son detalle y le ganan a la regla de compatibilidad de Grande.
+  assert.match(textSizeCss, /html body \.mi-day :is\(\[class~="text-\[8px\]"\][^)]*\) \{ font-size: var\(--panel-meta, 15px\); \}/);
+  assert.match(textSizeCss, /font-size: calc\(var\(--highlight-size\) \* 1\.2\)/);
+  assert.match(textSizeCss, /\.stats-table table \{ min-width: 0; \}/);
+  assert.match(textSizeCss, /\.admin-workspace table th \{ font-size: var\(--panel-meta\); \}/);
+
+  // Etiquetas del menú lateral completas y barra superior ligada al scroll.
+  assert.doesNotMatch(navigation, /min-w-0 flex-1 truncate/);
+  assert.match(navbar, /nextTopbarState/);
+  assert.match(navbar, /addEventListener\("focusin"/);
+  assert.match(navbar, /\[aria-haspopup\]\[aria-expanded="true"\]/);
+});

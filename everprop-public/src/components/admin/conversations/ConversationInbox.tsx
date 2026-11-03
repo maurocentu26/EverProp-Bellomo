@@ -593,7 +593,7 @@ export function ConversationInbox() {
                       <span className="flex items-center justify-between gap-2">
                         <span className={`truncate ${item.unread > 0 ? "font-bold" : "font-semibold"}`}>{displayName(item)}</span>
                         <time dateTime={item.last_activity_at} className={`shrink-0 text-xs ${item.unread > 0 ? "font-semibold text-[var(--wa-accent)]" : "text-muted-foreground"}`}>
-                          {sameDay(item.last_activity_at, new Date().toISOString()) ? clockTime(item.last_activity_at) : dayLabel(item.last_activity_at)}
+                          {sameDay(item.last_activity_at, new Date().toISOString()) ? clockTime(item.last_activity_at) : dayLabel(item.last_activity_at, new Date(), "short")}
                         </time>
                       </span>
                       <span className="flex items-center justify-between gap-2">

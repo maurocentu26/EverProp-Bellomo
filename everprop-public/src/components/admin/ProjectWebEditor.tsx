@@ -279,7 +279,7 @@ export default function ProjectWebEditor({
               href="http://localhost:3001/desarrollos"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 px-3.5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition shadow-sm"
+              className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-3.5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition shadow-sm"
             >
               <ExternalLink className="w-4 h-4 text-slate-500" />
               Ver Landing en Vivo
@@ -495,7 +495,7 @@ export default function ProjectWebEditor({
                     </div>
 
                     {/* Acciones de Tarjeta */}
-                    <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
@@ -517,7 +517,7 @@ export default function ProjectWebEditor({
                         <button
                           type="button"
                           onClick={() => setPreviewProject(p)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-100 transition shadow-xs"
+                          className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-100 transition shadow-xs"
                           title="Previsualizar en la Landing"
                         >
                           <Eye className="w-3.5 h-3.5 text-blue-600" />
