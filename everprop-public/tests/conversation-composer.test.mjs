@@ -7,7 +7,7 @@ import ts from 'typescript';
 // Run the real composer handlers with hooks in memory, without network or effects.
 function inbox() {
   const state = [];
-  Object.assign(state, { 5: true, 7: [{ id: 'chat', state: 'HUMAN_ACTIVE', channel: 'WEB_CHAT', contact_name: 'Cliente' }], 8: 'all:', 12: 'chat', 14: 'HUMAN_ACTIVE', 17: true, 23: 'Mi borrador' });
+  Object.assign(state, { 5: true, 7: [{ id: 'chat', state: 'HUMAN_ACTIVE', channel: 'WEB_CHAT', contact_name: 'Cliente' }], 8: 'all:', 12: 'chat', 14: 'HUMAN_ACTIVE', 16: true, 17: true, 23: 'Mi borrador' });
   const refs = [];
   let cursor = 0, refCursor = 0;
   const sends = [];
@@ -83,4 +83,28 @@ test('discard preserves draft; unused suggestion is not attributed to manual rep
   await view.send();
   assert.equal(view.sends[0][1], 'Mi borrador');
   assert.equal(view.sends[0][3], undefined);
+});
+
+test('EVP-104: actions menu supports keyboard ArrowDown/Escape and resume AI dialog has aria-modal and Escape close', () => {
+  const view = inbox();
+  const moreBtn = view.button('Más');
+  assert.ok(moreBtn, 'Should render Más trigger button');
+  assert.equal(moreBtn.props['aria-haspopup'], 'menu');
+  moreBtn.props.onKeyDown({ key: 'ArrowDown', preventDefault() {} });
+  let tree = view.render();
+  const menu = view.find(tree, node => node.props?.role === 'menu' && node.props?.['aria-label'] === 'Acciones disponibles');
+  assert.ok(menu, 'ArrowDown on Más trigger must open actions menu');
+  menu.props.onKeyDown({ key: 'Escape', preventDefault() {} });
+  assert.equal(view.find(view.render(), node => node.props?.role === 'menu' && node.props?.['aria-label'] === 'Acciones disponibles'), undefined, 'Escape must close actions menu');
+
+  view.button('Más').props.onClick();
+  const resumeItem = view.find(view.render(), node => node.props?.role === 'menuitem' && view.text(node).includes('Pasar a IA'));
+  assert.ok(resumeItem, 'Should render Pasar a IA menuitem when human is in control and AI enabled');
+  resumeItem.props.onClick();
+  tree = view.render();
+  const dialog = view.find(tree, node => node.props?.role === 'dialog' && node.props?.['aria-labelledby'] === 'resume-title');
+  assert.ok(dialog, 'Should open resume AI dialog');
+  assert.equal(dialog.props['aria-modal'], 'true', 'Resume AI dialog must have aria-modal="true"');
+  dialog.props.onKeyDown({ key: 'Escape', preventDefault() {} });
+  assert.equal(view.find(view.render(), node => node.props?.role === 'dialog' && node.props?.['aria-labelledby'] === 'resume-title'), undefined, 'Escape must close resume AI dialog');
 });
