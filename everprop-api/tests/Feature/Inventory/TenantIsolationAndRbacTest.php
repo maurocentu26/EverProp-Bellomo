@@ -223,6 +223,50 @@ final class TenantIsolationAndRbacTest extends TestCase
             ->getJson('/api/v1/admin/properties/'.$id)->assertNotFound();
     }
 
+    public function test_admin_project_endpoints_expose_unit_status_counts_and_prioritize_loaded_inventory(): void
+    {
+        [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $withUnits = $this->project($tenant->id, ['name' => 'Loaded project']);
+        $emptyNewer = $this->project($tenant->id, ['name' => 'Empty newer project']);
+
+        foreach (['AVAILABLE', 'AVAILABLE', 'RESERVED', 'SOLD'] as $index => $status) {
+            DB::table('properties')->insert([
+                'tenant_id' => $tenant->id,
+                'project_id' => $withUnits['id'],
+                'public_id' => (string) Str::uuid(),
+                'title' => "Unit {$index}",
+                'operation' => 'SALE',
+                'category' => 'LOT',
+                'status' => $status,
+                'city' => 'Jujuy',
+                'province' => 'Jujuy',
+            ]);
+        }
+
+        $this->actingAs($admin);
+        $headers = $this->tenantHeaders($tenant);
+
+        $list = $this->withHeaders($headers)
+            ->getJson('/api/v1/admin/projects')
+            ->assertOk();
+
+        $this->assertSame($withUnits['public_id'], $list->json('data.0.public_id'));
+        $this->assertSame(4, $list->json('data.0.properties_count'));
+        $this->assertSame(2, $list->json('data.0.available_units_count'));
+        $this->assertSame(1, $list->json('data.0.reserved_units_count'));
+        $this->assertSame(1, $list->json('data.0.sold_units_count'));
+        $this->assertSame($emptyNewer['public_id'], $list->json('data.1.public_id'));
+        $this->assertSame(0, $list->json('data.1.properties_count'));
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v1/admin/projects/'.$withUnits['public_id'])
+            ->assertOk()
+            ->assertJsonPath('data.properties_count', 4)
+            ->assertJsonPath('data.available_units_count', 2)
+            ->assertJsonPath('data.reserved_units_count', 1)
+            ->assertJsonPath('data.sold_units_count', 1);
+    }
+
     /** @return array<string, string> */
     private function tenantHeaders(Tenant $tenant): array
     {
