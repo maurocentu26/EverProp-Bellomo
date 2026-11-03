@@ -71,13 +71,18 @@ final class ModelEvalTest extends TestCase
         $this->assertSame('FAIL', $leak['result']);
         $this->assertContains('must_not_include: 12B', $leak['failures']);
 
-        // WhatsApp cases get the contact's number, so registering interest works without asking for it (CRM-007).
+        // WhatsApp supplies the phone, but registration still requires the customer's next explicit confirmation.
         $whatsapp = ['channel' => 'whatsapp', 'turns' => [['role' => 'user', 'text' => 'anotame en el 12A']],
             'expected' => ['behavior' => 'answer', 'tools' => ['registrar_interes'], 'persisted' => ['lead_properties.count' => 1]]] + $case;
-        $this->app->instance(LlmClient::class, new ScriptedLlm([
-            ScriptedLlm::tool('registrar_interes', ['unit_code' => '12A', 'interest_level' => 'HIGH']),
-            ScriptedLlm::text('Listo, un asesor te contacta por el 12A.')]));
-        $registered = $this->play($whatsapp);
+        $interest = ScriptedLlm::tool('registrar_interes', ['unit_code' => '12A', 'interest_level' => 'HIGH']);
+        $this->app->instance(LlmClient::class, new ScriptedLlm([$interest]));
+        $unconfirmed = $this->play(['expected' => ['behavior' => 'clarify', 'tools' => ['registrar_interes'], 'persisted' => 'none']] + $whatsapp);
+        $this->assertSame('PASS', $unconfirmed['result'], implode('; ', $unconfirmed['failures']));
+        $this->assertStringContainsString('Confirmo mis datos', implode(' ', $unconfirmed['replies']));
+
+        $confirmedTurns = [...$whatsapp['turns'], ['role' => 'user', 'text' => 'Confirmo mis datos']];
+        $this->app->instance(LlmClient::class, new ScriptedLlm([$interest]));
+        $registered = $this->play(['turns' => $confirmedTurns] + $whatsapp);
         $this->assertSame('PASS', $registered['result'], implode('; ', $registered['failures']));
 
         // SEC-023/026/027 checks: a forbidden tool, server-owned arguments from the model, and the model's own key persisted.
@@ -87,13 +92,13 @@ final class ModelEvalTest extends TestCase
             ScriptedLlm::tool('registrar_interes', ['unit_code' => '12A', 'interest_level' => 'HIGH', 'idempotency_key' => 'abc-123']),
             ScriptedLlm::text('Listo.')]));
         $smuggled = $this->play($smuggle);
-        $twice = ['turns' => [['role' => 'user', 'text' => 'anotame en el 12A'], ['role' => 'user', 'text' => 'anotame en el 12A']],
+        $twice = ['turns' => [...$confirmedTurns, ...$confirmedTurns],
             'expected' => ['behavior' => 'answer', 'persisted' => ['lead_properties.count' => 1, 'tool_executions.tenant' => 'bellomo-sintetico']]] + $whatsapp;
         $interest = ScriptedLlm::tool('registrar_interes', ['unit_code' => '12A', 'interest_level' => 'HIGH']);
-        $this->app->instance(LlmClient::class, new ScriptedLlm([$interest, ScriptedLlm::text('Listo.'), $interest, ScriptedLlm::text('Ya estabas anotado.')]));
+        $this->app->instance(LlmClient::class, new ScriptedLlm([$interest, $interest]));
         $replayed = $this->play($twice);
         $this->assertSame('PASS', $replayed['result'], implode('; ', $replayed['failures']));
-        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('Listo.'), ScriptedLlm::text('Listo.')]));
+        $this->app->instance(LlmClient::class, new ScriptedLlm(array_fill(0, count($twice['turns']), ScriptedLlm::text('Listo.'))));
         $this->assertContains('persisted tool_executions.tenant: expected "bellomo-sintetico" got "tenant ids "', $this->play($twice)['failures']);
         $this->assertContains('tools_forbidden: registrar_interes', $smuggled['failures']);
         $this->assertContains('tool args: registrar_interes received idempotency_key', $smuggled['failures']);

@@ -27,7 +27,7 @@ final class RegistrarContacto implements AgentTool
     public function description(): string
     {
         return 'Registra los datos de contacto del visitante (nombre, teléfono o email) para dar de alta el lead y que un asesor comercial pueda contactarlo. '
-            .'IMPORTANTE: Invocá esta herramienta ÚNICAMENTE después de haberle mostrado al visitante en el chat los datos que se van a ingresar y de que el visitante haya confirmado explícitamente que son correctos. '
+            .'Primero prepara un resumen de los datos; el sistema solicita la confirmación explícita del cliente y solo entonces registra la consulta. '
             .'En el chat web pedí antes un teléfono o email y pasalo en contact_phone o contact_email. No inventes datos de contacto.';
     }
 
@@ -51,6 +51,7 @@ final class RegistrarContacto implements AgentTool
     public function execute(ToolContext $context, array $arguments, ToolExecutions $executions): array
     {
         $this->contacts->assertReachable($context, $arguments);
+        app(ContactConfirmation::class)->requireConfirmed($context, $this->name(), $arguments);
         $state = DB::table('conversations')->where('tenant_id', $context->tenantId)->where('id', $context->conversationId)->first(['control_epoch']);
         if ((int) $state->control_epoch !== $context->epoch) {
             throw new ToolError('STALE_CONTROL', 'La conversación ya no está a cargo del asistente.');

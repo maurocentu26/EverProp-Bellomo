@@ -23,6 +23,7 @@ import {
   MIN_SEARCH,
   mergeMessages,
   previewText,
+  messageDescription,
   resolveUnknownSends,
   resumeAi,
   sendReply,
@@ -713,7 +714,7 @@ export function ConversationInbox() {
                           <p className="conversation-sender">{message.sender === "BOT" && <Bot className="h-4 w-4" aria-hidden />}{who}</p>
                           {message.media && <MediaPreview media={message.media} />}
                           {(message.text || !message.media) && (
-                            <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{message.text ?? "[contenido no textual]"}</p>
+                            <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{messageDescription(message)}</p>
                           )}
                           <p className="wa-meta -mb-0.5 mt-0.5 flex items-center justify-end gap-1 text-[11px]">
                             <time dateTime={message.at}>{clockTime(message.at)}</time>

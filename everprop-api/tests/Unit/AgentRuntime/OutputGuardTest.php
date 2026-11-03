@@ -12,6 +12,18 @@ final class OutputGuardTest extends TestCase
 
     private const KNOWLEDGE = ['Financiación: 36 cuotas fijas de $ 150.000 durante la promoción.'];
 
+    public function test_visitor_email_can_be_repeated_without_trusting_its_domain(): void
+    {
+        $guard = new OutputGuard;
+        $visitor = ['Mi correo es qa@example.com'];
+        $this->assertSame([], $guard->check('Correo: qa@example.com. ¿Confirmás tus datos?', [], [], visitorMessages: $visitor));
+        foreach (['https://example.com', 'example.com', 'www.example.com', 'https://qa@example.com', 'mailto:qa@example.com', 'other@example.com', 'qa@example.com/pago', 'qa@example.com?x=1', 'qa@example.com!suffix'] as $link) {
+            $this->assertContains('UNVERIFIED_LINK', $guard->check($link, [], [], visitorMessages: $visitor), $link);
+        }
+        $this->assertContains('UNVERIFIED_LINK', $guard->check('qa@example.com', [], []));
+        $this->assertContains('PAYMENT_DATA', $guard->check('qa@example.com; alias lote.jujuy.ok', [], [], visitorMessages: $visitor));
+    }
+
     /** @return array<string, array{string, list<string>, bool}> */
     public static function replies(): array
     {

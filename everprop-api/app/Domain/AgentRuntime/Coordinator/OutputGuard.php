@@ -41,9 +41,10 @@ final class OutputGuard
     /**
      * @param  list<array{amount: string, currency: string}>  $prices  prices returned by tools this turn
      * @param  list<string>  $knowledge  approved knowledge excerpts shown to the model this turn
+     * @param  list<string>  $visitorMessages  server-scoped visitor text, never approved link evidence
      * @return list<string> violation codes (empty = ok)
      */
-    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false): array
+    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false, array $visitorMessages = []): array
     {
         $allowed = [];
         foreach ($prices as $price) {
@@ -69,7 +70,7 @@ final class OutputGuard
                 break;
             }
         }
-        if ($this->unsupported(self::LINK, $text, $knowledge)) {
+        if ($this->unsupported(self::LINK, $this->withoutVisitorEmails($text, $visitorMessages), $knowledge)) {
             $violations[] = 'UNVERIFIED_LINK';
         }
         if ($this->unsupported(self::PAYMENT, $text, $knowledge)) {
@@ -92,6 +93,27 @@ final class OutputGuard
         }
 
         return $violations;
+    }
+
+    /** @param list<string> $visitorMessages */
+    private function withoutVisitorEmails(string $text, array $visitorMessages): string
+    {
+        // Match whole tokens: an email must not authorize a URL, mailto link or its domain.
+        $tokens = '/[^\s<>"\'()\[\],;]+/u';
+        preg_match_all($tokens, implode("\n", $visitorMessages), $matches);
+        $emails = [];
+        foreach ($matches[0] as $token) {
+            $email = rtrim($token, '.!?');
+            if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
+                $emails[$email] = true;
+            }
+        }
+
+        return preg_replace_callback($tokens, static function (array $match) use ($emails): string {
+            $email = rtrim($match[0], '.!?');
+
+            return isset($emails[$email]) ? substr($match[0], strlen($email)) : $match[0];
+        }, $text) ?? $text;
     }
 
     /**
