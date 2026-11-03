@@ -31,6 +31,36 @@ final class WhatsAppWebhookTest extends TestCase
         $this->get('/api/v1/webhooks/meta/whatsapp?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=1')->assertForbidden();
     }
 
+    public function test_synthetic_contacts_and_interactive_events_do_not_become_visitor_text(): void
+    {
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        $this->whatsappChannel($tenant->id, $integration, 'PN-EVENTS');
+        $shapes = [
+            ['type' => 'contacts', 'contacts' => [['name' => ['formatted_name' => 'Synthetic contact'], 'phones' => [['phone' => '+15550000000']]]]],
+            ['type' => 'interactive', 'interactive' => ['type' => 'button_reply', 'button_reply' => ['id' => 'yes', 'title' => 'Yes']]],
+            ['type' => 'button', 'button' => ['payload' => 'yes', 'text' => 'Yes']],
+            ['type' => 'contacts'],
+            ['type' => 'unknown'],
+        ];
+        foreach ($shapes as $i => $shape) {
+            $message = ['from' => '5493881111111', 'id' => 'wamid.shape.'.$i, 'timestamp' => (string) now()->timestamp] + $shape;
+            $raw = $this->waPayload('PN-EVENTS', [$message]);
+            $this->postWebhook($raw)->assertOk();
+            $this->postWebhook($raw)->assertOk();
+        }
+        $messages = DB::table('messages')->where('tenant_id', $tenant->id)->orderBy('sequence')->get();
+        $this->assertCount(5, $messages);
+        foreach (['CONTACT', 'INTERACTIVE', 'INTERACTIVE', 'UNKNOWN', 'UNKNOWN'] as $i => $expected) {
+            $metadata = json_decode($messages[$i]->metadata_json, true);
+            $this->assertSame($expected, $metadata['event_kind'] ?? null);
+            $this->assertNull($messages[$i]->text_body);
+            $this->assertNull($messages[$i]->media_json);
+            $this->assertArrayNotHasKey('contacts', $metadata);
+            $this->assertArrayNotHasKey('interactive', $metadata);
+            $this->assertStringNotContainsString('15550000000', $messages[$i]->metadata_json);
+        }
+    }
+
     public function test_without_ai_new_conversations_wait_for_an_advisor(): void
     {
         config(['conversations.ai_enabled' => false]);

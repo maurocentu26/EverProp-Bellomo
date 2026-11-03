@@ -9,6 +9,7 @@ use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\MetaWebhookProcessor;
 use App\Domain\Conversations\Services\OutboundDispatcher;
 use App\Domain\Conversations\Transports\MetaMessengerTransport;
+use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Integrations\Services\IntegrationTokens;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -47,6 +48,73 @@ final class MetaSocialWebhookTest extends TestCase
             'display_name' => $channelType.' '.$accountId,
             'status' => 'ACTIVE',
         ]);
+    }
+
+    public function test_synthetic_nontext_shapes_keep_only_safe_categories_and_original_text(): void
+    {
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        $this->socialChannel($tenant->id, $integration, 'INSTAGRAM_DM', 'IG-EVENTS');
+        $shapes = [
+            ['is_unsupported' => true],
+            ['attachments' => [['type' => 'image', 'payload' => ['url' => 'https://private.invalid/image']]]],
+            ['attachments' => [['type' => 'future-card', 'payload' => ['phone' => '+15550000000']]]],
+            [],
+            ['text' => 'Original phone +15550000000', 'is_unsupported' => true],
+        ];
+        foreach ($shapes as $i => $shape) {
+            $event = $this->socialMessage('IG-VISITOR', 'IG-EVENTS', 'mid.shape.'.$i, '');
+            $event['message'] = ['mid' => 'mid.shape.'.$i] + $shape;
+            $raw = $this->socialPayload('instagram', 'IG-EVENTS', [$event]);
+            $this->postWebhook($raw)->assertOk();
+            $this->postWebhook($raw)->assertOk();
+        }
+        $messages = DB::table('messages')->where('tenant_id', $tenant->id)->orderBy('sequence')->get();
+        $this->assertCount(5, $messages);
+        foreach (['UNSUPPORTED', 'IMAGE', 'ATTACHMENT', 'UNKNOWN', null] as $i => $expected) {
+            $metadata = json_decode($messages[$i]->metadata_json, true);
+            $this->assertSame($expected, $metadata['event_kind'] ?? null);
+            $this->assertSame($i === 4 ? 'Original phone +15550000000' : null, $messages[$i]->text_body);
+            $this->assertArrayNotHasKey('attachments', $metadata);
+            $this->assertStringNotContainsString('private.invalid', $messages[$i]->metadata_json);
+            $this->assertStringNotContainsString('15550000000', $messages[$i]->metadata_json);
+        }
+        $this->assertNull(MetaWebhookProcessor::presentEventKind(['url' => 'private']));
+        $this->assertNull(MetaWebhookProcessor::presentEventKind('future-card'));
+    }
+
+    public function test_admin_inbox_exposes_only_allowlisted_event_categories_inside_the_tenant(): void
+    {
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        $this->socialChannel($tenant->id, $integration, 'INSTAGRAM_DM', 'IG-DTO');
+        $event = $this->socialMessage('IG-VISITOR', 'IG-DTO', 'mid.dto.unsupported', '');
+        $event['message'] = ['mid' => 'mid.dto.unsupported', 'is_unsupported' => true];
+        $this->postWebhook($this->socialPayload('instagram', 'IG-DTO', [$event]))->assertOk();
+        $thread = DB::table('conversations')->where('tenant_id', $tenant->id)->first();
+        $viewer = $this->user($tenant, RoleCode::TENANT_ADMIN);
+        $this->actingAs($viewer)->withHeaders($this->tenantHeaders($tenant))
+            ->getJson('/api/v1/admin/conversations')
+            ->assertOk()->assertJsonPath('data.0.id', $thread->public_id)
+            ->assertJsonPath('data.0.last_message.event_kind', 'UNSUPPORTED')
+            ->assertJsonPath('data.0.last_message.text', null);
+        $response = $this->getJson('/api/v1/admin/conversations/'.$thread->public_id.'/messages')
+            ->assertOk()->assertJsonPath('data.0.event_kind', 'UNSUPPORTED')
+            ->assertJsonPath('data.0.type', 'SYSTEM')->assertJsonPath('data.0.text', null);
+        $this->assertArrayNotHasKey('metadata_json', $response->json('data.0'));
+
+        // Even older or corrupted stored metadata cannot expose an arbitrary provider value.
+        DB::table('messages')->where('tenant_id', $tenant->id)->update([
+            'metadata_json' => json_encode(['event_kind' => 'https://private.invalid/contact', 'phone' => '+15550000000']),
+        ]);
+        $this->getJson('/api/v1/admin/conversations')->assertOk()->assertJsonPath('data.0.last_message.event_kind', null);
+        $response = $this->getJson('/api/v1/admin/conversations/'.$thread->public_id.'/messages')
+            ->assertOk()->assertJsonPath('data.0.event_kind', null)->assertJsonPath('data.0.text', null);
+        $this->assertStringNotContainsString('private.invalid', $response->getContent());
+        $this->assertStringNotContainsString('15550000000', $response->getContent());
+
+        ['tenant' => $other] = $this->tenantWithIntegration();
+        $this->actingAs($this->user($other, RoleCode::TENANT_ADMIN))->withHeaders($this->tenantHeaders($other))
+            ->getJson('/api/v1/admin/conversations')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/admin/conversations/'.$thread->public_id.'/messages')->assertNotFound();
     }
 
     /**
