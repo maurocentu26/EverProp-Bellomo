@@ -3,8 +3,10 @@
 namespace Tests\Feature\AgentRuntime;
 
 use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
+use App\Domain\AgentRuntime\Tools\ContactConfirmation;
 use App\Domain\AgentRuntime\Tools\ToolContext;
 use App\Domain\AgentRuntime\Tools\ToolGateway;
+use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
@@ -177,11 +179,13 @@ final class RegistrarContactoTest extends TestCase
         );
 
         $gateway = app(ToolGateway::class);
-        $result = $gateway->execute($context, 'registrar_contacto', [
+        $args = [
             'contact_name' => 'Juan Pérez',
             'contact_phone' => '+54 9 388 555 1234',
             'notes' => 'Busca departamento de 2 dormitorios',
-        ]);
+        ];
+        $context = $this->confirm($context, $args);
+        $result = $gateway->execute($context, 'registrar_contacto', $args);
 
         $this->assertTrue($result['ok']);
         $this->assertSame('PERSISTED', $result['data']['status']);
@@ -233,6 +237,7 @@ final class RegistrarContactoTest extends TestCase
             'contact_phone' => '+54 9 388 444 5678',
         ];
 
+        $context = $this->confirm($context, $args);
         $res1 = $gateway->execute($context, 'registrar_contacto', $args);
         $this->assertTrue($res1['ok']);
         $this->assertFalse($res1['meta']['replayed']);
@@ -272,9 +277,11 @@ final class RegistrarContactoTest extends TestCase
         );
 
         $gateway = app(ToolGateway::class);
-        $result = $gateway->execute($context, 'registrar_contacto', [
+        $args = [
             'contact_phone' => '+54 9 388 111 2222',
-        ]);
+        ];
+        $context = $this->confirm($context, $args);
+        $result = $gateway->execute($context, 'registrar_contacto', $args);
 
         $this->assertTrue($result['ok']);
 
@@ -306,5 +313,92 @@ final class RegistrarContactoTest extends TestCase
 
         $this->assertFalse($result['ok']);
         $this->assertSame('VALIDATION_ERROR', $result['error']['code']);
+    }
+
+    public function test_rejects_premature_calls_corrections_and_model_changes_without_crm_effects(): void
+    {
+        $setup = $this->setupConversation();
+        $context = new ToolContext((int) $setup['tenant']->id, $setup['conversation_id'], $setup['contact_id'], $setup['channel_id'],
+            'WEB_CHAT', $setup['run_id'], 1, 1, (string) Str::uuid());
+        $args = ['contact_name' => 'Ana', 'contact_email' => 'ana@example.test', 'notes' => 'Consulta departamento'];
+        $service = app(ContactConfirmation::class);
+        $gateway = app(ToolGateway::class);
+        DB::table('chatbot_sessions')->where('tenant_id', $context->tenantId)->update(['state_json' => '{"other_feature":{"keep":true}}']);
+        foreach ([['Sí', 'TEXT', 'SENT'], ['Mi correo correcto es otro@example.test', 'TEXT', 'SENT'],
+            ['Confirmo mis datos', 'TEXT', 'QUEUED'], ['Confirmo mis datos', 'SYSTEM', 'SENT']] as [$text, $type, $status]) {
+            $this->assertFalse($gateway->execute($context, 'registrar_contacto', $args)['ok']);
+            $summary = $service->summary($context);
+            $this->assertStringContainsString('ana@example.test', $summary);
+            $reply = app(ConversationControl::class)->proposeBotReply($context->tenantId, $context->conversationId, 1, $summary, 'summary:'.$context->inputSequence);
+            $service->bind($context, $summary, $reply);
+            DB::table('messages')->where('id', $reply['message_id'])->update(['delivery_status' => $status]);
+            // Even an exact phrase cannot confirm a summary that was never sent.
+            $context = $this->appendInput($context, $text);
+            DB::table('messages')->where('tenant_id', $context->tenantId)->where('conversation_id', $context->conversationId)
+                ->where('sequence', $context->inputSequence)->update(['message_type' => $type,
+                    'metadata_json' => json_encode(['confirmed' => true, 'text' => 'Confirmo mis datos'], JSON_THROW_ON_ERROR)]);
+            $this->assertNull($service->receive($context));
+            $this->assertSame(0, DB::table('leads')->where('tenant_id', $context->tenantId)->count());
+            $this->assertSame(0, DB::table('domain_outbox')->where('tenant_id', $context->tenantId)->count());
+            $this->assertNull(DB::table('contacts')->where('id', $context->contactId)->value('email'));
+        }
+        $args['contact_email'] = 'other@example.test';
+        $context = $this->confirm($context, $args);
+        $altered = array_replace($args, ['contact_email' => 'model-change@example.test']);
+        $this->assertFalse($gateway->execute($context, 'registrar_contacto', $altered)['ok']);
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $context->tenantId)->count());
+        $this->assertTrue($gateway->execute($context, 'registrar_contacto', $args)['ok']);
+        $this->assertSame('other@example.test', DB::table('contacts')->where('id', $context->contactId)->value('email'));
+        $state = json_decode(DB::table('chatbot_sessions')->where('tenant_id', $context->tenantId)->value('state_json'), true);
+        $this->assertSame(['keep' => true], $state['other_feature']);
+    }
+
+    public function test_a_foreign_conversation_or_stale_epoch_cannot_reuse_confirmation(): void
+    {
+        $a = $this->setupConversation();
+        $b = $this->setupConversation();
+        $context = new ToolContext((int) $a['tenant']->id, $a['conversation_id'], $a['contact_id'], $a['channel_id'],
+            'WEB_CHAT', $a['run_id'], 1, 1, (string) Str::uuid());
+        $args = ['contact_email' => 'ana@example.test'];
+        $context = $this->confirm($context, $args);
+        $state = DB::table('chatbot_sessions')->where('tenant_id', $context->tenantId)->value('state_json');
+        DB::table('chatbot_sessions')->where('tenant_id', $b['tenant']->id)->update(['state_json' => $state]);
+        $foreign = new ToolContext((int) $b['tenant']->id, $b['conversation_id'], $b['contact_id'], $b['channel_id'],
+            'WEB_CHAT', $b['run_id'], 1, $context->inputSequence, (string) Str::uuid());
+        $this->assertNull(app(ContactConfirmation::class)->receive($foreign));
+        $this->assertFalse(app(ToolGateway::class)->execute($foreign, 'registrar_contacto', $args)['ok']);
+        DB::table('conversations')->where('id', $context->conversationId)->update(['control_epoch' => 2]);
+        $this->assertSame('STALE_CONTROL', app(ToolGateway::class)->execute($context, 'registrar_contacto', $args)['error']['code']);
+        $this->assertSame(0, DB::table('leads')->whereIn('tenant_id', [$a['tenant']->id, $b['tenant']->id])->count());
+        $this->assertSame(0, DB::table('tool_executions')->whereIn('tenant_id', [$a['tenant']->id, $b['tenant']->id])->count());
+    }
+
+    private function appendInput(ToolContext $context, string $text): ToolContext
+    {
+        $sequence = (int) DB::table('messages')->where('tenant_id', $context->tenantId)->where('conversation_id', $context->conversationId)->max('sequence') + 1;
+        DB::table('messages')->insert(['tenant_id' => $context->tenantId, 'conversation_id' => $context->conversationId,
+            'channel_account_id' => $context->channelAccountId, 'sequence' => $sequence, 'direction' => 'INBOUND', 'sender_type' => 'CONTACT',
+            'message_type' => 'TEXT', 'text_body' => $text, 'occurred_at' => now()]);
+        DB::table('conversations')->where('id', $context->conversationId)->update(['next_sequence' => $sequence + 1]);
+
+        return new ToolContext($context->tenantId, $context->conversationId, $context->contactId, $context->channelAccountId,
+            $context->channelType, $context->runId, $context->epoch, $sequence, $context->traceId);
+    }
+
+    /** @param array<string, mixed> $arguments */
+    private function confirm(ToolContext $context, array $arguments): ToolContext
+    {
+        $service = app(ContactConfirmation::class);
+        $context = $this->appendInput($context, 'Nueva consulta');
+        $service->receive($context);
+        $this->assertFalse(app(ToolGateway::class)->execute($context, 'registrar_contacto', $arguments)['ok']);
+        $summary = $service->summary($context);
+        $reply = app(ConversationControl::class)->proposeBotReply($context->tenantId, $context->conversationId, $context->epoch, $summary, 'summary:'.$context->inputSequence);
+        $service->bind($context, $summary, $reply);
+        DB::table('messages')->where('id', $reply['message_id'])->update(['delivery_status' => 'SENT']);
+        $context = $this->appendInput($context, '  CONFIRMO MIS DATOS  ');
+        $this->assertEquals(['tool' => 'registrar_contacto', 'arguments' => $arguments], $service->receive($context));
+
+        return $context;
     }
 }

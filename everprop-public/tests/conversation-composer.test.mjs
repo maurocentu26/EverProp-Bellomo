@@ -5,17 +5,19 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 // Run the real composer handlers with hooks in memory, without network or effects.
-function inbox() {
+function inbox(messages = []) {
   const state = [];
   Object.assign(state, { 5: true, 7: [{ id: 'chat', state: 'HUMAN_ACTIVE', channel: 'WEB_CHAT', contact_name: 'Cliente' }], 8: 'all:', 12: 'chat', 14: 'HUMAN_ACTIVE', 16: true, 17: true, 23: 'Mi borrador' });
   const refs = [];
+  state[21] = messages;
   let cursor = 0, refCursor = 0;
   const sends = [];
   const jsx = (type, props) => ({ type, props });
   const api = {
     CONVERSATION_TABS: [], CHANNEL_LABELS: {}, STATE_LABELS: {},
     conversationTab: () => 'human', conversationReason: () => '',
-    initials: () => 'C', previewText: () => '', sameDay: () => true, clockTime: () => '',
+    initials: () => 'C', previewText: () => '', sameDay: () => true, clockTime: () => '', dayLabel: () => 'Today',
+    messageDescription: message => message.text || `Shared description: ${message.event_kind}`,
     listConversations: async () => ({ data: state[7] }),
     visibleConversations: items => items,
     suggestReply: async () => ({ data: { suggestion_id: 'suggestion', text: 'Respuesta sugerida' } }),
@@ -107,4 +109,11 @@ test('EVP-104: actions menu supports keyboard ArrowDown/Escape and resume AI dia
   assert.equal(dialog.props['aria-modal'], 'true', 'Resume AI dialog must have aria-modal="true"');
   dialog.props.onKeyDown({ key: 'Escape', preventDefault() {} });
   assert.equal(view.find(view.render(), node => node.props?.role === 'dialog' && node.props?.['aria-labelledby'] === 'resume-title'), undefined, 'Escape must close resume AI dialog');
+});
+
+test('nontext bubbles use the shared description without changing the composer draft', () => {
+  const view = inbox([{ sequence: 1, direction: 'INBOUND', sender: 'CONTACT', text: null, event_kind: 'CONTACT', status: 'RECEIVED', at: '2026-11-03T12:00:00Z' }]);
+  assert.match(view.text(view.render()), /Shared description: CONTACT/);
+  assert.equal(view.draft(), 'Mi borrador');
+  assert.equal(view.sends.length, 0);
 });

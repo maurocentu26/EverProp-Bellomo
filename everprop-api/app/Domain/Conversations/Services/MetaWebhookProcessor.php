@@ -133,6 +133,7 @@ final class MetaWebhookProcessor
                 senderPhoneE164: null,
                 metadata: array_filter([
                     'native_object' => $object,
+                    'event_kind' => $text === null ? $this->socialEventKind($msg) : null,
                     'reply_to_mid' => is_scalar($msg['reply_to']['mid'] ?? null) ? (string) $msg['reply_to']['mid'] : null,
                 ]),
             ));
@@ -189,6 +190,7 @@ final class MetaWebhookProcessor
                 // Minimized: only the campaign identifiers needed for attribution.
                 metadata: array_filter([
                     'native_type' => $type,
+                    'event_kind' => $this->whatsAppEventKind($message, $type),
                     'context_id' => is_scalar($message['context']['id'] ?? null) ? (string) $message['context']['id'] : null,
                     'referral' => is_array($message['referral'] ?? null) ? array_filter(array_intersect_key($message['referral'], array_flip(['source_type', 'source_id', 'ctwa_clid'])), 'is_scalar') ?: null : null,
                 ]),
@@ -200,6 +202,50 @@ final class MetaWebhookProcessor
         }
 
         return true;
+    }
+
+    /** Safe presentation categories only; never retain attachment payloads or contact details. */
+    /** @param array<string, mixed> $message */
+    private function socialEventKind(array $message): string
+    {
+        if (($message['is_unsupported'] ?? false) === true) {
+            return 'UNSUPPORTED';
+        }
+        $attachments = $this->arrays($message['attachments'] ?? null);
+        if (count($attachments) === 1) {
+            return match ($attachments[0]['type'] ?? null) {
+                'image' => 'IMAGE', 'video' => 'VIDEO', 'audio' => 'AUDIO', 'file' => 'DOCUMENT',
+                default => 'ATTACHMENT',
+            };
+        }
+
+        return $attachments !== [] ? 'ATTACHMENT' : 'UNKNOWN';
+    }
+
+    /** @param array<string, mixed> $message */
+    private function whatsAppEventKind(array $message, string $type): ?string
+    {
+        if ($type === 'text') {
+            return null;
+        }
+        if ($type === 'contacts') {
+            return $this->arrays($message['contacts'] ?? null) !== [] ? 'CONTACT' : 'UNKNOWN';
+        }
+        if (in_array($type, ['interactive', 'button'], true)) {
+            return is_array($message[$type] ?? null) ? 'INTERACTIVE' : 'UNKNOWN';
+        }
+
+        return in_array($type, ['image', 'document', 'video', 'audio', 'location', 'sticker', 'reaction'], true)
+            && is_array($message[$type] ?? null) ? $this->messageType($type) : 'UNKNOWN';
+    }
+
+    /** Never expose raw provider metadata in inbox DTOs. */
+    public static function presentEventKind(mixed $kind): ?string
+    {
+        return is_string($kind) && in_array($kind, [
+            'CONTACT', 'INTERACTIVE', 'IMAGE', 'DOCUMENT', 'VIDEO', 'AUDIO', 'LOCATION',
+            'STICKER', 'REACTION', 'UNSUPPORTED', 'ATTACHMENT', 'UNKNOWN',
+        ], true) ? $kind : null;
     }
 
     /** @param array<string, mixed> $status */
