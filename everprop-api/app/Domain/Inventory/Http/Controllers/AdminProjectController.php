@@ -3,6 +3,7 @@
 namespace App\Domain\Inventory\Http\Controllers;
 
 use App\Domain\Inventory\Enums\ProjectStatus;
+use App\Domain\Inventory\Enums\PropertyStatus;
 use App\Domain\Inventory\Http\Requests\ProjectIndexRequest;
 use App\Domain\Inventory\Http\Requests\PublishProjectRequest;
 use App\Domain\Inventory\Http\Requests\StoreProjectRequest;
@@ -35,7 +36,7 @@ final class AdminProjectController extends InventoryController
         $this->authorizeAction($this->policy->viewAny($user));
 
         $query = $this->access->scopeProjects(Project::query(), $user)
-            ->withCount('properties');
+            ->withCount($this->propertyCounts());
 
         return ProjectResource::collection(
             $this->filters->projects($query, $request->validated())->paginate($request->perPage())
@@ -54,7 +55,7 @@ final class AdminProjectController extends InventoryController
         }
 
         $project = Project::query()->create($payload);
-        $project->refresh()->loadCount('properties');
+        $project->refresh()->loadCount($this->propertyCounts());
 
         return (new ProjectResource($project))->response()->setStatusCode(201);
     }
@@ -64,7 +65,7 @@ final class AdminProjectController extends InventoryController
         $model = $this->findProject($project);
         $this->authorizeAction($this->policy->view($this->user($request), $model));
 
-        return new ProjectResource($model->loadCount('properties'));
+        return new ProjectResource($model->loadCount($this->propertyCounts()));
     }
 
     public function update(UpdateProjectRequest $request, string $project): ProjectResource
@@ -81,7 +82,7 @@ final class AdminProjectController extends InventoryController
 
         $model->fill($payload)->save();
 
-        return new ProjectResource($model->refresh()->loadCount('properties'));
+        return new ProjectResource($model->refresh()->loadCount($this->propertyCounts()));
     }
 
     public function publish(PublishProjectRequest $request, string $project): ProjectResource
@@ -91,7 +92,18 @@ final class AdminProjectController extends InventoryController
 
         $model->update(['status' => $request->validated('status')]);
 
-        return new ProjectResource($model->refresh()->loadCount('properties'));
+        return new ProjectResource($model->refresh()->loadCount($this->propertyCounts()));
+    }
+
+    /** @return array<int|string, string|\Closure> */
+    private function propertyCounts(): array
+    {
+        return [
+            'properties',
+            'properties as available_units_count' => static fn ($query) => $query->where('properties.status', PropertyStatus::AVAILABLE->value),
+            'properties as reserved_units_count' => static fn ($query) => $query->where('properties.status', PropertyStatus::RESERVED->value),
+            'properties as sold_units_count' => static fn ($query) => $query->where('properties.status', PropertyStatus::SOLD->value),
+        ];
     }
 
     public function destroy(ProjectIndexRequest $request, string $project): Response

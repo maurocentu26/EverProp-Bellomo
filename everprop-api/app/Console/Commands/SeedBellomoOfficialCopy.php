@@ -385,6 +385,36 @@ final class SeedBellomoOfficialCopy extends Command
         ],
     ];
 
+    /**
+     * @var array<string, array{legacy_id: int, legacy_name: string}>
+     */
+    private const LEGACY_PROJECT_MAP = [
+        'las-colinas' => ['legacy_id' => 34, 'legacy_name' => 'LAS COLINAS'],
+        'el-arrabal' => ['legacy_id' => 87, 'legacy_name' => 'EL ARRABAL'],
+        'la-arbolada' => ['legacy_id' => 44, 'legacy_name' => 'LA ARBOLADA.'],
+        'la-arbolada-2' => ['legacy_id' => 144, 'legacy_name' => 'LA ARBOLADA 2'],
+        'loteo-arenales' => ['legacy_id' => 89, 'legacy_name' => 'LOTEO ARENALES'],
+        'el-rocio' => ['legacy_id' => 57, 'legacy_name' => 'EL ROCIO'],
+        'loteo-san-pablo-1' => ['legacy_id' => 70, 'legacy_name' => 'LOTEO SAN PABLO 1'],
+        'loteo-san-pablo-2' => ['legacy_id' => 73, 'legacy_name' => 'LOTEO SAN PABLO 2'],
+        'valle-verde' => ['legacy_id' => 83, 'legacy_name' => 'VALLE VERDE LOTEO'],
+        'los-cardinales' => ['legacy_id' => 59, 'legacy_name' => 'LOTEO CARDINALES'],
+        'santa-emilia' => ['legacy_id' => 72, 'legacy_name' => 'LOTEO SANTA EMILIA MONTERRICO'],
+        'loteo-los-perales' => ['legacy_id' => 67, 'legacy_name' => 'LOTEO LOS PERALES'],
+        'rincones-lotes-e-infraestruc' => ['legacy_id' => 8, 'legacy_name' => 'RINCONES LOTES E INFRAESTRUC.'],
+        'rincones-2' => ['legacy_id' => 25, 'legacy_name' => 'RINCONES 2'],
+        'loteo-palpala' => ['legacy_id' => 21, 'legacy_name' => 'LOTEO PALPALA'],
+        'loteo-martin-raul-galan' => ['legacy_id' => 22, 'legacy_name' => 'LOTEO MARTIN RAUL GALAN'],
+        'quintas-san-antonio' => ['legacy_id' => 90, 'legacy_name' => 'QUINTAS DE SAN ANTONIO Loteo'],
+        'la-toma-loteo' => ['legacy_id' => 130, 'legacy_name' => 'LA TOMA loteo'],
+        'edificio-huasi-4' => ['legacy_id' => 36, 'legacy_name' => 'HUASI IV'],
+        'edificio-huasi-7' => ['legacy_id' => 110, 'legacy_name' => 'HUASI VII'],
+        'edificio-huasi-8' => ['legacy_id' => 108, 'legacy_name' => 'HUASI VIII'],
+        'galeria-norte-1' => ['legacy_id' => 38, 'legacy_name' => 'GALERIA NORTE 1'],
+        'galeria-norte-2' => ['legacy_id' => 138, 'legacy_name' => 'GALERIA NORTE 2'],
+        'cochera-alvear' => ['legacy_id' => 29, 'legacy_name' => 'COCHERA ALVEAR'],
+    ];
+
     public function handle(): int
     {
         $tenantId = (int) $this->option('tenant');
@@ -415,11 +445,8 @@ final class SeedBellomoOfficialCopy extends Command
                     'alt' => "Logo {$data['name']}",
                 ];
 
-                // 1. Buscar o crear el proyecto base en la tabla 'projects'
-                $project = DB::table('projects')
-                    ->where('tenant_id', $tenantId)
-                    ->where('name', $data['name'])
-                    ->first();
+                // 1. Buscar o crear el proyecto canónico en la tabla 'projects'
+                $project = $this->findCanonicalProject($tenantId, $slug, $data['name']);
 
                 if (! $project) {
                     $projectType = match ($data['category']) {
@@ -441,7 +468,7 @@ final class SeedBellomoOfficialCopy extends Command
                         'project_type' => $projectType,
                         'status' => $status,
                         'progress' => $progress,
-                        'total_units' => 20,
+                        'total_units' => 0,
                         'city' => $data['location']['city'],
                         'province' => $data['location']['province'],
                         'address' => $data['location']['address'],
@@ -483,6 +510,11 @@ final class SeedBellomoOfficialCopy extends Command
                 ];
 
                 if (! $landingRow) {
+                    DB::table('project_landing')
+                        ->where('tenant_id', $tenantId)
+                        ->where('project_id', $projectId)
+                        ->delete();
+
                     DB::table('project_landing')->insert([
                         'tenant_id' => $tenantId,
                         'project_id' => $projectId,
@@ -494,8 +526,17 @@ final class SeedBellomoOfficialCopy extends Command
                         'updated_at' => now(),
                     ]);
 
-                    $this->line("  [+] Creado con fotos y logo: {$data['name']} ({$slug})");
+                    $this->line("  [+] Creado con fotos y logo: {$data['name']} ({$slug}) -> project #{$projectId}");
                 } else {
+                    $previousProjectId = (int) $landingRow->project_id;
+                    if ($previousProjectId !== $projectId) {
+                        DB::table('project_landing')
+                            ->where('tenant_id', $tenantId)
+                            ->where('project_id', $projectId)
+                            ->where('id', '!=', $landingRow->id)
+                            ->delete();
+                    }
+
                     DB::table('project_landing')
                         ->where('id', $landingRow->id)
                         ->update([
@@ -506,7 +547,23 @@ final class SeedBellomoOfficialCopy extends Command
                             'updated_at' => now(),
                         ]);
 
-                    $this->line("  [*] Actualizado con fotos y logo: {$data['name']} ({$slug})");
+                    if ($previousProjectId !== $projectId) {
+                        $this->deleteIfOrphanDuplicate($tenantId, $previousProjectId);
+                    }
+
+                    $this->line("  [*] Actualizado con fotos y logo: {$data['name']} ({$slug}) -> project #{$projectId}");
+                }
+
+                // Limpiar duplicados huérfanos con el nombre comercial si el canónico es distinto
+                $orphanIds = DB::table('projects')
+                    ->where('tenant_id', $tenantId)
+                    ->where('name', $data['name'])
+                    ->where('id', '!=', $projectId)
+                    ->whereNull('legacy_id')
+                    ->pluck('id');
+
+                foreach ($orphanIds as $orphanId) {
+                    $this->deleteIfOrphanDuplicate($tenantId, (int) $orphanId);
                 }
             }
         });
@@ -514,5 +571,69 @@ final class SeedBellomoOfficialCopy extends Command
         $this->info('Carga de proyectos con fotos y logos de Cloudflare finalizada con éxito.');
 
         return self::SUCCESS;
+    }
+
+    private function findCanonicalProject(int $tenantId, string $slug, string $officialName): ?object
+    {
+        $legacyMap = self::LEGACY_PROJECT_MAP[$slug] ?? null;
+
+        if ($legacyMap !== null) {
+            $byLegacyId = DB::table('projects')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('legacy_id', $legacyMap['legacy_id'])
+                ->first();
+
+            if ($byLegacyId !== null) {
+                return $byLegacyId;
+            }
+
+            $byLegacyName = DB::table('projects')
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('name', $legacyMap['legacy_name'])
+                ->first();
+
+            if ($byLegacyName !== null) {
+                return $byLegacyName;
+            }
+        }
+
+        return DB::table('projects')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('name', $officialName)
+            ->orderByRaw('legacy_id IS NOT NULL DESC, id ASC')
+            ->first();
+    }
+
+    private function deleteIfOrphanDuplicate(int $tenantId, int $projectId): void
+    {
+        $candidate = DB::table('projects')
+            ->where('tenant_id', $tenantId)
+            ->where('id', $projectId)
+            ->whereNull('legacy_id')
+            ->first();
+
+        if (! $candidate) {
+            return;
+        }
+
+        foreach ([
+            'properties',
+            'project_landing',
+            'project_landing_assets',
+            'knowledge_documents',
+            'project_intakes',
+            'project_intake_units',
+            'user_inventory_scopes',
+        ] as $table) {
+            if (DB::table($table)->where('project_id', $projectId)->exists()) {
+                return;
+            }
+        }
+
+        DB::table('projects')->where('id', $projectId)->delete();
+        $this->line("  [-] Eliminado proyecto duplicado vacío #{$projectId} ({$candidate->name})");
     }
 }
