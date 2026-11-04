@@ -2,13 +2,15 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Inventory\Enums\ProjectStatus;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class SeedBellomoOfficialCopy extends Command
 {
-    protected $signature = 'everprop:seed-bellomo-copy {--tenant=1 : ID numérico del tenant (default 1)}';
+    protected $signature = 'everprop:seed-bellomo-copy {--tenant=1 : ID numérico del tenant (default 1)}
+        {--link-legacy : Solo asigna el legacy_id del Excel a los proyectos existentes, para correr antes de importar}';
 
     protected $description = 'Siembra los 32 proyectos oficiales de Bellomo con copy, categorización, portadas y logos para landing.';
 
@@ -30,7 +32,7 @@ final class SeedBellomoOfficialCopy extends Command
         'las-colinas' => [
             'name' => 'Las Colinas 1',
             'summary' => 'Tierra de Sueños',
-            'status_label' => 'En venta · Con escritura y posesión',
+            'status_label' => 'Vendido completamente · Con escritura y posesión',
             'description' => "Ubicado sobre ruta Nacional N° 9, a solo minutos del centro de San Salvador de Jujuy, “Las Colinas 1” es un desarrollo que ofrece a los habitantes 20 hectáreas completamente urbanizadas. Un rincón ubicado entre la capital y Los Alisos, para así poder disfrutar de las actividades que ofrecen cada una de estas ciudades.\n\nUbicación: https://goo.gl/maps/VUhJxtTkFSLzDxpV8",
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Cloaca', 'Apertura de calles', 'Cordón cuneta', '100% vendido · 80% habitado', 'Con escritura'],
@@ -77,7 +79,7 @@ final class SeedBellomoOfficialCopy extends Command
             'status_label' => 'Pre-venta · En obra',
             'description' => "Un barrio tranquilo a solo pasos del Barrio Sargento Cabral, con todas las comodidades y servicios de la ciudad. Una excelente opción para aquellos que buscan vivir rodeados del silencio y el movimiento de los arboles estando cerca, y con hermosa vista a la ciudad.\n\nUbicación: https://goo.gl/maps/CdoPKYA4stvWAyWx5",
             'category' => 'LAND_DEVELOPMENT',
-            'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '30% vendido'],
+            'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Sargento Cabral'],
             'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/LA%20ARBOLADA%20II/la%20arbolada%202.jpg',
             'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/La%20Arbolada%20color.png',
@@ -110,7 +112,7 @@ final class SeedBellomoOfficialCopy extends Command
             'status_label' => 'Pre-venta · Próxima posesión precaria',
             'description' => "Lotes en Barrio Coronel Arias a pasos de la nueva terminal, en una nueva expansión de la ciudad. En las faldas del cerro, rodeado de la rica vegetación jujeña y nuestro cielo infinito podrás encontrar al loteo San Pablo, ideal para disfrutar del entorno silvestre sin tenerte que ir muy lejos de la comodidad de la tacita de Plata, con vistas increíbles.\n\nUbicación: https://goo.gl/maps/1UwnW1CDetpP1zAZ8",
             'category' => 'LAND_DEVELOPMENT',
-            'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '40% vendido', 'Próxima posesión precaria'],
+            'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', 'Próxima posesión precaria'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Coronel Arias, faldas del cerro'],
             'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp',
             'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20color.png',
@@ -118,10 +120,10 @@ final class SeedBellomoOfficialCopy extends Command
         'loteo-san-pablo-2' => [
             'name' => 'San Pablo 2',
             'summary' => 'Tu balcón a la ciudad',
-            'status_label' => 'Pre-venta · Próxima posesión precaria',
+            'status_label' => 'Pre-venta',
             'description' => "Segunda etapa del loteo San Pablo en Barrio Coronel Arias a pasos de la nueva terminal. Entorno silvestre con vistas excepcionales de la ciudad y conexión rápida a los principales accesos.\n\nUbicación: https://goo.gl/maps/1UwnW1CDetpP1zAZ8",
             'category' => 'LAND_DEVELOPMENT',
-            'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', 'Próxima posesión precaria'],
+            'features' => ['Lotes desde 250 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Coronel Arias'],
             'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/san-pablo/vista-aerea-1.webp',
             'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/San%20Pablo%20color.png',
@@ -143,7 +145,7 @@ final class SeedBellomoOfficialCopy extends Command
             'status_label' => 'Pre-venta · En obra',
             'description' => "A solo minutos de la ciudad y cerca de la zona comercial mas vibrante de Alto Comedero, se encuentra Loteo Los Cardinales, un espacio donde la naturaleza y la comodidad se fusionan, rodeados de tranquilidad para construir el hogar que siempre soñaste.\n\nUbicación: https://maps.app.goo.gl/E6jYRGbHVY3j175i9",
             'category' => 'LAND_DEVELOPMENT',
-            'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', '30% vendido', 'Convenio Colegio de Psicólogos'],
+            'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Apertura de calles', 'Cordón cuneta', 'Convenio Colegio de Psicólogos'],
             'location' => ['city' => 'San Salvador de Jujuy', 'province' => 'Jujuy', 'address' => 'Barrio Sargento Cabral / Alto Comedero'],
             'cover_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/web/images/official/los-cardinales/vista-aerea-1.webp',
             'logo_url' => 'https://pub-6e84e10f99f7480da92cffa0fbe4b8b3.r2.dev/assets/Logos%20loteos/Los%20Cardinales.png',
@@ -162,7 +164,7 @@ final class SeedBellomoOfficialCopy extends Command
         'loteo-los-perales' => [
             'name' => 'Los Perales',
             'summary' => 'Sentite Lejos, Estando Cerca',
-            'status_label' => 'En venta · Con servicios habilitados',
+            'status_label' => 'Vendido completamente · Con escritura y posesión',
             'description' => "Ubicado en uno de los principales barrios de la ciudad, se encuentra el Loteo “Los Perales”, destacándose por los espacios verdes y su cercanía con el centro. Ideal para quienes disfrutan de caminar y estar al aire libre, dentro de un entorno residencial y cerca de una destacada zona comercial.\n\nUbicación: https://goo.gl/maps/JUbmLHpR98dkwHPT8",
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes desde 300 m²', 'Energía eléctrica', 'Agua potable', 'Cloaca', 'Apertura de calles', 'Cordón cuneta', '100% vendido', 'Servicios habilitados'],
@@ -195,7 +197,7 @@ final class SeedBellomoOfficialCopy extends Command
         'loteo-palpala' => [
             'name' => 'Loteo Palpalá',
             'summary' => 'Viví Cerca',
-            'status_label' => 'Vendido completamente · Con posesión y escritura',
+            'status_label' => 'Vendido completamente · Con posesión y escritura en la mayoría',
             'description' => "Proyecto de urbanización en el centro de la ciudad de Palpalá iniciado en 2012, con un poco más de 130 lotes que van de 200 m² hasta 900 m². Cuenta con servicios completos y Plaza central “Martín Raúl Galán”. Ubicado sobre Ruta Provincial N° 1 cruzando al pulmón verde “paseo de las flores” con la estatua de San Cayetano.\n\nUbicación: https://maps.app.goo.gl/rbfyXenz7ffXrScz8",
             'category' => 'LAND_DEVELOPMENT',
             'features' => ['Lotes de 200 m² a 900 m²', 'Energía eléctrica', 'Agua potable', 'Cloaca', 'Gas', 'Cordón cuneta', '100% vendido'],
@@ -317,7 +319,7 @@ final class SeedBellomoOfficialCopy extends Command
         ],
         'edificio-huasi-7' => [
             'name' => 'Huasi VII',
-            'summary' => 'Exclusividad residencial frente a Ciudad Cultural',
+            'summary' => 'Exclusividad residencial a pocos metros de Ciudad Cultural',
             'status_label' => 'Venta en pozo',
             'description' => 'Ubicación: República del Uruguay N° 1821 esq. Río Iguazú - B° Alto Padilla. Construcción año 2026. PB y 2 pisos con 19 departamentos y 16 espacios de cochera en subsuelo. Ubicado a metros de Ciudad Cultural y Parque San Martín, con conexión directa a Ciudad Cultural, UNJu e Infinito por Descubrir. Terminaciones de primera calidad, ascensor y calefacción central.',
             'category' => 'HUASI',
@@ -417,13 +419,28 @@ final class SeedBellomoOfficialCopy extends Command
 
     public function handle(): int
     {
-        $tenantId = (int) $this->option('tenant');
-        $tenant = DB::table('tenants')->where('id', $tenantId)->first();
+        $requested = (string) $this->option('tenant');
+        $tenant = ctype_digit($requested) ? DB::table('tenants')->where('id', (int) $requested)->first() : null;
 
         if (! $tenant) {
-            $this->error("No se encontró ningún tenant con ID {$tenantId}.");
+            $this->error("No se encontró ningún tenant con ID {$requested}.");
 
             return self::FAILURE;
+        }
+
+        // The copy, covers and legacy ids are Bellomo's: any other tenant would get its catalog published.
+        if (! in_array($tenant->slug, ['bellomo', 'bellomito-staging'], true)) {
+            $this->error("Este comando solo aplica a Bellomo y su staging, no a {$tenant->slug}.");
+
+            return self::FAILURE;
+        }
+
+        $tenantId = (int) $tenant->id;
+
+        if ($this->option('link-legacy')) {
+            DB::transaction(fn () => $this->linkLegacyIds($tenantId));
+
+            return self::SUCCESS;
         }
 
         $this->info("Iniciando carga de 32 proyectos oficiales con portadas y logos para el tenant {$tenantId} ({$tenant->slug})...");
@@ -455,19 +472,13 @@ final class SeedBellomoOfficialCopy extends Command
                         default => 'COMMERCIAL',
                     };
 
-                    $status = str_contains($data['status_label'], 'Pre-venta')
-                        ? 'PRE_SALE'
-                        : (str_contains($data['status_label'], 'En obra') ? 'UNDER_CONSTRUCTION' : 'COMPLETED');
-
-                    $progress = str_contains($data['status_label'], 'Vendido') ? 100 : 50;
-
                     $projectId = (int) DB::table('projects')->insertGetId([
                         'tenant_id' => $tenantId,
                         'public_id' => (string) Str::uuid(),
                         'name' => $data['name'],
                         'project_type' => $projectType,
-                        'status' => $status,
-                        'progress' => $progress,
+                        'status' => self::projectStatus($data['status_label']),
+                        'progress' => null,
                         'total_units' => 0,
                         'city' => $data['location']['city'],
                         'province' => $data['location']['province'],
@@ -479,12 +490,28 @@ final class SeedBellomoOfficialCopy extends Command
                     ]);
                 } else {
                     $projectId = (int) $project->id;
+                    $changes = ['masterplan_image_url' => $data['cover_url'], 'updated_at' => now()];
+                    // Publishing takes the panel's permission and audit: this never makes a withdrawn or new project public.
+                    if (in_array($project->status, ProjectStatus::publicValues(), true)) {
+                        $changes['status'] = self::projectStatus($data['status_label']);
+                    }
+                    // Not in the workbook and no units loaded: the copy has no counts or progress, so none are shown.
+                    if ($project->legacy_id === null && ! DB::table('properties')->where('tenant_id', $tenantId)->where('project_id', $projectId)->exists()) {
+                        $changes += ['progress' => null, 'total_units' => 0];
+                    }
+                    // The workbook has no locality for El Rocío, so the copy fills it for the project and its units.
+                    if (trim((string) $project->city) === '') {
+                        $changes['city'] = $data['location']['city'];
+                        DB::table('properties')
+                            ->where('tenant_id', $tenantId)
+                            ->where('project_id', $projectId)
+                            ->where('city', '')
+                            ->update(['city' => $data['location']['city'], 'version' => DB::raw('version + 1'), 'updated_at' => now()]);
+                    }
                     DB::table('projects')
+                        ->where('tenant_id', $tenantId)
                         ->where('id', $projectId)
-                        ->update([
-                            'masterplan_image_url' => $data['cover_url'],
-                            'updated_at' => now(),
-                        ]);
+                        ->update($changes);
                 }
 
                 // 2. Buscar o crear la ficha en 'project_landing'
@@ -510,6 +537,12 @@ final class SeedBellomoOfficialCopy extends Command
                 ];
 
                 if (! $landingRow) {
+                    $withdrawn = DB::table('project_landing')
+                        ->where('tenant_id', $tenantId)
+                        ->where('project_id', $projectId)
+                        ->where('is_visible', false)
+                        ->exists();
+
                     DB::table('project_landing')
                         ->where('tenant_id', $tenantId)
                         ->where('project_id', $projectId)
@@ -519,7 +552,7 @@ final class SeedBellomoOfficialCopy extends Command
                         'tenant_id' => $tenantId,
                         'project_id' => $projectId,
                         'slug' => $slug,
-                        'is_visible' => 1,
+                        'is_visible' => $withdrawn ? 0 : 1,
                         'sort_order' => $order,
                         'content' => json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                         'first_published_at' => now(),
@@ -529,6 +562,11 @@ final class SeedBellomoOfficialCopy extends Command
                     $this->line("  [+] Creado con fotos y logo: {$data['name']} ({$slug}) -> project #{$projectId}");
                 } else {
                     $previousProjectId = (int) $landingRow->project_id;
+                    $withdrawn = (bool) DB::table('project_landing')
+                        ->where('tenant_id', $tenantId)
+                        ->where('project_id', $projectId)
+                        ->where('is_visible', false)
+                        ->exists();
                     if ($previousProjectId !== $projectId) {
                         DB::table('project_landing')
                             ->where('tenant_id', $tenantId)
@@ -538,10 +576,11 @@ final class SeedBellomoOfficialCopy extends Command
                     }
 
                     DB::table('project_landing')
+                        ->where('tenant_id', $tenantId)
                         ->where('id', $landingRow->id)
                         ->update([
                             'project_id' => $projectId,
-                            'is_visible' => 1,
+                            'is_visible' => $withdrawn ? 0 : $landingRow->is_visible,
                             'sort_order' => $order,
                             'content' => json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                             'updated_at' => now(),
@@ -571,6 +610,31 @@ final class SeedBellomoOfficialCopy extends Command
         $this->info('Carga de proyectos con fotos y logos de Cloudflare finalizada con éxito.');
 
         return self::SUCCESS;
+    }
+
+    /** Without this link the importer creates a duplicate, non-public project for each existing one. */
+    private function linkLegacyIds(int $tenantId): void
+    {
+        foreach (self::LEGACY_PROJECT_MAP as $slug => $legacy) {
+            $project = $this->findCanonicalProject($tenantId, $slug, self::OFFICIAL_PROJECTS[$slug]['name']);
+            if ($project !== null && $project->legacy_id === null) {
+                DB::table('projects')->where('tenant_id', $tenantId)->where('id', $project->id)
+                    ->update(['legacy_id' => $legacy['legacy_id'], 'updated_at' => now()]);
+                $this->line("  [~] {$project->name} -> legacy {$legacy['legacy_id']}");
+            }
+        }
+    }
+
+    /** The stage comes from the copy; status also decides whether the project's units are public. */
+    private static function projectStatus(string $statusLabel): string
+    {
+        return match (true) {
+            str_contains($statusLabel, 'En obra') => 'UNDER_CONSTRUCTION',
+            str_contains($statusLabel, 'Pre-venta'), str_contains($statusLabel, 'Venta en pozo') => 'PRE_SALE',
+            str_contains($statusLabel, 'Proyecto futuro') => 'PLANNING',
+            str_contains($statusLabel, 'Vendido'), str_contains($statusLabel, 'En venta'), str_contains($statusLabel, 'En alquiler') => 'COMPLETED',
+            default => 'UNKNOWN',
+        };
     }
 
     private function findCanonicalProject(int $tenantId, string $slug, string $officialName): ?object
@@ -633,7 +697,7 @@ final class SeedBellomoOfficialCopy extends Command
             }
         }
 
-        DB::table('projects')->where('id', $projectId)->delete();
+        DB::table('projects')->where('tenant_id', $tenantId)->where('id', $projectId)->delete();
         $this->line("  [-] Eliminado proyecto duplicado vacío #{$projectId} ({$candidate->name})");
     }
 }
