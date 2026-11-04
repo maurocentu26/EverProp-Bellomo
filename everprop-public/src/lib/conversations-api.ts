@@ -129,14 +129,14 @@ export function clockTime(iso: string): string {
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
-/** Separator between days in the thread: "Hoy", "Ayer" or the date (with year only when it differs). */
-export function dayLabel(iso: string, now: Date = new Date()): string {
+/** Separator between days in the thread: "Hoy", "Ayer" or the date (with year only when it differs). `short` fits a list row. */
+export function dayLabel(iso: string, now: Date = new Date(), format: "long" | "short" = "long"): string {
   const date = new Date(iso);
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   if (dayKey(date) === dayKey(now)) return "Hoy";
   if (dayKey(date) === dayKey(yesterday)) return "Ayer";
   return new Intl.DateTimeFormat("es-AR", {
-    weekday: "long", day: "numeric", month: "long", ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+    ...(format === "long" ? { weekday: "long", month: "long" } as const : { month: "short" } as const), day: "numeric", ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
   }).format(date);
 }
 

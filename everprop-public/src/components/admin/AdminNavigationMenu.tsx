@@ -116,7 +116,7 @@ export function AdminNavigationMenu({
                       />
                       {!collapsed && (
                         <>
-                          <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                          <span className="min-w-0 flex-1">{item.title}</span>
                           {item.children && (
                             <ChevronRight className={cn("size-4 opacity-60 transition-transform", active && "rotate-90")} aria-hidden="true" />
                           )}

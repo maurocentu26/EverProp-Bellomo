@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
 import { Bell, Check, ExternalLink, Home, Inbox, Menu, MessagesSquare, Users, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
+import { nextTopbarState } from "@/lib/topbar-scroll";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -38,6 +39,33 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const topbarRef = useRef<HTMLElement>(null);
+  // Se oculta al bajar y vuelve al subir. Las vistas con scroll interno, como Conversaciones, no mueven este contenedor.
+  useEffect(() => {
+    const topbar = topbarRef.current;
+    const scroller = document.querySelector<HTMLElement>('[data-admin-scroll-container="true"]');
+    if (!topbar || !scroller) return;
+    let state = { hidden: false, anchor: scroller.scrollTop };
+    const apply = (hidden: boolean) => {
+      state.hidden = hidden;
+      topbar.dataset.hidden = String(hidden);
+      topbar.style.marginTop = hidden ? `-${topbar.offsetHeight}px` : "";
+    };
+    const onScroll = () => {
+      const inUse = topbar.querySelector(':focus-visible, [aria-haspopup][aria-expanded="true"]');
+      const height = topbar.offsetHeight;
+      const next = nextTopbarState(state, { y: scroller.scrollTop, maxScroll: scroller.scrollHeight - scroller.clientHeight, height });
+      state = { hidden: state.hidden, anchor: next.anchor };
+      apply(next.hidden && !inUse);
+    };
+    const onFocus = () => apply(false);
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    topbar.addEventListener("focusin", onFocus);
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      topbar.removeEventListener("focusin", onFocus);
+    };
+  }, []);
   const soundEnabledRef = useRef(false);
   const seenNotificationIds = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -209,7 +237,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   return (
     <>
       {user?.id && <NotificationPermissionPrompt key={user.id} />}
-      <header className={cn("admin-topbar z-30 border-b border-border bg-card px-4 py-3 lg:px-8 text-card-foreground", className)}>
+      <header ref={topbarRef} className={cn("admin-topbar z-30 border-b border-border bg-card px-4 py-3 lg:px-8 text-card-foreground", className)}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <Button
