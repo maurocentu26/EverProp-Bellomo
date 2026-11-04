@@ -147,6 +147,9 @@ final class GeminiChatClientTest extends TestCase
         $this->assertSame(['id' => 'abc'], $first->toolUses()[0]['input']);
 
         $callId = $first->toolUses()[0]['id'];
+        $initial = Http::recorded()[0][0]->data();
+        $this->assertSame('AUTO', $initial['toolConfig']['functionCallingConfig']['mode']);
+        $this->assertSame('consultar_propiedad', $initial['tools'][0]['functionDeclarations'][0]['name']);
 
         $final = $client->complete(
             'Sos un asesor inmobiliario',
@@ -203,6 +206,43 @@ final class GeminiChatClientTest extends TestCase
         $this->assertSame('provider-b', $parts[0]['functionResponse']['id']);
         $this->assertSame('provider-a', $parts[1]['functionResponse']['id']);
         $this->assertSame(['name' => 'buscar_propiedades', 'response' => []], $parts[2]['functionResponse']);
+    }
+
+    public function test_final_request_omits_tools_but_preserves_signed_history(): void
+    {
+        $this->app['env'] = 'local';
+        Http::preventStrayRequests();
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => 'Respuesta verificada.']]]]],
+        ])]);
+        $reply = (new GeminiChatClient('fake-key', 'test-model', 20))->complete('System', [
+            ['role' => 'assistant', 'content' => [['type' => 'tool_use', 'id' => 'local', 'call_id' => 'provider', 'thoughtSignature' => 'opaque', 'name' => 'buscar_propiedades', 'input' => []]]],
+            ['role' => 'user', 'content' => [['type' => 'tool_result', 'tool_use_id' => 'local', 'content' => '{"ok":true,"data":{"items":[]}}']]],
+        ], [['name' => 'buscar_propiedades', 'description' => 'Search', 'input_schema' => ['type' => 'object']]], 600, false);
+        $data = Http::recorded()[0][0]->data();
+        $this->assertArrayNotHasKey('tools', $data);
+        $this->assertArrayNotHasKey('toolConfig', $data);
+        $this->assertSame('opaque', $data['contents'][0]['parts'][0]['thoughtSignature']);
+        $this->assertSame('provider', $data['contents'][1]['parts'][0]['functionResponse']['id']);
+        $this->assertSame('Respuesta verificada.', $reply->text());
+    }
+
+    public function test_final_stop_with_function_call_is_still_rejected(): void
+    {
+        $this->app['env'] = 'local';
+        Http::preventStrayRequests();
+        foreach (['buscar_propiedades', 'unknown_tool'] as $name) {
+            Http::swap(new Factory);
+            Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['functionCall' => ['name' => $name, 'args' => []]]]]]],
+            ])]);
+            try {
+                (new GeminiChatClient('fake-key', 'test-model', 20))->complete('', [['role' => 'user', 'content' => 'Reply']], [], 100, false);
+                $this->fail('Unexpected final tool call must be rejected');
+            } catch (LlmFailure $e) {
+                $this->assertSame(['INVALID_RESPONSE', false, true], [$e->errorCode, $e->retryable, $e->billable]);
+            }
+        }
     }
 
     public function test_refuses_outside_local_without_sending_any_request(): void
