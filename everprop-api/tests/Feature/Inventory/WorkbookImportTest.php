@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Inventory;
 
+use App\Domain\AgentRuntime\Tools\PublicInventory;
+use App\Domain\Inventory\Models\Property;
 use App\Domain\Inventory\Services\InventorySourceImport;
 use App\Domain\Inventory\Services\WorkbookInventorySource;
 use App\Domain\Tenancy\Models\Tenant;
+use App\Domain\Tenancy\TenantContext;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -66,6 +69,66 @@ final class WorkbookImportTest extends TestCase
         self::assertSame('ARS', $row->currency_code);
         self::assertSame('https://example.test/real.jpg', $row->main_image_url);
         self::assertSame('New source description', $row->description);
+    }
+
+    public function test_existing_project_keeps_its_stage_unless_metadata_is_replaced(): void
+    {
+        $source = $this->source();
+        $this->applySource($source);
+        $query = DB::table('projects')->where('tenant_id', $this->tenant->id);
+        self::assertSame('UNKNOWN', $query->value('status'));
+        $query->update(['status' => 'PRE_SALE', 'progress' => 40]);
+
+        $source['sha256'] = str_repeat('b', 64);
+        $this->applySource($source);
+        self::assertSame('PRE_SALE', $query->value('status'));
+        self::assertSame(40, (int) $query->value('progress'));
+        self::assertSame(1, (int) $query->value('total_units'));
+
+        $source['sha256'] = str_repeat('c', 64);
+        $plan = $this->importer->plan($source, $this->tenant->slug, 'preserve', [], true);
+        $this->importer->apply($source, $plan, ['target' => $plan['target'], 'rows' => $this->importer->snapshot($this->tenant->id)], false);
+        self::assertSame('UNKNOWN', $query->value('status'));
+    }
+
+    public function test_reviving_a_deleted_project_does_not_republish_it(): void
+    {
+        $source = $this->source();
+        $this->applySource($source);
+        $query = DB::table('projects')->where('tenant_id', $this->tenant->id);
+        $query->update(['status' => 'PRE_SALE', 'deleted_at' => now()]);
+
+        $source['sha256'] = str_repeat('b', 64);
+        $source['sheets']['Edificio']['records'][0]['data']['EdEst'] = 'EN OBRA';
+        $this->applySource($source);
+
+        self::assertNull($query->value('deleted_at'));
+        self::assertSame('UNKNOWN', $query->value('status'));
+    }
+
+    public function test_only_units_on_sale_or_for_rent_are_public_after_import(): void
+    {
+        $source = $this->source();
+        $product = $source['sheets']['Productos']['records'][0];
+        $status = $source['sheets']['Estado']['records'][0];
+        $source['sheets']['Productos']['records'] = [];
+        $source['sheets']['Estado']['records'] = [];
+        foreach ([1, 2, 3, 4, 6, 7, 8] as $i => $id) {
+            $product['row'] = $status['row'] = $i + 2;
+            $product['data'] = array_replace($product['data'], ['ProDep' => (string) $id, 'ProEId' => $id]);
+            $status['data'] = ['ProEId' => $id, 'ProEEst' => 'Estado '.$id];
+            $source['sheets']['Productos']['records'][] = $product;
+            $source['sheets']['Estado']['records'][] = $status;
+        }
+        $this->applySource($source);
+        DB::table('projects')->where('tenant_id', $this->tenant->id)->update(['status' => 'PRE_SALE']);
+
+        $this->app->instance(TenantContext::class, TenantContext::forTenant($this->tenant));
+        $public = Property::query()->publiclyVisible()
+            ->orderBy('legacy_status_id')->get(['legacy_status_id', 'operation']);
+
+        self::assertSame([[1, 'RENT'], [2, 'SALE']], $public->map(fn ($p) => [(int) $p->legacy_status_id, $p->operation->value])->all());
+        self::assertSame(2, app(PublicInventory::class)->query($this->tenant->id)->count());
     }
 
     public function test_other_tenants_are_unchanged_and_cross_tenant_cleanup_is_rejected(): void
