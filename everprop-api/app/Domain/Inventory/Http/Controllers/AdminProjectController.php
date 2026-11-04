@@ -3,6 +3,7 @@
 namespace App\Domain\Inventory\Http\Controllers;
 
 use App\Domain\Inventory\Enums\ProjectStatus;
+use App\Domain\Inventory\Enums\PropertyOperation;
 use App\Domain\Inventory\Enums\PropertyStatus;
 use App\Domain\Inventory\Http\Requests\ProjectIndexRequest;
 use App\Domain\Inventory\Http\Requests\PublishProjectRequest;
@@ -98,11 +99,20 @@ final class AdminProjectController extends InventoryController
     /** @return array<int|string, string|\Closure> */
     private function propertyCounts(): array
     {
+        $tenantId = $this->tenantContext->id();
+        $count = static fn (array $where = []) => static fn ($query) => $query->where('properties.tenant_id', $tenantId)->where($where);
+        $status = static fn (PropertyStatus $status) => ['properties.status' => $status->value];
+
         return [
-            'properties',
-            'properties as available_units_count' => static fn ($query) => $query->where('properties.status', PropertyStatus::AVAILABLE->value),
-            'properties as reserved_units_count' => static fn ($query) => $query->where('properties.status', PropertyStatus::RESERVED->value),
-            'properties as sold_units_count' => static fn ($query) => $query->where('properties.status', PropertyStatus::SOLD->value),
+            'properties as properties_count' => $count(),
+            'properties as available_units_count' => $count($status(PropertyStatus::AVAILABLE)),
+            'properties as reserved_units_count' => $count($status(PropertyStatus::RESERVED)),
+            'properties as sold_units_count' => $count($status(PropertyStatus::SOLD)),
+            'properties as available_sale_units_count' => $count([...$status(PropertyStatus::AVAILABLE), 'properties.operation' => PropertyOperation::SALE->value]),
+            'properties as available_rent_units_count' => $count([...$status(PropertyStatus::AVAILABLE), 'properties.operation' => PropertyOperation::RENT->value]),
+            'properties as rented_units_count' => $count($status(PropertyStatus::RENTED)),
+            'properties as not_sellable_units_count' => $count($status(PropertyStatus::NOT_SELLABLE)),
+            'properties as not_marketed_units_count' => $count($status(PropertyStatus::NOT_MARKETED)),
         ];
     }
 

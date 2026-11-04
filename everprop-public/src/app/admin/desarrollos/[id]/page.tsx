@@ -1,21 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { BarChart3, Map, Layers } from "lucide-react";
+import { ArrowRight, Layers, Ruler } from "lucide-react";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropProjects, loadEverpropPropertiesByProject, isInvalidEverpropSession } from "@/lib/everprop-api";
-import { cn } from "@/lib/utils";
-import PropertyList from '@/components/admin/PropertyList';
-import { projectLocationLabel, projectStatusLabel, projectTypeLabel, projectUnitCounts, projectCountLabel } from '@/lib/project-labels';
+import { AVAILABLE_UNIT_STATES, compareUnits, projectLocationLabel, projectStatusLabel, projectTypeLabel, projectUnitSummary, UNIT_STATES, unitDisplay, unitState, unitStateLabel, type UnitState } from '@/lib/project-labels';
+import { inventoryPriceLabel, propertyStatusLabel } from '@/lib/inventory-labels';
+import { ProjectStateBar } from "@/components/admin/ProjectCard";
 import { Button } from "@/components/ui/button";
 import InventoryMatrix from "@/components/admin/InventoryMatrix";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { useAuth } from "@/lib/auth-context";
 import { ProjectMaterials, MaterialErrorNotice } from "@/components/admin/BellomoResources";
+
+type UnitFilter = UnitState | "all" | "offered";
+const PAGE_SIZE = 24;
 
 export default function ProjectDetailView() {
   const params = useParams();
@@ -25,10 +29,12 @@ export default function ProjectDetailView() {
   
   const [project, setProject] = useState<Project | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "matrix">("overview");
+  const [activeTab, setActiveTab] = useState<"units" | "matrix" | "materials">("units");
   const [isGenerateLotsOpen, setIsGenerateLotsOpen] = useState(false);
   const [loadError, setLoadError] = useState<{ projectId: string; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [pickedFilter, setPickedFilter] = useState<UnitFilter | null>(null);
+  const [visibleUnits, setVisibleUnits] = useState(PAGE_SIZE);
 
   useEffect(() => {
     let active = true;
@@ -81,56 +87,73 @@ export default function ProjectDetailView() {
     </div>
   );
 
-  const counts = projectUnitCounts(properties);
+  const summary = projectUnitSummary(project, properties);
+  const offeredStates = AVAILABLE_UNIT_STATES.filter(state => summary.counts[state] > 0);
+  const defaultFilter: UnitFilter = offeredStates.length > 1 ? "offered" : offeredStates[0] ?? "all";
+  const unitFilter = pickedFilter ?? defaultFilter;
+  const filters: { id: UnitFilter; count: number; label: string }[] = [
+    ...(offeredStates.length > 1 ? [{ id: "offered" as const, count: summary.available, label: summary.available === 1 ? "disponible" : "disponibles" }] : []),
+    ...UNIT_STATES.filter(state => summary.counts[state] > 0).map(state => ({ id: state, count: summary.counts[state], label: unitStateLabel(state, summary.counts[state]) })),
+    { id: "all", count: summary.total, label: "en total" },
+  ];
+  const filteredUnits = properties.filter(property => {
+    const state = unitState(property);
+    return unitFilter === "all" || (unitFilter === "offered" ? AVAILABLE_UNIT_STATES.includes(state) : state === unitFilter);
+  }).sort(compareUnits);
 
   return (
     <div className="inventory-view inventory-detail projects-view space-y-6">
-      <header className="inventory-detail-header">
-        <h1>{project.name}</h1>
-        <p><span className="project-detail-status">{projectStatusLabel(project.status)}</span> · {projectTypeLabel(project.type)}</p>
-        <p>{projectLocationLabel(project)}</p>
-        {project.description && <p>{project.description}</p>}
-        {!isAdvisor && <Button onClick={() => setIsGenerateLotsOpen(true)}><Layers aria-hidden="true" /> Cargar manzana y lotes</Button>}
+      {!isAdvisor && <Link href="/admin/desarrollos" className="project-back">‹ Proyectos</Link>}
+      <header className="inventory-detail-header project-detail-header">
+        <div>
+          <h1>{project.name}</h1>
+          <p className="project-tags"><span className="project-detail-status">{projectStatusLabel(project.status)}</span> <span>{projectTypeLabel(project.type)} · {summary.total.toLocaleString("es-AR")} {summary.total === 1 ? "unidad" : "unidades"}</span></p>
+          <p className="project-meta">{projectLocationLabel(project)}</p>
+          {project.description && <p>{project.description}</p>}
+        </div>
+        {!isAdvisor && <Button variant="outline" onClick={() => setIsGenerateLotsOpen(true)}><Layers aria-hidden="true" /> Cargar manzana y lotes</Button>}
       </header>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200">
-        <button
-          aria-pressed={activeTab === "overview"}
-          onClick={() => setActiveTab("overview")}
-          className={cn(
-            "px-4 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors",
-            activeTab === "overview" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-          )}
-        >
-          <BarChart3 className="h-4 w-4" /> Resumen
-        </button>
-        <button
-          aria-pressed={activeTab === "matrix"}
-          onClick={() => setActiveTab("matrix")}
-          className={cn(
-            "px-4 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors",
-            activeTab === "matrix" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-          )}
-        >
-          <Map className="h-4 w-4" /> Matriz de inventario
-        </button>
+      {summary.total > 0 && <section className="project-state-summary" aria-label="Estado de las unidades">
+        <ProjectStateBar summary={summary} />
+        <div className="project-state-filters" role="group" aria-label="Filtrar unidades por estado">
+          {filters.map(filter => (
+            <button key={filter.id} type="button" aria-pressed={unitFilter === filter.id} onClick={() => { setPickedFilter(filter.id); setVisibleUnits(PAGE_SIZE); setActiveTab("units"); }}>
+              {filter.id !== "all" && filter.id !== "offered" && <span aria-hidden="true" className="project-dot" data-state={filter.id} />}
+              <span><strong>{filter.count.toLocaleString("es-AR")}</strong> {filter.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>}
+
+      <div className="project-tabs" role="group" aria-label="Sección del proyecto">
+        {([["units", "Unidades"], ["matrix", "Matriz"], ["materials", "Materiales"]] as const).map(([id, label]) => (
+          <button key={id} type="button" aria-pressed={activeTab === id} onClick={() => setActiveTab(id)}>{label}</button>
+        ))}
       </div>
 
-      <section className="project-summary" aria-label="Resumen de unidades">
-        <h2>Unidades del proyecto</h2>
-        <p>{properties.length} {properties.length === 1 ? 'unidad cargada' : 'unidades cargadas'}</p>
-        <ul className="project-counts">
-          {counts.map((count, index) => <li key={index}><strong>{count}</strong> {projectCountLabel(count, index)}</li>)}
-        </ul>
-      </section>
-      {activeTab === 'overview' && <>
-        {properties.length ? <PropertyList properties={properties} projects={[project]} readOnly={isAdvisor} /> : <p className="inventory-empty">Este proyecto todavía no tiene unidades cargadas.</p>}
-        {project.masterplanImage && <a className="inventory-cta" href={project.masterplanImage} target="_blank" rel="noreferrer">Ver plano del proyecto</a>}
+      {activeTab === "units" && (properties.length ? <section className="project-units" aria-label="Unidades">
+        {filteredUnits.slice(0, visibleUnits).map(property => <article key={property.id} className="project-unit">
+          <div className="project-unit-name">
+            <h2>{unitDisplay(property).name}</h2>
+            <p className="project-meta">{unitDisplay(property).detail}</p>
+          </div>
+          <p className="project-unit-area"><Ruler aria-hidden="true" size={18} />{property.area_m2 == null ? "Superficie sin informar" : `${property.area_m2.toLocaleString("es-AR", { maximumFractionDigits: 2 })} m²`}</p>
+          <p className="project-unit-state"><span aria-hidden="true" className="project-dot" data-state={unitState(property)} />{property.status === "available" && property.operation === "sale" ? "En venta" : property.status === "available" && property.operation === "rent" ? "En alquiler" : propertyStatusLabel(property.status)}</p>
+          <p className="project-unit-price">{inventoryPriceLabel(property)}</p>
+          <Link href={`/admin/properties/${property.id}`} className="inventory-secondary">Ver ficha <ArrowRight aria-hidden="true" size={18} /></Link>
+        </article>)}
+        <div className="project-units-more">
+          <p className="project-meta" aria-live="polite">Mostrando {Math.min(visibleUnits, filteredUnits.length).toLocaleString("es-AR")} de {filteredUnits.length.toLocaleString("es-AR")}{isAdvisor ? " · Solo lectura" : ""}</p>
+          {visibleUnits < filteredUnits.length && <button type="button" className="inventory-secondary" onClick={() => setVisibleUnits(count => count + PAGE_SIZE)}>Ver más</button>}
+        </div>
+      </section> : <p className="inventory-empty">Este proyecto todavía no tiene unidades cargadas.</p>)}
+      {activeTab === "matrix" && <InventoryMatrix properties={properties} />}
+      {activeTab === "materials" && <>
+        {project.masterplanImage && <a className="inventory-secondary" href={project.masterplanImage} target="_blank" rel="noreferrer">Ver plano del proyecto</a>}
+        {!isMockDataMode && <ProjectMaterials key={project.id} projectId={project.id} />}
+        {isMockDataMode && !project.masterplanImage && <p className="inventory-empty">Este proyecto todavía no tiene materiales cargados.</p>}
       </>}
-      {activeTab === 'matrix' && <InventoryMatrix properties={properties} />}
-
-      {activeTab === "overview" && !isMockDataMode && <ProjectMaterials key={project.id} projectId={project.id} />}
 
       {!isAdvisor && <GenerateLotsModal
         open={isGenerateLotsOpen}
