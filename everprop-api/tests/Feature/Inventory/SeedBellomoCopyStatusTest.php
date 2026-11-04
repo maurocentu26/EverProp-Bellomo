@@ -122,6 +122,25 @@ final class SeedBellomoCopyStatusTest extends TestCase
         self::assertSame(0, app(PublicInventory::class)->query($tenant->id)->count());
     }
 
+    public function test_link_legacy_only_assigns_ids_to_existing_projects_of_this_tenant(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'bellomo')->first() ?? Tenant::factory()->create(['slug' => 'bellomo']);
+        $other = Tenant::factory()->create();
+        $foreign = $this->project($other->id, null, 'Las Colinas 1');
+        $colinas = $this->project($tenant->id, null, 'Las Colinas 1');
+        $outside = $this->project($tenant->id, null, 'Las Colinas 2');
+
+        $this->artisan('everprop:seed-bellomo-copy', ['--tenant' => $tenant->id, '--link-legacy' => true])->assertSuccessful();
+
+        $row = DB::table('projects')->where('id', $colinas)->first();
+        self::assertSame(34, (int) $row->legacy_id);
+        self::assertSame('PRE_SALE', $row->status);
+        self::assertSame(7, (int) $row->progress);
+        self::assertNull(DB::table('projects')->where('id', $outside)->value('legacy_id'));
+        self::assertNull(DB::table('projects')->where('id', $foreign)->value('legacy_id'));
+        self::assertSame(0, DB::table('project_landing')->where('tenant_id', $tenant->id)->count());
+    }
+
     public function test_seed_rejects_any_target_other_than_bellomo(): void
     {
         $other = Tenant::factory()->create();

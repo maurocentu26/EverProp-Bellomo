@@ -20,7 +20,8 @@ Fuera de alcance: calcular el porcentaje vendido, cargar unidades de proyectos q
 - [SeedBellomoOfficialCopy.php](../../everprop-api/app/Console/Commands/SeedBellomoOfficialCopy.php):
   - `projectStatus()` deriva la etapa de la etiqueta del copy y ante una etiqueta desconocida da `UNKNOWN`, que no es público.
   - Nunca hace público un proyecto: si su estado no es público o su ficha está oculta, sigue así hasta que se publique desde el panel.
-  - Solo acepta el tenant `bellomo` y un ID numérico.
+  - Solo acepta los tenants `bellomo` y `bellomito-staging`, y un ID numérico.
+  - `--link-legacy` asigna el `legacy_id` a los proyectos existentes antes de importar. Staging no los tiene, y sin esto el importador crearía 25 proyectos duplicados y no públicos.
   - Los proyectos que no están en el Excel y no tienen unidades pierden `progress` y `total_units` inventados.
   - Completa la ciudad vacía desde el copy (El Rocío) en el proyecto y sus unidades.
   - Sus escrituras nuevas y dos heredadas quedan acotadas por `tenant_id`.

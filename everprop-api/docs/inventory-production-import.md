@@ -70,6 +70,8 @@ php artisan everprop:inventory-import verify \
 
 Data changes are one transaction with a tenant-specific lock. Repeating an already applied plan verifies it rather than inserting duplicates. Catalog foreign keys are added only when all existing non-null references across the database resolve; otherwise the relations phase reports pending work. Resolve those references before declaring the data release complete.
 
+If existing projects have no `legacy_id`, run `php artisan everprop:seed-bellomo-copy --tenant=ACTUAL_TENANT_ID --link-legacy` before planning, or the import creates a duplicate, non-public project for each.
+
 Then run `php artisan everprop:seed-bellomo-copy --tenant=ACTUAL_TENANT_ID` to set each project's stage from the official copy. It only runs on the `bellomo` tenant and never makes a project public: a project whose status is not public, or whose landing is hidden, stays that way until it is published from the panel. It rewrites the landing `cover`, `gallery`, `documents` and texts of the official projects, and fills a blank project locality, so review any web content edited by hand before running it. Run `verify` before this step: afterwards the same plan no longer matches, and reapplying it reports `Imported field differs`; generate a new plan instead.
 
 Check API readiness, administrator inventory counts and filters, all source statuses, unknown prices, missing-parent display, and an account without price access. Resume writes only after verification. Keep the archived workbook/plan and backups privately. If recovery is required, pause writers and restore the verified full database backup and matching prior application release together; do not run a destructive reverse migration against live imported data.

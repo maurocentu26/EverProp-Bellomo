@@ -91,6 +91,29 @@ final class WorkbookImportTest extends TestCase
         self::assertSame('UNKNOWN', $query->value('status'));
     }
 
+    public function test_linking_legacy_ids_before_import_avoids_duplicate_projects(): void
+    {
+        $this->tenant = Tenant::query()->where('slug', 'bellomo')->first() ?? Tenant::factory()->create(['slug' => 'bellomo']);
+        $existing = DB::table('projects')->insertGetId([
+            'tenant_id' => $this->tenant->id, 'public_id' => (string) Str::uuid(), 'name' => 'Las Colinas 1',
+            'project_type' => 'LAND_DEVELOPMENT', 'status' => 'COMPLETED', 'progress' => 0, 'total_units' => 20,
+            'city' => 'Ciudad', 'province' => 'Jujuy',
+        ]);
+        $source = $this->source();
+        $source['sheets']['Edificio']['records'][0]['data']['EdId'] = 34;
+        $source['sheets']['Productos']['records'][0]['data']['EdId'] = 34;
+
+        $this->artisan('everprop:seed-bellomo-copy', ['--tenant' => $this->tenant->id, '--link-legacy' => true])->assertSuccessful();
+        $this->applySource($source);
+
+        $projects = DB::table('projects')->where('tenant_id', $this->tenant->id)->where('legacy_id', 34)->get();
+        self::assertCount(1, $projects);
+        self::assertSame($existing, (int) $projects[0]->id);
+        self::assertSame('COMPLETED', $projects[0]->status);
+        self::assertSame(1, (int) $projects[0]->total_units);
+        self::assertSame($existing, (int) DB::table('properties')->where('tenant_id', $this->tenant->id)->where('legacy_ed_id', 34)->value('project_id'));
+    }
+
     public function test_reviving_a_deleted_project_does_not_republish_it(): void
     {
         $source = $this->source();

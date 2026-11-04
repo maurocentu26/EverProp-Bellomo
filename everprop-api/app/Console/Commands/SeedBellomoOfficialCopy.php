@@ -9,7 +9,8 @@ use Illuminate\Support\Str;
 
 final class SeedBellomoOfficialCopy extends Command
 {
-    protected $signature = 'everprop:seed-bellomo-copy {--tenant=1 : ID numérico del tenant (default 1)}';
+    protected $signature = 'everprop:seed-bellomo-copy {--tenant=1 : ID numérico del tenant (default 1)}
+        {--link-legacy : Solo asigna el legacy_id del Excel a los proyectos existentes, para correr antes de importar}';
 
     protected $description = 'Siembra los 32 proyectos oficiales de Bellomo con copy, categorización, portadas y logos para landing.';
 
@@ -428,13 +429,19 @@ final class SeedBellomoOfficialCopy extends Command
         }
 
         // The copy, covers and legacy ids are Bellomo's: any other tenant would get its catalog published.
-        if ($tenant->slug !== 'bellomo') {
-            $this->error("Este comando solo aplica al tenant bellomo, no a {$tenant->slug}.");
+        if (! in_array($tenant->slug, ['bellomo', 'bellomito-staging'], true)) {
+            $this->error("Este comando solo aplica a Bellomo y su staging, no a {$tenant->slug}.");
 
             return self::FAILURE;
         }
 
         $tenantId = (int) $tenant->id;
+
+        if ($this->option('link-legacy')) {
+            DB::transaction(fn () => $this->linkLegacyIds($tenantId));
+
+            return self::SUCCESS;
+        }
 
         $this->info("Iniciando carga de 32 proyectos oficiales con portadas y logos para el tenant {$tenantId} ({$tenant->slug})...");
 
@@ -603,6 +610,19 @@ final class SeedBellomoOfficialCopy extends Command
         $this->info('Carga de proyectos con fotos y logos de Cloudflare finalizada con éxito.');
 
         return self::SUCCESS;
+    }
+
+    /** Without this link the importer creates a duplicate, non-public project for each existing one. */
+    private function linkLegacyIds(int $tenantId): void
+    {
+        foreach (self::LEGACY_PROJECT_MAP as $slug => $legacy) {
+            $project = $this->findCanonicalProject($tenantId, $slug, self::OFFICIAL_PROJECTS[$slug]['name']);
+            if ($project !== null && $project->legacy_id === null) {
+                DB::table('projects')->where('tenant_id', $tenantId)->where('id', $project->id)
+                    ->update(['legacy_id' => $legacy['legacy_id'], 'updated_at' => now()]);
+                $this->line("  [~] {$project->name} -> legacy {$legacy['legacy_id']}");
+            }
+        }
     }
 
     /** The stage comes from the copy; status also decides whether the project's units are public. */
