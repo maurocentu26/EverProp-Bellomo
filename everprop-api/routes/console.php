@@ -12,6 +12,9 @@ Schedule::command('everprop:collections:notify')
 // each installment once, so a missed run is caught up by the next one.
 Schedule::command('everprop:collections:notify-upcoming')->hourly()->withoutOverlapping();
 
+// EVP-92: off-platform dump; 06:00 UTC = 03:00 in Buenos Aires, low traffic.
+Schedule::command('everprop:backup:database')->dailyAt('06:00')->withoutOverlapping()->onOneServer();
+
 Schedule::command('everprop:conversations:reconcile')->everyMinute()->withoutOverlapping();
 
 Artisan::command('inspire', function () {
