@@ -877,8 +877,6 @@ html[data-panel-text-size="grande"] :is(.collections-view,.collections-dialog) {
 .inventory-view h1 { font-size: var(--panel-h1); font-weight: 750; }
 .inventory-view h2 { font-size: 24px; font-weight: 700; }
 .inventory-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; }
-.inventory-cards.project-cards { display: flex; flex-wrap: wrap; }
-.project-cards > article { flex: 1 1 calc((100% - 40px) / 3); min-width: 0; }
 .resource-grid { display: flex; flex-wrap: wrap; gap: 16px; }
 .resource-grid > article { flex: 1 1 100%; min-width: 0; }
 @media (min-width: 640px) { .resource-grid > article { flex-basis: calc((100% - 16px) / 2); } }
@@ -917,11 +915,9 @@ html[data-panel-text-size="grande"] :is(.collections-view,.collections-dialog) {
 html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font-size: 20.4px; }
 @media (max-width: 1100px) {
  .inventory-cards { grid-template-columns: repeat(2,minmax(0,1fr)); }
- .project-cards > article { flex-basis: calc((100% - 20px) / 2); }
 }
 @media (max-width: 767px) {
  .inventory-cards { grid-template-columns: minmax(0,1fr); }
- .project-cards > article { flex-basis: 100%; }
  .inventory-card { padding: 20px; }
  .inventory-filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 16px; }
  .inventory-filters > button { grid-column: 1 / -1; }
@@ -958,19 +954,11 @@ html[data-panel-text-size="grande"] :is(.inventory-view,.inventory-cards) { font
 
 /* EVP-74: Projects inherit the inventory typography and surfaces. */
 .projects-view { min-width: 0; }
-.project-card h2 { font-size: 28px; font-weight: 750; overflow-wrap: break-word; }
-.project-cover { height: 180px; border-radius: 10px; background-size: cover; background-position: center; }
-.project-counts { display: flex; flex-wrap: wrap; gap: 12px 20px; list-style: none; padding: 0; }
-.project-counts strong { font-variant-numeric: tabular-nums; }
-.project-summary { display: grid; gap: 12px; padding-block: 16px; border-block: 1px solid var(--border); }
 .projects-view :is(.uppercase, [class*="tracking-"]) { text-transform: none; letter-spacing: normal; }
 .projects-view [class*="text-slate-"] { color: var(--foreground); }
 .projects-view [class*="bg-white"] { background: var(--card); }
 .projects-view a:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
 @media (max-width: 767px) {
- .projects-view > header, .projects-view .project-filters { display: flex; flex-direction: column; align-items: stretch; }
- .projects-view button, .projects-view .inventory-cta { width: 100%; min-height: 52px; }
- .projects-view .project-counts { flex-direction: column; }
 }
 
 /* EVP-75: shared lot matrix, using the inventory surfaces. */

@@ -87,6 +87,11 @@ export type Project = {
   availableUnitsCount?: number;
   reservedUnitsCount?: number;
   soldUnitsCount?: number;
+  availableSaleUnitsCount?: number;
+  availableRentUnitsCount?: number;
+  rentedUnitsCount?: number;
+  notSellableUnitsCount?: number;
+  notMarketedUnitsCount?: number;
 };
 
 export type Visit = {
