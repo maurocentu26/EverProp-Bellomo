@@ -508,6 +508,10 @@ final class SeedBellomoOfficialCopy extends Command
                             ->where('city', '')
                             ->update(['city' => $data['location']['city'], 'version' => DB::raw('version + 1'), 'updated_at' => now()]);
                     }
+                    // Only the workbook's label is replaced: a name edited in the panel stays.
+                    if ($project->name === (self::LEGACY_PROJECT_MAP[$slug]['legacy_name'] ?? null)) {
+                        $changes += ['name' => $data['name'], 'city' => $data['location']['city'], 'address' => $data['location']['address']];
+                    }
                     DB::table('projects')
                         ->where('tenant_id', $tenantId)
                         ->where('id', $projectId)

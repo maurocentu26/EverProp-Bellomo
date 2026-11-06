@@ -77,18 +77,44 @@ final class WorkbookImportTest extends TestCase
         $this->applySource($source);
         $query = DB::table('projects')->where('tenant_id', $this->tenant->id);
         self::assertSame('UNKNOWN', $query->value('status'));
-        $query->update(['status' => 'PRE_SALE', 'progress' => 40]);
+        $query->update(['status' => 'PRE_SALE', 'progress' => 40, 'name' => 'Las Colinas 1', 'city' => 'San Salvador de Jujuy', 'address' => 'Ruta 9']);
 
         $source['sha256'] = str_repeat('b', 64);
         $this->applySource($source);
         self::assertSame('PRE_SALE', $query->value('status'));
         self::assertSame(40, (int) $query->value('progress'));
         self::assertSame(1, (int) $query->value('total_units'));
+        self::assertSame('Las Colinas 1', $query->value('name'));
+        self::assertSame('San Salvador de Jujuy', $query->value('city'));
+        self::assertSame('Ruta 9', $query->value('address'));
 
         $source['sha256'] = str_repeat('c', 64);
         $plan = $this->importer->plan($source, $this->tenant->slug, 'preserve', [], true);
         $this->importer->apply($source, $plan, ['target' => $plan['target'], 'rows' => $this->importer->snapshot($this->tenant->id)], false);
         self::assertSame('UNKNOWN', $query->value('status'));
+        self::assertSame('Test loteo', $query->value('name'));
+    }
+
+    public function test_official_copy_restores_workbook_labels_but_keeps_names_edited_in_the_panel(): void
+    {
+        $this->tenant = Tenant::query()->where('slug', 'bellomo')->first() ?? Tenant::factory()->create(['slug' => 'bellomo']);
+        $project = fn (int $legacyId, string $name, string $city): int => DB::table('projects')->insertGetId([
+            'tenant_id' => $this->tenant->id, 'public_id' => (string) Str::uuid(), 'legacy_id' => $legacyId, 'name' => $name,
+            'project_type' => 'LAND_DEVELOPMENT', 'status' => 'UNKNOWN', 'total_units' => 0, 'city' => $city, 'province' => 'Jujuy',
+        ]);
+        $label = $project(34, 'LAS COLINAS', 'S.S. DE JUJUY');
+        $edited = $project(87, 'Arrabal editado', 'Otra ciudad');
+
+        $this->artisan('everprop:seed-bellomo-copy', ['--tenant' => $this->tenant->id])->assertSuccessful();
+
+        $restored = DB::table('projects')->where('id', $label)->first();
+        self::assertSame('Las Colinas 1', $restored->name);
+        self::assertSame('San Salvador de Jujuy', $restored->city);
+        self::assertStringContainsString('Ruta Nacional', (string) $restored->address);
+        self::assertSame(34, (int) $restored->legacy_id);
+        $kept = DB::table('projects')->where('id', $edited)->first();
+        self::assertSame('Arrabal editado', $kept->name);
+        self::assertSame('Otra ciudad', $kept->city);
     }
 
     public function test_linking_legacy_ids_before_import_avoids_duplicate_projects(): void
@@ -234,6 +260,48 @@ final class WorkbookImportTest extends TestCase
         self::assertNull($row->area_m2);
         self::assertSame(999, $row->legacy_ed_id);
         self::assertSame(0, json_decode($row->legacy_data_json, true)['ProM2']);
+    }
+
+    public function test_workbook_types_areas_and_orphan_rows_are_corrected_without_guessing(): void
+    {
+        $source = $this->source();
+        $base = $source['sheets']['Productos']['records'][0];
+        $source['sheets']['Productos']['records'] = [];
+        foreach ([
+            ['COCH', '1', 1, null, 'COCHERA 13,4 M2'], ['2P', '1', 9, 362, 'SEGUNDO PISO 362 M2'],
+            ['AP8', '1', 9, null, 'LOTE DE 315,99 M2'], ['AP8', '2', 9, null, 'LOTE 10X30 SUP. 300 M2'],
+            ['AP8', '3', 9, null, 'LOTE DE 296 M2 OCH. 4 M2'], ['AP8', '4', 9, null, 'LOTE DE 973.18 ESQUINA OCH 2.65 M2'],
+            ['AP8', '5', 9, 0, 'LOTE DE: 1002,95M2 OCH.13,90'], ['AP8', '6', 9, 125.5, 'LOTE DE 300 M2'], ['', '', 9, null, null],
+            ['AP9', '1', 9, null, 'LOTE DE 1.002 M2'], ['AP9', '2', 9, null, 'LOTE 10X30M2'], ['AP9', '3', 9, null, '2 HAS. 5000 M2'],
+        ] as $i => [$pis, $dep, $type, $area, $text]) {
+            $record = $base;
+            $record['row'] = $i + 2;
+            $record['data'] = array_replace($record['data'], ['ProPis' => $pis, 'ProDep' => $dep, 'ProTId' => $type, 'ProM2' => $area, 'ProDes1' => $text, 'ProEId' => 7]);
+            $source['sheets']['Productos']['records'][] = $record;
+        }
+        $orphan = $base;
+        $orphan['row'] = 20;
+        $orphan['data'] = array_replace($orphan['data'], ['EdId' => 999, 'ProPis' => 'F', 'ProM2' => null, 'ProDes1' => '1HA.1980.40M2']);
+        $source['sheets']['Productos']['records'][] = $orphan;
+
+        $type = $source['sheets']['ProdT01']['records'][0];
+        $type['data'] = ['ProTId' => 1, 'ProTTip' => 'DEPARTAMENTO'];
+        $source['sheets']['ProdT01']['records'][] = $type;
+        /** @var list<array<string, mixed>> $normalized */
+        $normalized = (new WorkbookInventorySource)->normalize($source)['properties'];
+        $properties = array_column($normalized, null, 'code');
+        self::assertSame('GARAGE', $properties['41-COCH-1']['category']);
+        self::assertSame('LOCAL', $properties['41-2P-1']['category']);
+        self::assertSame('LOT', $properties['41-AP8-1']['category']);
+        self::assertSame(1, $properties['41-COCH-1']['legacy_type_id']);
+        self::assertSame([13.4, 362.0, 315.99, 300.0, null, null, null, 125.5, null, null, null, null, null], array_column($normalized, 'area_m2'));
+        self::assertSame('NOT_MARKETED', $properties['41--']['status']);
+        self::assertSame('NOT_MARKETED', $properties['999-F-01']['status']);
+        self::assertSame('NOT_SELLABLE', $properties['41-AP8-1']['status']);
+
+        $source['sheets']['Productos']['records'] = [$source['sheets']['Productos']['records'][1]];
+        $source['sheets']['Edificio']['records'][0]['data']['EdNom'] = 'HUASI VIII';
+        self::assertSame('COMMERCIAL', (new WorkbookInventorySource)->normalize($source)['projects'][0]['project_type']);
     }
 
     public function test_duplicate_keys_and_unrecognized_headers_are_rejected(): void
