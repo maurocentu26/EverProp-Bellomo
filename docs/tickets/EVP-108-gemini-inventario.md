@@ -1,6 +1,26 @@
 # EVP-108 — Continuidad de herramientas y diagnóstico seguro de Gemini
 
-Rama `ticket/EVP-108-gemini-inventario` · base `5e19d6a` · fecha 2026-11-04.
+## Seguimiento después del PR #104
+
+Rama actual `ticket/EVP-108-gemini-finalizacion`, basada en `develop` actualizado `14f5c77`.
+
+La prueba real de staging no aprobó: `buscar_propiedades` terminó correctamente, pero la segunda respuesta de Gemini devolvió HTTP 200 / STOP con otra llamada de función desconocida, sin texto, cuando `allowTools=false`. Se rechazó correctamente con `INVALID_RESPONSE`. Reproducción: conversación ficticia `4fd350e5-3499-4753-a336-12eafd6cb8d9`; dos llamadas, con ledger y controles existentes. No se ejecutó la llamada desconocida.
+
+Este seguimiento cambia únicamente la construcción de solicitudes de Gemini: se incluyen declaraciones solo cuando `allowTools=true`; la llamada final omite `tools` y `toolConfig`, conservando las llamadas históricas firmadas y los resultados correlacionados. La respuesta inesperada continúa rechazándose. Los demás proveedores no cambian.
+
+**Es una hipótesis de mitigación, no una causa demostrada ni una solución validada en staging.** El contrato de Google indica que NONE ya impide llamadas; la implementación anterior no omitía ese control. Omitir declaraciones expresa la misma intención por otra vía. No se afirma que resolverá el comportamiento del proveedor hasta repetir el recorrido desplegado.
+
+Verificación del seguimiento:
+- RED: 11 pruebas, 66 aserciones; la nueva prueba falla porque el pedido final todavía incluye `tools`.
+- GREEN: 67 pruebas, 168 aserciones (Gemini, OpenAI, OutputGuard y ContactConfirmation), PHP 8.4.24 sin red y sin credenciales reales.
+- Pint: los dos archivos modificados pasan. Revisión independiente en snapshot externo: 67 pruebas, 168 aserciones; sin bloqueos.
+- Pruebas específicas: pedido inicial conserva AUTO; final omite declaraciones y configuración; firmas e IDs se conservan; funciones conocidas y desconocidas en una respuesta final STOP siguen rechazándose.
+- Evaluación nativa: medium / under_budget, sin nueva revisión adicional requerida.
+- PHPStan nivel 6 sobre los dos archivos modificados: sin errores.
+
+No se consumieron nuevas llamadas del proveedor durante este seguimiento local. La aceptación de inventario, confirmación de contacto y correo sigue pendiente de publicación y prueba autorizadas. La sección siguiente conserva la evidencia del PR #104 ya integrado.
+
+Entrega anterior: rama `ticket/EVP-108-gemini-inventario` · base `5e19d6a` · fecha 2026-11-04.
 
 ## 1. Qué pedía el ticket
 

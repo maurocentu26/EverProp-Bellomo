@@ -3,16 +3,19 @@ Branch: `ticket/EVP-108-gemini-inventario`, baseline `5e19d6a`. Delivery: ask-on
 Scope: diagnose and correct the existing Gemini adapter, preserve guards and billing. Estimated authored delta: 200 lines.
 
 ## Specs
+- S4: "Hacelo si podes" — follow-up after real pipeline returned HTTP200/STOP/unknown functionCall despite NONE. Prepare adapter-only omission of final declarations as a workaround hypothesis; preserve fail-closed handling and verify before claiming resolution.
 - S1: "lo hagamos" — implement Jira EVP-108 acceptance criteria: safe provider diagnostics, function-call continuity, regression tests and report; do not claim an unknown 5xx root cause.
 - S2: "en paralelo. recordar meter pull en develop" — update develop before an isolated ticket branch, preserve other work.
 - S3: Ticket acceptance requires staging inventory/tool continuation/contact confirmation evidence; remote mutation and provider consumption require scoped authorization. Pending until available.
 
 ## Tasks
+- T4 (S4): inline, local verification complete — RED11tests/66assertions/1failure; GREEN67tests/168assertions; Pint passes; independent verification no blockers. Baseline14f5c77; branch ticket/EVP-108-gemini-finalizacion. Risk items2/3. Native assessment medium/under_budget. Live acceptance pending; workaround hypothesis only.
 - T1 (S2): inline, complete — `git pull --ff-only origin develop`; isolated worktree from `5e19d6a`.
 - T2 (S1): inline, complete locally — RED8 tests/2 failures; GREEN65 tests/159 assertions; Pint2 files; scoped PHPStan passes. Independent security/contract verifier: no blockers. Risk items2/3.
 - T3 (S1,S3): inline, pending external validation — report written; staging needs authorized publication before testing corrected code. No provider consumption, merge or deploy performed.
 
 ## Log
+- Follow-up user authorization: "Hacelo si podes". Develop pulled14f5c77; isolated follow-up worktree. Read-only verifier confirmed documented NONE semantics already correct; omission is a workaround hypothesis requiring live proof.
 - L1: User request: "lo hagamos". Follow-up: "en paralelo. recordar meter pull en develop".
 - L2: Jira EVP-108 verified En curso, assigned Mauro. Known staging observations show PROVIDER_ERROR on initial and post-tool calls, exact HTTP unknown. Missing functionResponse ID found; causal relation to 5xx unproven.
 - L3: Existing local Docker stack belongs to ongoing work and remains untouched. Tests use an ephemeral PHP container with isolated configuration, no provider credentials.

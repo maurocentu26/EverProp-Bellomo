@@ -110,7 +110,7 @@ final class GeminiChatClient implements LlmClient
             ];
         }
 
-        if ($tools !== []) {
+        if ($allowTools && $tools !== []) {
             $functionDeclarations = array_map(function (array $t): array {
                 $parameters = $this->cleanSchema($t['input_schema'] ?? ['type' => 'object']);
 
@@ -124,7 +124,7 @@ final class GeminiChatClient implements LlmClient
             $payload['tools'] = [['functionDeclarations' => $functionDeclarations]];
             $payload['toolConfig'] = [
                 'functionCallingConfig' => [
-                    'mode' => $allowTools ? 'AUTO' : 'NONE',
+                    'mode' => 'AUTO',
                 ],
             ];
         }
