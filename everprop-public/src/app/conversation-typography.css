@@ -31,3 +31,13 @@ html[data-panel-text-size] .wa-inbox :is(.conversation-client-drawer-body,.conve
 /* Nested confirmation/trace dialogs must appear above the client drawer (z71). */
 html[data-panel-text-size] .wa-inbox[data-slot="dialog-content"] { z-index: 81; }
 body:has(.wa-inbox[data-slot="dialog-content"]) [data-slot="dialog-overlay"] { z-index: 80; }
+/* EVP-67 v2: full-screen workspace roles. */
+html[data-panel-text-size] .wa-inbox :is(.conversation-who-sub,.conversation-flag,.conversation-handoff-title,.conversation-takeover-text,.conversation-quick-head,.conversation-search-note) { font-size: var(--conversation-secondary); line-height: 1.45; }
+html[data-panel-text-size] .wa-inbox :is(.conversation-hint,.conversation-menu-head,.conversation-unread,.conversation-tabs button span) { font-size: var(--conversation-meta); line-height: 1.4; }
+html[data-panel-text-size] .wa-inbox .conversation-avatar { font-size: var(--conversation-secondary); }
+html[data-panel-text-size] .wa-inbox .conversation-who-name { font-size: calc(var(--conversation-text) * 18 / 17); line-height: 1.3; }
+html[data-panel-text-size] .wa-inbox .conversation-rail-item { font-size: 12px; line-height: 1.1; }
+html[data-panel-text-size="grande"] .wa-inbox .conversation-rail-item { font-size: 14px; }
+html[data-panel-text-size] .wa-inbox .conversation-rail-badge { font-size: 11px; line-height: 20px; }
+html[data-panel-text-size] .wa-inbox .conversation-who-name button { font-size: inherit; line-height: inherit; font-weight: 800; }
+@media (max-width: 767.98px) { html[data-panel-text-size] .wa-inbox .conversation-workspace-heading h1 { font-size: var(--conversation-heading); } }

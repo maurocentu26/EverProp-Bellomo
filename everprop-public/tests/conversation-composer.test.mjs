@@ -38,7 +38,8 @@ function inbox(messages = []) {
     'next/link': { default: 'Link' },
     '@base-ui/react/dialog': { Dialog: { Popup: 'SheetPopup', Portal: 'SheetPortal', Backdrop: 'SheetBackdrop' } },
     '@/components/ui/sheet': Object.fromEntries(['Sheet','SheetTrigger','SheetPortal','SheetOverlay','SheetClose','SheetTitle','SheetDescription'].map(name => [name,name])),
-    '@/components/theme/PanelTextSize': { PanelTextSizeControl: 'TextSizeControl' },
+    '@/components/theme/PanelTextSize': { PanelTextSizeControl: 'TextSizeControl', usePanelTextSize: () => 'actual' },
+    '@/components/theme/ThemeToggle': { ThemeToggle: 'ThemeToggle' },
     '@/hooks/use-current-session': { useCurrentSession: () => ({ user: { id: 'advisor', apiRole: 'ADVISOR' } }) },
     '@/lib/conversations-api': api,
     '@/lib/conversation-presentation': api,
@@ -60,7 +61,7 @@ function inbox(messages = []) {
   const settle = () => new Promise(resolve => setImmediate(resolve));
   const suggest = async () => { button('Sugerir').props.onClick(); await settle(); };
   const send = async () => { find(render(), node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await settle(); };
-  return { render, text, find, button, draft, suggest, send, sends };
+  return { render, text, find, button, draft, suggest, send, sends, state };
 }
 
 test('available suggestion appears as a card and preserves draft until explicitly used', async () => {
@@ -134,4 +135,31 @@ test('nontext bubbles use the shared description without changing the composer d
   assert.match(view.text(view.render()), /Shared description: CONTACT/);
   assert.equal(view.draft(), 'Mi borrador');
   assert.equal(view.sends.length, 0);
+});
+
+test('EVP-67: "/" filters quick replies and picking one replaces the search', () => {
+  const view = inbox();
+  view.state[23] = '/llame';
+  const panel = view.find(view.render(), node => node.props?.['aria-label'] === 'Respuestas rápidas' && node.props?.role === 'group');
+  assert.ok(panel, 'typing / opens the quick replies');
+  const picks = [];
+  view.find(panel, node => { if (node.type === 'button' && node.props.className === 'conversation-quick-item') picks.push(node); return false; });
+  assert.equal(picks.length, 1);
+  picks[0].props.onClick();
+  assert.equal(view.draft(), '¿Te queda bien que te llame? Pasame el mejor horario.');
+  assert.equal(view.sends.length, 0);
+});
+
+test('EVP-67: on a wide screen the client docks beside the chat instead of opening the modal drawer', () => {
+  const view = inbox();
+  view.find(view.render(), node => node.props?.id === 'conversation-client-toggle').props.onClick();
+  assert.equal(view.render().props.open, true, 'narrow screens use the drawer');
+  view.state[40] = true; // wide (min-width: 1280px) with the regular text size
+  const tree = view.render();
+  assert.equal(tree.props.open, false);
+  const docked = view.find(tree, node => node.props?.className === 'conversation-client-docked');
+  assert.ok(view.find(docked, node => node.type === 'VisitRequestsBoard'), 'docked panel shows the visits');
+  const drawer = view.find(tree, node => node.type === 'SheetPortal');
+  assert.equal(view.find(drawer, node => node.type === 'VisitRequestsBoard'), undefined, 'never mounted twice');
+  assert.equal(view.draft(), 'Mi borrador');
 });

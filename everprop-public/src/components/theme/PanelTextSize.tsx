@@ -40,6 +40,11 @@ export function PanelTextSizeProvider({ userId, children }: { userId: string; ch
   return <TextSizeContext.Provider value={{ size, choose, saved }}>{children}</TextSizeContext.Provider>;
 }
 
+/** The reading size chosen for the panel, for layouts that must change with it (not only scale). */
+export function usePanelTextSize(): PanelTextSize {
+  return useContext(TextSizeContext)?.size ?? "actual";
+}
+
 export function PanelTextSizeControl({ showLabel = false }: { showLabel?: boolean } = {}) {
   const context = useContext(TextSizeContext);
   if (!context) throw new Error("PanelTextSizeControl requires PanelTextSizeProvider");
