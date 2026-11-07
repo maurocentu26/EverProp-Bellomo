@@ -3,6 +3,7 @@ import "./globals.css";
 import "./admin-design.css";
 import "./admin-catalog.css";
 import "./panel-text-size.css";
+import "./conversation-typography.css";
 import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
 
