@@ -1,40 +1,98 @@
-# EVP-67 — Fullscreen Conversations integration
+# EVP-67 — Rediseño de la vista de Conversaciones (pantalla completa)
 
-Branch: `ticket/EVP-67-rediseno-vista-conversaciones`; base `d87d2d7`; isolated worktree `EverProp-EVP-67`. Date: 2026-10-30.
+Rama `ticket/EVP-67-rediseno-vista-conversaciones` · commits `eb4d5d9`, `3e0c28f`, `dfb07a5` (más sincronizaciones con `develop`: `5946575`, `49118d5`) · fecha 2026-11-07 · autor: Claude (agente) con Mauro Centurión
 
-Update: user requested proceeding with this implementation directly. Local ticket branch now includes current `origin/develop` fc8bb32, including EVP102 sidebar fixes. No separate EVP65 branch incorporated; latest fetch did not confirm that branch as an ancestor of develop. Implementation commit eb4d5d9; 22 focused tests pass after synchronization. No protected branch was merged or pushed. Native review remains pending; the earlier consent target is stale for any newly selected candidate.
+## 1. Qué pedía el ticket
 
-## 1. Requested outcome
-The user selected two columns with an on-demand client drawer after comparing prototypes. Use the viewport while retaining large controls. Preserve messaging, permissions, conversation state and visit actions. No push, merge, staging or production deployment authorized.
+Rediseñar `/admin/conversaciones` para que no sobrecargue la pantalla. Que ocupe toda la pantalla en desktop y en mobile, con un estilo parecido a WhatsApp y las acciones importantes más a mano. Tiene que verse bien con texto chico (17 px) y con texto grande (20,4 px, `data-panel-text-size="grande"`).
 
-## 2. Implementation
-- `MainLayout.tsx`: only exact `/admin/conversaciones` omits sidebar/navbar and surrounding padding. Providers/session checks unchanged; sibling routes keep existing shell.
-- `ConversationInbox.tsx`: visible return-to-panel link, existing text-size control, existing two-column inbox/chat, client content in existing Sheet/Base UI modal primitives. Keep portal mounted to preserve visit edit state. Escape/backdrop close and focus return handled by the primitive. Draft and message handlers unchanged.
-- `admin-design.css`: remove wide-screen third column and chat-hiding client overlay. Desktop drawer480px maximum, full-width on mobile, above keyboard chat z-index. Retain17/20.4px conversation typography and52px mobile controls. Constrain suggestion height to preserve composer space.
-- New shell regression tests plus drawer/draft regression in composer tests.
+**Fuera de alcance:**
+- La lógica de mensajería, los permisos, los estados de la conversación y la API.
+- Las otras rutas del panel, que mantienen su layout.
 
-## 3. Why
-Recover chrome space instead of shrinking content. Reuse existing components and visualViewport keyboard/history logic. No dependencies, credentials, API or schema changes. Prototype artifacts from the earlier comparison remain in the original checkout and are not part of this application integration commit.
+## 2. Qué se implementó
 
-## 4. Observed verification
-- Shell test RED before implementation; drawer test fails on baseline (`section` instead of `Sheet`) and passes on candidate.
-- Focused Node suite:22 passed,0 failed.
-- TypeScript noEmit:exit0. Focused ESLint:0errors,2existingwarnings (unused ShieldAlert and existing setState effect).
-- Independent verifier in fresh temp scratch:21 initial tests, typecheck and8 normalized sibling-shell/auth baseline comparisons pass. No new code blockers.
-- Production build in verifier scratch with explicit local mock mode:exit0,37/37pages generated. This does not validate production/API environment configuration.
-- Browser1440x1000: two columns400/1000px; drawer480px, chat remains visible; Escape restores trigger focus; reply draft survives drawer open/close. Return-to-panel link exercised.
-- Browser320x568 with Grande: send button bottom490.5px, history189.8px;390x844:send bottom766.5px. No horizontal page overflow. Drawer uses20.4px text and full mobile viewport. No physical iOS keyboard test.
-- Local preview `http://127.0.0.1:3217/admin/conversaciones` uses existing mock-profile login and synthetic data only. No real messages sent. Existing local port3000 server untouched.
-- Native review pending; independent verification is not a native receipt or deployment approval.
+**Primera iteración** (`eb4d5d9`, `3e0c28f`, del 2026-10-30):
+- En [MainLayout.tsx](../../everprop-public/src/components/admin/MainLayout.tsx), solo la ruta exacta `/admin/conversaciones` oculta la barra lateral y la superior del panel.
+- Se normalizaron los tamaños de texto en [conversation-typography.css](../../everprop-public/src/app/conversation-typography.css).
+- Se corrigió el orden de capas de los diálogos anidados: la confirmación de visita quedaba detrás del panel del cliente (z-index 81 contra 71).
 
-## 5. Pending / rollback
-Native review consent/outcome, user acceptance, push/PR and deployment are separate. Real backend integration and physical mobile keyboard not tested. No production readiness claim. Removing this unit restores previous shell/client presentation without data rollback. Earlier prototype320px correction was not rechecked; real integrated320px geometry was checked independently of that prototype.
+**Segunda iteración, layout v2** (`dfb07a5`). Diseño previo en Claude Design, con artboards de desktop y mobile en texto chico y grande:
 
-Risk: item3 (shared MainLayout; sibling routes and session gate verified against baseline).
+- **Estructura** ([ConversationInbox.tsx](../../everprop-public/src/components/admin/conversations/ConversationInbox.tsx)):
+  - Una barra angosta en desktop ([:590](../../everprop-public/src/components/admin/conversations/ConversationInbox.tsx:590)) con volver al panel, Chats (con la cantidad sin leer), el tamaño de texto y el tema.
+  - La lista de conversaciones y el chat.
+  - En mobile, una pantalla por vez: primero la lista y después el chat, con botón de volver.
+- **Ficha del cliente:**
+  - A partir de 1280 px y con texto chico, queda fija al costado del chat ([:125](../../everprop-public/src/components/admin/conversations/ConversationInbox.tsx:125), [:1112](../../everprop-public/src/components/admin/conversations/ConversationInbox.tsx:1112)).
+  - En pantallas más angostas, o con texto grande, se abre como panel deslizable.
+  - `VisitRequestsBoard` se monta una sola vez, para no perder lo que se está editando.
+- **Encabezado del chat:**
+  - Al tocar el nombre se abre la ficha.
+  - Los botones visibles son "Devolver a la IA", "Finalizar" y "Ver cliente". Lo demás está en el menú "Más" ([:981](../../everprop-public/src/components/admin/conversations/ConversationInbox.tsx:981)).
+  - En mobile, ese menú y el resumen se abren como hojas que suben desde abajo.
+  - El encabezado se adapta al ancho del chat con container queries ([admin-design.css:483](../../everprop-public/src/app/admin-design.css:483)): si no entra, los botones quedan solo con ícono. Esto mantiene el encabezado legible cuando la ficha está fija al costado.
+- **Lista:**
+  - Pestañas de bandeja y filtros en chips, reordenados: Todas, Esperando, Sin leer, Mías.
+  - Avatar con un punto que indica el canal.
+  - Se quitó el texto visible "Se actualiza solo · hora". El estado de actualización sigue anunciándose a lectores de pantalla ([:677](../../everprop-public/src/components/admin/conversations/ConversationInbox.tsx:677)).
+- **Zona de respuesta:**
+  - Selector "Responder a X" / "Nota interna".
+  - Botón `+` que muestra Adjuntar, Respuestas rápidas, Sugerir y Nota.
+  - Al escribir `/` se filtran las respuestas rápidas. Elegir una reemplaza lo escrito y Enter inserta la primera que coincide.
+  - Tarjeta de sugerencia del copiloto ([:879](../../everprop-public/src/components/admin/conversations/ConversationInbox.tsx:879)).
+  - "Tomar control y responder" cuando la IA tiene la conversación.
+- **Estilos** ([admin-design.css:252](../../everprop-public/src/app/admin-design.css:252)):
+  - El bloque "EVP-67 v2" reemplaza al layout anterior y al bloque de ajustes visuales previos.
+  - El fondo del hilo es suave y las burbujas entrantes son blancas.
+  - La zona de respuesta tiene un ancho máximo de 60 rem.
+- **Hook nuevo:** `usePanelTextSize()` en [PanelTextSize.tsx](../../everprop-public/src/components/theme/PanelTextSize.tsx:44), para los layouts que cambian según el tamaño de texto y no solo escalan.
+- **Esquema, variables y dependencias:** no hay cambios en ninguno de los tres.
 
-## Typography QA correction
-User reported disproportionate sizes. Browser reproduced Grande tab label15/count20.4, editor16.8/body20.4 and title38.016px. Root cause: blanket span sizing plus later global Grande compatibility overrides. Added a scoped stylesheet loaded after compatibility, semantic roles and conditional dialog scope. Body17/20.4, controls15/18, metadata13/15.6, section20/24 and title24/28.8; touch targets44/52 preserved.
+## 3. Por qué esta solución
 
-Six live DOM samples (1440,768,320px × Actual/Grande) passed `node tests/ui-conversation-typography.mjs --snapshot <captured-json>`. The same harness can drive a local mock browser with an existing Playwright installation; that runner branch was not executed here. Parent used CUA for actual measurements. Actions menu labels15/help14 verified at320px; client drawer and confirmation text verified. Found and fixed confirmation behind drawer (z50vs71); popup now81, optional overlay80. Opened/cancelled confirmation without scheduling a visit. No messaging or data logic changed.
+**Qué se reutilizó:**
+- `Sheet` de Base UI (panel deslizable con `keepMounted`), `PanelTextSizeControl` y `ThemeToggle`.
+- La lógica existente de `visualViewport`, que maneja el teclado en mobile.
+- Los handlers de envío, toma de control y cierre, que no cambiaron.
 
-Independent scratch verifier:22tests, typecheck and production webpack mock build37pages passed; standalone VisitRequestsBoard render unchanged after class-whitespace normalization. Focused lint:0errors,3preexisting effect warnings in inspected components. Physical iOS keyboard, live API and admin trace dialog rendering were not tested. Native review still pending; no push/deploy.
+**Decisiones:**
+- **Ficha fija solo cuando entra.** Con texto grande o por debajo de 1280 px, tres columnas dejan el chat demasiado angosto, así que la ficha pasa a ser un panel deslizable.
+- **Container queries en lugar de media queries.** El ancho disponible para el encabezado depende de si la ficha está abierta, no del ancho de la ventana.
+- **Pocas acciones visibles.** Solo las que se usan en cada conversación están a la vista; las de baja frecuencia (lead y visita, traza, reabrir, cerrar) van al menú.
+
+**Límites:**
+- `admin-design.css` no está dentro de una capa de CSS, así que pisa utilidades de Tailwind como `md:hidden`. Los elementos que solo se ven en mobile se ocultan con reglas de media explícitas.
+
+## 4. Cómo se verificó
+
+**Tests y chequeos** (2026-11-07):
+- `node --test` sobre los tests de conversaciones: **39 pasan**. Hay dos tests nuevos en `tests/conversation-composer.test.mjs`:
+  - El filtro de respuestas rápidas con `/`.
+  - La ficha fija en pantalla ancha.
+- `tsc --noEmit`: sin errores.
+- `npm run lint`: **0 errores**, 123 advertencias. Son preexistentes, sobre todo `any` y variables sin usar en `src/lib`.
+- **Build:** `npm run build` (Turbopack) falla en este worktree porque `node_modules` es un symlink que apunta fuera de la carpeta del proyecto. No es un error del código. Con `NEXT_PUBLIC_DATA_MODE=mock npx next build --webpack`, el build termina bien y genera todas las rutas. Conviene que CI o el revisor lo confirmen con el build normal.
+- `tests/assistant-trace.test.mjs` también falla en `develop`. Es ajeno a este ticket.
+
+**Navegador** (servidor local en modo mock, datos sintéticos, sin backend):
+- **Desktop 1440 px, texto chico y grande:**
+  - Ficha fija al costado.
+  - Filtro con `/` y envío de un mensaje.
+  - Con texto grande, la ficha se abre como panel deslizable.
+- **Mobile 375×812 y 320×568 con texto grande:** sin scroll horizontal. Lo confirmé midiendo en el DOM.
+
+**Revisiones:** no tocó datos ni IA (solo presentación), así que no correspondía `tenant-isolation-reviewer` ni `llm-security-reviewer`.
+
+**No verificado:**
+- Teclado real en un teléfono.
+- La API real.
+- Los diálogos de reanudar y de plantillas en el layout nuevo.
+
+## 5. Pendientes y riesgos
+
+- **Encabezado en mobile:** sigue midiendo 85 px de alto, más de lo previsto. Conviene revisarlo en un teléfono real.
+- **Layout compartido:** `MainLayout.tsx` lo usan todas las rutas del panel. Solo cambia para la ruta exacta `/admin/conversaciones`; las demás se compararon contra `develop` en la primera iteración.
+- **Archivo de tareas:** `odd/tasks/conversations-fullscreen.md` entró en la primera iteración. Es el registro de trabajo del agente; se puede quitar si no se quiere en el repo.
+- **Destino:** este módulo es de conversaciones, así que este PR va a `develop` y nunca a `main`.
+- **Despliegue:** no se desplegó en staging ni en producción.
