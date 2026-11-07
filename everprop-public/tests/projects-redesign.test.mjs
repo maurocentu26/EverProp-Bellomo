@@ -46,6 +46,8 @@ test('EVP-74 project card counts every state and only joins existing location pa
   const coverHtml=renderToStaticMarkup(React.createElement(Card,{project:{...project,coverImage:'/project-cover.jpg'},properties}));
   assert.match(coverHtml,/role="img"[^>]*aria-label="Proyecto prueba"/);
   assert.match(coverHtml,/project-cover.jpg/);
+  const precomputedHtml=renderToStaticMarkup(React.createElement(Card,{project:{...project,propertiesCount:123,availableUnitsCount:32,reservedUnitsCount:0,soldUnitsCount:91},properties:[]}));
+  for(const value of ['123 unidades cargadas','Vendidas: 91 de 123 unidades','32</strong> disponibles','0</strong> reservadas','91</strong> vendidas'])assert.ok(precomputedHtml.includes(value),value);
 });
 
 const nodes=t=>!t||typeof t!=='object'?[]:Array.isArray(t)?t.flatMap(nodes):[t,...nodes(t.props?.children)];

@@ -38,6 +38,7 @@ export default function GlobalInventoryMatrixPage() {
         } else {
           const mockProperties = isMockDataMode ? loadPropertyList(sampleProperties, "c1") : [];
           for (const project of allProjects) {
+            if (!isMockDataMode && typeof project.propertiesCount === "number") { if (project.propertiesCount > 0) { setSelectedProjectId(project.id); break; } continue; }
             const units = isMockDataMode ? mockProperties.filter(unit => unit.projectId === project.id) : await loadEverpropPropertiesByProject(project.id);
             if (!active) return;
             if (units.length) {

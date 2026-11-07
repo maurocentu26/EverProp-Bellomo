@@ -179,7 +179,7 @@ export function LeadFollowUpTimeline({
 
                   {/* Fila inferior: Próximo contacto / Ver Detalle */}
                   <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 pt-2 text-xs text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center gap-1.5 truncate">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                       {item.nextContactAt ? (
                         <span className="inline-flex items-center gap-1 font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 text-[11px] dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-300">
                           <CalendarCheck className="size-3" />

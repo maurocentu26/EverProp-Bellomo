@@ -4,6 +4,7 @@ namespace App\Domain\AgentRuntime\Llm;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /** Gemini adapter for local and explicitly enabled Railway staging. Never logs credentials or response bodies. */
@@ -32,6 +33,8 @@ final class GeminiChatClient implements LlmClient
         }
 
         $toolNamesById = [];
+        $providerIdsById = [];
+        $hasToolResults = false;
         $contents = [];
 
         foreach ($messages as $message) {
@@ -49,7 +52,11 @@ final class GeminiChatClient implements LlmClient
             $parts = [];
             foreach ($message['content'] as $block) {
                 if ($block['type'] === 'text') {
-                    $parts[] = ['text' => $block['text']];
+                    $part = ['text' => $block['text']];
+                    if (isset($block['thoughtSignature'])) {
+                        $part['thoughtSignature'] = $block['thoughtSignature'];
+                    }
+                    $parts[] = $part;
                 } elseif ($block['type'] === 'tool_use') {
                     $toolNamesById[$block['id']] = $block['name'];
                     $functionCall = [
@@ -58,6 +65,7 @@ final class GeminiChatClient implements LlmClient
                     ];
                     if (isset($block['call_id'])) {
                         $functionCall['id'] = $block['call_id'];
+                        $providerIdsById[$block['id']] = $block['call_id'];
                     }
                     $part = ['functionCall' => $functionCall];
                     if (isset($block['thoughtSignature'])) {
@@ -65,16 +73,19 @@ final class GeminiChatClient implements LlmClient
                     }
                     $parts[] = $part;
                 } elseif ($block['type'] === 'tool_result') {
+                    $hasToolResults = true;
                     $toolName = $toolNamesById[$block['tool_use_id']] ?? 'tool';
                     $decoded = json_decode((string) $block['content'], true);
                     $result = is_array($decoded) ? $decoded : ['output' => $block['content']];
 
-                    $parts[] = [
-                        'functionResponse' => [
-                            'name' => $toolName,
-                            'response' => $result,
-                        ],
+                    $functionResponse = [
+                        'name' => $toolName,
+                        'response' => $result,
                     ];
+                    if (isset($providerIdsById[$block['tool_use_id']])) {
+                        $functionResponse['id'] = $providerIdsById[$block['tool_use_id']];
+                    }
+                    $parts[] = ['functionResponse' => $functionResponse];
                 }
             }
 
@@ -129,6 +140,20 @@ final class GeminiChatClient implements LlmClient
             throw new LlmFailure('TIMEOUT', retryable: true, billable: true);
         }
 
+        if (! $response->successful()) {
+            $providerStatus = $response->json('error.status');
+            Log::warning('Gemini request failed', [
+                'http_status' => $response->status(),
+                'provider_status' => in_array($providerStatus, [
+                    'INVALID_ARGUMENT', 'FAILED_PRECONDITION', 'OUT_OF_RANGE', 'UNAUTHENTICATED',
+                    'PERMISSION_DENIED', 'NOT_FOUND', 'ALREADY_EXISTS', 'RESOURCE_EXHAUSTED',
+                    'CANCELLED', 'DATA_LOSS', 'UNKNOWN', 'INTERNAL', 'UNAVAILABLE',
+                    'DEADLINE_EXCEEDED', 'ABORTED', 'UNIMPLEMENTED',
+                ], true) ? $providerStatus : null,
+                'phase' => $hasToolResults ? 'tool_continuation' : 'initial',
+            ]);
+        }
+
         if ($response->status() === 429) {
             throw new LlmFailure('RATE_LIMITED', retryable: true, billable: false);
         }
@@ -158,7 +183,11 @@ final class GeminiChatClient implements LlmClient
 
         foreach ($candidate['content']['parts'] ?? [] as $part) {
             if (isset($part['text']) && is_string($part['text']) && $part['text'] !== '') {
-                $content[] = ['type' => 'text', 'text' => $part['text']];
+                $item = ['type' => 'text', 'text' => $part['text']];
+                if (isset($part['thoughtSignature'])) {
+                    $item['thoughtSignature'] = $part['thoughtSignature'];
+                }
+                $content[] = $item;
             } elseif (isset($part['functionCall']) && is_array($part['functionCall'])) {
                 if (! $allowTools || ! is_string($part['functionCall']['name'] ?? null)) {
                     throw new LlmFailure('INVALID_RESPONSE', retryable: false, billable: true);

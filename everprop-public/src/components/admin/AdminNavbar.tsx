@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
 import { Bell, Check, ExternalLink, Home, Inbox, Menu, MessagesSquare, Users, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
+import { nextTopbarState } from "@/lib/topbar-scroll";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -38,6 +39,33 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const topbarRef = useRef<HTMLElement>(null);
+  // Se oculta al bajar y vuelve al subir. Las vistas con scroll interno, como Conversaciones, no mueven este contenedor.
+  useEffect(() => {
+    const topbar = topbarRef.current;
+    const scroller = document.querySelector<HTMLElement>('[data-admin-scroll-container="true"]');
+    if (!topbar || !scroller) return;
+    let state = { hidden: false, anchor: scroller.scrollTop };
+    const apply = (hidden: boolean) => {
+      state.hidden = hidden;
+      topbar.dataset.hidden = String(hidden);
+      topbar.style.marginTop = hidden ? `-${topbar.offsetHeight}px` : "";
+    };
+    const onScroll = () => {
+      const inUse = topbar.querySelector(':focus-visible, [aria-haspopup][aria-expanded="true"]');
+      const height = topbar.offsetHeight;
+      const next = nextTopbarState(state, { y: scroller.scrollTop, maxScroll: scroller.scrollHeight - scroller.clientHeight, height });
+      state = { hidden: state.hidden, anchor: next.anchor };
+      apply(next.hidden && !inUse);
+    };
+    const onFocus = () => apply(false);
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    topbar.addEventListener("focusin", onFocus);
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      topbar.removeEventListener("focusin", onFocus);
+    };
+  }, []);
   const soundEnabledRef = useRef(false);
   const seenNotificationIds = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -209,7 +237,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   return (
     <>
       {user?.id && <NotificationPermissionPrompt key={user.id} />}
-      <header className={cn("admin-topbar z-30 border-b border-border bg-card px-4 py-3 lg:px-8 text-card-foreground", className)}>
+      <header ref={topbarRef} className={cn("admin-topbar z-30 border-b border-border bg-card px-4 py-3 lg:px-8 text-card-foreground", className)}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <Button
@@ -224,7 +252,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
                 setIsMenuOpen(false);
                 toggleSidebar();
               }}
-              className={cn("size-9 sm:size-10 p-0 shrink-0 rounded-xl hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors", isAdvisor && "advisor-top-menu")}
+              className={cn("size-11 min-h-11 min-w-11 p-0 shrink-0 rounded-xl hover:bg-muted dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors", isAdvisor && "advisor-top-menu")}
               aria-label={
                 isMobile
                   ? "Abrir menú principal"
@@ -244,7 +272,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden items-center gap-2 xl:inline-flex"
+                className="hidden min-h-11 items-center gap-2 xl:inline-flex"
                 onClick={() => router.push("/admin/properties/new")}
               >
                 <Plus className="h-4 w-4" /> Activo
@@ -253,7 +281,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
             {!isEngineer && (
               <Button
                 size="sm"
-                className="hidden items-center gap-2 bg-blue-600 text-white hover:bg-blue-700 xl:inline-flex"
+                className="hidden min-h-11 items-center gap-2 bg-blue-600 text-white hover:bg-blue-700 xl:inline-flex"
                 onClick={() => router.push("/admin/leads/new")}
               >
                 <Plus className="h-4 w-4" /> Lead
@@ -267,7 +295,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
             {/* Notifications Drawer (Sheet) */}
             <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
               <SheetTrigger
-                className="relative inline-flex size-9 sm:size-10 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="relative inline-flex size-11 min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Notificaciones"
               >
                 <motion.div animate={bellControls}>

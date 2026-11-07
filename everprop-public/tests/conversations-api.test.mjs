@@ -60,6 +60,7 @@ test('WhatsApp-style thread helpers: day separators, bubble time and avatar lett
   assert.equal(api.dayLabel(new Date(2026, 9, 4, 23, 59).toISOString(), now), 'Ayer');
   assert.match(api.dayLabel(new Date(2026, 9, 1, 10).toISOString(), now), /1 de octubre/);
   assert.match(api.dayLabel(new Date(2025, 9, 1, 10).toISOString(), now), /2025/);
+  assert.doesNotMatch(api.dayLabel(new Date(2026, 9, 1, 10).toISOString(), now, 'short'), /octubre|jueves/);
   assert.equal(api.sameDay(new Date(2026, 9, 5, 0, 1).toISOString(), new Date(2026, 9, 5, 23, 59).toISOString()), true);
   assert.equal(api.sameDay(new Date(2026, 9, 4, 23, 59).toISOString(), new Date(2026, 9, 5, 0, 1).toISOString()), false);
   assert.match(api.clockTime(new Date(2026, 9, 5, 9, 5).toISOString()), /^09:05$/);
@@ -86,7 +87,7 @@ test('incremental reads pass the cursor and the list preview names who spoke', a
   await api.getConversationMessages('a b', 41);
   assert.equal(calls[0].path, '/api/v1/admin/conversations/a%20b/messages?after=41');
   assert.equal(api.previewText({ last_message: { sender: 'BOT', text: 'Hola\n  ¿en qué\tte ayudo?' } }), 'IA: Hola ¿en qué te ayudo?');
-  assert.equal(api.previewText({ last_message: { sender: 'CONTACT', text: null } }), '[contenido no textual]');
+  assert.equal(api.previewText({ last_message: { sender: 'CONTACT', text: null } }), 'Contenido no disponible en el panel. Ver en la aplicaci\u00f3n de origen.');
   assert.equal(api.previewText({ last_message: null }), '');
   assert.equal(api.previewText({ last_message: { sender: 'USER', text: null, type: 'IMAGE' } }), 'Asesor: 📷 Foto');
   assert.equal(api.previewText({ last_message: { sender: 'USER', text: 'Plano', type: 'DOCUMENT' } }), 'Asesor: 📄 PDF: Plano');
@@ -98,4 +99,19 @@ test('reopen sends the observed closed epoch so delayed retries cannot reopen a 
   await api.reopenConversation('abc/..', 7);
   assert.equal(calls.at(-1).path, '/api/v1/admin/conversations/abc%2F../reopen');
   assert.deepEqual(JSON.parse(calls.at(-1).init.body), { expected_epoch: 7 });
+});
+
+// Synthetic provider categories; these do not reproduce a historical Instagram card.
+test('nontext descriptions are shared, allowlisted and never replace original text', () => {
+  for (const [event_kind, expected] of [['CONTACT', 'Contacto compartido'], ['INTERACTIVE', 'Mensaje interactivo'], ['UNSUPPORTED', 'Contenido no compatible']]) {
+    const description = api.messageDescription({ text: null, event_kind });
+    assert.ok(description.startsWith(expected));
+    assert.equal(api.previewText({ last_message: { sender: 'CONTACT', text: null, event_kind } }), description);
+  }
+  assert.equal(api.messageDescription({ text: 'Mi texto\noriginal', event_kind: 'CONTACT' }), 'Mi texto\noriginal');
+  assert.equal(api.messageDescription({ text: null, event_kind: 'https://private.example/phone' }), 'Contenido no disponible en el panel. Ver en la aplicación de origen.');
+  assert.equal(api.messageDescription({ text: null, type: 'AUDIO' }), 'Audio. Ver en la aplicación de origen.');
+  for (const event_kind of ['UNKNOWN', '__proto__', 'constructor']) {
+    assert.equal(api.messageDescription({ text: null, type: 'CONTACT', event_kind }), 'Contenido no disponible en el panel. Ver en la aplicación de origen.');
+  }
 });

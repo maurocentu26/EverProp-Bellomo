@@ -111,7 +111,7 @@ export function GlobalSearch() {
       <button
         type="button"
         onClick={() => setIsSearchFocused(true)}
-        className="flex h-9 sm:h-10 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-left text-xs sm:text-sm text-slate-500 shadow-2xs transition-colors hover:border-slate-300 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
+        className="flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-left text-xs sm:text-sm text-slate-500 shadow-2xs transition-colors hover:border-slate-300 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
         aria-label="Abrir búsqueda global"
       >
         <Search className="h-4 w-4 sm:h-4.5 sm:w-4.5 shrink-0 text-slate-400" aria-hidden="true" />

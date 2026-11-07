@@ -84,6 +84,9 @@ export type Project = {
   masterplanImage?: string;
   coverImage?: string;
   propertiesCount?: number;
+  availableUnitsCount?: number;
+  reservedUnitsCount?: number;
+  soldUnitsCount?: number;
 };
 
 export type Visit = {

@@ -21,7 +21,7 @@
   overflow-wrap: normal;
   hyphens: manual;
 }
-:is(.mi-agenda,.collections-view,.inventory-view,.settings-view) h1 { font-size: clamp(28px,3vw,34px); line-height: 1.2; letter-spacing: -.03em; }
+:is(.mi-agenda,.collections-view,.inventory-view,.settings-view) h1 { font-size: var(--panel-h1, 34px); line-height: 1.2; letter-spacing: -.03em; }
 :is(.mi-agenda,.collections-view,.inventory-view,.settings-view) :is(h1,h2,h3) { text-wrap: balance; }
 :is(.mi-agenda,.collections-view,.inventory-view,.settings-view) :is(button,a,input,select,textarea) { transition: background-color 350ms, color 350ms, transform 150ms; }
 :is(.mi-agenda,.collections-view,.inventory-view,.settings-view) button:active { transform: scale(.97); }
@@ -113,7 +113,7 @@
 .dark :is(.mi-agenda,.collections-view,.inventory-view,.settings-view) { --catalog-soft: #26332e; }
 .dark .mi-agenda .agenda-days button:not([aria-pressed="true"]),.dark .settings-view dd { color: #e6ebe7; }
 .dark .inventory-card .inventory-status:not([data-status="available"],[data-status="reserved"],[data-status="sold"]),.dark .project-card .project-counts li:nth-child(n+3),.dark .lots-status[data-status="sold"],.dark .lots-cell[data-status="sold"] { color: #e6ebe7; }
-html[data-panel-text-size="grande"] :is(.mi-agenda,.collections-view,.collections-dialog,.inventory-view,.settings-view) { font-size: 20.4px; }
+html[data-panel-text-size="grande"] :is(.mi-agenda,.collections-view,.collections-dialog,.inventory-view,.settings-view,.knowledge-view,.stats-view) { font-size: 20.4px; }
 @media (width < 1200px) {
   .mi-agenda .agenda-days-week { grid-template-columns: repeat(4,minmax(0,1fr)); }
   .collections-overview { grid-template-columns: minmax(0,1fr); }

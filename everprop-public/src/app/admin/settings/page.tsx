@@ -20,7 +20,7 @@ export default function SettingsPage() {
     <section className="rounded-2xl border border-border bg-card p-5">
       <h2 className="font-semibold">Apariencia y lectura</h2><p>Elegí cómo querés ver y leer tu panel.</p>
       <div className="mt-4 flex items-center justify-between gap-4 border-b border-border pb-4"><div><h3 className="text-sm font-medium">Modo claro u oscuro</h3><p className="mt-1 text-sm text-muted-foreground">Elegí el contraste que te resulte más cómodo.</p></div><ThemeToggle showLabel /></div>
-      <div className="flex items-center justify-between gap-4 pt-4"><div><h3 className="text-sm font-medium">Tamaño del texto</h3><p className="mt-1 text-sm text-muted-foreground">Actual o Grande, un 20 % mayor.</p></div><PanelTextSizeControl showLabel /></div>
+      <div className="flex items-center justify-between gap-4 pt-4"><div><h3 className="text-sm font-medium">Tamaño del texto</h3><p className="mt-1 text-sm text-muted-foreground">Chica o Grande, un 20 % mayor.</p></div><PanelTextSizeControl showLabel /></div>
     </section>
     <PushPreferences />
     <WhatsAppConnect />

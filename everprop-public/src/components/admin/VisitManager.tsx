@@ -426,7 +426,7 @@ export default function VisitManager({
                         </div>
                         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                             <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {visit.phone || 'N/A'}</span>
-                            <span className="flex min-w-0 items-center gap-1 break-all"><Mail className="h-3 w-3 shrink-0" /> {visit.email || 'N/A'}</span>
+                            <span className="lead-email flex min-w-0 items-center gap-1 break-all"><Mail className="h-3 w-3 shrink-0" /> {visit.email || 'N/A'}</span>
                         </div>
                         {visit.notes && (
                             <div className="mt-2 flex items-start gap-1.5 p-2 bg-amber-50/50 rounded-lg border border-amber-100/50 dark:bg-amber-950/20 dark:border-amber-900/40">

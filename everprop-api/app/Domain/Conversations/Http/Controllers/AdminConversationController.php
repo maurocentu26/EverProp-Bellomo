@@ -10,6 +10,7 @@ use App\Domain\Conversations\Services\ChannelPolicy;
 use App\Domain\Conversations\Services\ConversationAttachments;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
+use App\Domain\Conversations\Services\MetaWebhookProcessor;
 use App\Domain\Conversations\Services\OutboundDispatcher;
 use App\Domain\Conversations\Services\WhatsAppMediaFetcher;
 use App\Domain\Conversations\Services\WhatsAppTemplates;
@@ -69,6 +70,7 @@ final class AdminConversationController extends Controller
             ->selectSub($this->lastMessage('LEFT(m.text_body, 140)'), 'preview_text')
             ->selectSub($this->lastMessage('m.sender_type'), 'preview_sender')
             ->selectSub($this->lastMessage('m.message_type'), 'preview_type')
+            ->selectSub($this->lastMessage("JSON_UNQUOTE(JSON_EXTRACT(m.metadata_json, '$.event_kind'))"), 'preview_event_kind')
             ->selectSub($this->waitingSince(), 'waiting_since')
             ->simplePaginate(50);
         $hours = app(BusinessHours::class);
@@ -80,7 +82,8 @@ final class AdminConversationController extends Controller
                 'channel' => $c->channel_type, 'contact_name' => $c->display_name, 'unread' => (int) $c->unread_count,
                 'assigned_user' => $c->assigned_user_id ? ['id' => $c->assigned_user_id, 'name' => $c->assigned_user_name] : null,
                 'last_activity_at' => CarbonImmutable::parse($c->last_activity_at, 'UTC')->toISOString(),
-                'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender, 'type' => $c->preview_type],
+                'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender, 'type' => $c->preview_type,
+                    'event_kind' => MetaWebhookProcessor::presentEventKind($c->preview_event_kind)],
             ] + $this->waiting($c, $hours))->all(),
         ]);
     }
@@ -166,7 +169,7 @@ final class AdminConversationController extends Controller
         $after = max(0, (int) $request->query('after', 0));
         $messages = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)
             ->where('sequence', '>', $after)->orderBy('sequence')->limit(200)
-            ->get(['sequence', 'direction', 'sender_type', 'text_body', 'delivery_status', 'occurred_at', 'metadata_json', 'media_json']);
+            ->get(['sequence', 'direction', 'sender_type', 'message_type', 'text_body', 'delivery_status', 'occurred_at', 'metadata_json', 'media_json']);
         $noteAuthor = fn ($m): ?int => $m->direction === 'INTERNAL' ? (json_decode((string) $m->metadata_json, true)['author_user_id'] ?? null) : null;
         $authors = DB::table('users')->where('tenant_id', $row->tenant_id)->whereIn('id', $messages->map($noteAuthor)->filter()->unique()->all())->pluck('display_name', 'id');
         if ($user->role() !== RoleCode::READ_ONLY && (int) $row->assigned_user_id === (int) $user->id) {
@@ -185,6 +188,8 @@ final class AdminConversationController extends Controller
             'data' => $messages->map(fn ($m) => [
                 'sequence' => (int) $m->sequence, 'direction' => $m->direction, 'sender' => $m->sender_type,
                 'text' => $m->text_body, 'status' => $m->delivery_status,
+                'type' => $m->message_type,
+                'event_kind' => MetaWebhookProcessor::presentEventKind(json_decode((string) $m->metadata_json, true)['event_kind'] ?? null),
                 'at' => CarbonImmutable::parse($m->occurred_at, 'UTC')->toISOString(),
                 'media' => ConversationAttachments::present($m->media_json, "/api/v1/admin/conversations/{$row->public_id}/media/{$m->sequence}"),
             ] + ($m->direction === 'INTERNAL' ? ['author' => $authors[$noteAuthor($m)] ?? null] : []))->all(),

@@ -18,7 +18,7 @@ export type ConversationSummary = {
   unread: number;
   assigned_user: { id: string; name: string } | null;
   last_activity_at: string;
-  last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string; type?: string | null } | null;
+  last_message?: { text: string | null; sender: "CONTACT" | "USER" | "BOT" | "SYSTEM" | string; type?: string | null; event_kind?: string | null } | null;
   /** EVP-15: waiting for a person since (first unanswered visitor message); only while WAITING_HUMAN. */
   waiting_since?: string | null;
   /** EVP-15: that wait started outside the team's business hours. */
@@ -41,6 +41,8 @@ export type ConversationMessage = {
   direction: "INBOUND" | "OUTBOUND" | "INTERNAL";
   sender: "CONTACT" | "USER" | "BOT" | "SYSTEM";
   text: string | null;
+  type?: string | null;
+  event_kind?: string | null;
   status: string;
   at: string;
   /** Internal notes only: who wrote it. */
@@ -127,14 +129,14 @@ export function clockTime(iso: string): string {
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
-/** Separator between days in the thread: "Hoy", "Ayer" or the date (with year only when it differs). */
-export function dayLabel(iso: string, now: Date = new Date()): string {
+/** Separator between days in the thread: "Hoy", "Ayer" or the date (with year only when it differs). `short` fits a list row. */
+export function dayLabel(iso: string, now: Date = new Date(), format: "long" | "short" = "long"): string {
   const date = new Date(iso);
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   if (dayKey(date) === dayKey(now)) return "Hoy";
   if (dayKey(date) === dayKey(yesterday)) return "Ayer";
   return new Intl.DateTimeFormat("es-AR", {
-    weekday: "long", day: "numeric", month: "long", ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+    ...(format === "long" ? { weekday: "long", month: "long" } as const : { month: "short" } as const), day: "numeric", ...(date.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
   }).format(date);
 }
 
@@ -149,6 +151,20 @@ export function initials(name: string): string {
   return letters.toUpperCase() || "?";
 }
 
+/** Presentation only: provider categories are never substituted for inbound text. */
+export function messageDescription(message: { text: string | null; type?: string | null; event_kind?: string | null }): string {
+  if (message.text) return message.text;
+  const labels: Record<string, string> = {
+    CONTACT: "Contacto compartido", INTERACTIVE: "Mensaje interactivo",
+    IMAGE: "Foto", DOCUMENT: "Documento", VIDEO: "Video", AUDIO: "Audio",
+    LOCATION: "Ubicación compartida", STICKER: "Sticker", REACTION: "Reacción",
+    UNSUPPORTED: "Contenido no compatible", ATTACHMENT: "Archivo adjunto",
+  };
+  const kind = message.event_kind ?? message.type ?? "";
+  const label = Object.hasOwn(labels, kind) ? labels[kind] : undefined;
+  return `${label ?? "Contenido no disponible en el panel"}. Ver en la aplicación de origen.`;
+}
+
 /** One line under the contact name: who spoke last and what, never more than one line. */
 export function previewText(item: Pick<ConversationSummary, "last_message">): string {
   const last = item.last_message;
@@ -157,7 +173,7 @@ export function previewText(item: Pick<ConversationSummary, "last_message">): st
   const media: Record<string, string> = { IMAGE: "📷 Foto", DOCUMENT: "📄 PDF" };
   const text = last.text?.replace(/\s+/g, " ").trim();
   const label = media[last.type ?? ""];
-  return `${who[last.sender] ?? ""}${label ? (text ? `${label}: ${text}` : label) : text || "[contenido no textual]"}`;
+  return `${who[last.sender] ?? ""}${label ? (text ? `${label}: ${text}` : label) : messageDescription({ ...last, text: text || null })}`;
 }
 
 /** The API pages 200 messages per call, oldest first. */

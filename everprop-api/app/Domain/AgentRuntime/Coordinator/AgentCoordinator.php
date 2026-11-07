@@ -6,6 +6,7 @@ use App\Domain\AgentRuntime\Knowledge\KnowledgeService;
 use App\Domain\AgentRuntime\Llm\LlmClient;
 use App\Domain\AgentRuntime\Llm\LlmFailure;
 use App\Domain\AgentRuntime\Llm\LlmResponse;
+use App\Domain\AgentRuntime\Tools\ContactConfirmation;
 use App\Domain\AgentRuntime\Tools\ToolContext;
 use App\Domain\AgentRuntime\Tools\ToolGateway;
 use App\Domain\Conversations\Exceptions\ConversationConflict;
@@ -80,9 +81,21 @@ final class AgentCoordinator
         $usage = ['input' => 0, 'output' => 0, 'micros' => 0];
 
         try {
-            $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage);
+            $confirmed = app(ContactConfirmation::class)->receive($context);
+            if ($confirmed !== null) {
+                // Consent selects the server snapshot, never a second interpretation by the model.
+                $result = $this->tools->execute($context, $confirmed['tool'], $confirmed['arguments']);
+                $trace['tools'][] = ['name' => $confirmed['tool'], 'ok' => $result['ok'], 'code' => $result['error']['code'] ?? null,
+                    'replayed' => $result['meta']['replayed'] ?? false];
+                if (! $result['ok']) {
+                    return $this->failToHuman($context, $result['error']['code'], $trace, $usage);
+                }
+                $text = 'Los datos fueron registrados. Un asesor podrá continuar con tu consulta.';
+            } else {
+                $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage);
+            }
             $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], $trace['visit_requested'] ?? false,
-                outOfHours: $this->back($tenantId) !== null);
+                outOfHours: $this->back($tenantId) !== null, visitorMessages: $this->visitorMessages($context));
             if ($text === '' || $violations !== []) {
                 $trace['guard'] = $violations === [] ? ['EMPTY_REPLY'] : $violations;
                 $context->handoff ??= ['reason' => 'NO_EVIDENCE', 'summary' => 'Respuesta descartada por control de salida.'];
@@ -159,7 +172,8 @@ final class AgentCoordinator
 
         try {
             $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage, copilot: true);
-            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], draft: true);
+            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], draft: true,
+                visitorMessages: $this->visitorMessages($context));
             if ($text === '' || $violations !== []) {
                 $trace['guard'] = $violations === [] ? ['EMPTY_REPLY'] : $violations;
                 $this->finish($context, 'BLOCK', 'SUCCEEDED', 'UNSAFE_DRAFT', $trace, $usage);
@@ -232,6 +246,10 @@ final class AgentCoordinator
             };
             $trace['tools'][] = ['name' => mb_substr($use['name'], 0, 64), 'ok' => $envelope['ok'], 'code' => $envelope['error']['code'] ?? null,
                 'replayed' => $envelope['meta']['replayed'] ?? false];
+            if (! $copilot && ($summary = app(ContactConfirmation::class)->summary($context)) !== null) {
+                // A failed registration request must display the exact server-owned snapshot.
+                return $summary;
+            }
             $json = json_encode($envelope, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
             $this->collectPrices($envelope, $trace);
             if ($use['name'] === 'solicitar_visita' && $envelope['ok']) {
@@ -364,6 +382,7 @@ final class AgentCoordinator
         }
 
         $reply = $this->control->proposeBotReply($context->tenantId, $context->conversationId, $context->epoch, $text, $key);
+        app(ContactConfirmation::class)->bind($context, $text, $reply);
         DB::table('chatbot_runs')->where('tenant_id', $context->tenantId)->where('id', $context->runId)->update(['output_message_id' => $reply['message_id']]);
         DispatchOutboundJob::dispatch($context->tenantId, $reply['job_id']);
 
@@ -461,10 +480,16 @@ final class AgentCoordinator
     }
 
     /**
-     * Conversation up to the input message, as alternating user/assistant turns.
+     * Visitor text up to the input message, using the same scoped history as the model.
      *
-     * @return list<array{role: string, content: string}>
+     * @return list<string>
      */
+    private function visitorMessages(ToolContext $context): array
+    {
+        return array_column(array_filter($this->history($context), static fn (array $turn): bool => $turn['role'] === 'user'), 'content');
+    }
+
+    /** @return list<array{role: string, content: string}> */
     private function history(ToolContext $context): array
     {
         $rows = DB::table('messages')->where('tenant_id', $context->tenantId)->where('conversation_id', $context->conversationId)

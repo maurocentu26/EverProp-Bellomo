@@ -10,6 +10,8 @@ use App\Providers\AppServiceProvider;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Mockery\VerificationDirector;
 use Tests\TestCase;
 
 final class GeminiChatClientTest extends TestCase
@@ -92,8 +94,11 @@ final class GeminiChatClientTest extends TestCase
                         'finishReason' => 'STOP',
                         'content' => [
                             'parts' => [
+                                ['text' => 'Consultando inventario.', 'thoughtSignature' => 'text-signature'],
                                 [
+                                    'thoughtSignature' => 'tool-signature',
                                     'functionCall' => [
+                                        'id' => 'provider-call-1',
                                         'name' => 'consultar_propiedad',
                                         'args' => ['id' => 'abc'],
                                     ],
@@ -161,12 +166,43 @@ final class GeminiChatClientTest extends TestCase
         $this->assertSame(70, $final->inputTokens);
         $this->assertSame(10, $final->outputTokens);
 
+        $continuation = Http::recorded()[1][0]->data()['contents'];
+        $this->assertSame(['text' => 'Consultando inventario.', 'thoughtSignature' => 'text-signature'], $continuation[0]['parts'][0]);
+        $this->assertSame('provider-call-1', $continuation[0]['parts'][1]['functionCall']['id']);
+        $this->assertSame('tool-signature', $continuation[0]['parts'][1]['thoughtSignature']);
+        $this->assertSame('provider-call-1', $continuation[1]['parts'][0]['functionResponse']['id']);
+
         Http::assertSent(function ($r) {
             $isPost = $r->url() === 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent';
             $hasKey = $r->hasHeader('x-goog-api-key', 'fake-gemini-key');
 
             return $isPost && $hasKey;
         });
+    }
+
+    public function test_pairs_repeated_tool_names_by_local_id_and_omits_absent_provider_ids(): void
+    {
+        $this->app['env'] = 'local';
+        Http::preventStrayRequests();
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => 'Done']]]]],
+        ])]);
+        (new GeminiChatClient('fake-key', 'test-model', 20))->complete('', [
+            ['role' => 'assistant', 'content' => [
+                ['type' => 'tool_use', 'id' => 'local-a', 'name' => 'buscar_propiedades', 'input' => [], 'call_id' => 'provider-a'],
+                ['type' => 'tool_use', 'id' => 'local-b', 'name' => 'buscar_propiedades', 'input' => [], 'call_id' => 'provider-b'],
+                ['type' => 'tool_use', 'id' => 'local-c', 'name' => 'buscar_propiedades', 'input' => []],
+            ]],
+            ['role' => 'user', 'content' => [
+                ['type' => 'tool_result', 'tool_use_id' => 'local-b', 'content' => '{}'],
+                ['type' => 'tool_result', 'tool_use_id' => 'local-a', 'content' => '{}'],
+                ['type' => 'tool_result', 'tool_use_id' => 'local-c', 'content' => '{}'],
+            ]],
+        ], [], 100, false);
+        $parts = Http::recorded()[0][0]->data()['contents'][1]['parts'];
+        $this->assertSame('provider-b', $parts[0]['functionResponse']['id']);
+        $this->assertSame('provider-a', $parts[1]['functionResponse']['id']);
+        $this->assertSame(['name' => 'buscar_propiedades', 'response' => []], $parts[2]['functionResponse']);
     }
 
     public function test_refuses_outside_local_without_sending_any_request(): void
@@ -199,6 +235,38 @@ final class GeminiChatClientTest extends TestCase
                 $this->assertStringNotContainsString('secret-canary', $e->getMessage());
             }
         }
+    }
+
+    public function test_provider_diagnostics_allowlist_status_and_distinguish_tool_continuation(): void
+    {
+        $this->app['env'] = 'local';
+        $logger = Log::spy();
+        Http::preventStrayRequests();
+        foreach ([['INTERNAL', 'INTERNAL', []], ['secret-canary', null, [
+            ['role' => 'assistant', 'content' => [['type' => 'tool_use', 'id' => 'local-id', 'name' => 'buscar_propiedades', 'input' => []]]],
+            ['role' => 'user', 'content' => [['type' => 'tool_result', 'tool_use_id' => 'local-id', 'content' => '{}']]],
+        ]]] as [$providerStatus, $expectedStatus, $messages]) {
+            Http::swap(new Factory);
+            Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+                'error' => ['status' => $providerStatus, 'message' => 'secret-canary', 'details' => ['private-context-canary']],
+            ], 503, ['x-private-header' => 'header-canary'])]);
+            try {
+                (new GeminiChatClient('secret-canary', 'test-model', 20))->complete('secret-canary', $messages, [], 100, false);
+                $this->fail('Expected provider failure');
+            } catch (LlmFailure $e) {
+                $this->assertSame(['PROVIDER_ERROR', true, true], [$e->errorCode, $e->retryable, $e->billable]);
+            }
+            $record = $logger->shouldHaveReceived('warning', ['Gemini request failed', [
+                'http_status' => 503,
+                'provider_status' => $expectedStatus,
+                'phase' => $messages === [] ? 'initial' : 'tool_continuation',
+            ]]);
+            $this->assertInstanceOf(VerificationDirector::class, $record);
+            $record->once();
+        }
+        $records = $logger->shouldHaveReceived('warning');
+        $this->assertInstanceOf(VerificationDirector::class, $records);
+        $records->twice();
     }
 
     public function test_timeout_is_unknown_billable_and_retryable(): void

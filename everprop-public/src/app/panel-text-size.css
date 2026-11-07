@@ -1,10 +1,10 @@
 /* Root rem scaling also reaches portalled menus and dialogs. The attribute is
    owned by the authenticated panel and removed on logout/unmount. */
 html[data-panel-text-size="grande"] { font-size: 120%; }
-html[data-panel-text-size="grande"] .admin-workspace { font-size: 16.8px; }
-html[data-panel-text-size="grande"] .admin-workspace h1 { font-size: clamp(1.5rem, 2.64vw, 2rem); }
+html[data-panel-text-size="grande"] .admin-workspace { --panel-scale: 1.2; --day-text: 20.4px; --agenda-text: 20.4px; --conversation-text: 20.4px; font-size: 20.4px; }
+html[data-panel-text-size="grande"] .admin-workspace h1 { font-size: var(--panel-h1, 40.8px); }
 html[data-panel-text-size="grande"] .admin-workspace table { font-size: 15.6px; }
-html[data-panel-text-size="grande"] .admin-workspace table th { font-size: 13.2px; }
+html[data-panel-text-size="grande"] .admin-workspace table th { font-size: var(--panel-meta); }
 html[data-panel-text-size="grande"] .admin-sidebar nav h2 { font-size: 12px; }
 html[data-panel-text-size="grande"] .daily-metrics > :is(button, a) > div:first-child > span:last-child { font-size: 14.4px; }
 html[data-panel-text-size="grande"] .admin-workspace .daily-metrics p:first-child { font-size: 36px; }
@@ -12,7 +12,7 @@ html[data-panel-text-size="grande"] .admin-workspace .daily-metrics p:nth-child(
 html[data-panel-text-size="grande"] .admin-workspace .daily-metrics p:last-child { font-size: 13.2px; }
 html[data-panel-text-size="grande"] .daily-metrics > :is(button, a) { grid-template-columns: 1fr; }
 html[data-panel-text-size="grande"] .daily-metrics > :is(button, a) > div:first-child { flex-direction: row; }
-html[data-panel-text-size="grande"] .admin-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, [data-slot="button"]) { min-height: 2.5rem; }
+html[data-panel-text-size="grande"] .admin-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, [data-slot="button"]) { min-height: 44px; }
 html[data-panel-text-size="grande"] .admin-workspace [data-slot="input-group"] { min-height: 2.75rem; }
 html[data-panel-text-size="grande"] .admin-workspace [data-slot="input-group"] input { min-height: 0; }
 html[data-panel-text-size="grande"] .admin-workspace table { min-width: 60rem; }
@@ -20,7 +20,7 @@ html[data-panel-text-size="grande"] .admin-workspace table:has(td[data-label]) {
 html[data-panel-text-size="grande"] .admin-topbar > div { flex-wrap: wrap; }
 html[data-panel-text-size="grande"] .admin-topbar > div > div:first-child { min-width: min(100%, 14rem); }
 @media (max-width: 767px) {
-  html[data-panel-text-size="grande"] .admin-workspace :is(input, textarea) { font-size: 19.2px; }
+  html[data-panel-text-size="grande"] .admin-workspace :is(input, textarea) { font-size: 20.4px; } html[data-panel-text-size="grande"] .admin-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]), select, [data-slot="button"]) { min-height: 52px; }
 }
 
 /* Compatibility with fixed-pixel Tailwind text classes in existing screens. */
@@ -147,3 +147,30 @@ html[data-panel-text-size="grande"] [class~="text-[48px]"] { font-size: 57.59999
   html[data-panel-text-size="grande"] [class~="2xl:text-[20px]"] { font-size: 24px; }
   html[data-panel-text-size="grande"] [class~="2xl:text-[24px]"] { font-size: 28.799999999999997px; }
 }
+
+/* Tres niveles en las vistas .mi-day: los textos con tamaño fijo chico son detalle. Sin esto, la regla de compatibilidad los achicaba en Grande. */
+html body .mi-day :is([class~="text-[8px]"], [class~="text-[9px]"], [class~="text-[10px]"], [class~="text-[11px]"], [class~="text-[12px]"], [class~="text-[13px]"]) { font-size: var(--panel-meta, 15px); }
+
+/* Cifras destacadas: escalan igual que el resto del panel. */
+html[data-panel-text-size="grande"] :is(.leads-stage-counts strong, .inventory-card h3, .inventory-card .inventory-price, .agenda-days strong, .mi-day.day-board .day-traffic-card strong) { font-size: calc(var(--highlight-size) * 1.2); }
+.leads-stage-counts strong { --highlight-size: 32px; }
+.inventory-card h3 { --highlight-size: 28px; }
+.inventory-card .inventory-price { --highlight-size: 26px; }
+.agenda-days strong { --highlight-size: 24px; }
+.mi-day.day-board .day-traffic-card strong { --highlight-size: 44px; }
+html[data-panel-text-size="grande"] .collections-summary article strong { font-size: clamp(28.8px, 2.64vw, 40.8px); }
+
+/* Textos de botones: se leen completos en ambos tamaños. */
+@media (max-width: 767px) {
+  .collections-view .collections-status-filters > button:nth-child(4), .collections-view .collections-status-filters > button:last-child { grid-column: 1 / -1; }
+  html[data-panel-text-size="grande"] .collections-view .collections-status-filters > button { padding-inline: 8px; }
+  html[data-panel-text-size="grande"] .leads-workspace .lead-actions-expanded :is(button, a) { padding-inline: 8px; gap: 4px; }
+}
+.leads-workspace a[href="/admin/leads/new"] { flex-shrink: 0; white-space: nowrap; }
+/* Teléfonos angostos: cinco acciones por lead no entran de a dos y las pestañas de la bandeja no entran de a tres. */
+@media (max-width: 359px) {
+  html .leads-workspace .lead-actions-expanded { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .wa-inbox .conversation-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* El mínimo de 60rem es para tablas con scroll propio; la de Estadísticas se acomoda a su panel. */
+html[data-panel-text-size="grande"] .admin-workspace .stats-table table { min-width: 0; }

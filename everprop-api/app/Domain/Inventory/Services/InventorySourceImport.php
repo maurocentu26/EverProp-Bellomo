@@ -88,6 +88,10 @@ final class InventorySourceImport
             if (! $replaceMetadata && $before !== null) {
                 $after['description'] = $before['description'];
                 $after['masterplan_image_url'] = $before['masterplan_image_url'];
+                // The workbook has no usable stage (EdEst is mostly blank) and status gates public visibility.
+                // A deleted project comes back as UNKNOWN, so reviving it never republishes its units.
+                $after['status'] = $before['deleted_at'] === null ? $before['status'] : 'UNKNOWN';
+                $after['progress'] = $before['progress'];
             }
             $after['public_id'] = $before['public_id'] ?? $this->uuid($target, 'project:'.$record['legacy_id']);
             $after['deleted_at'] = null;

@@ -27,6 +27,7 @@ import {
   MIN_SEARCH,
   mergeMessages,
   previewText,
+  messageDescription,
   resolveUnknownSends,
   resumeAi,
   sendReply,
@@ -388,6 +389,20 @@ export function ConversationInbox() {
 
   useFullscreenChat(selected !== null, () => backToList());
 
+  useEffect(() => {
+    if (!showActionsMenu && !showResume) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (showResume) setShowResume(false);
+        else setShowActionsMenu(false);
+        window.setTimeout(() => document.getElementById("conversation-actions-trigger")?.focus(), 0);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showActionsMenu, showResume]);
+
   async function run(action: string, fn: () => Promise<unknown>, success?: string) {
     if (busy) return;
     setBusy(action);
@@ -583,7 +598,7 @@ export function ConversationInbox() {
                       <span className="flex items-center justify-between gap-2">
                         <span className={`conversation-contact-name truncate ${item.unread > 0 ? "font-bold" : "font-semibold"}`}>{displayName(item)}</span>
                         <time dateTime={item.last_activity_at} className={`conversation-timestamp shrink-0 text-xs ${item.unread > 0 ? "font-semibold text-[var(--wa-accent)]" : "text-muted-foreground"}`}>
-                          {sameDay(item.last_activity_at, new Date().toISOString()) ? clockTime(item.last_activity_at) : dayLabel(item.last_activity_at)}
+                          {sameDay(item.last_activity_at, new Date().toISOString()) ? clockTime(item.last_activity_at) : dayLabel(item.last_activity_at, new Date(), "short")}
                         </time>
                       </span>
                       <span className="flex items-center justify-between gap-2">
@@ -718,7 +733,7 @@ export function ConversationInbox() {
                           <p className="conversation-sender">{message.sender === "BOT" && <Bot className="h-4 w-4" aria-hidden />}{who}</p>
                           {message.media && <MediaPreview media={message.media} />}
                           {(message.text || !message.media) && (
-                            <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{message.text ?? "[contenido no textual]"}</p>
+                            <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{messageDescription(message)}</p>
                           )}
                           <p className="wa-meta -mb-0.5 mt-0.5 flex items-center justify-end gap-1 text-[11px]">
                             <time dateTime={message.at}>{clockTime(message.at)}</time>
@@ -832,7 +847,20 @@ export function ConversationInbox() {
                         <p className="flex-1 text-center text-sm text-muted-foreground">{state === "CLOSED" ? "Conversación cerrada." : "Cargando…"}</p>
                       )}
                       {!readOnly && (
-                        <button type="button" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
+                        <button id="conversation-actions-trigger" type="button" aria-haspopup="menu" aria-controls="conversation-actions-menu" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
+                          onKeyDown={(event) => {
+                            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                              event.preventDefault();
+                              setShowActionsMenu(true);
+                              window.setTimeout(() => {
+                                const items = Array.from(document.querySelectorAll<HTMLElement>("#conversation-actions-menu [role=menuitem]:not(:disabled)"));
+                                (event.key === "ArrowUp" ? items[items.length - 1] : items[0])?.focus();
+                              }, 0);
+                            } else if (event.key === "Escape" && showActionsMenu) {
+                              event.preventDefault();
+                              setShowActionsMenu(false);
+                            }
+                          }}
                           onClick={() => setShowActionsMenu((open) => !open)}
                           className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border transition-colors ${showActionsMenu ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
                           {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />} Más
@@ -885,7 +913,20 @@ export function ConversationInbox() {
 
                       {/* Botón Flotante de Acciones (FAB) */}
                       {!readOnly && (
-                        <button type="button" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
+                        <button id="conversation-actions-trigger" type="button" aria-haspopup="menu" aria-controls="conversation-actions-menu" aria-expanded={showActionsMenu} aria-label="Acciones de la conversación" title="Opciones y acciones"
+                          onKeyDown={(event) => {
+                            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                              event.preventDefault();
+                              setShowActionsMenu(true);
+                              window.setTimeout(() => {
+                                const items = Array.from(document.querySelectorAll<HTMLElement>("#conversation-actions-menu [role=menuitem]:not(:disabled)"));
+                                (event.key === "ArrowUp" ? items[items.length - 1] : items[0])?.focus();
+                              }, 0);
+                            } else if (event.key === "Escape" && showActionsMenu) {
+                              event.preventDefault();
+                              setShowActionsMenu(false);
+                            }
+                          }}
                           onClick={() => setShowActionsMenu((open) => !open)}
                           className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border transition-colors ${showActionsMenu ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
                           {showActionsMenu ? <X className="h-5 w-5" aria-hidden /> : <MoreVertical className="h-5 w-5" aria-hidden />} Más
@@ -900,7 +941,23 @@ export function ConversationInbox() {
               {isAdmin && selected && <AssistantTrace conversation={selected} open={showTrace} onOpenChange={setShowTrace} />}
               {/* Menú Contextual Desplegable del FAB */}
               {!readOnly && showActionsMenu && (
-                <div role="menu" aria-label="Acciones disponibles"
+                <div id="conversation-actions-menu" role="menu" aria-label="Acciones disponibles"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setShowActionsMenu(false);
+                      window.setTimeout(() => document.getElementById("conversation-actions-trigger")?.focus(), 0);
+                      return;
+                    }
+                    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                      event.preventDefault();
+                      const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("[role=menuitem]:not(:disabled)"));
+                      if (!items.length) return;
+                      const currentIdx = items.indexOf(document.activeElement as HTMLElement);
+                      const nextIdx = event.key === "ArrowDown" ? (currentIdx + 1) % items.length : (currentIdx - 1 + items.length) % items.length;
+                      items[nextIdx]?.focus();
+                    }
+                  }}
                   className="absolute bottom-18 right-3 z-30 w-64 rounded-2xl border border-border bg-card p-1.5 shadow-xl transition-all">
                   <div className="border-b border-border px-3 py-1.5">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Acciones del chat</p>
@@ -1008,14 +1065,21 @@ export function ConversationInbox() {
 
               {/* Formulario / Diálogo Inline para Reanudar IA */}
               {!readOnly && showResume && (
-                <div role="dialog" aria-labelledby="resume-title"
+                <div role="dialog" aria-modal="true" aria-labelledby="resume-title"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setShowResume(false);
+                      window.setTimeout(() => document.getElementById("conversation-actions-trigger")?.focus(), 0);
+                    }
+                  }}
                   className="absolute bottom-18 left-3 right-3 z-30 rounded-2xl border border-border bg-card p-3 shadow-xl">
                   <div className="mb-2 flex items-center justify-between">
                     <span id="resume-title" className="flex items-center gap-1.5 text-xs font-bold text-foreground">
                       <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden /> Reanudar Asistente IA
                     </span>
                     <button type="button" onClick={() => setShowResume(false)} aria-label="Cancelar" title="Cancelar"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
                       <X className="h-4 w-4" aria-hidden />
                     </button>
                   </div>

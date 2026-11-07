@@ -47,18 +47,18 @@ export function PanelTextSizeControl({ showLabel = false }: { showLabel?: boolea
   return (
     <Popover>
       <PopoverTrigger
-        aria-label={`Tamaño de texto: ${size === "grande" ? "Grande" : "Actual"}`}
+        aria-label={`Tamaño de texto: ${size === "grande" ? "Grande" : "Chica"}`}
         title="Tamaño de texto"
-        className={cn("inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-card-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", showLabel && "min-h-11 w-auto px-4 gap-2")}
+        className={cn("inline-flex size-11 min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-card-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", showLabel && "min-h-11 w-auto px-4 gap-2")}
       >
-        <ALargeSmall className="size-5" aria-hidden="true" />{showLabel && (size === "grande" ? "Grande" : "Actual")}
+        <ALargeSmall className="size-5" aria-hidden="true" />{showLabel && (size === "grande" ? "Grande" : "Chica")}
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={8} className={cn("w-72 max-w-[calc(100vw-2rem)] p-4", showLabel && "settings-view admin-workspace")}>
         <fieldset>
           <legend className="text-sm font-bold">Tamaño de texto</legend>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Elegí cómo preferís leer el panel.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {([ ["actual", "Actual", "Tamaño habitual"], ["grande", "Grande", "20 % más grande"] ] as const).map(([value, label, hint]) => (
+            {([ ["actual", "Chica", "Tamaño habitual"], ["grande", "Grande", "20 % más grande"] ] as const).map(([value, label, hint]) => (
               <label key={value} className={cn("relative flex min-h-20 cursor-pointer flex-col justify-center rounded-xl border p-3 transition-colors", size === value ? "border-ring bg-accent text-accent-foreground" : "border-border hover:bg-muted")}>
                 <input type="radio" name="panel-text-size" value={value} checked={size === value} onChange={() => choose(value)} className="peer sr-only" />
                 <span className="pointer-events-none absolute inset-0 rounded-xl peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring" />
