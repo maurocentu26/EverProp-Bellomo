@@ -23,7 +23,7 @@ export function AssistantTrace({ conversation, open, onOpenChange }: { conversat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="assistant-trace max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="wa-inbox assistant-trace max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Traza del asistente</DialogTitle>
           <DialogDescription>Qué preguntó el cliente, qué consultó el asistente y qué respondió. Últimos 20 turnos.</DialogDescription>

@@ -11,7 +11,7 @@ const labels = { exports: {} }, inventory = { exports: {} };
 vm.runInNewContext(compile('../src/lib/project-labels.ts'), labels);
 vm.runInNewContext(compile('../src/lib/inventory-labels.ts'), inventory);
 const project = { id:'p1', name:'Proyecto prueba', type:'commercial', status:'pre_sale', location:{city:'Salta',province:'',address:''} };
-const properties = ['12','12A','12B'].map((code,index)=>({id:code,unitNumber:code,title:`Unidad ${code}`,projectId:'p1',status:['available','reserved','sold'][index],propertyType:'Lote',sectorName:'Manzana B',inventoryPrice:index===0?null:38500,inventoryCurrency:index===1?null:'USD'}));
+const properties = ['12','12A','12B'].map((code,index)=>({id:code,unitNumber:code,title:`Unidad ${code}`,projectId:'p1',status:['available','reserved','sold'][index],operation:'sale',propertyType:'Lote',sectorName:'Manzana B',inventoryPrice:index===0?null:38500,inventoryCurrency:index===1?null:'USD'}));
 const loadComponent = path => {
   const context = {exports:{},require(name){
     if(name==='react/jsx-runtime')return jsx;
@@ -23,38 +23,59 @@ const loadComponent = path => {
   }};
   vm.runInNewContext(compile(path),context);return context.exports.default;
 };
-const PropertyList=loadComponent('../src/components/admin/PropertyList.tsx');
 
-test('EVP-74 project card counts every state and only joins existing location parts',()=>{
+test('EVP-109 project row shows every state from loaded units or API counters',()=>{
   const Card=loadComponent('../src/components/admin/ProjectCard.tsx');
   const html=renderToStaticMarkup(React.createElement(Card,{project,properties:[...properties,{...properties[0],id:'other',projectId:'p2'}]}));
-  for(const value of ['Proyecto prueba','Salta','Comercial','Preventa','1</strong> disponible','1</strong> reservada','1</strong> vendida','/admin/desarrollos/p1'])assert.ok(html.includes(value),value);
+  for(const value of ['Proyecto prueba','Salta','Comercial','Preventa','1</strong> en venta','1</strong> reservada','1</strong> vendida','/admin/desarrollos/p1','Ver proyecto'])assert.ok(html.includes(value),value);
   assert.equal((html.match(/<article/g)||[]).length,1);
-  assert.doesNotMatch(html,/Salta,|mock|QA|uppercase|Datos de muestra/);
+  assert.doesNotMatch(html,/mock|QA|uppercase|Datos de muestra/);
   assert.equal(labels.exports.projectLocationLabel({...project,location:{city:'',province:'Sin provincia informada'}}),'Ubicación sin informar');
-  assert.deepEqual(Array.from(labels.exports.projectUnitCounts([])),[0,0,0]);
-  assert.deepEqual(Array.from(labels.exports.projectUnitCounts(Array.from({length:150},()=>properties[0]))),[150,0,0]);
-  assert.match(html, /role="meter"[^>]*aria-valuemax="3"[^>]*aria-valuenow="1"/);
-  assert.match(html, /width:33\.33333333333333%/);
-  assert.match(html, /Vendidas: 1 de 3 unidades/);
-  const soldHtml=renderToStaticMarkup(React.createElement(Card,{project,properties:properties.slice(0,2)}));
-  assert.match(soldHtml,/aria-valuemax="2"[^>]*aria-valuenow="0"/);
-  assert.match(soldHtml,/width:0%/);
-  assert.match(html, /\/admin\/inventory-matrix\?projectId=p1/);
+  assert.match(html,/role="img"[^>]*aria-label="3 unidades: 1 en venta, 1 reservada, 1 vendida"/);
+  assert.match(html,/width:33\.33333333333333%/);
   const emptyHtml=renderToStaticMarkup(React.createElement(Card,{project,properties:[]}));
-  assert.doesNotMatch(emptyHtml,/role="meter"|NaN|Infinity/);
+  assert.match(emptyHtml,/Sin unidades cargadas/);assert.match(emptyHtml,/sin disponibles/);
+  assert.doesNotMatch(emptyHtml,/project-state-bar|NaN|Infinity/);
   const coverHtml=renderToStaticMarkup(React.createElement(Card,{project:{...project,coverImage:'/project-cover.jpg'},properties}));
-  assert.match(coverHtml,/role="img"[^>]*aria-label="Proyecto prueba"/);
+  assert.match(coverHtml,/role="img"[^>]*aria-label="Portada de Proyecto prueba"/);
   assert.match(coverHtml,/project-cover.jpg/);
-  const precomputedHtml=renderToStaticMarkup(React.createElement(Card,{project:{...project,propertiesCount:123,availableUnitsCount:32,reservedUnitsCount:0,soldUnitsCount:91},properties:[]}));
-  for(const value of ['123 unidades cargadas','Vendidas: 91 de 123 unidades','32</strong> disponibles','0</strong> reservadas','91</strong> vendidas'])assert.ok(precomputedHtml.includes(value),value);
+  const counters={...project,propertiesCount:100,availableUnitsCount:10,availableSaleUnitsCount:10,availableRentUnitsCount:0,reservedUnitsCount:1,soldUnitsCount:49,rentedUnitsCount:0,notSellableUnitsCount:40,notMarketedUnitsCount:0};
+  const counted=renderToStaticMarkup(React.createElement(Card,{project:counters,properties:[]}));
+  for(const value of ['100 unidades','10</strong> en venta','1</strong> reservada','49</strong> vendidas','40</strong> no vendibles'])assert.ok(counted.includes(value),value);
+  assert.doesNotMatch(counted,/en alquiler|sin estado/);
+});
+
+test('EVP-109 unit names keep the code, read a lot block only for lots, and sort naturally',()=>{
+  const {unitDisplay,compareUnits}=labels.exports;
+  const lot=unitDisplay({unitNumber:'12A',title:'t',propertyType:'Lote',sectorName:'AP18',description:' LOTE DE 386 M2 '});
+  assert.equal(lot.name,'Lote 12A');assert.equal(lot.detail,'Manzana AP18 · LOTE DE 386 M2');
+  assert.equal(unitDisplay({unitNumber:'1',title:'t',propertyType:'Lote',sectorName:'1P'}).detail,'1P');
+  assert.equal(unitDisplay({unitNumber:'1',title:'t',propertyType:'Lote',sectorName:'Manzana B'}).detail,'Manzana B');
+  assert.equal(unitDisplay({unitNumber:'10',title:'t',propertyType:'Departamento',sectorName:'COCH',description:'COCHERA 15 M2'}).detail,'COCH · COCHERA 15 M2');
+  assert.equal(unitDisplay({unitNumber:'3',title:'t',propertyType:'Sin tipo',sectorName:'AP3'}).name,'Unidad 3');
+  assert.equal(unitDisplay({title:'Registro 59 sin unidad informada',propertyType:'Sin tipo'}).name,'Registro 59 sin unidad informada');
+  const codes=[['AP10','2'],['AP9','19'],['AP9','9'],['AP9','12B'],['AP9','12'],['AP9','12A']].map(([sectorName,unitNumber])=>({sectorName,unitNumber,title:'t'}));
+  assert.deepEqual(codes.sort(compareUnits).map(u=>`${u.sectorName} ${u.unitNumber}`),['AP9 9','AP9 12','AP9 12A','AP9 12B','AP9 19','AP10 2']);
+});
+
+test('EVP-109 unit summary never hides units: leasing stays available and the remainder is unknown',()=>{
+  const {projectUnitSummary,unitState,availableUnitsLabel}=labels.exports;
+  assert.equal(unitState({status:'available',operation:'leasing'}),'available');
+  assert.equal(unitState({status:'available',operation:'rent'}),'rent');
+  assert.equal(unitState({status:undefined,operation:'sale'}),'unknown');
+  const api=projectUnitSummary({...project,propertiesCount:10,availableUnitsCount:4,availableSaleUnitsCount:2,availableRentUnitsCount:1,soldUnitsCount:3,rentedUnitsCount:1});
+  assert.deepEqual([api.total,api.available,api.counts.available,api.counts.unknown],[10,4,1,2]);
+  assert.equal(availableUnitsLabel(api),'disponibles');
+  assert.equal(availableUnitsLabel(projectUnitSummary({...project,propertiesCount:17,availableUnitsCount:17,availableRentUnitsCount:17})),'en alquiler');
+  const sum=projectUnitSummary(project,Array.from({length:150},()=>properties[0]));
+  assert.deepEqual([sum.total,sum.available,sum.counts.sale],[150,150,150]);
 });
 
 const nodes=t=>!t||typeof t!=='object'?[]:Array.isArray(t)?t.flatMap(nodes):[t,...nodes(t.props?.children)];
 const text=t=>t==null?'':typeof t==='string'||typeof t==='number'?String(t):Array.isArray(t)?t.map(text).join(''):text(t.props?.children);
-test('EVP-74 detail preserves 12, 12A, 12B and null price/currency; advisor has no write action',()=>{
+test('EVP-109 detail starts on what is offered, preserves 12, 12A, 12B and null price; advisor has no write action',()=>{
   let advisor=true,cursor=0;
-  const states=[project,properties,'overview',false,null,0];
+  const states=[project,properties,'units',false,null,0,null,24];
   const jsxTree=(type,props)=>({type,props});
   const context={exports:{},require(name){
     if(name==='react')return {useState:()=>[states[cursor++],()=>{}],useEffect(){}};
@@ -63,22 +84,34 @@ test('EVP-74 detail preserves 12, 12A, 12B and null price/currency; advisor has 
     if(name==='@/hooks/use-current-session')return {useCurrentSession:()=>({isAdvisor:advisor})};
     if(name==='@/lib/auth-context')return {useAuth:()=>({invalidateSession(){}})};
     if(name==='@/lib/project-labels')return labels.exports;
-    if(name==='@/components/admin/PropertyList')return {default:PropertyList};
-    if(name==='@/lib/utils')return {cn:()=>''};
+    if(name==='@/lib/inventory-labels')return inventory.exports;
     return new Proxy({}, {get:(_,key)=>key});
   }};
   vm.runInNewContext(compile('../src/app/admin/desarrollos/[id]/page.tsx'),context);
-  let tree=context.exports.default(),all=nodes(tree);
+  const render=()=>{cursor=0;return context.exports.default();};
+  const rows=tree=>nodes(tree).filter(n=>n.props?.className==='project-unit');
+  let tree=render(),all=nodes(tree);
   assert.equal(text(all.find(n=>n.type==='h1')),'Proyecto prueba');
   assert.equal(all.filter(n=>n.type==='GenerateLotsModal').length,0);
-  assert.doesNotMatch(text(tree),/Atrás|Cargar manzana|QA|Datos de muestra/);
-  const list=all.find(n=>n.type===PropertyList);
-  assert.equal(list.props.readOnly,true);
-  const html=renderToStaticMarkup(React.createElement(PropertyList,list.props));
-  for(const code of ['12','12A','12B'])assert.ok(html.includes(`<h3>${code}</h3>`));
-  assert.equal((html.match(/Precio a confirmar/g)||[]).length,2);assert.doesNotMatch(html,/Moneda sin confirmar|Precio a consultar|Manzana Manzana/);
-  advisor=false;cursor=0;tree=context.exports.default();
+  assert.doesNotMatch(text(tree),/Cargar manzana|QA|Datos de muestra/);
+  assert.match(text(tree),/Solo lectura/);
+  assert.equal(rows(tree).length,1);
+  assert.equal(text(nodes(rows(tree)[0]).find(n=>n.type==='h2')),'Lote 12');
+  assert.equal(all.find(n=>n.type==='button'&&n.props['aria-pressed']===true&&/en venta/.test(text(n)))!==undefined,true);
+  states[6]='all';tree=render();
+  assert.deepEqual(rows(tree).map(row=>text(nodes(row).find(n=>n.type==='h2'))),['Lote 12','Lote 12A','Lote 12B']);
+  assert.doesNotMatch(text(tree),/Manzana Manzana/);
+  assert.equal((text(tree).match(/Precio a confirmar/g)||[]).length,2);
+  assert.doesNotMatch(text(tree),/Moneda sin confirmar|Precio a consultar/);
+  states[7]=2;assert.equal(rows(render()).length,2);assert.match(text(render()),/Mostrando 2 de 3/);assert.match(text(render()),/Ver más/);
+  states[6]=null;states[7]=24;advisor=false;tree=render();
   assert.equal(nodes(tree).find(n=>n.type==='GenerateLotsModal').props.confirmBeforeSave,true);
+  assert.match(text(tree),/Cargar manzana y lotes/);
+  states[1]=[properties[0],{...properties[0],id:'r',unitNumber:'R1',operation:'rent'}];tree=render();
+  assert.equal(rows(tree).length,2);
+  assert.ok(nodes(tree).some(n=>n.type==='button'&&n.props['aria-pressed']===true&&/2.*disponibles/.test(text(n))));
+  states[1]=properties;states[2]='materials';tree=render();
+  assert.equal(rows(tree).length,0);
 });
 
 test('EVP-74 lot creation shows all data, cancellation never writes, acceptance writes once',async()=>{
@@ -107,15 +140,16 @@ test('EVP-74 lot creation shows all data, cancellation never writes, acceptance 
   const submit=nodes(render()).find(n=>n.type==='form').props.onSubmit;await Promise.all([submit({preventDefault(){}}),submit({preventDefault(){}})]);assert.equal(writes,1);
 });
 
-test('EVP-74 list loads complete project inventory, advisors cannot create, and mobile uses one column',()=>{
+test('EVP-109 list searches without accents, filters availability and keeps creation away from advisors',()=>{
   const page=fs.readFileSync(new URL('../src/app/admin/desarrollos/page.tsx',import.meta.url),'utf8');
-  assert.match(page,/loadEverpropPropertiesByProject\(project.id\)/);
+  assert.match(page,/filter\(project => project\.availableUnitsCount == null\)/);
   assert.match(page,/!isAdvisor && canCreate/);
+  assert.match(page,/normalize\("NFD"\)/);
+  assert.match(page,/b\.summary\.available - a\.summary\.available/);
+  assert.match(page,/aria-pressed=\{filterType === value\}/);
   assert.doesNotMatch(page,/No se.*mock|Matriz mock/);
-  const css=fs.readFileSync(new URL('../src/app/admin-design.css',import.meta.url),'utf8');
-  assert.match(css,/\.inventory-view, \.inventory-cards \{ font-size: 17px/);
-  assert.match(css,/\.inventory-cards \{ grid-template-columns: minmax\(0,1fr\)/);
-  assert.match(css,/\.projects-view button, \.projects-view \.inventory-cta \{ width: 100%/);
+  const css=fs.readFileSync(new URL('../src/app/admin-catalog.css',import.meta.url),'utf8');
+  for(const state of labels.exports.UNIT_STATES)assert.ok(css.includes(`[data-state="${state}"]`),state);
+  assert.match(css,/\.project-row \{ display: flex; flex-wrap: wrap/);
+  assert.doesNotMatch(css,/\.project-card|\.project-availability/);
 });
-
-

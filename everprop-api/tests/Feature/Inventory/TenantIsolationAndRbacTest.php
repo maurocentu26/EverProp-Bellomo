@@ -267,6 +267,132 @@ final class TenantIsolationAndRbacTest extends TestCase
             ->assertJsonPath('data.sold_units_count', 1);
     }
 
+    public function test_project_counters_split_every_status_and_ignore_foreign_and_deleted_units(): void
+    {
+        [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
+        [$otherTenant] = $this->identity(RoleCode::TENANT_ADMIN);
+        $project = $this->project($tenant->id);
+        $foreign = $this->project($otherTenant->id);
+
+        $this->unitsInEveryStatus($tenant->id, $project['id']);
+        $this->unitsInEveryStatus($otherTenant->id, $foreign['id']);
+        foreach (['AVAILABLE', 'RESERVED', 'SOLD', 'RENTED', 'NOT_SELLABLE', 'NOT_MARKETED'] as $status) {
+            $this->unit($tenant->id, $project['id'], $status, 'SALE', ['deleted_at' => now()]);
+        }
+
+        // A row the composite foreign key would reject: the tenant filters (scope and explicit) keep it out of the counters.
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        try {
+            $this->unit($otherTenant->id, $project['id'], 'AVAILABLE', 'SALE');
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        }
+        self::assertSame(15, DB::table('properties')->where('project_id', $project['id'])->count());
+
+        $this->actingAs($admin);
+        $headers = $this->tenantHeaders($tenant);
+
+        $this->assertCountersOfEveryStatus(
+            $this->withHeaders($headers)->getJson('/api/v1/admin/projects/'.$project['public_id'])->assertOk()->json('data')
+        );
+
+        $list = $this->withHeaders($headers)->getJson('/api/v1/admin/projects')->assertOk();
+        $this->assertSame([$project['public_id']], array_column($list->json('data'), 'public_id'));
+        $this->assertCountersOfEveryStatus($list->json('data.0'));
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v1/admin/projects/'.$foreign['public_id'])
+            ->assertNotFound();
+    }
+
+    public function test_project_counters_keep_the_explicit_tenant_filter(): void
+    {
+        [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $project = $this->project($tenant->id);
+        $this->actingAs($admin);
+        $headers = $this->tenantHeaders($tenant);
+
+        foreach (['/api/v1/admin/projects/'.$project['public_id'], '/api/v1/admin/projects'] as $url) {
+            $sql = [];
+            DB::listen(function ($query) use (&$sql): void {
+                $sql[] = $query->sql;
+            });
+            $this->withHeaders($headers)->getJson($url)->assertOk();
+            $counters = collect($sql)->first(fn (string $statement): bool => str_contains($statement, 'not_marketed_units_count'));
+            self::assertIsString($counters);
+            // Nine counters, each with the global scope and the explicit filter.
+            self::assertSame(18, substr_count($counters, '`properties`.`tenant_id`'), $url);
+        }
+    }
+
+    public function test_project_counters_follow_the_inventory_scope_of_the_user(): void
+    {
+        [$tenant] = $this->identity(RoleCode::TENANT_ADMIN);
+        $visible = $this->project($tenant->id);
+        $hidden = $this->project($tenant->id);
+        $this->unitsInEveryStatus($tenant->id, $visible['id']);
+        $this->unitsInEveryStatus($tenant->id, $hidden['id']);
+
+        $scoped = User::factory()->for($tenant)->create(['role_code' => RoleCode::SALES_ADVISOR->value]);
+        $this->inventorySettings($tenant->id, $scoped->id, 'SCOPED', false);
+        DB::table('user_inventory_scopes')->insert([
+            'tenant_id' => $tenant->id, 'user_id' => $scoped->id, 'scope_type' => 'PROJECT', 'project_id' => $visible['id'],
+            'property_id' => null, 'category_code' => null, 'can_view' => true, 'can_edit' => false, 'can_manage_prices' => false,
+        ]);
+
+        $this->actingAs($scoped);
+        $headers = $this->tenantHeaders($tenant);
+        $list = $this->withHeaders($headers)->getJson('/api/v1/admin/projects')->assertOk();
+        $this->assertSame([$visible['public_id']], array_column($list->json('data'), 'public_id'));
+        $this->assertCountersOfEveryStatus($list->json('data.0'));
+        $this->withHeaders($headers)->getJson('/api/v1/admin/projects/'.$hidden['public_id'])->assertForbidden();
+
+        $none = User::factory()->for($tenant)->create(['role_code' => RoleCode::SALES_ADVISOR->value]);
+        $this->inventorySettings($tenant->id, $none->id, 'NONE', false);
+        $this->actingAs($none);
+        $this->withHeaders($headers)->getJson('/api/v1/admin/projects')->assertForbidden()->assertJsonMissingPath('data');
+        $this->withHeaders($headers)->getJson('/api/v1/admin/projects/'.$visible['public_id'])->assertForbidden()->assertJsonMissingPath('data');
+    }
+
+    private function unitsInEveryStatus(int $tenantId, int $projectId): void
+    {
+        foreach ([
+            ['AVAILABLE', 'SALE'], ['AVAILABLE', 'SALE'], ['AVAILABLE', 'RENT'], ['AVAILABLE', 'LEASING'],
+            ['RENTED', 'RENT'], ['NOT_SELLABLE', 'SALE'], ['NOT_MARKETED', 'UNKNOWN'], ['UNKNOWN', 'UNKNOWN'],
+        ] as [$status, $operation]) {
+            $this->unit($tenantId, $projectId, $status, $operation);
+        }
+    }
+
+    /** @param array<string, mixed> $overrides */
+    private function unit(int $tenantId, int $projectId, string $status, string $operation, array $overrides = []): void
+    {
+        DB::table('properties')->insert(array_replace([
+            'tenant_id' => $tenantId,
+            'project_id' => $projectId,
+            'public_id' => (string) Str::uuid(),
+            'title' => 'Unit',
+            'operation' => $operation,
+            'category' => 'LOT',
+            'status' => $status,
+            'city' => 'Jujuy',
+            'province' => 'Jujuy',
+        ], $overrides));
+    }
+
+    /** @param array<string, mixed> $project */
+    private function assertCountersOfEveryStatus(array $project): void
+    {
+        $this->assertSame(
+            [8, 4, 0, 0, 2, 1, 1, 1, 1],
+            [
+                $project['properties_count'], $project['available_units_count'], $project['reserved_units_count'], $project['sold_units_count'],
+                $project['available_sale_units_count'], $project['available_rent_units_count'], $project['rented_units_count'],
+                $project['not_sellable_units_count'], $project['not_marketed_units_count'],
+            ],
+        );
+    }
+
     /** @return array<string, string> */
     private function tenantHeaders(Tenant $tenant): array
     {

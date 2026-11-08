@@ -92,6 +92,10 @@ final class InventorySourceImport
                 // A deleted project comes back as UNKNOWN, so reviving it never republishes its units.
                 $after['status'] = $before['deleted_at'] === null ? $before['status'] : 'UNKNOWN';
                 $after['progress'] = $before['progress'];
+                // The workbook holds system labels (LA ARBOLADA.), not the names people and the assistant read.
+                $after['name'] = $before['name'];
+                $after['city'] = $before['city'] ?: $after['city'];
+                $after['address'] = $before['address'] ?: $after['address'];
             }
             $after['public_id'] = $before['public_id'] ?? $this->uuid($target, 'project:'.$record['legacy_id']);
             $after['deleted_at'] = null;

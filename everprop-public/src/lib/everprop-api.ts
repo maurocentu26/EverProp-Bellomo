@@ -48,6 +48,11 @@ type ApiProject = {
   available_units_count?: number;
   reserved_units_count?: number;
   sold_units_count?: number;
+  available_sale_units_count?: number;
+  available_rent_units_count?: number;
+  rented_units_count?: number;
+  not_sellable_units_count?: number;
+  not_marketed_units_count?: number;
 };
 
 type ApiProperty = {
@@ -219,6 +224,11 @@ function mapProject(project: ApiProject): Project {
     availableUnitsCount: project.available_units_count,
     reservedUnitsCount: project.reserved_units_count,
     soldUnitsCount: project.sold_units_count,
+    availableSaleUnitsCount: project.available_sale_units_count,
+    availableRentUnitsCount: project.available_rent_units_count,
+    rentedUnitsCount: project.rented_units_count,
+    notSellableUnitsCount: project.not_sellable_units_count,
+    notMarketedUnitsCount: project.not_marketed_units_count,
   };
 }
 

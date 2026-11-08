@@ -1,0 +1,43 @@
+/* Module roles deliberately override the legacy Grande utility compatibility. */
+html[data-panel-text-size] .wa-inbox {
+  --conversation-control: calc(var(--conversation-text) * 15 / 17);
+  --conversation-secondary: calc(var(--conversation-text) * 14 / 17);
+  --conversation-meta: calc(var(--conversation-text) * 13 / 17);
+  --conversation-heading: calc(var(--conversation-text) * 20 / 17);
+  --conversation-title: calc(var(--conversation-text) * 24 / 17);
+  font-size: var(--conversation-text);
+  line-height: 1.5;
+}
+html[data-panel-text-size] .wa-inbox :is(p,span,div,li,dt,dd,time,label) { font-size: inherit; line-height: inherit; }
+html[data-panel-text-size] .wa-inbox :is(button,a,select),
+html[data-panel-text-size] .wa-inbox .conversation-composer > :is(button,label),
+html[data-panel-text-size] .wa-inbox .conversation-tabs button { font-size: var(--conversation-control); line-height: 1.4; }
+html[data-panel-text-size] .wa-inbox :is(input,textarea) { font-size: var(--conversation-text); line-height: 1.5; }
+html[data-panel-text-size] .wa-inbox h1 { font-size: var(--conversation-title); line-height: 1.25; }
+html[data-panel-text-size] .wa-inbox h2 { font-size: var(--conversation-heading); line-height: 1.3; }
+html[data-panel-text-size] .wa-inbox h3 { font-size: calc(var(--conversation-text) * 18 / 17); line-height: 1.35; }
+html[data-panel-text-size] .wa-inbox .conversation-contact-name { font-size: var(--conversation-text); }
+html[data-panel-text-size] .wa-inbox .conversation-preview { font-size: var(--conversation-control); }
+html[data-panel-text-size] .wa-inbox :is(.conversation-contact-meta,.conversation-state-badge,.conversation-sender,.conversation-action-description),
+html[data-panel-text-size] .wa-inbox .conversation-client-drawer-heading [data-slot="sheet-description"],
+html[data-panel-text-size] .wa-inbox .conversation-about dt,
+html[data-panel-text-size] .wa-inbox .conversation-visits > header p { font-size: var(--conversation-secondary); line-height: 1.45; }
+html[data-panel-text-size] .wa-inbox :is(.wa-meta,.conversation-timestamp,.conversation-day) { font-size: var(--conversation-meta); line-height: 1.4; }
+html[data-panel-text-size] .wa-inbox .wa-bubble > p:not(.wa-meta):not(.conversation-sender) { font-size: var(--conversation-text); }
+html[data-panel-text-size] .wa-inbox .conversation-handoff { font-size: var(--conversation-secondary); }
+html[data-panel-text-size] .wa-inbox .conversation-handoff :is(p,span,button) { font-size: inherit; }
+html[data-panel-text-size] .wa-inbox [role="menu"] > div > p { font-size: var(--conversation-meta); }
+html[data-panel-text-size] .wa-inbox :is(.conversation-client-drawer-body,.conversation-about) { font-size: var(--conversation-text); }
+/* Nested confirmation/trace dialogs must appear above the client drawer (z71). */
+html[data-panel-text-size] .wa-inbox[data-slot="dialog-content"] { z-index: 81; }
+body:has(.wa-inbox[data-slot="dialog-content"]) [data-slot="dialog-overlay"] { z-index: 80; }
+/* EVP-67 v2: full-screen workspace roles. */
+html[data-panel-text-size] .wa-inbox :is(.conversation-who-sub,.conversation-flag,.conversation-handoff-title,.conversation-takeover-text,.conversation-quick-head,.conversation-search-note) { font-size: var(--conversation-secondary); line-height: 1.45; }
+html[data-panel-text-size] .wa-inbox :is(.conversation-hint,.conversation-menu-head,.conversation-unread,.conversation-tabs button span) { font-size: var(--conversation-meta); line-height: 1.4; }
+html[data-panel-text-size] .wa-inbox .conversation-avatar { font-size: var(--conversation-secondary); }
+html[data-panel-text-size] .wa-inbox .conversation-who-name { font-size: calc(var(--conversation-text) * 18 / 17); line-height: 1.3; }
+html[data-panel-text-size] .wa-inbox .conversation-rail-item { font-size: 12px; line-height: 1.1; }
+html[data-panel-text-size="grande"] .wa-inbox .conversation-rail-item { font-size: 14px; }
+html[data-panel-text-size] .wa-inbox .conversation-rail-badge { font-size: 11px; line-height: 20px; }
+html[data-panel-text-size] .wa-inbox .conversation-who-name button { font-size: inherit; line-height: inherit; font-weight: 800; }
+@media (max-width: 767.98px) { html[data-panel-text-size] .wa-inbox .conversation-workspace-heading h1 { font-size: var(--conversation-heading); } }

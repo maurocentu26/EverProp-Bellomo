@@ -70,18 +70,9 @@
 .inventory-card .inventory-price { margin-block: 8px; font-size: 26px; line-height: 1.25; }
 .inventory-card .inventory-actions { padding-top: 8px; }
 .inventory-filters { border: 0; border-radius: 24px; gap: 16px; }
-.project-card { overflow: hidden; padding-top: 0; }
 .projects-view .project-filters { display: flex; flex-direction: row; flex-wrap: wrap; max-width: 100%; width: fit-content; padding: 5px; gap: 4px; }
 .projects-view .project-filters button { flex: 0 0 auto; width: auto; }
-.project-card .project-cover { margin: 0 -24px 12px; width: calc(100% + 48px); border-radius: 0; height: 200px; }
-.project-card .project-counts { flex-wrap: wrap; gap: 8px; }
-.project-card .project-counts li { padding: 4px 10px; border-radius: 999px; background: var(--catalog-soft); color: #41464d; }
-.project-card .project-counts li:first-child { background: var(--catalog-mint); color: var(--catalog-mint-ink); }
-.project-card .project-counts li:nth-child(2) { background: var(--catalog-sun); color: var(--catalog-sun-ink); }
-.project-availability { height: 8px; border-radius: 999px; background: var(--catalog-soft); overflow: hidden; }
-.project-availability > span { display: block; height: 100%; background: #17784a; border-radius: inherit; transform-origin: left; animation: catalog-bar 700ms ease-out; }
 .inventory-secondary { display: inline-flex; align-items: center; justify-content: center; padding: 12px 18px; border-radius: 999px; background: var(--catalog-soft); color: var(--foreground); font-weight: 700; }
-@keyframes catalog-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .lots-status { border-radius: 999px; }
 .lots-grid { grid-template-columns: repeat(auto-fit,minmax(64px,1fr)); min-width: 0; }
 .lots-cell { border: 0; border-radius: 16px; }
@@ -112,7 +103,7 @@
 .settings-view .uppercase { text-transform: none; letter-spacing: normal; }
 .dark :is(.mi-agenda,.collections-view,.inventory-view,.settings-view) { --catalog-soft: #26332e; }
 .dark .mi-agenda .agenda-days button:not([aria-pressed="true"]),.dark .settings-view dd { color: #e6ebe7; }
-.dark .inventory-card .inventory-status:not([data-status="available"],[data-status="reserved"],[data-status="sold"]),.dark .project-card .project-counts li:nth-child(n+3),.dark .lots-status[data-status="sold"],.dark .lots-cell[data-status="sold"] { color: #e6ebe7; }
+.dark .inventory-card .inventory-status:not([data-status="available"],[data-status="reserved"],[data-status="sold"]),.dark .lots-status[data-status="sold"],.dark .lots-cell[data-status="sold"] { color: #e6ebe7; }
 html[data-panel-text-size="grande"] :is(.mi-agenda,.collections-view,.collections-dialog,.inventory-view,.settings-view,.knowledge-view,.stats-view) { font-size: 20.4px; }
 @media (width < 1200px) {
   .mi-agenda .agenda-days-week { grid-template-columns: repeat(4,minmax(0,1fr)); }
@@ -128,8 +119,6 @@ html[data-panel-text-size="grande"] :is(.mi-agenda,.collections-view,.collection
   .collections-summary { grid-template-columns: minmax(0,1fr); }
   .projects-view .project-filters { width: 100%; border-radius: 24px; }
   .projects-view .project-filters button { flex: 1 1 120px; }
-  .project-card .project-cover { margin-inline: -20px; width: calc(100% + 40px); }
-  .project-card .project-counts { flex-direction: row; }
   .lots-grid { grid-template-columns: repeat(auto-fit,minmax(64px,1fr)); }
   .lots-content { grid-template-columns: minmax(0,1fr); }
   .lots-page .lots-cell { min-width: 0; width: 100%; }
@@ -174,4 +163,87 @@ html[data-panel-text-size="grande"] :is(.mi-agenda,.collections-view,.collection
 @media (width < 768px) {
   .commercial-assets :is(button,a[role="link"],.commercial-unit-link) { min-height: 52px; }
   .inventory-detail .inventory-detail-price { font-size: 1.7em; }
+}
+
+/* EVP-109: projects as comparable rows; every unit state keeps its own color and a text label. */
+.projects-view {
+  --unit-sale: #17784a; --unit-rent: #2158b8; --unit-available: #3f9c6f; --unit-reserved: #d99a00; --unit-rented: #7fa6e0;
+  --unit-sold: #59616b; --unit-not-sellable: #a7b1ab; --unit-not-marketed: #d3d9d5; --unit-unknown: #a78bda;
+}
+.dark .projects-view {
+  --unit-sale: #43c98a; --unit-rent: #7db2f7; --unit-available: #7fdcae; --unit-reserved: #f0c446; --unit-rented: #3f6aa8;
+  --unit-sold: #8b97a5; --unit-not-sellable: #4a5968; --unit-not-marketed: #2f3b48; --unit-unknown: #a78bda;
+}
+.projects-view [data-state="sale"] { background: var(--unit-sale); }
+.projects-view [data-state="rent"] { background: var(--unit-rent); }
+.projects-view [data-state="available"] { background: var(--unit-available); }
+.projects-view [data-state="reserved"] { background: var(--unit-reserved); }
+.projects-view [data-state="rented"] { background: var(--unit-rented); }
+.projects-view [data-state="sold"] { background: var(--unit-sold); }
+.projects-view [data-state="not_sellable"] { background: var(--unit-not-sellable); }
+.projects-view [data-state="not_marketed"] { background: var(--unit-not-marketed); }
+.projects-view [data-state="unknown"] { background: var(--unit-unknown); }
+.projects-view .project-meta { font-size: var(--panel-meta); color: var(--muted-foreground); }
+.projects-view .project-dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 3px; }
+.project-state-bar { display: flex; height: 12px; overflow: hidden; border-radius: 999px; background: var(--muted); }
+.project-state-bar > span { display: block; min-width: 2px; }
+.projects-view .project-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.projects-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.projects-header > div { flex: 1 1 280px; min-width: 0; }
+.projects-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.projects-search { position: relative; display: flex; flex: 1 1 240px; align-items: center; min-width: 0; }
+.projects-search svg { position: absolute; left: 16px; color: var(--muted-foreground); pointer-events: none; }
+.projects-view .projects-search input { width: 100%; padding: 0 16px 0 44px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--foreground); }
+.projects-stock { display: flex; align-items: center; gap: 8px; }
+.projects-view .projects-stock select { padding: 0 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); color: var(--foreground); }
+.project-rows { display: flex; flex-direction: column; gap: 12px; }
+.project-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.project-row-main { display: flex; flex: 1 1 300px; align-items: center; gap: 14px; min-width: 0; }
+.project-thumb { display: flex; flex: 0 0 72px; align-items: center; justify-content: center; height: 72px; border-radius: 12px; background-color: var(--muted); background-size: cover; background-position: center; color: var(--muted-foreground); font-weight: 700; }
+.project-row-title { min-width: 0; }
+.project-row-title h2 { font-size: var(--panel-h2); font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.project-row-title .project-tags { margin-top: 6px; }
+.project-row-states { display: flex; flex: 2 1 330px; flex-direction: column; gap: 8px; min-width: 0; }
+.project-legend { display: flex; flex-wrap: wrap; gap: 2px 14px; padding: 0; list-style: none; font-size: var(--panel-meta); }
+.project-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.project-legend strong, .project-stat strong, .project-state-filters strong { font-variant-numeric: tabular-nums; }
+.project-row-side { display: flex; flex: 1 1 250px; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; min-width: 0; }
+.project-stat { display: flex; flex-direction: column; min-width: 124px; }
+.projects-view .project-stat strong { font-size: calc(32px * var(--panel-scale)); font-weight: 800; line-height: 1; color: var(--unit-sale); }
+.projects-view .project-stat[data-empty] strong { color: var(--muted-foreground); }
+.project-stat span { margin-top: 4px; font-size: var(--panel-meta); }
+.projects-view .project-row-side .inventory-cta { flex: 1 1 auto; max-width: 100%; white-space: nowrap; }
+.project-back { display: inline-flex; align-items: center; font-weight: 700; }
+.project-detail-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 24px; }
+.project-detail-header > div { flex: 1 1 320px; min-width: 0; }
+.project-detail-header > div > * + * { margin-top: 8px; }
+.project-state-summary { display: flex; flex-direction: column; gap: 12px; }
+.project-state-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.projects-view .project-state-filters button { display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border: 2px solid var(--border); border-radius: 999px; background: var(--card); color: var(--foreground); }
+.projects-view .project-state-filters button[aria-pressed="true"] { border-color: var(--foreground); background: var(--card); color: var(--foreground); }
+.project-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); }
+.projects-view .project-tabs button { padding: 0 16px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; color: var(--foreground); font-weight: 700; }
+.projects-view .project-tabs button[aria-pressed="true"] { border-bottom-color: var(--foreground); background: transparent; color: var(--foreground); }
+.project-units { display: flex; flex-direction: column; gap: 8px; }
+.project-unit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.project-unit-name { flex: 2 1 190px; min-width: 0; }
+.project-unit-name h2 { font-size: inherit; font-weight: 800; overflow-wrap: anywhere; }
+.project-unit-area { display: inline-flex; flex: 1 1 110px; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.project-unit-area svg { flex: none; }
+.project-unit-state { display: inline-flex; flex: 1 1 130px; align-items: center; gap: 8px; font-weight: 700; }
+.project-unit-price { flex: 1 1 150px; color: var(--muted-foreground); }
+.projects-view .project-unit .inventory-secondary { flex: 0 1 auto; gap: 6px; padding-block: 0; white-space: nowrap; }
+.dark .projects-view .project-detail-status { background: #1d3657; color: #a9cdf8; }
+.dark .projects-view :is(.inventory-cta, .project-filters button[aria-pressed="true"]),
+.dark .projects-view :is(.inventory-cta, .project-filters button[aria-pressed="true"]):hover { background: var(--foreground); color: var(--background); }
+.project-units-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-top: 4px; }
+.projects-view .project-units-more button { border: 0; padding-block: 0; }
+.projects-view :is(.project-state-filters button, .project-tabs button, .project-units-more button):focus-visible,
+.projects-view :is(.projects-search input, .projects-stock select):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+@media (width < 768px) {
+  .projects-view :is(.project-row-side .inventory-cta, .project-unit .inventory-secondary, .project-units-more .inventory-secondary, .project-back) { min-height: 52px; }
+  .projects-view .project-unit .inventory-secondary { flex: 1 1 100%; }
+  .projects-view .project-state-filters button { width: auto; }
+  .projects-view .project-tabs button { flex: 1 1 auto; width: auto; padding-inline: 10px; }
+  .projects-view > header > :is(button, a) { flex: 1 1 100%; width: 100%; }
 }
