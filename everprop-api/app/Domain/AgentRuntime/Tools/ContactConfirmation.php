@@ -5,6 +5,7 @@ namespace App\Domain\AgentRuntime\Tools;
 use App\Domain\Conversations\Services\ConversationControl;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /** Server-owned snapshots: neither tool arguments nor provider metadata can grant consent. */
 final class ContactConfirmation
@@ -12,6 +13,44 @@ final class ContactConfirmation
     private const KEY = 'contact_confirmation';
 
     public const PHRASE = 'Confirmo mis datos';
+
+    /** At least one of these must appear: the word that actually says "yes". */
+    private const AFFIRMATIVE = ['si', 'sip', 'dale', 'ok', 'okey', 'okay', 'oka', 'correcto', 'correctos', 'correcta',
+        'correctas', 'exacto', 'exactos', 'exacta', 'perfecto', 'perfecta', 'confirmo', 'confirmado', 'confirmados',
+        'afirmativo', 'claro', 'listo', 'joya', 'bien', 'de_acuerdo', 'por_supuesto', 'asi_es', 'obvio', 'genial', 'buenisimo', 'yes'];
+
+    /** Allowed only next to an affirmative word. Any other word ("no", "pero", "va", "cambia", a name) means it is not a plain yes. */
+    private const FILLER = ['esos', 'esas', 'eso', 'esto', 'estos', 'son', 'es', 'esta', 'estan', 'todo', 'todos', 'todas',
+        'los', 'las', 'mis', 'datos', 'gracias', 'muchas', 'mil', 'muy', 'te_lo'];
+
+    /** Function words only count inside these fixed phrases, so "qué va", "y si" or "si, de" stay out. */
+    private const PHRASES = ['/\bde acuerdo\b/' => 'de_acuerdo', '/\bpor supuesto\b/' => 'por_supuesto', '/\basi es\b/' => 'asi_es',
+        '/\bclaro que\b/' => 'claro', '/\bte lo\b/' => 'te_lo'];
+
+    /**
+     * EVP-103: a short, natural "yes" confirms the summary ("sí", "Sí, esos son", "dale", "ok 👍", "Confirmo mis datos").
+     * Decided here, never by the model. Closed by default: digits, @, a question, any symbol or emoji other than
+     * 👍 ✅ 👌, a negation, a correction or any word outside the lists means it is not a yes.
+     */
+    public static function isAffirmation(string $text): bool
+    {
+        // Full-width forms ("３８８", "＠", "？") become ASCII first, so they are rejected below like the plain ones.
+        $text = (string) \Normalizer::normalize($text, \Normalizer::FORM_KC);
+        $text = (string) preg_replace('/(👍|✅|👌)[\x{1F3FB}-\x{1F3FF}\x{FE0F}]*/u', ' ok ', $text);
+        if (preg_match('/[^\p{L}\s.,!¡]/u', $text) === 1) {
+            return false;
+        }
+        $text = trim((string) preg_replace('/[^a-z]+/', ' ', strtolower(Str::ascii($text))));
+        // "siii", "sisi", "okkk": stretched or doubled, it is still the same yes.
+        $text = (string) preg_replace(['/\bs+i+(s+i+)*\b/', '/\bo+k+\b/'], ['si', 'ok'], $text);
+        $words = explode(' ', (string) preg_replace(array_keys(self::PHRASES), array_values(self::PHRASES), $text));
+        $repeated = array_diff_key($words, array_unique($words));
+
+        return $text !== '' && count($words) <= 8
+            && array_diff($repeated, ['si', 'ok']) === []
+            && array_intersect($words, self::AFFIRMATIVE) !== []
+            && array_diff($words, self::AFFIRMATIVE, self::FILLER) === [];
+    }
 
     /** @param array<string, mixed> $proposal */
     public static function matches(array $proposal, ?object $summary, ?object $firstInbound, int $epoch, int $inputSequence): bool
@@ -24,7 +63,7 @@ final class ContactConfirmation
             && (int) $firstInbound->sequence === $inputSequence && $inputSequence > $proposal['sequence']
             && $firstInbound->direction === 'INBOUND' && $firstInbound->sender_type === 'CONTACT'
             && $firstInbound->message_type === 'TEXT'
-            && mb_strtolower(trim((string) $firstInbound->text_body)) === mb_strtolower(self::PHRASE);
+            && self::isAffirmation((string) $firstInbound->text_body);
     }
 
     /**
@@ -62,7 +101,7 @@ final class ContactConfirmation
                     // Quote untrusted fields so embedded newlines cannot impersonate another label.
                     $summary .= $label.': '.json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n";
                 }
-                $summary .= 'Si son correctos, responde exactamente «'.self::PHRASE.'». Si hay un error, envía la corrección.';
+                $summary .= 'Si son correctos, responde «sí» o «'.self::PHRASE.'». Si hay un error, envía la corrección.';
                 $state[self::KEY] = ['run_id' => $context->runId, 'epoch' => $context->epoch, 'tool' => $tool,
                     'arguments' => $arguments, 'summary' => $summary];
             }
@@ -120,7 +159,10 @@ final class ContactConfirmation
             $summary = isset($pending['message_id']) ? $messages()->where('id', $pending['message_id'])->first() : null;
             $first = isset($pending['sequence']) ? $messages()->where('sequence', '>', $pending['sequence'])
                 ->where('direction', 'INBOUND')->orderBy('sequence')->first() : null;
-            if (! self::matches($pending, $summary, $first, $context->epoch, $context->inputSequence)) {
+            // A burst ("ok" then "pero cambiá el mail") is not a plain yes: anything the customer sent after it voids it.
+            $followUp = $messages()->where('sequence', '>', $context->inputSequence)->where('direction', 'INBOUND')
+                ->where('sender_type', 'CONTACT')->exists();
+            if ($followUp || ! self::matches($pending, $summary, $first, $context->epoch, $context->inputSequence)) {
                 unset($state[self::KEY]);
 
                 return null;
