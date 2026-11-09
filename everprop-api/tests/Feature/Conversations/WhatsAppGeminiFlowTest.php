@@ -95,9 +95,12 @@ final class WhatsAppGeminiFlowTest extends TestCase
         $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'COMMITTED')->count());
         $this->assertSame(2, DB::table('messages')->where('tenant_id', $f['tenant'])->count());
         $this->assertDatabaseHas('messages', ['id' => $run->output_message_id, 'tenant_id' => $f['tenant'], 'delivery_status' => 'SENT']);
+        // EVP-108: the final call carries the tool result as text in the same user turn, with no function context.
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'generativelanguage')
-            && isset($r['contents'][2]['parts'][0]['functionResponse'])
-            && $r['contents'][1]['parts'][0]['thoughtSignature'] === 'synthetic-signature');
+            && ! isset($r['tools'])
+            && str_contains($r['contents'][array_key_last($r['contents'])]['parts'][array_key_last($r['contents'][array_key_last($r['contents'])]['parts'])]['text'] ?? '', '<resultado_herramienta nombre="buscar_propiedades">')
+            && ! str_contains((string) json_encode($r['contents']), 'functionCall')
+            && ! str_contains((string) json_encode($r['contents']), 'functionResponse'));
 
         // Duplicated inbound and late/out-of-order status deliveries must not cause another answer.
         $this->postWebhook($raw)->assertOk();
