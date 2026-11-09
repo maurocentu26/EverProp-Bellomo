@@ -324,7 +324,8 @@ final class RegistrarContactoTest extends TestCase
         $service = app(ContactConfirmation::class);
         $gateway = app(ToolGateway::class);
         DB::table('chatbot_sessions')->where('tenant_id', $context->tenantId)->update(['state_json' => '{"other_feature":{"keep":true}}']);
-        foreach ([['Sí', 'TEXT', 'SENT'], ['Mi correo correcto es otro@example.test', 'TEXT', 'SENT'],
+        // EVP-103: a plain "sí" now confirms; a yes carrying a correction still does not.
+        foreach ([['Sí, pero cambiá el teléfono', 'TEXT', 'SENT'], ['Mi correo correcto es otro@example.test', 'TEXT', 'SENT'],
             ['Confirmo mis datos', 'TEXT', 'QUEUED'], ['Confirmo mis datos', 'SYSTEM', 'SENT']] as [$text, $type, $status]) {
             $this->assertFalse($gateway->execute($context, 'registrar_contacto', $args)['ok']);
             $summary = $service->summary($context);

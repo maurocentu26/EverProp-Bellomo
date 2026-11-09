@@ -271,6 +271,25 @@ final class AgentTurnTest extends TestCase
         $this->assertContains('Los datos fueron registrados. Un asesor podrá continuar con tu consulta.', $this->visible($f));
     }
 
+    public function test_a_natural_yes_confirms_the_summary_but_a_yes_with_a_correction_does_not(): void
+    {
+        // EVP-103: "Sí, esos son" in staging did not register; any plain yes now does, decided by the server only.
+        $f = $this->fixture();
+        $tool = ScriptedLlm::tool('registrar_contacto', ['contact_name' => 'Juan Prueba', 'contact_email' => 'juan@example.test', 'notes' => 'Lotes']);
+        $this->llm([ScriptedLlm::text('¿En qué te puedo ayudar?'), $tool, ScriptedLlm::text('¿Qué dato querés cambiar?'), $tool]);
+        // A yes with no summary pending registers nothing.
+        $this->visitorSays($f, 'dale');
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+        $this->visitorSays($f, 'Soy Juan Prueba, mi email es juan@example.test');
+        $this->assertStringContainsString('responde «sí»', last($this->visible($f)));
+        $this->visitorSays($f, 'sí, pero el email es otro');
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+        $this->visitorSays($f, 'Soy Juan Prueba, mi email es juan@example.test');
+        $this->visitorSays($f, 'Sí, esos son');
+        $this->assertSame(1, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+        $this->assertContains('Los datos fueron registrados. Un asesor podrá continuar con tu consulta.', $this->visible($f));
+    }
+
     public function test_correction_gets_a_new_summary_and_confirmation_persists_that_snapshot_without_calling_the_model(): void
     {
         $f = $this->fixture();
