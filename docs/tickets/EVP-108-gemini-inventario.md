@@ -32,6 +32,8 @@
     - **B3:** agregar un test adversarial.
   - Queda como deuda de Q02 sumar un caso de inyección en descripción a `evals/cases`.
 
+**Ajuste por CI (8/11).** El primer CI de este seguimiento falló en un solo test, `WhatsAppGeminiFlowTest`, que esperaba `functionResponse` en la llamada final; el flujo sí terminaba en SUCCEEDED/REPLY. Revisándolo apareció un caso real: si el turno del modelo era solo la llamada a la herramienta, quedaba vacío y se omitía, y la solicitud tenía dos turnos `user` seguidos. Ahora los turnos consecutivos del mismo rol se unen en uno. Se sumó una prueba unitaria para ese caso y se actualizó la aserción del test de integración. Localmente pasan 68 pruebas y 187 aserciones, más Pint y PHPStan; el test con MySQL queda para CI.
+
 **Pendiente.** Se considera resuelto solo después de desplegar en staging y repetir: consulta con resultados (lotes), continuación y confirmación de contacto ficticio con correo exacto.
 
 ## Seguimiento después del PR #104

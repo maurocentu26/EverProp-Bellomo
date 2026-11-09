@@ -252,6 +252,26 @@ final class GeminiChatClientTest extends TestCase
         $this->assertSame('Respuesta verificada.', $reply->text());
     }
 
+    public function test_final_request_merges_user_turns_when_the_model_turn_was_only_a_tool_call(): void
+    {
+        $this->app['env'] = 'local';
+        Http::preventStrayRequests();
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => 'Hay lotes.']]]]],
+        ])]);
+        (new GeminiChatClient('fake-key', 'test-model', 20))->complete('', [
+            ['role' => 'user', 'content' => '¿Tienen lotes?'],
+            ['role' => 'assistant', 'content' => [['type' => 'tool_use', 'id' => 'local', 'name' => 'buscar_propiedades', 'input' => []]]],
+            ['role' => 'user', 'content' => [['type' => 'tool_result', 'tool_use_id' => 'local', 'content' => '{"ok":true}']]],
+        ], [], 100, false);
+
+        $contents = Http::recorded()[0][0]->data()['contents'];
+        $this->assertCount(1, $contents);
+        $this->assertSame('user', $contents[0]['role']);
+        $this->assertSame('¿Tienen lotes?', $contents[0]['parts'][0]['text']);
+        $this->assertStringContainsString('<resultado_herramienta nombre="buscar_propiedades">{"ok":true}', $contents[0]['parts'][1]['text']);
+    }
+
     public function test_final_stop_with_function_call_is_still_rejected(): void
     {
         $this->app['env'] = 'local';

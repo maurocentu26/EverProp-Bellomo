@@ -111,7 +111,10 @@ final class GeminiChatClient implements LlmClient
                     ."\nCon estos datos respondé al cliente en texto. No hay más herramientas disponibles."];
             }
 
-            if ($parts !== []) {
+            if ($parts !== [] && ($contents[array_key_last($contents) ?? -1]['role'] ?? null) === $role) {
+                // A model turn made only of a dropped tool call leaves two user turns in a row: keep them as one.
+                array_push($contents[array_key_last($contents)]['parts'], ...$parts);
+            } elseif ($parts !== []) {
                 $contents[] = [
                     'role' => $role,
                     'parts' => $parts,
