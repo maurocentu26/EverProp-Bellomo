@@ -260,6 +260,8 @@ html[data-panel-text-size="grande"] .wa-inbox { --conversation-text: 20.4px; }
 .wa-inbox .wa-note-mode { background: #fffbeb; color: #78350f; }
 .dark .wa-inbox .wa-note-mode { background: #422006; color: #fef3c7; }
 .conversation-workspace-inbox { display: flex; flex: 1; min-height: 0; width: 100%; background: var(--wa-panel); }
+/* EVP-121: sr-only texts are absolute; each scroller must contain them, or they escape its clipping and grow the page. */
+.conversation-workspace-inbox, .conversation-rows, .wa-inbox .wa-thread, .conversation-client-drawer-body { position: relative; }
 .conversation-columns { display: grid; flex: 1; min-width: 0; min-height: 0; grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
 .conversation-rail { display: none; }
 .wa-inbox .conversation-icon-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 999px; color: var(--wa-meta); }
