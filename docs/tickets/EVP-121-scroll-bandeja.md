@@ -35,8 +35,25 @@ Se probó en `bellomito-staging` inyectando la regla en la página, con la sesi�
 
 Es un cambio solo de CSS, sin lógica, así que no lleva test. No se corrieron `npm run lint` ni `npm run build` localmente; quedan para CI.
 
-## Pendiente
+## Cierre (2026-11-10)
 
-- Validar en staging después del merge y el despliegue.
+- **PR:** [#115](https://github.com/maurocentu26/EverProp-Bellomo/pull/115), commit `ee539c0`. Los dos checks de CI pasaron.
+- **Merge:** Mauro lo mergeó a `develop` como `af48abd` el 2026-11-10 a las 18:28 UTC.
+- **Despliegue:** `bellomito-staging / staging` (deployment `7690686001`) terminó en `success` a las 18:30 UTC.
 
-Riesgo: bajo. Es una sola regla de CSS en la vista de Conversaciones, y va a `develop`.
+**Validación en staging** con el código desplegado, sin inyectar nada, en el navegador del panel con la sesión de Mauro. Confirmé que `.conversation-rows` tiene `position: relative`.
+
+| Caso | Alto del documento | `scrollY` |
+|---|---|---|
+| 1440×900, bandeja | 900 | 0 |
+| Conversación abierta y respuesta enfocada | 900 | 0 |
+| Panel del cliente acoplado | 900 | 0 |
+| Texto Grande y tema oscuro | 900 | 0 |
+| `scrollBy(0, 500)` sobre la página | 900 | 0 |
+| 375×812 (móvil), bandeja | 812 | 0 |
+| Móvil, conversación a pantalla completa | 812, chat en top 0 y 812 de alto | 0 |
+| Móvil, volver a la bandeja | 812 | 0 |
+
+Todos los criterios de aceptación de EVP-121 se cumplen.
+
+Riesgo: bajo. Es una sola regla de CSS en la vista de Conversaciones; está en `develop` y nunca va a `main`.
