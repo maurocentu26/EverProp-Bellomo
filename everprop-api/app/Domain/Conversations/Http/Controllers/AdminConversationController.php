@@ -65,7 +65,8 @@ final class AdminConversationController extends Controller
             ->when(($filters['state'] ?? null) === 'WAITING_HUMAN', fn ($q) => $q->orderByRaw('waiting_since IS NULL')->orderBy('waiting_since'))
             ->orderByDesc('c.last_activity_at')->orderByDesc('c.id')
             ->select(['c.public_id', 'c.control_state', 'c.control_epoch', 'c.unread_count', 'c.last_activity_at', 'c.status',
-                'ca.channel_type', 'ct.display_name', 'u.public_id as assigned_user_id', 'u.display_name as assigned_user_name'])
+                'ca.channel_type', 'ct.display_name', 'ct.phone_e164', 'ct.email', 'ct.profile_json',
+                'u.public_id as assigned_user_id', 'u.display_name as assigned_user_name'])
             // Last message preview: one row per conversation through uq_messages_sequence.
             ->selectSub($this->lastMessage('LEFT(m.text_body, 140)'), 'preview_text')
             ->selectSub($this->lastMessage('m.sender_type'), 'preview_sender')
@@ -79,13 +80,33 @@ final class AdminConversationController extends Controller
             'meta' => ['next_page' => $page->hasMorePages() ? $page->currentPage() + 1 : null],
             'data' => collect($page->items())->map(fn ($c) => [
                 'id' => $c->public_id, 'state' => $c->control_state, 'epoch' => (int) $c->control_epoch,
-                'channel' => $c->channel_type, 'contact_name' => $c->display_name, 'unread' => (int) $c->unread_count,
+                'channel' => $c->channel_type, 'contact_name' => $this->resolveContactName($c), 'unread' => (int) $c->unread_count,
                 'assigned_user' => $c->assigned_user_id ? ['id' => $c->assigned_user_id, 'name' => $c->assigned_user_name] : null,
                 'last_activity_at' => CarbonImmutable::parse($c->last_activity_at, 'UTC')->toISOString(),
                 'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender, 'type' => $c->preview_type,
                     'event_kind' => MetaWebhookProcessor::presentEventKind($c->preview_event_kind)],
             ] + $this->waiting($c, $hours))->all(),
         ]);
+    }
+
+    private function resolveContactName(object $row): ?string
+    {
+        $name = trim((string) ($row->display_name ?? ''));
+        if (! in_array($name, ['', 'Visitante Web', 'Visitante del chat web', 'Contacto sin nombre'], true)) {
+            return $name;
+        }
+        $phone = trim((string) ($row->phone_e164 ?? ''));
+        if ($phone !== '') {
+            return $phone;
+        }
+        $profile = is_string($row->profile_json ?? null) ? (json_decode($row->profile_json, true) ?: []) : [];
+        $declaredPhone = is_string($profile['declared_phone'] ?? null) ? trim($profile['declared_phone']) : '';
+        if ($declaredPhone !== '') {
+            return $declaredPhone;
+        }
+        $email = trim((string) ($row->email ?? ''));
+
+        return $email !== '' ? $email : ($name !== '' ? $name : null);
     }
 
     /**

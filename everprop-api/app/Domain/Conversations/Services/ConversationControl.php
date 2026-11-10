@@ -121,16 +121,35 @@ final class ConversationControl
             $this->assertBotControl($conversation, $expectedEpoch);
             $epoch = (int) $conversation->control_epoch + 1;
             $this->cancelPendingBotSends($tenantId, $conversationId, $epoch);
-            $changes = ['control_state' => 'WAITING_HUMAN', 'control_epoch' => $epoch, 'bot_mode' => 'HUMAN_FIRST'];
+            $changes = [
+                'control_state' => 'WAITING_HUMAN',
+                'control_epoch' => $epoch,
+                'bot_mode' => 'HUMAN_FIRST',
+                'unread_count' => DB::raw('GREATEST(unread_count, 1)'),
+            ];
+            $candidateAssigneeId = $suggestedAssigneeId;
+            if ($conversation->assigned_user_id === null && $candidateAssigneeId === null) {
+                $leadOwnerId = DB::table('leads')
+                    ->where('tenant_id', $tenantId)
+                    ->where('contact_id', $conversation->contact_id)
+                    ->where('is_open', 1)
+                    ->whereNull('deleted_at')
+                    ->orderByDesc('id')
+                    ->value('assigned_user_id');
+                $candidateAssigneeId = $leadOwnerId !== null ? (int) $leadOwnerId : null;
+            }
             // The suggestion comes from CRM data: only an active user of this tenant who can attend is assigned.
-            if ($conversation->assigned_user_id === null && $suggestedAssigneeId !== null && $this->isEligibleAssignee($tenantId, $suggestedAssigneeId)) {
-                $changes['assigned_user_id'] = $suggestedAssigneeId;
+            if ($conversation->assigned_user_id === null && $candidateAssigneeId !== null && $this->isEligibleAssignee($tenantId, $candidateAssigneeId)) {
+                $changes['assigned_user_id'] = $candidateAssigneeId;
             }
             $this->write($tenantId, $conversationId, $changes);
             $this->outbox($tenantId, $conversationId, 'CONVERSATION_HANDOFF_REQUESTED', ['epoch' => $epoch, 'reason' => mb_substr($reason, 0, 500)]);
             ConversationNeedsAttention::sendFor((object) [
-                'tenant_id' => $tenantId, 'public_id' => $conversation->public_id, 'controlled_by_user_id' => null,
+                'tenant_id' => $tenantId,
+                'public_id' => $conversation->public_id,
+                'controlled_by_user_id' => null,
                 'assigned_user_id' => $changes['assigned_user_id'] ?? $conversation->assigned_user_id,
+                'reason' => $reason,
             ]);
             // The assistant session ends with the handoff, atomically.
             DB::table('chatbot_sessions')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)->where('status', 'ACTIVE')
@@ -152,15 +171,18 @@ final class ConversationControl
      *
      * @param  array{lead_id: int, assigned_user_id: ?int, created: bool}  $lead
      */
-    public function assignLead(int $tenantId, int $conversationId, array $lead): ?int
+    public function assignLead(int $tenantId, int $conversationId, array $lead, bool $notify = true, ?int $expectedEpoch = null): ?int
     {
         $assigneeId = $lead['assigned_user_id'] ?? null;
         if ($assigneeId === null) {
             return null;
         }
 
-        return DB::transaction(function () use ($tenantId, $conversationId, $lead, $assigneeId): ?int {
+        return DB::transaction(function () use ($tenantId, $conversationId, $lead, $assigneeId, $notify, $expectedEpoch): ?int {
             $conversation = $this->lock($tenantId, $conversationId);
+            if ($expectedEpoch !== null && (! in_array($conversation->control_state, self::BOT_STATES, true) || (int) $conversation->control_epoch !== $expectedEpoch)) {
+                return $conversation->assigned_user_id ? (int) $conversation->assigned_user_id : null;
+            }
             if ($conversation->assigned_user_id !== null || ! $this->isEligibleAssignee($tenantId, (int) $assigneeId)) {
                 return $conversation->assigned_user_id ? (int) $conversation->assigned_user_id : null;
             }
@@ -172,11 +194,19 @@ final class ConversationControl
                 'lead_created' => $lead['created'],
             ]);
 
-            if ($lead['created']) {
+            if ($notify && $lead['created']) {
                 rescue(function () use ($tenantId, $conversation, $lead, $assigneeId): void {
-                    $user = User::find($assigneeId);
+                    $user = User::query()
+                        ->where('tenant_id', $tenantId)
+                        ->where('id', $assigneeId)
+                        ->where('status', 'ACTIVE')
+                        ->first();
                     if ($user) {
-                        $contactName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $conversation->contact_id)->value('display_name') ?? 'Nuevo Contacto';
+                        $contact = DB::table('contacts')
+                            ->where('tenant_id', $tenantId)
+                            ->where('id', $conversation->contact_id)
+                            ->first(['display_name', 'phone_e164', 'email']);
+                        $contactName = $contact?->display_name ?: ($contact?->phone_e164 ?: ($contact?->email ?: 'Nuevo Contacto'));
                         $leadPublicId = (string) DB::table('leads')->where('tenant_id', $tenantId)->where('id', $lead['lead_id'])->value('public_id');
                         $user->notify(new LeadAssignedNotification(
                             leadPublicId: $leadPublicId,
@@ -184,7 +214,7 @@ final class ConversationControl
                             eventType: 'LEAD_CREATED',
                             title: 'Nuevo lead de chat asignado',
                             message: "Ha ingresado un nuevo lead desde el chat: '{$contactName}'",
-                            actionUrl: "/admin/conversaciones/{$conversation->public_id}"
+                            actionUrl: "/admin/conversaciones?c={$conversation->public_id}"
                         ));
                     }
                 });

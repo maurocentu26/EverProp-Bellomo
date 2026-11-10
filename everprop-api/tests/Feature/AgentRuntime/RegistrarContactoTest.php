@@ -6,11 +6,13 @@ use App\Domain\AgentRuntime\Coordinator\AgentCoordinator;
 use App\Domain\AgentRuntime\Tools\ContactConfirmation;
 use App\Domain\AgentRuntime\Tools\ToolContext;
 use App\Domain\AgentRuntime\Tools\ToolGateway;
+use App\Domain\Conversations\Notifications\ConversationNeedsAttention;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\Feature\Conversations\ConversationTestSupport;
 use Tests\TestCase;
@@ -372,6 +374,97 @@ final class RegistrarContactoTest extends TestCase
         $this->assertSame('STALE_CONTROL', app(ToolGateway::class)->execute($context, 'registrar_contacto', $args)['error']['code']);
         $this->assertSame(0, DB::table('leads')->whereIn('tenant_id', [$a['tenant']->id, $b['tenant']->id])->count());
         $this->assertSame(0, DB::table('tool_executions')->whereIn('tenant_id', [$a['tenant']->id, $b['tenant']->id])->count());
+    }
+
+    public function test_derivar_a_asesor_with_contact_details_creates_lead_assigns_advisor_and_updates_display_name(): void
+    {
+        Notification::fake();
+        $setup = $this->setupConversation();
+        $foreignSetup = $this->setupConversation();
+        $tenantId = (int) $setup['tenant']->id;
+        $foreignTenantId = (int) $foreignSetup['tenant']->id;
+        DB::table('contacts')->where('tenant_id', $foreignTenantId)->where('id', $foreignSetup['contact_id'])
+            ->update(['phone_e164' => '+5493885559876']);
+        $otherAdvisor = User::factory()->create([
+            'tenant_id' => $tenantId,
+            'role_code' => RoleCode::SALES_ADVISOR->value,
+            'status' => 'ACTIVE',
+        ]);
+
+        $context = new ToolContext(
+            $tenantId,
+            $setup['conversation_id'],
+            $setup['contact_id'],
+            $setup['channel_id'],
+            'WEB_CHAT',
+            $setup['run_id'],
+            1,
+            1,
+            (string) Str::uuid()
+        );
+
+        // Name alone on WEB_CHAT updates display_name but does not create an unreachable lead.
+        $nameOnly = app(ToolGateway::class)->execute($context, 'derivar_a_asesor', [
+            'reason' => 'USER_REQUEST',
+            'summary' => 'Quiere hablar con un asesor',
+            'contact_name' => 'Carlos Méndez',
+        ]);
+        $this->assertTrue($nameOnly['ok']);
+        $this->assertSame('Carlos Méndez', DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $setup['contact_id'])->value('display_name'));
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $tenantId)->count());
+
+        // With reachable phone, lead is created and assigned to the tenant's rotated advisor.
+        $res = app(ToolGateway::class)->execute($context, 'derivar_a_asesor', [
+            'reason' => 'USER_REQUEST',
+            'summary' => 'Quiere hablar con un asesor por tasación',
+            'contact_name' => 'Carlos Méndez',
+            'contact_phone' => '+54 9 388 555 9876',
+        ]);
+
+        $this->assertTrue($res['ok']);
+        $this->assertSame('+5493885559876', DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $setup['contact_id'])->value('phone_e164'));
+        $this->assertSame($setup['advisor']->id, (int) DB::table('conversations')->where('tenant_id', $tenantId)->where('id', $setup['conversation_id'])->value('assigned_user_id'));
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $foreignTenantId)->count());
+        $this->assertNull(DB::table('conversations')->where('tenant_id', $foreignTenantId)->where('id', $foreignSetup['conversation_id'])->value('assigned_user_id'));
+
+        app(ConversationControl::class)->requestHuman(
+            $tenantId,
+            $setup['conversation_id'],
+            1,
+            'ADVISOR_REQUESTED: Quiere hablar con un asesor por tasación',
+        );
+
+        Notification::assertSentToTimes($setup['advisor'], ConversationNeedsAttention::class, 1);
+        Notification::assertNotSentTo($otherAdvisor, ConversationNeedsAttention::class);
+        Notification::assertNotSentTo($foreignSetup['advisor'], ConversationNeedsAttention::class);
+
+        $this->actingAs($setup['advisor'])
+            ->withHeaders($this->tenantHeaders($setup['tenant']))
+            ->getJson('/api/v1/admin/conversations')
+            ->assertOk()
+            ->assertJsonPath('data.0.contact_name', 'Carlos Méndez');
+
+        // Switching AI off blocks derivar_a_asesor from mutating contacts or leads.
+        $foreignSetup['tenant']->update(['settings_json' => ['conversations' => ['ai_enabled' => false]]]);
+        $disabledContext = new ToolContext(
+            $foreignTenantId,
+            $foreignSetup['conversation_id'],
+            $foreignSetup['contact_id'],
+            $foreignSetup['channel_id'],
+            'WEB_CHAT',
+            $foreignSetup['run_id'],
+            1,
+            1,
+            (string) Str::uuid()
+        );
+        $blocked = app(ToolGateway::class)->execute($disabledContext, 'derivar_a_asesor', [
+            'reason' => 'USER_REQUEST',
+            'summary' => 'Intento con IA apagada',
+            'contact_name' => 'Intruso',
+        ]);
+        $this->assertFalse($blocked['ok']);
+        $this->assertSame('STALE_CONTROL', $blocked['error']['code']);
+        $this->assertSame('Visitante Web', DB::table('contacts')->where('tenant_id', $foreignTenantId)->where('id', $foreignSetup['contact_id'])->value('display_name'));
     }
 
     private function appendInput(ToolContext $context, string $text): ToolContext
