@@ -90,7 +90,7 @@ final class AgentCoordinator
                 if (! $result['ok']) {
                     return $this->failToHuman($context, $result['error']['code'], $trace, $usage);
                 }
-                $text = 'Los datos fueron registrados. Un asesor podrá continuar con tu consulta.';
+                $text = '¡Listo! Ya guardé tu consulta. Un asesor puede ayudarte a seguir con la búsqueda.';
             } else {
                 $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage);
             }
