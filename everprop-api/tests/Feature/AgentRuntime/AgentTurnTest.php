@@ -266,9 +266,11 @@ final class AgentTurnTest extends TestCase
         $this->visitorSays($f, 'Anotame en el L-101, mi cel es 388 555-1234');
         $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
         $this->assertStringContainsString('Confirmo mis datos', last($this->visible($f)));
+        $this->assertStringStartsWith('¿Está bien este teléfono para que podamos contactarte?', last($this->visible($f)));
+        $this->assertStringNotContainsString('Correo:', last($this->visible($f)));
         $this->visitorSays($f, 'Confirmo mis datos');
         $this->assertSame(1, DB::table('lead_properties')->where('tenant_id', $f['tenant']->id)->count());
-        $this->assertContains('Los datos fueron registrados. Un asesor podrá continuar con tu consulta.', $this->visible($f));
+        $this->assertContains('¡Listo! Ya guardé tu consulta. Un asesor puede ayudarte a seguir con la búsqueda.', $this->visible($f));
     }
 
     public function test_a_natural_yes_confirms_the_summary_but_a_yes_with_a_correction_does_not(): void
@@ -281,13 +283,17 @@ final class AgentTurnTest extends TestCase
         $this->visitorSays($f, 'dale');
         $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
         $this->visitorSays($f, 'Soy Juan Prueba, mi email es juan@example.test');
-        $this->assertStringContainsString('responde «sí»', last($this->visible($f)));
+        $summary = last($this->visible($f));
+        $this->assertStringStartsWith('¿Está bien este correo para que podamos contactarte?', $summary);
+        $this->assertStringContainsString('respondé «sí» o «Confirmo mis datos» para que guarde tu consulta', $summary);
+        $this->assertStringNotContainsString('Teléfono:', $summary);
+        $this->assertStringNotContainsString('No indicado', $summary);
         $this->visitorSays($f, 'sí, pero el email es otro');
         $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
         $this->visitorSays($f, 'Soy Juan Prueba, mi email es juan@example.test');
         $this->visitorSays($f, 'Sí, esos son');
         $this->assertSame(1, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
-        $this->assertContains('Los datos fueron registrados. Un asesor podrá continuar con tu consulta.', $this->visible($f));
+        $this->assertContains('¡Listo! Ya guardé tu consulta. Un asesor puede ayudarte a seguir con la búsqueda.', $this->visible($f));
     }
 
     public function test_correction_gets_a_new_summary_and_confirmation_persists_that_snapshot_without_calling_the_model(): void
@@ -295,13 +301,15 @@ final class AgentTurnTest extends TestCase
         $f = $this->fixture();
         $llm = $this->llm([
             ScriptedLlm::tool('registrar_contacto', ['contact_name' => 'Ana', 'contact_email' => 'first@example.test', 'notes' => 'Consulta inicial']),
-            ScriptedLlm::tool('registrar_contacto', ['contact_name' => 'Ana', 'contact_email' => 'second@example.test', 'notes' => 'Consulta corregida']),
+            ScriptedLlm::tool('registrar_contacto', ['contact_name' => 'Ana', 'contact_email' => 'second@example.test', 'contact_phone' => '+54 9 388 555-1234', 'notes' => 'Consulta corregida']),
         ]);
         $this->visitorSays($f, 'Soy Ana, mi correo es first@example.test');
         $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
         $this->assertStringContainsString('first@example.test', last($this->visible($f)));
-        $this->visitorSays($f, 'Mi correo correcto es second@example.test');
+        $this->visitorSays($f, 'Mi correo correcto es second@example.test y mi teléfono es +54 9 388 555-1234');
         $summary = last($this->visible($f));
+        $this->assertStringStartsWith('¿Están bien este teléfono y este correo para que podamos contactarte?', $summary);
+        $this->assertStringContainsString('Teléfono:', $summary);
         $this->assertStringContainsString('second@example.test', $summary);
         $this->assertStringNotContainsString('first@example.test', $summary);
         $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());

@@ -86,22 +86,31 @@ final class ContactConfirmation
                 $contact = DB::table('contacts')->where('tenant_id', $context->tenantId)->where('id', $context->contactId)->first();
                 $profile = json_decode((string) $contact?->profile_json, true) ?: [];
                 $visible = [
-                    'Nombre' => $arguments['contact_name'] ?? $contact->display_name ?? 'No indicado',
-                    'Teléfono' => $arguments['contact_phone'] ?? $contact->phone_e164 ?? $profile['declared_phone'] ?? 'No indicado',
-                    'Email' => $arguments['contact_email'] ?? $contact->email ?? 'No indicado',
+                    'Nombre' => $arguments['contact_name'] ?? $contact->display_name ?? null,
+                    'Teléfono' => $arguments['contact_phone'] ?? $contact->phone_e164 ?? $profile['declared_phone'] ?? null,
+                    'Correo' => $arguments['contact_email'] ?? $contact->email ?? null,
                 ];
+                $visible = array_filter($visible, fn (?string $value): bool => trim($value ?? '') !== '');
+                $summary = match (true) {
+                    isset($visible['Teléfono'], $visible['Correo']) => '¿Están bien este teléfono y este correo para que podamos contactarte?',
+                    isset($visible['Teléfono']) => '¿Está bien este teléfono para que podamos contactarte?',
+                    isset($visible['Correo']) => '¿Está bien este correo para que podamos contactarte?',
+                    default => '¿Podés revisar estos datos antes de que guarde tu consulta?',
+                };
+                $summary .= "\n\n";
                 if (isset($arguments['property_id'])) {
                     $property = DB::table('properties')->where('tenant_id', $context->tenantId)->where('public_id', $arguments['property_id'])->first(['code', 'title']);
                     $visible['Propiedad'] = ($property->title ?? '').' ('.($property->code ?? $arguments['property_id']).')';
                     $visible['Interés'] = $arguments['interest_level'];
                 }
-                $visible['Motivo'] = $arguments['notes'] ?? 'Consulta por asistente';
-                $summary = "Antes de registrar la consulta, revisa estos datos:\n";
+                if (trim($arguments['notes'] ?? '') !== '') {
+                    $visible['Consulta'] = $arguments['notes'];
+                }
                 foreach ($visible as $label => $value) {
                     // Quote untrusted fields so embedded newlines cannot impersonate another label.
                     $summary .= $label.': '.json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n";
                 }
-                $summary .= 'Si son correctos, responde «sí» o «'.self::PHRASE.'». Si hay un error, envía la corrección.';
+                $summary .= "\n".'Si está todo bien, respondé «sí» o «'.self::PHRASE.'» para que guarde tu consulta. Si hay algo para corregir, decime qué dato cambio.';
                 $state[self::KEY] = ['run_id' => $context->runId, 'epoch' => $context->epoch, 'tool' => $tool,
                     'arguments' => $arguments, 'summary' => $summary];
             }
