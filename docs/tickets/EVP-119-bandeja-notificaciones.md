@@ -1,6 +1,6 @@
 # EVP-119 — Rediseño de la bandeja de notificaciones (campana) del panel
 
-Rama `ticket/EVP-119-bandeja-notificaciones` · commits pendientes · fecha 2026-11-10 · Claude (Opus 5.5) con Mauro Centurión
+Rama `ticket/EVP-119-bandeja-notificaciones` · commit `7654761` · fecha 2026-11-10 · Claude (Opus 5.5) con Mauro Centurión
 
 ## 1. Qué pedía el ticket
 
