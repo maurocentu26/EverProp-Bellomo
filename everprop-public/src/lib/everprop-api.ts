@@ -1003,6 +1003,14 @@ export async function markEverpropNotificationRead(id: string): Promise<void> {
   });
 }
 
+export async function markEverpropNotificationUnread(id: string): Promise<void> {
+  await apiFetch(`/api/v1/admin/notifications/${encodeURIComponent(id)}/unread`, { method: "PATCH" });
+}
+
+export async function archiveEverpropNotification(id: string): Promise<void> {
+  await apiFetch(`/api/v1/admin/notifications/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 export async function markAllEverpropNotificationsRead(): Promise<void> {
   await apiFetch("/api/v1/admin/notifications/mark-all-read", {
     method: "POST",
