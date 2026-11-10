@@ -3,6 +3,8 @@ import {
   loadEverpropNotifications,
   markAllEverpropNotificationsRead,
   markEverpropNotificationRead,
+  markEverpropNotificationUnread,
+  archiveEverpropNotification,
   clearAllEverpropNotifications,
   type ApiNotification,
 } from "./everprop-api";
@@ -138,6 +140,22 @@ export async function markNotificationAsRead(id: string): Promise<void> {
   const notifs = loadNotifications();
   const updated = notifs.map((n) => (n.id === id ? { ...n, read: true } : n));
   saveNotifications(updated);
+}
+
+export async function markNotificationAsUnread(id: string): Promise<void> {
+  if (!isMockDataMode) {
+    await markEverpropNotificationUnread(id);
+    return;
+  }
+  saveNotifications(loadNotifications().map((n) => (n.id === id ? { ...n, read: false } : n)));
+}
+
+export async function archiveNotification(id: string): Promise<void> {
+  if (!isMockDataMode) {
+    await archiveEverpropNotification(id);
+    return;
+  }
+  saveNotifications(loadNotifications().filter((n) => n.id !== id));
 }
 
 export function createNotification(

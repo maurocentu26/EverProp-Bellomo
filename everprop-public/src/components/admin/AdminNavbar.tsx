@@ -4,17 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
-import { Bell, Check, ExternalLink, Home, Inbox, Menu, MessagesSquare, Users, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
+import { Bell, Home, Menu, MessagesSquare, Users, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { nextTopbarState } from "@/lib/topbar-scroll";
+import { isForMe } from "@/lib/notification-tray";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AdminFullscreenMenu } from "@/components/admin/AdminFullscreenMenu";
+import { NotificationTray } from "@/components/admin/NotificationTray";
 import { GlobalSearch } from "@/components/admin/navbar/GlobalSearch";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { MOBILE_QUERY, useIsMobile } from "@/hooks/use-mobile";
-import { clearAllNotifications, fetchNotifications, isNotificationForUser, markAllNotificationsAsRead, markNotificationAsRead, showDesktopNotification, type AppNotification } from "@/lib/notifications";
+import { fetchNotifications, isNotificationForUser, showDesktopNotification, type AppNotification } from "@/lib/notifications";
 import { apiFetch } from "@/lib/everprop-api";
 import { isMockDataMode } from "@/lib/data-mode";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,12 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const [archiving, setArchiving] = useState<ReadonlySet<string>>(() => new Set());
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const trayOpenRef = useRef(false);
+  const refreshRef = useRef<() => void>(() => {});
+  useEffect(() => { trayOpenRef.current = isNotificationsOpen; }, [isNotificationsOpen]);
   const topbarRef = useRef<HTMLElement>(null);
   // Se oculta al bajar y vuelve al subir. Las vistas con scroll interno, como Conversaciones, no mueven este contenedor.
   useEffect(() => {
@@ -98,10 +104,12 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
         notifs.forEach(notification => seen.add(notification.id));
         seenNotificationIds.current = seen;
         setNotifications(notifs);
+        setLoadState("ready");
         if (incoming.length) {
           if (soundEnabledRef.current) playCorporateNotificationChime();
           const notification = incoming[0];
-          toast.info(incoming.length > 1 ? `${incoming.length} nuevas notificaciones` : notification.title || "Nueva notificación", {
+          // With the tray open, new items just appear at the top (PatternFly): no toast over it.
+          if (!trayOpenRef.current) toast.info(incoming.length > 1 ? `${incoming.length} nuevas notificaciones` : notification.title || "Nueva notificación", {
             description: notification.message, duration: 12000,
             action: notification.actionUrl ? { label: "Ver", onClick: () => router.push(notification.actionUrl!) } : undefined,
           });
@@ -110,8 +118,10 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
         return true;
       } catch (err) {
         console.error("Error fetching notifications:", err);
+        if (mounted) setLoadState("error");
       } finally { refreshing = false; }
     };
+    refreshRef.current = () => void refresh();
     void refresh();
 
     const eventSource = isMockDataMode ? new EventSource('/api/notifications/stream') : null;
@@ -142,7 +152,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
           });
           if (soundEnabledRef.current) playCorporateNotificationChime();
           showDesktopNotification(data.title || "Nueva notificación", { body: data.message });
-          toast.info(data.title || "Nueva notificación", {
+          if (!trayOpenRef.current) toast.info(data.title || "Nueva notificación", {
             description: data.message,
             action: data.actionUrl
               ? { label: "Ver", onClick: () => router.push(data.actionUrl!) }
@@ -179,7 +189,8 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     };
   }, [user, router]);
 
-  const unreadCount = notifications.filter((notification) => !notification.read).length;
+  // The bell counts only what is directed at this user ("Para mí"); team and system news wait in "Todas".
+  const unreadCount = notifications.filter((notification) => !notification.read && isForMe(notification.eventType) && !archiving.has(notification.id)).length;
 
   useEffect(() => {
     if (unreadCount > prevUnreadRef.current) {
@@ -201,31 +212,11 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     return () => mobileQuery.removeEventListener("change", closeMenuOnDesktop);
   }, []);
 
-  const handleMarkAllAsRead = async () => {
-    if (!user?.id) return;
-    try {
-      await markAllNotificationsAsRead(user);
-      setNotifications((current) => current.map((n) => ({ ...n, read: true })));
-    } catch { toast.error("No se pudieron marcar las notificaciones. Reintentá."); }
-  };
-
-  const handleClearAll = async () => {
-    if (!window.confirm("¿Eliminar definitivamente todas tus notificaciones? Esta acción no se puede deshacer.")) return;
-    try {
-      await clearAllNotifications(user);
-      setNotifications([]);
-    } catch { toast.error("No se pudo limpiar el historial. Reintentá."); }
-  };
-
-  const handleNotificationClick = async (n: AppNotification) => {
-    if (!n.read) {
-      try {
-        await markNotificationAsRead(n.id);
-        setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, read: true } : item)));
-      } catch { toast.error("No se pudo marcar como leída."); }
-    }
-    const url = n.actionUrl || (n.leadId ? `/admin/leads/${n.leadId}` : null);
-    if (url) { setIsNotificationsOpen(false); router.push(url); }
+  const toggleSound = () => {
+    const enabled = !soundEnabled;
+    setSoundEnabled(enabled); soundEnabledRef.current = enabled;
+    try { localStorage.setItem("bellomo:notification-sound", enabled ? "on" : "off"); } catch {}
+    if (enabled) playCorporateNotificationChime();
   };
 
   const userInfo = {
@@ -292,149 +283,37 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
             <ThemeToggle />
             <PanelTextSizeControl />
 
-            {/* Notifications Drawer (Sheet) */}
-            <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-              <SheetTrigger
-                className="relative inline-flex size-11 min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Notificaciones"
-              >
+            <NotificationTray
+              user={user}
+              notifications={notifications}
+              setNotifications={setNotifications}
+              archiving={archiving}
+              setArchiving={setArchiving}
+              loadState={loadState}
+              onRetry={() => refreshRef.current()}
+              open={isNotificationsOpen}
+              onOpenChange={setIsNotificationsOpen}
+              isMobile={isMobile}
+              soundEnabled={soundEnabled}
+              onToggleSound={toggleSound}
+              triggerLabel={unreadCount ? `Notificaciones, ${unreadCount} para vos sin leer` : "Notificaciones"}
+              triggerClassName="relative inline-flex size-11 min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-2xs transition-colors hover:bg-muted dark:hover:bg-slate-800 aria-expanded:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              trigger={<>
                 <motion.div animate={bellControls}>
-                  <Bell className="h-4 w-4" />
+                  <Bell className="h-4 w-4" aria-hidden="true" />
                 </motion.div>
                 {unreadCount > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-red-600"
+                    aria-hidden="true"
+                    className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-red-600 px-1"
                   >
-                    <span className="text-[8px] font-black leading-none text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>
+                    <span className="text-[10px] font-black leading-none text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>
                   </motion.span>
                 )}
-              </SheetTrigger>
-              <SheetContent side="right" className="admin-workspace flex !w-full flex-col gap-0 p-0 data-[side=right]:!w-full data-[side=right]:sm:!max-w-md">
-                <SheetHeader className="border-b border-border px-5 py-4 text-left">
-                  <div className="flex flex-col gap-4 pr-6">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <SheetTitle className="text-base font-bold text-foreground">Notificaciones</SheetTitle>
-                      {unreadCount > 0 ? (
-                        <span className="whitespace-nowrap rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                          {unreadCount} sin leer
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                          Al día
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {unreadCount > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleMarkAllAsRead}
-                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300"
-                        >
-                          <Check className="h-3.5 w-3.5" /> Marcar leídas
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        // One flow for device alerts (Settings): a bare browser permission is not an activation.
-                        onClick={() => { setIsNotificationsOpen(false); router.push("/admin/settings#avisos-dispositivo"); }}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-muted"
-                      >
-                        <Bell className="h-3.5 w-3.5" /> Avisos con el panel cerrado
-                      </button>
-                      <button type="button" aria-pressed={soundEnabled} onClick={() => {
-                        const enabled = !soundEnabled;
-                        setSoundEnabled(enabled); soundEnabledRef.current = enabled;
-                        try { localStorage.setItem("bellomo:notification-sound", enabled ? "on" : "off"); } catch {}
-                        if (enabled) playCorporateNotificationChime();
-                      }} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold">
-                        {soundEnabled ? <Volume2 className="size-4"/> : <VolumeX className="size-4"/>}
-                        Sonido {soundEnabled ? "activado" : "desactivado"}
-                      </button>
-                      {notifications.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleClearAll}
-                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold hover:bg-destructive/10 hover:text-destructive"
-                          title="Vaciar todas las notificaciones"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" /> Limpiar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <SheetDescription className="text-xs text-muted-foreground">
-                    Alertas de leads asignados, compromisos comerciales y eventos del sistema.
-                  </SheetDescription>
-                </SheetHeader>
-
-                <a href="/admin/notifications" className="mx-4 my-3 inline-flex min-h-11 items-center rounded-xl border border-border px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-300">Ver todas →</a>
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 space-y-2.5">
-                  {notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-                        <Inbox className="h-6 w-6" />
-                      </div>
-                      <p className="mt-4 text-sm font-semibold text-foreground">Bandeja al día</p>
-                      <p className="mt-1 text-xs text-muted-foreground max-w-[220px]">
-                        No tenés notificaciones pendientes. Cuando haya nuevos contactos o novedades aparecerán acá.
-                      </p>
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        type="button"
-                        onClick={() => handleNotificationClick(n)}
-                        className={cn(
-                          "group relative flex w-full flex-col gap-1.5 rounded-xl border p-3.5 text-left transition-all",
-                          n.read
-                            ? "border-border bg-card hover:border-border/80 hover:bg-accent/40 text-muted-foreground"
-                            : "border-blue-200 bg-blue-50/50 hover:bg-blue-50/80 dark:border-blue-900/60 dark:bg-blue-950/20 dark:hover:bg-blue-950/30 text-foreground"
-                        )}
-                      >
-                        <div className="flex flex-col items-start gap-1.5">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                "h-2 w-2 rounded-full shrink-0",
-                                n.read ? "bg-muted-foreground/30" : "bg-blue-600 ring-2 ring-blue-200 dark:ring-blue-950"
-                              )}
-                            />
-                            {n.title && (
-                              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                {n.title}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[11px] text-muted-foreground">
-                            {new Date(n.timestamp).toLocaleString("es-AR", {
-                              day: "2-digit",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-
-                        <p className={cn("text-xs leading-relaxed font-medium text-foreground", n.read && "text-muted-foreground")}>
-                          {n.message}
-                        </p>
-
-                        {(n.leadId || n.actionUrl) && (
-                          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 group-hover:underline">
-                            <span>Ver detalle</span>
-                            <ExternalLink className="h-3 w-3" />
-                          </div>
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
+              </>}
+            />
 
             <div
               role="img"

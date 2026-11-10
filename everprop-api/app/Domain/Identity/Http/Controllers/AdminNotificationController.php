@@ -81,6 +81,39 @@ final class AdminNotificationController extends Controller
         ]);
     }
 
+    public function markAsUnread(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $notification = $user->notifications()->where('id', $id)->first();
+        abort_unless($notification !== null, 404);
+        $notification->markAsUnread();
+
+        return response()->json([
+            'status' => 'marked_unread',
+            'id' => $id,
+        ]);
+    }
+
+    /** Archives one bell notification (EVP-119); the panel sends it once its Undo window closes. */
+    public function destroy(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        abort_unless($user->notifications()->where('id', $id)->delete() === 1, 404);
+
+        return response()->json([
+            'status' => 'deleted',
+            'id' => $id,
+        ]);
+    }
+
     public function markAllAsRead(Request $request): JsonResponse
     {
         $user = $request->user();
