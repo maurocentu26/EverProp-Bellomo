@@ -63,7 +63,7 @@ final class ContactDetails
         if (isset($arguments['contact_email']) && $contact->email === null) {
             $changes['email'] = mb_strtolower(trim($arguments['contact_email']));
         }
-        if (isset($arguments['contact_name']) && in_array($contact->display_name, [null, ''], true)) {
+        if (isset($arguments['contact_name']) && in_array($contact->display_name, [null, '', 'Visitante Web', 'Visitante del chat web', 'Contacto sin nombre'], true)) {
             $changes['display_name'] = trim($arguments['contact_name']);
         }
         if ($changes === []) {

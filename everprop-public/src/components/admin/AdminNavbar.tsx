@@ -113,7 +113,17 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
             description: notification.message, duration: 12000,
             action: notification.actionUrl ? { label: "Ver", onClick: () => router.push(notification.actionUrl!) } : undefined,
           });
-          if (document.visibilityState === "hidden") showDesktopNotification(notification.title || "Bellomo", { body: notification.message, tag: notification.id, data: { url: notification.actionUrl } });
+          if (document.visibilityState === "hidden") {
+            const isConversationAlert = notification.eventType === "CONVERSATION_NEEDS_ATTENTION";
+            showDesktopNotification(
+              isConversationAlert ? "Un cliente espera respuesta" : (notification.title || "Bellomo"),
+              {
+                body: isConversationAlert ? "Abrí la conversación para atenderlo." : notification.message,
+                tag: notification.id,
+                data: { url: notification.actionUrl },
+              },
+            );
+          }
         }
         return true;
       } catch (err) {

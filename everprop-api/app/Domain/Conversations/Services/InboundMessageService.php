@@ -102,9 +102,10 @@ final class InboundMessageService
         $reopen = $conversation->control_state === 'CLOSED';
         app(ConversationControl::class)->reopenFromInbound($conversation, $sequence);
         $state = $reopen ? 'WAITING_HUMAN' : $conversation->control_state;
+        $botHandles = in_array($state, ConversationControl::BOT_STATES, true);
         DB::table('conversations')->where('tenant_id', $message->tenantId)->where('id', $conversation->id)->update([
             'next_sequence' => $sequence + 1,
-            'unread_count' => DB::raw('unread_count + 1'),
+            'unread_count' => $botHandles ? 0 : DB::raw('unread_count + 1'),
             'first_inbound_at' => $conversation->first_inbound_at ?? $now->format('Y-m-d H:i:s.v'),
             'last_inbound_at' => $now->format('Y-m-d H:i:s.v'),
             'last_activity_at' => $now->format('Y-m-d H:i:s.v'),
@@ -114,14 +115,15 @@ final class InboundMessageService
             'closed_at' => null,
         ]);
 
-        // One alert per unattended episode: the first unread message in a conversation people handle.
-        // unread_count only resets when the assignee reads, so follow-ups before that don't repeat it.
-        $newEpisode = in_array($state, ['WAITING_HUMAN', 'HUMAN_ACTIVE'], true) && ($reopen || (int) $conversation->unread_count === 0);
-        if ($newEpisode) {
-            ConversationNeedsAttention::sendFor($reopen ? (object) [
+        // EVP-120: inbound messages do not spam notifications on initial entry or during active chats;
+        // notifications fire on concrete handoffs (ConversationControl::requestHuman) or when a closed chat reopens.
+        $waitingEpisode = $state === 'WAITING_HUMAN' && ($reopen || (int) $conversation->unread_count === 0);
+        if ($reopen) {
+            ConversationNeedsAttention::sendFor((object) [
                 'tenant_id' => $message->tenantId, 'public_id' => $conversation->public_id,
                 'controlled_by_user_id' => null, 'assigned_user_id' => $conversation->assigned_user_id,
-            ] : $conversation);
+                'reason' => 'REOPENED: El cliente volvió a escribir en una conversación cerrada.',
+            ]);
         }
 
         DB::table('domain_outbox')->insert([
@@ -148,7 +150,7 @@ final class InboundMessageService
             'sequence' => $sequence,
             'replayed' => false,
             // EVP-L02: first unanswered message of an episode waiting for a person (an away notice may follow).
-            'waiting_episode' => $newEpisode && $state === 'WAITING_HUMAN',
+            'waiting_episode' => $waitingEpisode,
         ];
     }
 
