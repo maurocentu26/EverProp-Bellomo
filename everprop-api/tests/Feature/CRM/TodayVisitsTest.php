@@ -93,6 +93,12 @@ final class TodayVisitsTest extends TestCase
         }
         $this->actingAs($admin)->withHeaders($headers)->getJson('/api/v1/admin/visits/today')
             ->assertOk()->assertJsonPath('meta.total', 13)->assertJsonCount(10, 'data');
+        $this->actingAs($admin)->withHeaders($headers)->getJson('/api/v1/admin/visits/today?agent_id='.$advisor->public_id)
+            ->assertOk()->assertJsonPath('meta.total', 12)->assertJsonCount(10, 'data');
+        $this->actingAs($teammate)->withHeaders($headers)->getJson('/api/v1/admin/visits/today')
+            ->assertOk()->assertJsonPath('meta.total', 0)->assertJsonCount(0, 'data');
+        $this->actingAs($admin)->withHeaders($headers)->getJson('/api/v1/admin/visits/today?agent_id='.$teammate->public_id)
+            ->assertOk()->assertJsonPath('meta.total', 0)->assertJsonCount(0, 'data');
         $inventory = User::factory()->for($tenant)->create(['role_code' => RoleCode::ROTATOR->value]);
         $this->actingAs($inventory)->withHeaders($headers)->getJson('/api/v1/admin/visits/today')->assertForbidden();
         $this->travelBack();
@@ -178,6 +184,12 @@ final class TodayVisitsTest extends TestCase
         $this->getJson('/api/v1/admin/follow-ups?page=2')->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.next_page', null);
         $other = User::factory()->for($tenant)->create(['role_code' => RoleCode::SALES_ADVISOR->value]);
         $this->actingAs($other)->getJson('/api/v1/admin/follow-ups')->assertOk()->assertJsonCount(0, 'data');
+        $this->actingAs($other)->getJson('/api/v1/admin/leads?agent_id='.$advisor->public_id)->assertOk()->assertJsonCount(0, 'data');
+        $admin = User::factory()->for($tenant)->create(['role_code' => RoleCode::TENANT_ADMIN->value]);
+        $this->actingAs($admin)->getJson('/api/v1/admin/leads?page=1&agent_id='.$advisor->public_id)
+            ->assertOk()->assertJsonCount(200, 'data')->assertJsonPath('meta.next_page', 2);
+        $this->actingAs($admin)->getJson('/api/v1/admin/leads?page=2&agent_id='.$advisor->public_id)
+            ->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('meta.next_page', null);
     }
 
     public function test_stage_requires_actual_contact_and_advisor_cannot_reassign(): void
@@ -221,6 +233,68 @@ final class TodayVisitsTest extends TestCase
         $this->patchJson("/api/v1/admin/leads/$uuid", ['agent_id' => $next->public_id])->assertOk();
         $this->actingAs($next)->getJson('/api/v1/admin/visits')->assertOk()->assertJsonCount(1, 'data');
         $this->actingAs($advisor)->getJson('/api/v1/admin/visits')->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_bulk_multi_advisor_leads_match_exactly_between_admin_filter_and_advisor_views(): void
+    {
+        [$tenant, $jimena, $seedLead] = $this->fixture();
+        $sebastian = User::factory()->for($tenant)->create(['role_code' => RoleCode::SALES_ADVISOR->value]);
+        $admin = User::factory()->for($tenant)->create(['role_code' => RoleCode::TENANT_ADMIN->value]);
+
+        $newStageId = (int) DB::table('leads')->where('id', $seedLead)->value('stage_id');
+        $contactedStageId = DB::table('pipeline_stages')->insertGetId([
+            'tenant_id' => $tenant->id, 'code' => 'CONTACTED', 'name' => 'Contacted', 'category' => 'OPEN', 'position' => 2,
+        ]);
+
+        // Seedlead is #1 for Jimena (NEW). Create 78 more NEW + 15 CONTACTED for Jimena in first batch (94 total so far),
+        // then 94 NEW for Sebastian (total 188), then 66 more NEW for Jimena (pushing total to 254 across pages 1 & 2).
+        $template = (array) DB::table('leads')->where('id', $seedLead)->first();
+        unset($template['id'], $template['open_slot']);
+
+        $insertBatch = function (User $owner, int $count, int $stageId) use ($tenant, $template): void {
+            $rows = [];
+            for ($i = 0; $i < $count; $i++) {
+                $contactId = DB::table('contacts')->insertGetId([
+                    'tenant_id' => $tenant->id, 'public_id' => (string) Str::uuid(), 'display_name' => "Bulk {$owner->id}-$i",
+                    'first_seen_at' => now(), 'last_seen_at' => now(),
+                ]);
+                $rows[] = array_merge($template, [
+                    'public_id' => (string) Str::uuid(),
+                    'contact_id' => $contactId,
+                    'assigned_user_id' => $owner->id,
+                    'stage_id' => $stageId,
+                ]);
+            }
+            DB::table('leads')->insert($rows);
+        };
+
+        $insertBatch($jimena, 78, $newStageId);
+        $insertBatch($jimena, 15, $contactedStageId);
+        $insertBatch($sebastian, 94, $newStageId);
+        $insertBatch($jimena, 66, $newStageId);
+
+        $headers = ['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173'];
+
+        // Fetch all pages as Admin
+        $this->actingAs($admin)->withHeaders($headers);
+        $adminPage1 = $this->getJson('/api/v1/admin/leads?page=1')->assertOk();
+        $adminPage2 = $this->getJson('/api/v1/admin/leads?page=2')->assertOk();
+        $adminAll = collect($adminPage1->json('data'))->concat($adminPage2->json('data'));
+        $this->assertCount(254, $adminAll);
+
+        // Compare Admin filtered by Jimena vs Jimena's own view
+        $adminJimena = $adminAll->where('agent_id', $jimena->public_id)->values();
+        $jimenaOwn = collect($this->actingAs($jimena)->withHeaders($headers)->getJson('/api/v1/admin/leads?page=1')->assertOk()->json('data'));
+        $this->assertCount(160, $jimenaOwn);
+        $this->assertSame($jimenaOwn->pluck('id')->all(), $adminJimena->pluck('id')->all());
+        $this->assertSame(145, $jimenaOwn->where('stage', 'NEW')->count());
+        $this->assertSame(145, $adminJimena->where('stage', 'NEW')->count());
+
+        // Compare Admin filtered by Sebastian vs Sebastian's own view
+        $adminSebastian = $adminAll->where('agent_id', $sebastian->public_id)->values();
+        $sebastianOwn = collect($this->actingAs($sebastian)->withHeaders($headers)->getJson('/api/v1/admin/leads?page=1')->assertOk()->json('data'));
+        $this->assertCount(94, $sebastianOwn);
+        $this->assertSame($sebastianOwn->pluck('id')->all(), $adminSebastian->pluck('id')->all());
     }
 
     /** @return array<mixed> */

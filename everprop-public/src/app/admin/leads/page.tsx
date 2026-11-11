@@ -25,11 +25,12 @@ import { getLeadFollowUpState } from "@/lib/lead-follow-up";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui/input-group";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog, loadEverpropLeads, loadEverpropLeadsPage, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
+import { loadEverpropCatalog, loadEverpropLeads, updateEverpropLead, createEverpropLeadFollowUp, loadEverpropAllFollowUps } from "@/lib/everprop-api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useDashboardMode } from "@/lib/dashboard-context";
 import { useCurrentSession } from "@/hooks/use-current-session";
+import { useLeadAdvisors } from "@/hooks/use-lead-advisors";
 import { LeadFollowUpEditor } from "@/components/admin/LeadFollowUpEditor";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 
@@ -59,13 +60,14 @@ export default function LeadsPage() {
 }
 
 function AllLeadsPage() {
-  const { mode: dashboardMode } = useDashboardMode();
+  const { mode: dashboardMode, globalSelectedAgentId, setGlobalSelectedAgentId } = useDashboardMode();
   const { isEngineer, isAdvisor, user } = useCurrentSession();
+  const { advisors } = useLeadAdvisors(!isAdvisor);
 
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [catalogProperties, setCatalogProperties] = useState<Property[]>(isMockDataMode ? sampleProperties : []);
   const [originFilter, setOriginFilter] = useState("all");
-  const [advisorFilter, setAdvisorFilter] = useState("all");
+  const [advisorFilter, setAdvisorFilter] = useState(() => (!isAdvisor && globalSelectedAgentId !== "all" ? globalSelectedAgentId : "all"));
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeStage, setActiveStage] = useState<LeadStageFilter>("all");
@@ -73,10 +75,15 @@ function AllLeadsPage() {
   const [followUpFilter, setFollowUpFilter] = useState<FollowUpFilter>("all");
   const [loadError, setLoadError] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
-  const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [stageUpdateLead, setStageUpdateLead] = useState<Lead | null>(null);
+
+  useEffect(() => {
+    if (isAdvisor) return;
+    return deferEffectUpdate(() => {
+      setAdvisorFilter(globalSelectedAgentId);
+    });
+  }, [globalSelectedAgentId, isAdvisor]);
 
   useEffect(() => {
     let active = true;
@@ -129,6 +136,7 @@ function AllLeadsPage() {
   const handleClearFilters = () => {
     setOriginFilter("all");
     setAdvisorFilter("all");
+    setGlobalSelectedAgentId("all");
     setSearchQuery("");
     setActiveStage("all");
     setAssetType("all");
@@ -137,9 +145,12 @@ function AllLeadsPage() {
 
   // Conteo dinámico para los tabs de etapas
   const stageCounts = useMemo(() => {
-    const base = isAdvisor && isMockDataMode
+    let base = isAdvisor && isMockDataMode
       ? allLeads.filter((l) => l.agentId === user?.id)
       : allLeads;
+    if (!isAdvisor && advisorFilter !== "all") {
+      base = base.filter((l) => (l.agentId || "unassigned") === advisorFilter);
+    }
 
     return {
       all: base.length,
@@ -150,7 +161,7 @@ function AllLeadsPage() {
       discarded: base.filter((l) => l.stage === "discarded").length,
       closing: base.filter((l) => l.stage === "closing").length,
     };
-  }, [allLeads, isAdvisor, user]);
+  }, [allLeads, isAdvisor, user, advisorFilter]);
 
   const filteredLeads = useMemo(() => {
     let filtered = allLeads;
@@ -307,22 +318,6 @@ function AllLeadsPage() {
     );
   }
 
-  const handleLoadMore = async () => {
-    if (isLoadingMore) return;
-    setIsLoadingMore(true);
-    try {
-      const nextPage = page + 1;
-      const newLeads = await loadEverpropLeadsPage(nextPage);
-      if (newLeads.length === 0) return;
-      setAllLeads(prev => [...prev, ...newLeads]);
-      setPage(nextPage);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-
   if (!isLoaded) return <div className="h-96 animate-pulse bg-slate-100 rounded-3xl" />;
 
   return (
@@ -439,10 +434,17 @@ function AllLeadsPage() {
         </select>
 </label>
         {!isAdvisor && <label className="flex min-w-0 flex-col gap-1.5 text-xs font-semibold text-muted-foreground">Asesor
-<select aria-label="Filtrar por asesor" value={advisorFilter} onChange={(event) => setAdvisorFilter(event.target.value)} className="min-h-11 w-full min-w-0 max-w-full rounded-lg border border-border bg-card px-3 text-xs text-card-foreground">
+<select aria-label="Filtrar por asesor" value={advisorFilter} onChange={(event) => {
+  const val = event.target.value;
+  setAdvisorFilter(val);
+  setGlobalSelectedAgentId(val === "unassigned" ? "all" : val);
+}} className="min-h-11 w-full min-w-0 max-w-full rounded-lg border border-border bg-card px-3 text-xs text-card-foreground">
           <option value="all">Todos</option>
           <option value="unassigned">Sin asignar</option>
-          {[...new Map(allLeads.filter((lead) => lead.agentId).map((lead) => [lead.agentId!, lead.agentName || "Asesor asignado"])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          {[...new Map([
+            ...advisors.map((a) => [a.id, a.name] as const),
+            ...allLeads.filter((lead) => lead.agentId).map((lead) => [lead.agentId!, lead.agentName || "Asesor asignado"] as const),
+          ]).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
 </label>}
         {/* Clear filters */}
@@ -461,7 +463,6 @@ function AllLeadsPage() {
       {/* Tabla Pro de Leads */}
       <div className="min-h-[500px]">
         {loadError ? <p role="alert" className="rounded-xl border border-amber-500/40 p-4 text-sm">{loadError}</p> : filteredLeads.length > 0 ? (
-            <>
               <LeadTable
                 properties={catalogProperties}
                 leads={filteredLeads}
@@ -469,17 +470,6 @@ function AllLeadsPage() {
                 onStageChange={handleStageChange}
                 onFollowUp={(lead) => setFollowUpLead(lead)}
               />
-              <div className="pt-8 pb-4 flex justify-center">
-                <Button 
-                  variant="outline" 
-                  onClick={handleLoadMore} 
-                  disabled={isLoadingMore}
-                  className="w-full max-w-sm rounded-xl font-semibold border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                >
-                  {isLoadingMore ? "Cargando..." : "Cargar más leads"}
-                </Button>
-              </div>
-            </>
           ) : (
           <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50">
             <Filter className="h-8 w-8 text-slate-300 mb-3" />

@@ -81,6 +81,14 @@ final class AdminLeadController extends Controller
             // Advisor isolation: Advisors only see their assigned leads
             if ($user->role() === RoleCode::SALES_ADVISOR) {
                 $query->where('leads.assigned_user_id', $user->id);
+            } elseif ($request->filled('agent_id') && $request->query('agent_id') !== 'all') {
+                $agentParam = (string) $request->query('agent_id');
+                if ($agentParam === 'unassigned') {
+                    $query->whereNull('leads.assigned_user_id');
+                } else {
+                    $resolvedAgentId = $this->resolveUserId($agentParam, $tenantId);
+                    $query->where('leads.assigned_user_id', $resolvedAgentId ?? -1);
+                }
             }
 
             $page = $query->simplePaginate(200);

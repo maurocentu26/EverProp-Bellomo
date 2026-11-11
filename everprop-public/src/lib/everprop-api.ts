@@ -601,9 +601,9 @@ async function loadAllCrmPages<T>(path: string, maxPages?: number): Promise<T[]>
   return rows;
 }
 
-export async function loadEverpropLeads(): Promise<Lead[]> {
-  // Only fetch page 1 by default
-  return (await loadAllCrmPages<ApiLead>("/api/v1/admin/leads", 1)).map(mapLead);
+export async function loadEverpropLeads(filters?: { agentId?: string }): Promise<Lead[]> {
+  const query = filters?.agentId && filters.agentId !== "all" ? `?agent_id=${encodeURIComponent(filters.agentId)}` : "";
+  return (await loadAllCrmPages<ApiLead>(`/api/v1/admin/leads${query}`)).map(mapLead);
 }
 
 export async function loadEverpropLeadsPage(page: number): Promise<Lead[]> {
@@ -1074,8 +1074,9 @@ export type TodayVisits = {
   meta: { total: number; date: string; timezone: string };
 };
 
-export function loadEverpropTodayVisits(): Promise<TodayVisits> {
-  return apiFetch<TodayVisits>("/api/v1/admin/visits/today");
+export function loadEverpropTodayVisits(agentId?: string): Promise<TodayVisits> {
+  const query = agentId && agentId !== "all" ? `?agent_id=${encodeURIComponent(agentId)}` : "";
+  return apiFetch<TodayVisits>(`/api/v1/admin/visits/today${query}`);
 }
 
 export function loadEverpropVisits() {
