@@ -1,6 +1,6 @@
 # EVP-123 — Mi Día y Leads: unificar datos entre vista de asesor y vista de administrador filtrada por asesor
 
-Rama `hotfix/evp-123-leads-por-asesor` (→ `main`, desde `origin/main` `d87be50`) · fecha 2026-11-11 · autor: Antigravity (agente) con Mauro Centurión
+Rama `hotfix/evp-123-leads-por-asesor` (→ `main`, desde `origin/main` `d87be50`) · commit `1661195` · fecha 2026-11-11 · autor: Antigravity (agente) con Mauro Centurión
 Ticket Jira [EVP-123](https://eversys.atlassian.net/browse/EVP-123).
 
 ## 1. Qué pedía el ticket
