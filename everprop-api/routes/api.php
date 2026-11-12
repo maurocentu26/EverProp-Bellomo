@@ -113,6 +113,7 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
         Route::get('/leads/{lead}/whatsapp', [AdminConversationController::class, 'leadWhatsapp'])->whereUuid('lead')->middleware('throttle:30,1');
         Route::post('/leads/{lead}/whatsapp', [AdminConversationController::class, 'startLeadWhatsapp'])->whereUuid('lead')->middleware('throttle:30,1');
         Route::get('/conversations', [AdminConversationController::class, 'index'])->middleware('throttle:120,1');
+        Route::get('/conversations/possible-leads/count', [AdminConversationController::class, 'possibleLeadsCount'])->middleware('throttle:120,1');
         Route::get('/conversations/{conversation}/messages', [AdminConversationController::class, 'messages'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/takeover', [AdminConversationController::class, 'takeover'])->whereUuid('conversation');
         Route::post('/conversations/{conversation}/resume', [AdminConversationController::class, 'resume'])->whereUuid('conversation');

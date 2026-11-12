@@ -31,8 +31,23 @@ export function conversationLeadFromHash(hash: string): string | null {
   return UUID.test(lead) ? lead : null;
 }
 
-export function visibleConversations(items: ConversationSummary[], tab: ConversationTab, search: string): ConversationSummary[] {
-  return search ? items : items.filter(item => conversationTab(item.state) === tab);
+/** A search, or the possible-leads view (EVP-125, any state), shows every result; otherwise only the tab's. */
+export function visibleConversations(items: ConversationSummary[], tab: ConversationTab, search: string, allTabs = false): ConversationSummary[] {
+  return search || allTabs ? items : items.filter(item => conversationTab(item.state) === tab);
+}
+
+/** EVP-125: "Sin respuesta hace 5 min" from the start of the unanswered wait. */
+export function unansweredFor(since: string, now = new Date()): string {
+  const minutes = Math.max(0, Math.floor((now.getTime() - new Date(since).getTime()) / 60000));
+  if (minutes < 1) return "Sin respuesta hace instantes";
+  if (minutes < 60) return `Sin respuesta hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `Sin respuesta hace ${hours} h` : `Sin respuesta hace ${Math.floor(hours / 24)} d`;
+}
+
+/** EVP-125: the panel opens the possible-leads view from "#filtro=posibles-leads". */
+export function filterFromHash(hash: string): "leads" | null {
+  return new URLSearchParams(hash.replace(/^#/, "")).get("filtro") === "posibles-leads" ? "leads" : null;
 }
 
 export function conversationTab(state: ConversationState): ConversationTab {

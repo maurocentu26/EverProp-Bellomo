@@ -61,7 +61,10 @@ export function fileSize(bytes: number): string {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
 }
 
-export type ConversationFilter = "all" | "waiting" | "mine" | "unread";
+/** "leads" (EVP-125): unanswered Instagram, Messenger or WhatsApp DMs whose contact has no open lead. */
+export type ConversationFilter = "all" | "waiting" | "mine" | "unread" | "leads";
+
+const SOCIAL_CHANNELS = ["INSTAGRAM_DM", "FACEBOOK_MESSENGER", "WHATSAPP"];
 
 /** Labels shown to advisors. "Pausa pedida" is never presented as confirmed control (ADR D11). */
 export const STATE_LABELS: Record<ConversationState, string> = {
@@ -88,6 +91,7 @@ export function conversationQuery(filter: ConversationFilter, search = ""): stri
   if (filter === "waiting") params.set("state", "WAITING_HUMAN");
   if (filter === "mine") params.set("mine", "1");
   if (filter === "unread") params.set("unread", "1");
+  if (filter === "leads") params.set("possible_leads", "1");
   const term = search.trim().slice(0, 100);
   if (term.length >= MIN_SEARCH) params.set("q", term);
   const query = params.toString();
@@ -116,10 +120,17 @@ export async function listConversations(filter: ConversationFilter, search = "")
       (filter !== "waiting" || item.state === "WAITING_HUMAN") &&
       (filter !== "mine" || item.assigned_user?.id === "mock-advisor") &&
       (filter !== "unread" || item.unread > 0) &&
+      (filter !== "leads" || (SOCIAL_CHANNELS.includes(item.channel) && item.state !== "CLOSED")) &&
       (term.length < MIN_SEARCH || `${item.contact_name} ${item.last_message?.text}`.toLocaleLowerCase("es-AR").includes(term))
     ).map(item => ({ ...item })) };
   }
   return apiFetch<{ data: ConversationSummary[] }>(conversationQuery(filter, search));
+}
+
+/** EVP-125: how many possible leads this user can see, for the panel badges. */
+export async function possibleLeadsCount(): Promise<number> {
+  if (isMockDataMode) return (await listConversations("leads")).data.length;
+  return (await apiFetch<{ data: { count: number } }>("/api/v1/admin/conversations/possible-leads/count")).data.count;
 }
 
 /** "14:05", like the time inside a WhatsApp bubble. */
