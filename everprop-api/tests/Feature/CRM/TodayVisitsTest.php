@@ -277,24 +277,28 @@ final class TodayVisitsTest extends TestCase
 
         // Fetch all pages as Admin
         $this->actingAs($admin)->withHeaders($headers);
-        $adminPage1 = $this->getJson('/api/v1/admin/leads?page=1')->assertOk();
-        $adminPage2 = $this->getJson('/api/v1/admin/leads?page=2')->assertOk();
-        $adminAll = collect($adminPage1->json('data'))->concat($adminPage2->json('data'));
+        /** @var list<array{id: string, agent_id: string, stage: string}> $page1 */
+        $page1 = $this->getJson('/api/v1/admin/leads?page=1')->assertOk()->json('data');
+        /** @var list<array{id: string, agent_id: string, stage: string}> $page2 */
+        $page2 = $this->getJson('/api/v1/admin/leads?page=2')->assertOk()->json('data');
+        $adminAll = array_merge($page1, $page2);
         $this->assertCount(254, $adminAll);
 
         // Compare Admin filtered by Jimena vs Jimena's own view
-        $adminJimena = $adminAll->where('agent_id', $jimena->public_id)->values();
-        $jimenaOwn = collect($this->actingAs($jimena)->withHeaders($headers)->getJson('/api/v1/admin/leads?page=1')->assertOk()->json('data'));
+        $adminJimena = array_values(array_filter($adminAll, fn (array $lead): bool => $lead['agent_id'] === $jimena->public_id));
+        /** @var list<array{id: string, agent_id: string, stage: string}> $jimenaOwn */
+        $jimenaOwn = $this->actingAs($jimena)->withHeaders($headers)->getJson('/api/v1/admin/leads?page=1')->assertOk()->json('data');
         $this->assertCount(160, $jimenaOwn);
-        $this->assertSame($jimenaOwn->pluck('id')->all(), $adminJimena->pluck('id')->all());
-        $this->assertSame(145, $jimenaOwn->where('stage', 'NEW')->count());
-        $this->assertSame(145, $adminJimena->where('stage', 'NEW')->count());
+        $this->assertSame(array_column($jimenaOwn, 'id'), array_column($adminJimena, 'id'));
+        $this->assertCount(145, array_filter($jimenaOwn, fn (array $lead): bool => $lead['stage'] === 'NEW'));
+        $this->assertCount(145, array_filter($adminJimena, fn (array $lead): bool => $lead['stage'] === 'NEW'));
 
         // Compare Admin filtered by Sebastian vs Sebastian's own view
-        $adminSebastian = $adminAll->where('agent_id', $sebastian->public_id)->values();
-        $sebastianOwn = collect($this->actingAs($sebastian)->withHeaders($headers)->getJson('/api/v1/admin/leads?page=1')->assertOk()->json('data'));
+        $adminSebastian = array_values(array_filter($adminAll, fn (array $lead): bool => $lead['agent_id'] === $sebastian->public_id));
+        /** @var list<array{id: string, agent_id: string, stage: string}> $sebastianOwn */
+        $sebastianOwn = $this->actingAs($sebastian)->withHeaders($headers)->getJson('/api/v1/admin/leads?page=1')->assertOk()->json('data');
         $this->assertCount(94, $sebastianOwn);
-        $this->assertSame($sebastianOwn->pluck('id')->all(), $adminSebastian->pluck('id')->all());
+        $this->assertSame(array_column($sebastianOwn, 'id'), array_column($adminSebastian, 'id'));
     }
 
     /** @return array<mixed> */
