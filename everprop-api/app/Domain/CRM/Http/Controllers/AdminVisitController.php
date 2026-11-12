@@ -59,6 +59,15 @@ final class AdminVisitController extends Controller
             $query->where('v.assigned_user_id', $user->id)->where(function ($q) use ($user) {
                 $q->whereNull('v.lead_id')->orWhere('l.assigned_user_id', $user->id);
             });
+        } elseif ($request->filled('agent_id') && $request->query('agent_id') !== 'all') {
+            $agentUserId = DB::table('users')
+                ->where('tenant_id', $context->id())
+                ->where('public_id', (string) $request->query('agent_id'))
+                ->whereNull('deleted_at')
+                ->value('id');
+            $query->where('v.assigned_user_id', $agentUserId ?? -1)->where(function ($q) use ($agentUserId) {
+                $q->whereNull('v.lead_id')->orWhere('l.assigned_user_id', $agentUserId ?? -1);
+            });
         }
 
         return $query;

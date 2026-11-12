@@ -11,6 +11,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCurrentSession } from "@/hooks/use-current-session";
+import { useDashboardMode } from "@/lib/dashboard-context";
 import adminSample, {
   type Installment,
   type Lead,
@@ -61,6 +62,7 @@ export default function CobranzasPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = useCurrentSession();
+  const { globalSelectedAgentId } = useDashboardMode();
 
   // State
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -162,7 +164,15 @@ export default function CobranzasPage() {
 
   // Filter agreements & installments by current user role/advisor assignment
   const visibleAgreements = useMemo(() => {
-    if (!isMockDataMode || session.isAdmin) return agreements;
+    if (session.isAdmin) {
+      if (globalSelectedAgentId === "all") return agreements;
+      return agreements.filter((agr) => {
+        if (agr.advisorId && String(agr.advisorId) === globalSelectedAgentId) return true;
+        const l = leads.find((lead) => lead.id === agr.leadId);
+        return Boolean(l?.agentId && String(l.agentId) === globalSelectedAgentId);
+      });
+    }
+    if (!isMockDataMode) return agreements;
     if (!session.user) return [];
     return agreements.filter((agr) => {
       if (agr.advisorId && isNotificationForUser(agr.advisorId, session.user)) return true;
@@ -170,10 +180,18 @@ export default function CobranzasPage() {
       if (l?.agentId && isNotificationForUser(l.agentId, session.user)) return true;
       return false;
     });
-  }, [agreements, leads, session.isAdmin, session.user]);
+  }, [agreements, leads, session.isAdmin, session.user, globalSelectedAgentId]);
 
   const visibleInstallments = useMemo(() => {
-    if (!isMockDataMode || session.isAdmin) return installments;
+    if (session.isAdmin) {
+      if (globalSelectedAgentId === "all") return installments;
+      const allowedAgreementIds = new Set(visibleAgreements.map((a) => a.id));
+      return installments.filter((inst) => {
+        if (allowedAgreementIds.has(inst.agreementId)) return true;
+        return Boolean(inst.advisorId && String(inst.advisorId) === globalSelectedAgentId);
+      });
+    }
+    if (!isMockDataMode) return installments;
     if (!session.user) return [];
     const allowedAgreementIds = new Set(visibleAgreements.map((a) => a.id));
     return installments.filter((inst) => {
@@ -181,7 +199,7 @@ export default function CobranzasPage() {
       if (inst.advisorId && isNotificationForUser(inst.advisorId, session.user)) return true;
       return false;
     });
-  }, [installments, visibleAgreements, session.isAdmin, session.user]);
+  }, [installments, visibleAgreements, session.isAdmin, session.user, globalSelectedAgentId]);
 
   // Projects list for dropdown filter
   const availableProjects = useMemo(() => {

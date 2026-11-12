@@ -120,11 +120,12 @@ export default function AdvisorCockpit() {
 
       if (!isMockDataMode) {
         try {
+          const selectedVisitAgent = user?.role === "ADMIN" && globalSelectedAgentId !== "all" ? globalSelectedAgentId : undefined;
           const [apiLeads, catalog, apiFollowUps, visits] = await Promise.all([
             loadEverpropLeads(),
             loadEverpropCatalog(),
             loadEverpropAllFollowUps(),
-            loadEverpropTodayVisits().catch(() => null),
+            loadEverpropTodayVisits(selectedVisitAgent).catch(() => null),
           ]);
           if (active) {
             setApiVisits(visits);
@@ -187,7 +188,7 @@ export default function AdvisorCockpit() {
       window.removeEventListener("everprop_leads_updated", handleLeadsUpdated);
       channel?.close();
     };
-  }, [user?.id]);
+  }, [user?.id, user?.role, globalSelectedAgentId]);
 
   const todayStr = commercialDay(clock);
   const todayFormatted = clock.toLocaleDateString("es-AR", {
@@ -198,10 +199,11 @@ export default function AdvisorCockpit() {
     const today = getTodayDateString();
     return installments.filter((inst) => {
       if (isMockDataMode && user && !isNotificationForUser(inst.advisorId, user)) return false;
+      if (user?.role === "ADMIN" && globalSelectedAgentId !== "all" && String(inst.advisorId) !== globalSelectedAgentId) return false;
       const { status } = evaluateInstallmentStatus(inst, today);
       return status === "OVERDUE";
     }).length;
-  }, [installments, user]);
+  }, [installments, user, globalSelectedAgentId]);
 
   // Filtrar leads del asesor comercial (si es admin, ve todos los leads de la empresa)
   const myLeads = useMemo(() => {
@@ -400,6 +402,19 @@ export default function AdvisorCockpit() {
               <p className="text-xs capitalize text-slate-500 dark:text-slate-400">
                 {todayFormatted}
               </p>
+              {user?.role === "ADMIN" && (
+                <select
+                  aria-label="Filtrar vista por asesor"
+                  value={globalSelectedAgentId}
+                  onChange={(e) => setGlobalSelectedAgentId(e.target.value)}
+                  className="mt-2 h-9 w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
+                >
+                  <option value="all">Todos los asesores</option>
+                  {advisors.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <Button className="min-h-11 gap-1.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white hover:bg-blue-700 shadow-xs w-full" nativeButton={false} role="link" render={<Link href="/admin/leads/new" />}>
                 <Plus className="size-3.5" />
@@ -503,7 +518,7 @@ export default function AdvisorCockpit() {
       {/* ── BALANCE DEL MES & NÚMEROS DE LEADS (AUDITORÍA COMERCIAL) ── */}
       {FINAL_DELIVERY_ENABLED && showMonthBalance && (
         <AdminMonthBalanceWidget
-          leads={leads}
+          leads={myLeads}
           followUps={followUps}
           properties={properties}
           projects={projects}
