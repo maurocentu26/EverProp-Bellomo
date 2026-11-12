@@ -23,6 +23,14 @@ test('inbox filters map to the API query contract', () => {
   assert.equal(api.conversationQuery('waiting'), '/api/v1/admin/conversations?state=WAITING_HUMAN');
   assert.equal(api.conversationQuery('mine'), '/api/v1/admin/conversations?mine=1');
   assert.equal(api.conversationQuery('unread'), '/api/v1/admin/conversations?unread=1');
+  assert.equal(api.conversationQuery('leads'), '/api/v1/admin/conversations?possible_leads=1');
+});
+
+test('EVP-125: the possible-leads badge reads the count endpoint', async () => {
+  calls.length = 0;
+  // The apiFetch mock answers { data: [] }: only the requested path matters here.
+  await api.possibleLeadsCount().catch(() => undefined);
+  assert.equal(calls.at(-1).path, '/api/v1/admin/conversations/possible-leads/count');
 });
 
 test('search is trimmed, encoded, combined with the filter and skipped when too short', () => {

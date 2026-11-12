@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { isMockDataMode } from "@/lib/data-mode";
+import { possibleLeadsCount } from "@/lib/conversations-api";
 import { cn } from "@/lib/utils";
 import { getAvailableNavigationGroups } from "@/components/sidebar/navigation";
 import { getAvailableQuickActions } from "@/components/sidebar/quick-actions";
@@ -33,6 +34,17 @@ export function AdminNavigationMenu({
     () => getAvailableQuickActions({ isEngineer, isAdvisor }),
     [isEngineer, isAdvisor],
   );
+  // EVP-125: unanswered social DMs that are not leads yet, refreshed while the panel is visible.
+  const [possibleLeads, setPossibleLeads] = useState(0);
+  const countsLeads = Boolean(user) && user?.role !== "ROTATOR";
+  useEffect(() => {
+    if (!countsLeads) return;
+    const refresh = () => { if (!document.hidden) possibleLeadsCount().then(setPossibleLeads).catch(() => undefined); };
+    refresh();
+    const timer = window.setInterval(refresh, 30000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
+  }, [countsLeads]);
 
   if (user?.role === "ROTATOR") return <nav aria-label="Navegación del rotador" className="p-3"><Link href="/admin/leads" onClick={onNavigate}>Asignar leads</Link></nav>;
 
@@ -87,14 +99,15 @@ export function AdminNavigationMenu({
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const active = isItemActive(item);
+                const leadBadge = item.href === "/admin/conversaciones" && possibleLeads > 0 ? possibleLeads : 0;
                 return (
                   <div key={item.title}>
                     <Link
-                      href={item.href}
+                      href={leadBadge ? `${item.href}#filtro=posibles-leads` : item.href}
                       onClick={onNavigate}
                       aria-current={active ? "page" : undefined}
-                      aria-label={collapsed ? item.title : undefined}
-                      title={collapsed ? item.title : undefined}
+                      aria-label={collapsed ? (leadBadge ? `${item.title}: ${leadBadge} posibles leads sin respuesta` : item.title) : undefined}
+                      title={leadBadge ? `${leadBadge} posibles leads sin respuesta` : collapsed ? item.title : undefined}
                       className={cn(
                         "group flex items-center rounded-xl font-semibold outline-none transition-colors focus-visible:ring-4 focus-visible:ring-blue-500/40",
                         fullscreen ? "min-h-11 gap-2.5 px-3 text-sm" : "min-h-10 gap-2 px-2.5 text-xs sm:text-sm",
@@ -117,6 +130,11 @@ export function AdminNavigationMenu({
                       {!collapsed && (
                         <>
                           <span className="min-w-0 flex-1">{item.title}</span>
+                          {leadBadge > 0 && (
+                            <span className="rounded-full bg-amber-100 px-1.5 text-[11px] font-bold leading-5 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">
+                              {leadBadge}<span className="sr-only"> posibles leads sin respuesta</span>
+                            </span>
+                          )}
                           {item.children && (
                             <ChevronRight className={cn("size-4 opacity-60 transition-transform", active && "rotate-90")} aria-hidden="true" />
                           )}

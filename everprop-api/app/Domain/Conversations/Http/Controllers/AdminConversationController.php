@@ -38,6 +38,9 @@ final class AdminConversationController extends Controller
 {
     private const VIEW_ROLES = [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY];
 
+    /** EVP-125: social channels whose unanswered DMs are "possible leads" (they never create a lead on their own). */
+    private const SOCIAL_CHANNELS = ['INSTAGRAM_DM', 'FACEBOOK_MESSENGER', 'WHATSAPP'];
+
     public function __construct(private readonly ConversationControl $control) {}
 
     // Resolved per call: controllers are cached on the route, the tenant context is per request.
@@ -52,8 +55,11 @@ final class AdminConversationController extends Controller
         $filters = $request->validate([
             'state' => 'nullable|in:AI_ACTIVE,WAITING_TOOL,WAITING_HUMAN,TRANSITION_PENDING,HUMAN_ACTIVE,CLOSED',
             'mine' => 'nullable|boolean', 'unread' => 'nullable|boolean', 'q' => 'nullable|string|min:2|max:100',
+            'possible_leads' => 'nullable|boolean',
         ]);
+        $possibleLeads = $request->boolean('possible_leads');
         $page = $this->visible($user)
+            ->when($possibleLeads, fn ($q) => $this->possibleLeads($q))
             ->when($filters['state'] ?? null, fn ($q, $s) => $q->where('c.control_state', $s))
             ->when(trim($filters['q'] ?? ''), fn ($q, $term) => $this->search($q, $term))
             ->when($request->boolean('mine'), fn ($q) => $q->where('c.assigned_user_id', $user->id))
@@ -62,7 +68,7 @@ final class AdminConversationController extends Controller
             ->join('channel_accounts as ca', fn ($j) => $j->on('ca.id', '=', 'c.channel_account_id')->on('ca.tenant_id', '=', 'c.tenant_id'))
             ->leftJoin('users as u', fn ($j) => $j->on('u.id', '=', 'c.assigned_user_id')->on('u.tenant_id', '=', 'c.tenant_id'))
             // EVP-15: the "waiting" queue goes oldest wait first, so what arrived overnight is on top in the morning.
-            ->when(($filters['state'] ?? null) === 'WAITING_HUMAN', fn ($q) => $q->orderByRaw('waiting_since IS NULL')->orderBy('waiting_since'))
+            ->when(($filters['state'] ?? null) === 'WAITING_HUMAN' || $possibleLeads, fn ($q) => $q->orderByRaw('waiting_since IS NULL')->orderBy('waiting_since'))
             ->orderByDesc('c.last_activity_at')->orderByDesc('c.id')
             ->select(['c.public_id', 'c.control_state', 'c.control_epoch', 'c.unread_count', 'c.last_activity_at', 'c.status',
                 'ca.channel_type', 'ct.display_name', 'ct.phone_e164', 'ct.email', 'ct.profile_json',
@@ -85,8 +91,30 @@ final class AdminConversationController extends Controller
                 'last_activity_at' => CarbonImmutable::parse($c->last_activity_at, 'UTC')->toISOString(),
                 'last_message' => $c->preview_sender === null ? null : ['text' => $c->preview_text, 'sender' => $c->preview_sender, 'type' => $c->preview_type,
                     'event_kind' => MetaWebhookProcessor::presentEventKind($c->preview_event_kind)],
-            ] + $this->waiting($c, $hours))->all(),
+            ] + $this->waiting($c, $hours, $possibleLeads))->all(),
         ]);
+    }
+
+    /** EVP-125: count for the panel badge, with the same visibility as the inbox. */
+    public function possibleLeadsCount(Request $request): JsonResponse
+    {
+        return response()->json(['data' => ['count' => $this->possibleLeads($this->visible($this->viewer($request)))->count()]]);
+    }
+
+    /**
+     * EVP-125: Instagram, Messenger or WhatsApp conversations, not closed, whose contact has no open lead and whose
+     * last client message no person answered yet (bot replies don't count, like waitingSince).
+     */
+    private function possibleLeads(Builder $query): Builder
+    {
+        return $query->where('c.control_state', '<>', 'CLOSED')
+            ->whereExists(fn ($ca) => $ca->from('channel_accounts as pca')->whereColumn('pca.tenant_id', 'c.tenant_id')
+                ->whereColumn('pca.id', 'c.channel_account_id')->whereIn('pca.channel_type', self::SOCIAL_CHANNELS))
+            ->whereNotExists(fn ($l) => $l->from('leads as pl')->whereColumn('pl.tenant_id', 'c.tenant_id')
+                ->whereColumn('pl.contact_id', 'c.contact_id')->where('pl.is_open', 1)->whereNull('pl.deleted_at'))
+            ->whereExists(fn ($m) => $m->from('messages as pm')->whereColumn('pm.tenant_id', 'c.tenant_id')->whereColumn('pm.conversation_id', 'c.id')
+                ->where('pm.direction', 'INBOUND')
+                ->whereRaw("pm.sequence > COALESCE((SELECT MAX(ph.sequence) FROM messages ph WHERE ph.tenant_id = c.tenant_id AND ph.conversation_id = c.id AND ph.direction = 'OUTBOUND' AND ph.sender_type = 'USER'), 0)"));
     }
 
     private function resolveContactName(object $row): ?string
@@ -144,9 +172,10 @@ final class AdminConversationController extends Controller
     }
 
     /** @return array{waiting_since: ?string, out_of_hours: bool} */
-    private function waiting(object $c, BusinessHours $hours): array
+    private function waiting(object $c, BusinessHours $hours, bool $anyState = false): array
     {
-        if ($c->control_state !== 'WAITING_HUMAN' || $c->waiting_since === null) {
+        // EVP-125: a possible lead shows its wait even while the assistant is answering it.
+        if ((! $anyState && $c->control_state !== 'WAITING_HUMAN') || $c->waiting_since === null) {
             return ['waiting_since' => null, 'out_of_hours' => false];
         }
         $since = CarbonImmutable::parse($c->waiting_since, 'UTC');

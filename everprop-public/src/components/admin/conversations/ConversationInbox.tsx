@@ -34,6 +34,7 @@ import {
   sendReply,
   suggestReply,
   openConversationLead,
+  possibleLeadsCount,
   sendAttachment,
   listTemplates,
   sendTemplate,
@@ -54,7 +55,7 @@ import {
 } from "@/lib/conversations-api";
 
 import { LeadWhatsappStart } from "@/components/admin/conversations/LeadWhatsappStart";
-import { CONVERSATION_TABS, conversationLeadFromHash, conversationTab, conversationReason, conversationSearchFromHash, visibleConversations, type ConversationTab } from "@/lib/conversation-presentation";
+import { CONVERSATION_TABS, conversationLeadFromHash, conversationTab, conversationReason, conversationSearchFromHash, filterFromHash, unansweredFor, visibleConversations, type ConversationTab } from "@/lib/conversation-presentation";
 import { VisitRequestsBoard } from "@/components/admin/assistant/VisitRequestsBoard";
 
 const FILTERS: [ConversationFilter, string][] = [
@@ -62,6 +63,7 @@ const FILTERS: [ConversationFilter, string][] = [
   ["waiting", "Esperan asesor"],
   ["unread", "No leídas"],
   ["mine", "Mías"],
+  ["leads", "Posibles leads sin respuesta"],
 ];
 
 const STATE_STYLES: Record<ConversationState, string> = {
@@ -202,6 +204,8 @@ export function ConversationInbox() {
       setQuery(term);
       setSearch(term);
       setLinkedLead(conversationLeadFromHash(window.location.hash));
+      const hashFilter = filterFromHash(window.location.hash);
+      if (hashFilter) setFilter(hashFilter);
       setSearchReady(true);
     };
     readSearch();
@@ -258,6 +262,13 @@ export function ConversationInbox() {
   const threadHeading = useRef<HTMLHeadingElement>(null);
   const thread = useRef<HTMLOListElement>(null);
   const atBottom = useRef(true);
+  // The chip row scrolls sideways: keep the active filter in view (e.g. opened from the menu badge). scrollLeft, not
+  // scrollIntoView, so the page itself never moves (EVP-121).
+  const chips = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const active = chips.current?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (chips.current && active) chips.current.scrollLeft = Math.max(0, active.offsetLeft - chips.current.offsetLeft - 12);
+  }, [filter]);
   const [unseen, setUnseen] = useState(0);
   const [showQuick, setShowQuick] = useState(false);
   const { replies, load: loadReplies, save: saveReplies } = useQuickReplies(user?.id);
@@ -325,6 +336,9 @@ export function ConversationInbox() {
   }, [selected]);
 
   useVisiblePolling(useCallback(() => void refreshList(), [refreshList]), 8000);
+  // EVP-125: the chip shows how many possible leads wait, whatever filter is open.
+  const [leadCount, setLeadCount] = useState<number | null>(null);
+  useVisiblePolling(useCallback(() => { possibleLeadsCount().then(setLeadCount).catch(() => undefined); }, []), 8000);
   useVisiblePolling(useCallback(() => void refreshThread(), [refreshThread]), 3000);
 
   // Follow new messages only when already at the bottom; otherwise offer a jump instead of moving the reader.
@@ -542,7 +556,7 @@ export function ConversationInbox() {
   const windowClosed = replyWindow !== null && replyWindow.closes_at === null;
 
   const resultsReady = searchReady && listKey === `${filter}:${search}` && (query.trim().length >= MIN_SEARCH ? query.trim() : "") === search;
-  const visibleItems = resultsReady ? visibleConversations(items, tab, search) : [];
+  const visibleItems = resultsReady ? visibleConversations(items, tab, search, filter === "leads") : [];
 
   const docked = wide && textSize !== "grande";
   // "/" at the start of the reply searches the saved quick replies, like a command palette.
@@ -620,15 +634,18 @@ export function ConversationInbox() {
             open(id);
           }} /></div>}
           {search ? <p role="status" className="conversation-search-note">Resultados en todas las bandejas. Elegí la conversación del cliente para ver sus mensajes.</p> : <>
+            {filter === "leads" ? <p role="status" className="conversation-search-note">Mensajes de Instagram, Messenger o WhatsApp que nadie del equipo respondió y todavía no son lead. Abrí la conversación para responder o usá «Lead y visita» para crear el lead.</p> :
             <div role="group" aria-label="Bandejas de conversaciones" title="Cantidades del filtro actual" className="conversation-tabs">
               {CONVERSATION_TABS.map(([id, label]) => (
                 <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>
                   {label} <span className={id === "human" && pendingForYou > 0 ? "is-hot" : ""}>{items.filter(item => conversationTab(item.state) === id).length}</span>
                 </button>
               ))}
-            </div>
-            <div role="group" aria-label="Filtrar conversaciones" className="conversation-chips">
-              {FILTERS.map(([id, label]) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}
+            </div>}
+            <div ref={chips} role="group" aria-label="Filtrar conversaciones" className="conversation-chips">
+              {FILTERS.map(([id, label]) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}>
+                {label}{id === "leads" && leadCount ? <> <span className="conversation-unread wa-accent">{leadCount}</span></> : null}
+              </button>)}
             </div>
           </>}
           {listError && <p role="alert" className="m-3 rounded-lg bg-red-50 p-3 text-red-800 dark:bg-red-500/10 dark:text-red-200">{listError} <button type="button" disabled={refreshing} onClick={() => void refreshNow()} className="conversation-secondary mt-2">{refreshing ? "Reintentando…" : "Reintentar"}</button></p>}
@@ -643,7 +660,9 @@ export function ConversationInbox() {
               const preview = previewText(item);
               const waiting = item.state === "WAITING_HUMAN" || item.state === "TRANSITION_PENDING";
               // Only what asks for action earns a third line: a wait, an off-hours arrival, or someone else attending.
-              const flag = waiting
+              const flag = filter === "leads" && item.waiting_since
+                ? unansweredFor(item.waiting_since)
+                : waiting
                 ? (item.out_of_hours && item.waiting_since ? `Fuera de horario · ${sameDay(item.waiting_since, new Date().toISOString()) ? clockTime(item.waiting_since) : `${dayLabel(item.waiting_since)} ${clockTime(item.waiting_since)}`}` : conversationReason(item))
                 : item.state === "HUMAN_ACTIVE" && item.assigned_user && item.assigned_user.id !== user?.id ? `Atiende ${item.assigned_user.name}` : "";
               return (
@@ -666,7 +685,7 @@ export function ConversationInbox() {
                         <span className={`conversation-preview ${item.unread > 0 ? "is-unread" : ""}`}>{preview || "Sin mensajes"}</span>
                         {item.unread > 0 && <span className="conversation-unread wa-accent"><span className="sr-only">sin leer: </span>{item.unread}</span>}
                       </span>
-                      {flag && <span className={`conversation-contact-meta conversation-flag ${waiting ? (item.out_of_hours ? "is-info" : "is-warn") : ""}`}>{flag}</span>}
+                      {flag && <span className={`conversation-contact-meta conversation-flag ${filter === "leads" ? "is-warn" : waiting ? (item.out_of_hours ? "is-info" : "is-warn") : ""}`}>{flag}</span>}
                     </span>
                   </button>
                 </li>
