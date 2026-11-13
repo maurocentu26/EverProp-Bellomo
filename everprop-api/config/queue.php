@@ -91,6 +91,14 @@ return [
 
     ],
 
+    // EVP-131: one queue per lane, so a webhook never waits behind a multi-second AI turn. The worker
+    // consumes them in this order (docker/production/entrypoint.sh, compose.yaml); `default` goes last.
+    'lanes' => [
+        'webhooks' => 'webhooks',
+        'outbound' => 'outbound',
+        'agent' => 'agent',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Job Batching

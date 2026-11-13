@@ -17,10 +17,12 @@ Crear/configurar tres servicios desde el mismo repositorio y commit, con raíz `
 | Servicio | Archivo | Función |
 | --- | --- | --- |
 | API | `/everprop-api/railway.json` | HTTP sobre `$PORT`, readiness `/readyz` |
-| Cola | `/everprop-api/railway-worker.json` | Worker de la conexión `QUEUE_CONNECTION` (redis o database; override con `QUEUE_WORKER_CONNECTION`), sin dominio público |
+| Cola | `/everprop-api/railway-worker.json` | Worker de la conexión `QUEUE_CONNECTION` (redis o database; override con `QUEUE_WORKER_CONNECTION`), sin dominio público. Consume las colas `webhooks,outbound,agent,default` en ese orden de prioridad (override con `QUEUE_WORKER_QUEUES`) |
 | Scheduler | `/everprop-api/railway-scheduler.json` | Scheduler continuo, una réplica, sin dominio público |
 
-Los tres comparten MySQL, Redis, APP_KEY y el almacenamiento privado. El proceso de cola termina de forma controlada cada hora; la política `ALWAYS` lo reinicia. Mantener una sola réplica del scheduler. Usar MySQL y Redis por red privada. No publicar sus puertos.
+Con la IA encendida, agregar un segundo servicio de cola con el mismo archivo y `QUEUE_WORKER_QUEUES=webhooks,outbound`: así los webhooks y las respuestas no esperan a que termine un turno de IA (EVP-131).
+
+Los servicios comparten MySQL, Redis, APP_KEY y el almacenamiento privado. El proceso de cola termina de forma controlada cada hora; la política `ALWAYS` lo reinicia. Mantener una sola réplica del scheduler. Usar MySQL y Redis por red privada. No publicar sus puertos.
 
 La API usa el ENTRYPOINT del Dockerfile. Quitar cualquier Start Command antiguo como `php artisan serve`. Los archivos de cola y scheduler incluyen su comando explícito porque Railway reemplaza el ENTRYPOINT al configurar Start Command.
 

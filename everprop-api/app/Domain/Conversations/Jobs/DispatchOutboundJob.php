@@ -22,6 +22,7 @@ final class DispatchOutboundJob implements ShouldBeUnique, ShouldQueue
     public function __construct(public readonly int $tenantId, public readonly int $outboundJobId)
     {
         $this->afterCommit();
+        $this->onQueue((string) config('queue.lanes.outbound'));
     }
 
     public function uniqueId(): string

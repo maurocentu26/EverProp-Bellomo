@@ -35,6 +35,9 @@ CACHE_PREFIX=everprop_production_cache
 QUEUE_CONNECTION=redis
 # Worker service only: connection to consume when it differs from QUEUE_CONNECTION (redis|database).
 QUEUE_WORKER_CONNECTION=
+# Worker service only: queues in priority order. Empty = webhooks,outbound,agent,default. A dedicated
+# fast-lane worker uses webhooks,outbound so webhooks never wait for an AI turn (EVP-131).
+QUEUE_WORKER_QUEUES=
 SANCTUM_STATEFUL_DOMAINS=app.example.com
 CORS_ALLOWED_ORIGINS=https://app.example.com
 TRUSTED_HOSTS=api.example.com,healthcheck.railway.app

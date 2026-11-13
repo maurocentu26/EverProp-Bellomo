@@ -117,7 +117,7 @@ services:
     depends_on:
       everprop-api-php:
         condition: service_healthy
-    command: ["php", "artisan", "queue:work", "redis", "--sleep=2", "--tries=3", "--timeout=60", "--max-time=3600"]
+    command: ["php", "artisan", "queue:work", "redis", "--queue=webhooks,outbound,agent,default", "--sleep=2", "--tries=3", "--timeout=60", "--max-time=3600"]
     volumes:
       - ./:/var/www/html:ro
       - everprop-api-storage:/var/www/html/storage
