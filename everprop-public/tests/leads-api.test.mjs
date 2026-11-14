@@ -89,6 +89,20 @@ test('lead creation supports linking propertyId and mapLead maps full commercial
  assert.equal(lead.interests[0].unitId, 'prop-1');
 });
 
+test('EVP-135: the create form sends its idempotency key and learns when the contact already had an open lead', async () => {
+ let request;
+ const api = client((url, init) => {
+  request = {url, headers: new Headers(init.headers), body: JSON.parse(init.body)};
+  return {data: {id: 'lead-open', name: 'Laura', source_channel: 'MANUAL', stage: 'NEW', property_ids: []}, duplicate: true};
+ });
+ const lead = await api.createEverpropLead({name: 'Laura', phone: '11 5555-0000', idempotencyKey: 'form-key-0001'});
+ assert.equal(request.headers.get('Idempotency-Key'), 'form-key-0001');
+ assert.equal(request.body.idempotencyKey, undefined, 'the key travels as a header, not in the body');
+ assert.equal(lead.duplicate, true);
+ assert.equal(lead.id, 'lead-open');
+ assert.equal(lead.origin, 'Carga manual');
+});
+
 test('EVP-134: editors send the loaded version and a 409 is recognized as a version conflict', async () => {
  let request;
  let status = 200;

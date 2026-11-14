@@ -2,18 +2,24 @@
 
 namespace App\Domain\CRM\Http\Controllers;
 
+use App\Domain\CRM\Exceptions\PublicLeadRejected;
 use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\Notifications\LeadAssignedNotification;
+use App\Domain\CRM\Services\ContactIdentityResolver;
 use App\Domain\CRM\Services\LeadAssignments;
+use App\Domain\CRM\Support\PhoneNumber;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Inventory\Models\Property;
 use App\Domain\Inventory\Services\InventoryAccess;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -26,6 +32,7 @@ final class AdminLeadController extends Controller
         private readonly TenantContext $tenantContext,
         private readonly InventoryAccess $inventoryAccess,
         private readonly LeadAssignments $assignments,
+        private readonly ContactIdentityResolver $contacts,
     ) {}
 
     public function advisors(Request $request): JsonResponse
@@ -190,7 +197,7 @@ final class AdminLeadController extends Controller
                 'name' => 'required|string|max:200',
                 'email' => 'nullable|email|max:320',
                 'phone' => 'nullable|string|max:32',
-                'source_channel' => 'nullable|string|in:WHATSAPP,WEB_FORM,PORTAL,REFERRAL,INSTAGRAM',
+                'source_channel' => 'nullable|string|in:WHATSAPP,WEB_FORM,PORTAL,REFERRAL,INSTAGRAM,MANUAL',
                 'stage' => 'nullable|string|max:40',
                 'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT,low,normal,high,urgent',
                 'budget' => 'nullable|numeric|min:0',
@@ -209,130 +216,166 @@ final class AdminLeadController extends Controller
                 throw ValidationException::withMessages(['stage' => 'Creá el lead como Nuevo y registrá un contacto antes de avanzar su etapa.']);
             }
 
-            return DB::transaction(function () use ($tenantId, $validated, $user) {
-                $now = Carbon::now('UTC');
-                $contactUuid = (string) Str::uuid();
-
-                // 1. Create contact
-                $contactId = DB::table('contacts')->insertGetId([
-                    'tenant_id' => $tenantId,
-                    'public_id' => $contactUuid,
-                    'display_name' => $validated['name'],
-                    'first_name' => explode(' ', $validated['name'])[0],
-                    'email' => $validated['email'] ?? null,
-                    'phone_e164' => $validated['phone'] ?? null,
-                    'first_seen_at' => $now,
-                    'last_seen_at' => $now,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-
-                // 2. Resolve stage
-                $stageCode = strtoupper($validated['stage'] ?? 'NEW');
-                $stage = DB::table('pipeline_stages')
-                    ->where('tenant_id', $tenantId)
-                    ->where('code', $stageCode)
-                    ->first();
-
-                if (! $stage) {
-                    throw ValidationException::withMessages(['stage' => 'La etapa seleccionada no está disponible.']);
+            // EVP-135: same phone or email → same contact (PHONE/EMAIL identity, like the web form) and, while it has an
+            // open lead, that lead instead of a second one. A retried submit (Idempotency-Key) returns its first result.
+            $validated['phone'] = $this->normalizedPhone($validated['phone'] ?? null);
+            $validated['email'] = isset($validated['email']) ? mb_strtolower(trim($validated['email'])) : null;
+            $replayKey = $this->replayKey($request, $tenantId, (int) $user->id);
+            if ($replayKey !== null && is_numeric($replayed = Cache::get($replayKey))) { // Redis returns numbers as strings
+                return $this->existingLead($user, $tenantId, (int) $replayed);
+            }
+            $contact = null;
+            if ($validated['phone'] !== null || $validated['email'] !== null) {
+                try {
+                    $contact = $this->contacts->resolve($tenantId,
+                        ['display_name' => $validated['name'], 'first_name' => explode(' ', $validated['name'])[0], 'email' => $validated['email'], 'phone_e164' => $validated['phone']],
+                        ['channel_type' => $validated['phone'] !== null ? 'PHONE' : 'EMAIL', 'provider_user_id' => $validated['phone'] ?? $validated['email']],
+                        CarbonImmutable::now('UTC'));
+                } catch (PublicLeadRejected) {
+                    throw ValidationException::withMessages(['phone' => 'Ese contacto está inactivo o se unificó con otro: buscalo en Leads.']);
                 }
+            }
+            $stageCode = strtoupper($validated['stage'] ?? 'NEW');
+            $openLead = fn (): ?int => $contact === null ? null : (DB::table('leads')->where('tenant_id', $tenantId)->where('contact_id', $contact['id'])
+                ->where('is_open', 1)->whereNull('deleted_at')->value('id') ?: null);
 
-                // 3. Resolve assigned agent
-                $assignedId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId);
-                if (! empty($validated['agent_id']) && ! $assignedId) {
-                    throw ValidationException::withMessages(['agent_id' => 'Seleccioná un responsable comercial activo de esta empresa.']);
-                }
+            try {
+                return DB::transaction(function () use ($tenantId, $validated, $user, $contact, $stageCode, $openLead, $replayKey) {
+                    $now = Carbon::now('UTC');
 
-                // 4. Create lead
-                $leadUuid = (string) Str::uuid();
-                $leadId = DB::table('leads')->insertGetId([
-                    'tenant_id' => $tenantId,
-                    'public_id' => $leadUuid,
-                    'contact_id' => $contactId,
-                    'stage_id' => $stage->id,
-                    'is_open' => ! in_array($stageCode, ['WON', 'LOST'], true),
-                    'won_at' => $stageCode === 'WON' ? $now : null,
-                    'lost_at' => $stageCode === 'LOST' ? $now : null,
-                    'assigned_user_id' => $assignedId,
-                    'assignment_method' => $assignedId ? 'MANUAL' : 'UNASSIGNED',
-                    'source_channel' => $validated['source_channel'] ?? 'WEB_FORM',
-                    'source_kind' => 'ADMIN_MANUAL',
-                    'title' => 'Interés: '.$validated['name'],
-                    'priority' => strtoupper($validated['priority'] ?? 'NORMAL'),
-                    'budget_max' => $validated['budget'] ?? null,
-                    'currency_code' => $validated['currency'] ?? 'USD',
-                    'notes' => $validated['notes'] ?? null,
-                    'first_touch_at' => $now,
-                    'last_touch_at' => $now,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-                if ($assignedId) {
-                    $this->assignments->change($tenantId, $leadId, null, $assignedId, $user->id);
-                }
+                    // 1. Contact: the resolved one, or a new one without phone/email (nothing to match it by)
+                    if (! in_array($stageCode, ['WON', 'LOST'], true) && ($existing = $openLead()) !== null) {
+                        $this->rememberReplay($replayKey, $existing);
 
-                // 4.1 Attach initial property if provided
-                $linkedPropertyIds = [];
-                if (! empty($validated['property_id'])) {
-                    $property = $this->linkableProperty($user, (string) $validated['property_id']);
-
-                    if (! $property) {
-                        throw ValidationException::withMessages(['property_id' => 'La propiedad seleccionada no está disponible en esta empresa.']);
+                        return $this->existingLead($user, $tenantId, $existing);
                     }
-
-                    DB::table('lead_properties')->insert([
+                    $contactId = $contact['id'] ?? DB::table('contacts')->insertGetId([
                         'tenant_id' => $tenantId,
-                        'lead_id' => $leadId,
-                        'property_id' => $property->id,
-                        'linked_by_user_id' => $assignedId,
-                        'interest_level' => 'MEDIUM',
-                        'status' => 'ACTIVE',
-                        'notes' => null,
-                        'quoted_price' => $property->price,
-                        'quoted_currency_code' => $property->currency_code,
-                        'linked_at' => $now,
-                        'last_activity_at' => $now,
+                        'public_id' => (string) Str::uuid(),
+                        'display_name' => $validated['name'],
+                        'first_name' => explode(' ', $validated['name'])[0],
+                        'first_seen_at' => $now,
+                        'last_seen_at' => $now,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
-                    $linkedPropertyIds[] = $property->public_id;
 
-                }
+                    // 2. Resolve stage
+                    $stage = DB::table('pipeline_stages')
+                        ->where('tenant_id', $tenantId)
+                        ->where('code', $stageCode)
+                        ->first();
 
-                // 5. Notify assigned agent
-                if ($assignedId) {
-                    try {
-                        $assignedUser = User::find($assignedId);
-                        if ($assignedUser) {
-                            $assignedUser->notify(new LeadAssignedNotification(
-                                leadPublicId: $leadUuid,
-                                leadName: $validated['name'],
-                                eventType: 'LEAD_CREATED',
-                                title: 'Nuevo lead asignado',
-                                message: "Se te ha asignado el nuevo lead '{$validated['name']}'",
-                                actionUrl: "/admin/leads/{$leadUuid}"
-                            ));
-                        }
-                    } catch (\Throwable $notificationError) {
-                        throw $notificationError; // Roll back the operation rather than silently lose its notification.
+                    if (! $stage) {
+                        throw ValidationException::withMessages(['stage' => 'La etapa seleccionada no está disponible.']);
                     }
-                }
 
-                return response()->json([
-                    'data' => [
-                        'id' => $leadUuid,
-                        'name' => $validated['name'],
-                        'source_channel' => $validated['source_channel'] ?? 'WEB_FORM',
-                        'email' => $validated['email'] ?? null,
-                        'phone' => $validated['phone'] ?? null,
-                        'stage' => $stage->code,
-                        'priority' => strtolower($validated['priority'] ?? 'normal'),
-                        'agent_id' => $assignedId,
-                        'property_ids' => $linkedPropertyIds,
-                    ],
-                ], 201);
-            });
+                    // 3. Resolve assigned agent
+                    $assignedId = $this->resolveUserId($validated['agent_id'] ?? null, $tenantId);
+                    if (! empty($validated['agent_id']) && ! $assignedId) {
+                        throw ValidationException::withMessages(['agent_id' => 'Seleccioná un responsable comercial activo de esta empresa.']);
+                    }
+
+                    // 4. Create lead
+                    $leadUuid = (string) Str::uuid();
+                    $leadId = DB::table('leads')->insertGetId([
+                        'tenant_id' => $tenantId,
+                        'public_id' => $leadUuid,
+                        'contact_id' => $contactId,
+                        'stage_id' => $stage->id,
+                        'is_open' => ! in_array($stageCode, ['WON', 'LOST'], true),
+                        'won_at' => $stageCode === 'WON' ? $now : null,
+                        'lost_at' => $stageCode === 'LOST' ? $now : null,
+                        'assigned_user_id' => $assignedId,
+                        'assignment_method' => $assignedId ? 'MANUAL' : 'UNASSIGNED',
+                        'source_channel' => $validated['source_channel'] ?? 'MANUAL',
+                        'source_kind' => 'ADMIN_MANUAL',
+                        'title' => 'Interés: '.$validated['name'],
+                        'priority' => strtoupper($validated['priority'] ?? 'NORMAL'),
+                        'budget_max' => $validated['budget'] ?? null,
+                        'currency_code' => $validated['currency'] ?? 'USD',
+                        'notes' => $validated['notes'] ?? null,
+                        'first_touch_at' => $now,
+                        'last_touch_at' => $now,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                    if ($assignedId) {
+                        $this->assignments->change($tenantId, $leadId, null, $assignedId, $user->id);
+                    }
+
+                    // 4.1 Attach initial property if provided
+                    $linkedPropertyIds = [];
+                    if (! empty($validated['property_id'])) {
+                        $property = $this->linkableProperty($user, (string) $validated['property_id']);
+
+                        if (! $property) {
+                            throw ValidationException::withMessages(['property_id' => 'La propiedad seleccionada no está disponible en esta empresa.']);
+                        }
+
+                        DB::table('lead_properties')->insert([
+                            'tenant_id' => $tenantId,
+                            'lead_id' => $leadId,
+                            'property_id' => $property->id,
+                            'linked_by_user_id' => $assignedId,
+                            'interest_level' => 'MEDIUM',
+                            'status' => 'ACTIVE',
+                            'notes' => null,
+                            'quoted_price' => $property->price,
+                            'quoted_currency_code' => $property->currency_code,
+                            'linked_at' => $now,
+                            'last_activity_at' => $now,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                        $linkedPropertyIds[] = $property->public_id;
+
+                    }
+
+                    $this->rememberReplay($replayKey, $leadId);
+
+                    // 5. Notify assigned agent
+                    if ($assignedId) {
+                        try {
+                            $assignedUser = User::find($assignedId);
+                            if ($assignedUser) {
+                                $assignedUser->notify(new LeadAssignedNotification(
+                                    leadPublicId: $leadUuid,
+                                    leadName: $validated['name'],
+                                    eventType: 'LEAD_CREATED',
+                                    title: 'Nuevo lead asignado',
+                                    message: "Se te ha asignado el nuevo lead '{$validated['name']}'",
+                                    actionUrl: "/admin/leads/{$leadUuid}"
+                                ));
+                            }
+                        } catch (\Throwable $notificationError) {
+                            throw $notificationError; // Roll back the operation rather than silently lose its notification.
+                        }
+                    }
+
+                    return response()->json([
+                        'data' => [
+                            'id' => $leadUuid,
+                            'name' => $validated['name'],
+                            'source_channel' => $validated['source_channel'] ?? 'MANUAL',
+                            'email' => $validated['email'] ?? null,
+                            'phone' => $validated['phone'] ?? null,
+                            'stage' => $stage->code,
+                            'priority' => strtolower($validated['priority'] ?? 'normal'),
+                            'agent_id' => $assignedId,
+                            'property_ids' => $linkedPropertyIds,
+                        ],
+                    ], 201);
+                });
+            } catch (QueryException $e) {
+                // Two identical submits at once: the second hits uq_leads_single_open_contact and gets the first one's lead.
+                if (($e->errorInfo[1] ?? null) !== 1062 || ($existing = $openLead()) === null) {
+                    throw $e;
+                }
+                $this->rememberReplay($replayKey, $existing);
+
+                return $this->existingLead($user, $tenantId, $existing);
+            }
         } catch (ValidationException|HttpExceptionInterface $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -491,7 +534,7 @@ final class AdminLeadController extends Controller
                     'name' => 'nullable|string|max:160',
                     'email' => 'nullable|email|max:320',
                     'phone' => 'nullable|string|max:40',
-                    'source_channel' => 'nullable|string|in:WHATSAPP,WEB_FORM,PORTAL,REFERRAL,INSTAGRAM',
+                    'source_channel' => 'nullable|string|in:WHATSAPP,WEB_FORM,PORTAL,REFERRAL,INSTAGRAM,MANUAL',
                     'stage' => 'nullable|string|max:40',
                     'notes' => 'nullable|string|max:10000',
                     'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT',
@@ -557,7 +600,7 @@ final class AdminLeadController extends Controller
                     $contactUpdates['email'] = $validated['email'];
                 }
                 if (array_key_exists('phone', $validated)) {
-                    $contactUpdates['phone_e164'] = $validated['phone'];
+                    $contactUpdates['phone_e164'] = $this->normalizedPhone($validated['phone']);
                 }
 
                 if (! empty($contactUpdates) && $lead->contact_id) {
@@ -930,6 +973,66 @@ final class AdminLeadController extends Controller
                 }
             })
             ->first();
+    }
+
+    private function normalizedPhone(?string $phone): ?string
+    {
+        if ($phone === null || trim($phone) === '') {
+            return null;
+        }
+
+        return PhoneNumber::e164($phone) ?? throw ValidationException::withMessages([
+            'phone' => 'Revisá el teléfono: con código de área y sin 0 ni 15 (11 5555-0000), o internacional (+54 9 11 5555-0000).',
+        ]);
+    }
+
+    private function replayKey(Request $request, int $tenantId, int $userId): ?string
+    {
+        $key = $request->header('Idempotency-Key');
+        if ($key === null) {
+            return null;
+        }
+        if (preg_match('/\A[A-Za-z0-9._:-]{8,128}\z/', $key) !== 1) {
+            throw ValidationException::withMessages(['idempotency_key' => 'Clave de reintento inválida.']);
+        }
+
+        // ponytail: cache-backed (10 min, per user); enough for double clicks and retries, not a durable ledger.
+        return 'admin-lead-store:'.$tenantId.':'.$userId.':'.hash('sha256', $key);
+    }
+
+    private function rememberReplay(?string $replayKey, int $leadId): void
+    {
+        if ($replayKey !== null) {
+            DB::afterCommit(fn () => Cache::put($replayKey, $leadId, now()->addMinutes(10)));
+        }
+    }
+
+    /** The open lead the contact already has (or the one a retried submit created): 200 with duplicate=true. */
+    private function existingLead(User $user, int $tenantId, int $leadId): JsonResponse
+    {
+        $lead = DB::table('leads')
+            ->join('contacts', fn ($j) => $j->on('contacts.id', '=', 'leads.contact_id')->on('contacts.tenant_id', '=', 'leads.tenant_id'))
+            ->join('pipeline_stages', fn ($j) => $j->on('pipeline_stages.id', '=', 'leads.stage_id')->on('pipeline_stages.tenant_id', '=', 'leads.tenant_id'))
+            ->leftJoin('users', fn ($j) => $j->on('users.id', '=', 'leads.assigned_user_id')->on('users.tenant_id', '=', 'leads.tenant_id'))
+            ->where('leads.tenant_id', $tenantId)->where('leads.id', $leadId)
+            ->first(['leads.public_id', 'leads.assigned_user_id', 'leads.source_channel', 'leads.priority', 'contacts.display_name', 'contacts.email',
+                'contacts.phone_e164', 'pipeline_stages.code as stage', 'users.public_id as agent_public_id']);
+        abort_if($lead === null, 409, 'Este contacto ya tiene un lead abierto.');
+        // An advisor never gets a lead another advisor follows (same rule as taking it from a conversation).
+        if ($user->role() === RoleCode::SALES_ADVISOR && (int) $lead->assigned_user_id !== (int) $user->id) {
+            return response()->json(['error' => ['code' => 'LEAD_OF_ANOTHER_ADVISOR',
+                'message' => 'Este contacto ya tiene un lead abierto que sigue otro asesor. Avisale a tu gerente.']], 409);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $lead->public_id, 'name' => $lead->display_name, 'source_channel' => $lead->source_channel,
+                'email' => $lead->email, 'phone' => $lead->phone_e164, 'stage' => $lead->stage,
+                'priority' => strtolower((string) $lead->priority), 'agent_id' => $lead->agent_public_id, 'property_ids' => [],
+            ],
+            'duplicate' => true,
+            'message' => 'Este contacto ya tiene un lead abierto.',
+        ]);
     }
 
     private function resolveUserId(mixed $agentId, int $tenantId): ?int
