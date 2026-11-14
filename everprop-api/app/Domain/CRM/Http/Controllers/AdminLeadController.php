@@ -633,11 +633,36 @@ final class AdminLeadController extends Controller
             $actor = $request->user();
             abort_unless($actor && in_array($actor->role()->value, ['SUPER_ADMIN', 'TENANT_ADMIN'], true), 403, 'Solo los administradores pueden eliminar leads.');
 
-            DB::table('leads')
-                ->where('id', $lead->id)
-                ->update(['deleted_at' => \Carbon\Carbon::now('UTC')]);
+            // EVP-124: a deleted lead must leave the contact's open slot (uq_leads_single_open_contact) so the same
+            // person can come back, and must not leave pending visits hidden in the agenda.
+            $deleted = DB::transaction(function () use ($tenantId, $lead, $actor): bool {
+                // Same lock order as sp_create_or_get_open_lead (contact, then lead) so they serialize without deadlocking.
+                DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $lead->contact_id)->lockForUpdate()->first(['id']);
+                $locked = DB::table('leads')->where('tenant_id', $tenantId)->where('id', $lead->id)->whereNull('deleted_at')
+                    ->lockForUpdate()->first(['is_open']);
+                if ($locked === null) {
+                    return false; // deleted concurrently
+                }
+                $now = Carbon::now('UTC');
+                DB::table('leads')->where('tenant_id', $tenantId)->where('id', $lead->id)
+                    ->update(['deleted_at' => $now, 'is_open' => false, 'updated_at' => $now]);
+                $cancelled = DB::table('visits')->where('tenant_id', $tenantId)->where('lead_id', $lead->id)
+                    ->where('status', 'SCHEDULED')->update(['status' => 'CANCELLED', 'cancelled_at' => $now, 'updated_at' => $now,
+                        'outcome' => DB::raw("COALESCE(outcome, 'Cancelada: se eliminó el lead.')")]);
+                DB::table('audit_logs')->insert([
+                    'tenant_id' => $tenantId, 'actor_type' => 'USER', 'actor_user_id' => $actor->id,
+                    'action_code' => 'LEAD_DELETED', 'entity_type' => 'LEAD', 'entity_id' => $lead->id,
+                    'before_json' => json_encode(['is_open' => (bool) $locked->is_open], JSON_THROW_ON_ERROR),
+                    'after_json' => json_encode(['is_open' => false, 'deleted' => true, 'cancelled_visits' => $cancelled], JSON_THROW_ON_ERROR),
+                    'occurred_at' => $now,
+                ]);
 
-            return response()->json(['status' => 'success']);
+                return true;
+            });
+
+            return $deleted ? response()->json(['status' => 'success']) : response()->json(['error' => 'Lead not found'], 404);
+        } catch (HttpExceptionInterface $e) {
+            throw $e; // a non-admin gets 403, not a generic 500
         } catch (\Exception $e) {
             Log::error('Failed to delete lead', ['id' => $leadPublicId, 'error' => $e->getMessage()]);
 

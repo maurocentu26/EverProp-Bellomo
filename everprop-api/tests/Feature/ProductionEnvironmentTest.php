@@ -60,6 +60,7 @@ final class ProductionEnvironmentTest extends TestCase
             ->expectsOutputToContain('OK Schema: follow-up alerts and activity')
             ->expectsOutputToContain('OK Schema: project landing')
             ->expectsOutputToContain('OK Schema: project intakes')
+            ->expectsOutputToContain('OK Schema: deleted leads closed')
             ->assertSuccessful();
         config(['webpush.public_key' => null, 'webpush.private_key' => null, 'webpush.subject' => null]);
         $this->artisan('everprop:production-check --webpush')->assertFailed();

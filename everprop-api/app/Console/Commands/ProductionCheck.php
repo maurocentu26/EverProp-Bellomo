@@ -107,6 +107,8 @@ final class ProductionCheck extends Command
                     && Schema::hasTable('project_landing_assets');
                 $checks['Schema: project intakes'] = Schema::hasTable('project_intakes')
                     && Schema::hasTable('project_intake_units');
+                // EVP-124 (forward 2026-11-14.001) is data-only: its schema_versions row is the only trace that it ran.
+                $checks['Schema: deleted leads closed'] = DB::table('schema_versions')->where('version', '2026-11-14.001')->exists();
             } catch (Throwable) {
                 $checks['Database and Redis connections'] = false;
             }
