@@ -713,7 +713,7 @@ final class AdminLeadController extends Controller
                 }
                 $now = Carbon::now('UTC');
                 DB::table('leads')->where('tenant_id', $tenantId)->where('id', $lead->id)
-                    ->update(['deleted_at' => $now, 'is_open' => false, 'updated_at' => $now]);
+                    ->update(['deleted_at' => $now, 'is_open' => false, 'version' => DB::raw('version + 1'), 'updated_at' => $now]);
                 $cancelled = DB::table('visits')->where('tenant_id', $tenantId)->where('lead_id', $lead->id)
                     ->where('status', 'SCHEDULED')->update(['status' => 'CANCELLED', 'cancelled_at' => $now, 'updated_at' => $now,
                         'outcome' => DB::raw("COALESCE(outcome, 'Cancelada: se eliminó el lead.')")]);
