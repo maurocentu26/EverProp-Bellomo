@@ -88,3 +88,38 @@ test('lead creation supports linking propertyId and mapLead maps full commercial
  assert.equal(lead.interests[0].sectorName, 'Torre 1');
  assert.equal(lead.interests[0].unitId, 'prop-1');
 });
+
+test('EVP-135: the create form sends its idempotency key and learns when the contact already had an open lead', async () => {
+ let request;
+ const api = client((url, init) => {
+  request = {url, headers: new Headers(init.headers), body: JSON.parse(init.body)};
+  return {data: {id: 'lead-open', name: 'Laura', source_channel: 'MANUAL', stage: 'NEW', property_ids: []}, duplicate: true};
+ });
+ const lead = await api.createEverpropLead({name: 'Laura', phone: '11 5555-0000', idempotencyKey: 'form-key-0001'});
+ assert.equal(request.headers.get('Idempotency-Key'), 'form-key-0001');
+ assert.equal(request.body.idempotencyKey, undefined, 'the key travels as a header, not in the body');
+ assert.equal(lead.duplicate, true);
+ assert.equal(lead.id, 'lead-open');
+ assert.equal(lead.origin, 'Carga manual');
+});
+
+test('EVP-134: editors send the loaded version and a 409 is recognized as a version conflict', async () => {
+ let request;
+ let status = 200;
+ const context = {exports:{},process:{env:{}},URL,Headers,Event,DOMException,AbortSignal,document:{cookie:''},window:{location:{origin:'http://localhost:3000'},dispatchEvent(){}},
+  fetch:async(url,init)=>{ request = {url: String(url), body: init?.body ? JSON.parse(init.body) : null}; return status === 200
+   ? {ok:true,status,json:async()=>(request.body ? {status:'updated',version:8} : {data:{id:'lead-a',name:'Ana',version:7,property_ids:[]}})}
+   : {ok:false,status,json:async()=>({error:{code:'LEAD_VERSION_CONFLICT',message:'Otra persona modificó este lead mientras lo editabas.'},data:{version:8}})}; },
+  require(){throw Error('Unexpected runtime import');}};
+ vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('../src/lib/everprop-api.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,context);
+ const api = context.exports;
+ assert.equal((await api.loadEverpropLeadById('lead-a')).version, 7);
+ assert.equal((await api.updateEverpropLead('lead-a', {notes: 'Version A', version: 7})).version, 8);
+ assert.deepEqual(request.body, {notes: 'Version A', version: 7});
+ await api.updateEverpropLead('lead-a', {stage: 'WON'});
+ assert.deepEqual(request.body, {stage: 'WON'}, 'single-field actions do not send a version');
+ status = 409;
+ const error = await api.updateEverpropLead('lead-a', {notes: 'Version B', version: 7}).catch((e) => e);
+ assert.equal(api.isLeadVersionConflict(error), true);
+ assert.equal(api.isLeadVersionConflict(new Error('x')), false);
+});

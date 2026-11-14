@@ -24,6 +24,7 @@ final class WhatsAppParallelQueueTest extends TestCase
         $script = tempnam(sys_get_temp_dir(), 'evp86-worker-');
         $this->assertNotFalse($script);
         config(['queue.default' => 'database', 'queue.connections.database.queue' => $queue,
+            'queue.lanes' => array_fill_keys(['webhooks', 'outbound', 'agent'], $queue),
             'services.meta.app_secret' => self::APP_SECRET, 'conversations.ai_enabled' => true]);
         Http::preventStrayRequests();
         Http::fake();
@@ -54,6 +55,7 @@ if (! $app->environment('testing') || Illuminate\Support\Facades\DB::getDatabase
     exit(2);
 }
 config(['queue.default' => 'database', 'queue.connections.database.queue' => $argv[2], 'cache.default' => 'redis',
+    'queue.lanes' => array_fill_keys(['webhooks', 'outbound', 'agent'], $argv[2]),
     'conversations.ai_enabled' => true, 'services.meta.send_enabled' => true,
     'services.meta.whatsapp_sandbox_phone_number_id' => null,
     'services.gemini.railway_environment' => 'staging', 'services.gemini.staging_enabled' => true]);

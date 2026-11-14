@@ -143,7 +143,7 @@ final readonly class WebhookReceiver
     private function dispatchReceipt(int $receiptId): void
     {
         ProcessWebhookReceipt::dispatch($receiptId)
-            ->onQueue((string) config('services.webhooks.queue', 'default'));
+            ->onQueue((string) config('queue.lanes.webhooks'));
     }
 
     private function packedIp(?string $ip): ?string

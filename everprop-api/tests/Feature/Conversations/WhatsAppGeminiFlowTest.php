@@ -29,6 +29,7 @@ final class WhatsAppGeminiFlowTest extends TestCase
         $this->queue = 'qa-conversations-'.Str::uuid();
         config([
             'queue.default' => 'database', 'queue.connections.database.queue' => $this->queue,
+            'queue.lanes' => array_fill_keys(['webhooks', 'outbound', 'agent'], $this->queue),
             'services.meta.app_secret' => self::APP_SECRET, 'services.meta.send_enabled' => true,
             'services.meta.whatsapp_sandbox_phone_number_id' => null,
             'services.gemini.railway_environment' => 'staging', 'services.gemini.staging_enabled' => true,

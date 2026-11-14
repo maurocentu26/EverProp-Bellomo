@@ -27,7 +27,10 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
 
     public int $tries = 5;
 
-    public function __construct(public readonly int $tenantId, public readonly int $receiptId) {}
+    public function __construct(public readonly int $tenantId, public readonly int $receiptId)
+    {
+        $this->onQueue((string) config('queue.lanes.webhooks'));
+    }
 
     /** @return list<int> */
     public function backoff(): array
