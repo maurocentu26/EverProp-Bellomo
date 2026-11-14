@@ -79,7 +79,7 @@ final class UnassignedLeadNotificationTest extends TestCase
 
     public function test_a_web_lead_the_empty_rotation_leaves_unassigned_tells_admins_and_managers(): void
     {
-        $this->withHeaders(['Idempotency-Key' => 'evp136-web-'.$this->tenant->id])->postJson('/api/v1/public/leads', [
+        $this->withHeaders(['Idempotency-Key' => 'evp136-web-form-'.$this->tenant->id])->postJson('/api/v1/public/leads', [
             'contact' => ['display_name' => 'Laura Web', 'phone_e164' => '+541155550136'],
             'identity' => ['channel_type' => 'PHONE', 'provider_user_id' => '+541155550136'],
             'consent' => ['purpose_code' => 'COMMERCIAL_CONTACT', 'status' => 'GRANTED', 'legal_text_version' => 'test-v1'],
