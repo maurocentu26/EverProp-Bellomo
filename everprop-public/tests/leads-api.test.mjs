@@ -88,3 +88,24 @@ test('lead creation supports linking propertyId and mapLead maps full commercial
  assert.equal(lead.interests[0].sectorName, 'Torre 1');
  assert.equal(lead.interests[0].unitId, 'prop-1');
 });
+
+test('EVP-134: editors send the loaded version and a 409 is recognized as a version conflict', async () => {
+ let request;
+ let status = 200;
+ const context = {exports:{},process:{env:{}},URL,Headers,Event,DOMException,AbortSignal,document:{cookie:''},window:{location:{origin:'http://localhost:3000'},dispatchEvent(){}},
+  fetch:async(url,init)=>{ request = {url: String(url), body: init?.body ? JSON.parse(init.body) : null}; return status === 200
+   ? {ok:true,status,json:async()=>(request.body ? {status:'updated',version:8} : {data:{id:'lead-a',name:'Ana',version:7,property_ids:[]}})}
+   : {ok:false,status,json:async()=>({error:{code:'LEAD_VERSION_CONFLICT',message:'Otra persona modificó este lead mientras lo editabas.'},data:{version:8}})}; },
+  require(){throw Error('Unexpected runtime import');}};
+ vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('../src/lib/everprop-api.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,context);
+ const api = context.exports;
+ assert.equal((await api.loadEverpropLeadById('lead-a')).version, 7);
+ assert.equal((await api.updateEverpropLead('lead-a', {notes: 'Version A', version: 7})).version, 8);
+ assert.deepEqual(request.body, {notes: 'Version A', version: 7});
+ await api.updateEverpropLead('lead-a', {stage: 'WON'});
+ assert.deepEqual(request.body, {stage: 'WON'}, 'single-field actions do not send a version');
+ status = 409;
+ const error = await api.updateEverpropLead('lead-a', {notes: 'Version B', version: 7}).catch((e) => e);
+ assert.equal(api.isLeadVersionConflict(error), true);
+ assert.equal(api.isLeadVersionConflict(new Error('x')), false);
+});

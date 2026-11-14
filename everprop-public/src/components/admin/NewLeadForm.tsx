@@ -53,6 +53,8 @@ import {
   createEverpropLead,
   loadEverpropCatalog,
   loadEverpropLeadById,
+  isLeadVersionConflict,
+  LEAD_VERSION_CONFLICT_MESSAGE,
   updateEverpropLead,
 } from "@/lib/everprop-api";
 import { createLeadInterest, isProjectUnit } from "@/lib/lead-interests";
@@ -148,6 +150,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [review, setReview] = useState<FormValues | null>(null);
   const savingReview = useRef(false);
+  const versionAfterConflict = useRef<number | undefined>(undefined);
   const [resetPending, setResetPending] = useState(false);
 
   const { advisors: advisorList, error: advisorsError } = useLeadAdvisors(!isAdvisor);
@@ -541,6 +544,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
             ...(updatedLead.stage !== activeLead.stage ? { stage: stageApiMap[updatedLead.stage] || "NEW" } : {}),
             notes: updatedLead.notes,
             ...(!isAdvisor && updatedLead.agentId !== activeLead.agentId ? { agentId: updatedLead.agentId || null } : {}),
+            version: versionAfterConflict.current ?? activeLead.version,
           });
           if (selectedAsset?.id) {
             await attachEverpropLeadProperty(activeLead.id, selectedAsset.id, {
@@ -549,7 +553,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
             });
           }
         } catch (e: any) {
-          toast.error("Error al actualizar lead en base de datos: " + (e.message || "Error desconocido"));
+          if (isLeadVersionConflict(e)) {
+            // EVP-134: not setActiveLead — that effect would overwrite the draft. The next save is a deliberate overwrite.
+            versionAfterConflict.current = (await loadEverpropLeadById(activeLead.id).catch(() => null))?.version;
+            toast.warning("Otra persona modificó este lead mientras lo editabas. Tus cambios siguen en el formulario: si guardás de nuevo, reemplazan los suyos.");
+          } else {
+            toast.error("Error al actualizar lead en base de datos: " + (e.message || "Error desconocido"));
+          }
           setIsSubmitting(false);
           return;
         }
