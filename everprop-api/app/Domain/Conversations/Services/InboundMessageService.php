@@ -11,6 +11,7 @@ use App\Domain\CRM\Services\ContactIdentityResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 /**
@@ -44,16 +45,18 @@ final class InboundMessageService
             ->where('provider_user_id', trim($message->senderProviderId))
             ->value('id');
 
+        // G2: the assistant answers text turns of conversations under bot control (checked again in the job).
+        // Read before storing so the message's transaction knows whether a person must be told (EVP-126).
+        // A failed read must not 500 (a retry would replay and skip the rest): fail closed, i.e. assistant off.
+        $ai = rescue(fn () => self::aiEnabled($message->tenantId), false, false);
+
         try {
-            $result = DB::transaction(fn (): array => $this->persist($message, $contact['id'], $identityId ?: null), 3);
+            $result = DB::transaction(fn (): array => $this->persist($message, $contact['id'], $identityId ?: null, $ai), 3);
         } catch (UniqueConstraintViolationException) {
             // A concurrent delivery of the same provider message won the unique key.
             return ($this->existing($message) ?? throw new \RuntimeException('Inbound message dedupe failed.')) + ['replayed' => true];
         }
 
-        // G2: the assistant answers text turns of conversations under bot control (checked again in the job).
-        // A failed read must not 500 after the message is stored (the retry would replay and skip this): fail closed.
-        $ai = rescue(fn () => self::aiEnabled($message->tenantId), false, false);
         if ($ai && $message->type === 'TEXT' && $message->text !== null && trim($message->text) !== '') {
             RunAgentJob::dispatch($message->tenantId, $result['conversation_id'], $result['sequence']);
         } elseif (! $ai) {
@@ -74,10 +77,10 @@ final class InboundMessageService
     }
 
     /** @return array{message_id: int, conversation_id: int, conversation_public_id: string, sequence: int, replayed: bool, waiting_episode: bool} */
-    private function persist(InboundMessage $message, int $contactId, ?int $identityId): array
+    private function persist(InboundMessage $message, int $contactId, ?int $identityId, bool $ai): array
     {
         $now = CarbonImmutable::now('UTC');
-        $conversation = $this->lockOrCreateConversation($message, $contactId, $now);
+        $conversation = $this->lockOrCreateConversation($message, $contactId, $now, $ai);
         $sequence = (int) $conversation->next_sequence;
 
         $messageId = (int) DB::table('messages')->insertGetId([
@@ -115,15 +118,23 @@ final class InboundMessageService
             'closed_at' => null,
         ]);
 
-        // EVP-120: inbound messages do not spam notifications on initial entry or during active chats;
-        // notifications fire on concrete handoffs (ConversationControl::requestHuman) or when a closed chat reopens.
+        // EVP-120: inbound messages do not spam notifications during active chats; notifications fire on concrete
+        // handoffs (ConversationControl::requestHuman), when a closed chat reopens, or (EVP-126) with the assistant off,
+        // on the first unanswered message of an episode, which no handoff will ever announce. The conversation row lock
+        // serializes concurrent messages of the thread, so only the first one sees unread_count = 0; provider
+        // redeliveries never get here (dedupe by provider message id). sendFor notifies after commit.
         $waitingEpisode = $state === 'WAITING_HUMAN' && ($reopen || (int) $conversation->unread_count === 0);
-        if ($reopen) {
-            ConversationNeedsAttention::sendFor((object) [
-                'tenant_id' => $message->tenantId, 'public_id' => $conversation->public_id,
-                'controlled_by_user_id' => null, 'assigned_user_id' => $conversation->assigned_user_id,
-                'reason' => 'REOPENED: El cliente volvió a escribir en una conversación cerrada.',
-            ]);
+        $alert = fn () => ConversationNeedsAttention::sendFor((object) [
+            'tenant_id' => $message->tenantId, 'public_id' => $conversation->public_id,
+            'controlled_by_user_id' => $reopen ? null : $conversation->controlled_by_user_id, 'assigned_user_id' => $conversation->assigned_user_id,
+            'reason' => $reopen ? 'REOPENED: El cliente volvió a escribir en una conversación cerrada.' : 'NEW_CONVERSATION: Mensaje nuevo sin respuesta con el asistente apagado.',
+        ]);
+        if ($reopen || ($waitingEpisode && ! $ai && $message->identityChannelType !== 'WEB_CHAT')) {
+            $alert();
+        } elseif ($waitingEpisode && ! $ai) {
+            // Anonymous web sessions are cheap to open: cap these alerts per tenant (counted after commit, so a
+            // retried transaction does not spend twice). Past the cap the chat still shows under "Esperan asesor".
+            DB::afterCommit(fn () => RateLimiter::attempt('new-conv-alert:'.$message->tenantId, max(0, (int) config('conversations.web_new_conversation_alerts_per_10_minutes')), $alert, 600));
         }
 
         DB::table('domain_outbox')->insert([
@@ -154,7 +165,7 @@ final class InboundMessageService
         ];
     }
 
-    private function lockOrCreateConversation(InboundMessage $message, int $contactId, CarbonImmutable $now): object
+    private function lockOrCreateConversation(InboundMessage $message, int $contactId, CarbonImmutable $now, bool $ai): object
     {
         $find = fn (bool $lock) => DB::table('conversations')
             ->where('tenant_id', $message->tenantId)
@@ -176,7 +187,8 @@ final class InboundMessageService
             return $conversation;
         }
 
-        $ai = self::aiEnabled($message->tenantId);
+        // $ai is the single read accept() made for this message: a second read here could disagree (switch flipped
+        // in between) and create a WAITING_HUMAN conversation that neither the alert nor the coordinator announces.
         DB::table('conversations')->insert([
             'tenant_id' => $message->tenantId,
             'public_id' => (string) Str::uuid(),
