@@ -4,6 +4,7 @@ namespace App\Domain\CRM\Http\Controllers;
 
 use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\Notifications\LeadAssignedNotification;
+use App\Domain\CRM\Services\LeadAssignments;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Inventory\Models\Property;
 use App\Domain\Inventory\Services\InventoryAccess;
@@ -24,6 +25,7 @@ final class AdminLeadController extends Controller
     public function __construct(
         private readonly TenantContext $tenantContext,
         private readonly InventoryAccess $inventoryAccess,
+        private readonly LeadAssignments $assignments,
     ) {}
 
     public function advisors(Request $request): JsonResponse
@@ -65,6 +67,7 @@ final class AdminLeadController extends Controller
                     'leads.first_touch_at',
                     'leads.last_touch_at',
                     'leads.notes',
+                    'leads.version',
                     'leads.created_at',
                     'leads.updated_at',
                     'contacts.public_id as contact_public_id',
@@ -153,6 +156,7 @@ final class AdminLeadController extends Controller
                         'budget' => $lead->budget_max ? (float) $lead->budget_max : null,
                         'currency' => $lead->currency_code ?: 'USD',
                         'notes' => $lead->notes,
+                        'version' => (int) $lead->version,
                         'agent_id' => $lead->assigned_user_id,
                         'agent_name' => $lead->assigned_user_name,
                         'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
@@ -264,6 +268,9 @@ final class AdminLeadController extends Controller
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
+                if ($assignedId) {
+                    $this->assignments->change($tenantId, $leadId, null, $assignedId, $user->id);
+                }
 
                 // 4.1 Attach initial property if provided
                 $linkedPropertyIds = [];
@@ -367,6 +374,7 @@ final class AdminLeadController extends Controller
                     'leads.first_touch_at',
                     'leads.last_touch_at',
                     'leads.notes',
+                    'leads.version',
                     'leads.created_at',
                     'leads.updated_at',
                     'contacts.public_id as contact_public_id',
@@ -451,6 +459,7 @@ final class AdminLeadController extends Controller
                     'budget' => $lead->budget_max ? (float) $lead->budget_max : null,
                     'currency' => $lead->currency_code ?: 'USD',
                     'notes' => $lead->notes,
+                    'version' => (int) $lead->version,
                     'agent_id' => $lead->assigned_user_id,
                     'agent_name' => $lead->assigned_user_name,
                     'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
@@ -487,6 +496,7 @@ final class AdminLeadController extends Controller
                     'notes' => 'nullable|string|max:10000',
                     'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT',
                     'agent_id' => 'nullable',
+                    'version' => 'nullable|integer|min:1',
                 ]);
 
                 $lead = DB::table('leads')
@@ -504,6 +514,12 @@ final class AdminLeadController extends Controller
                 abort_unless($actor && (new LeadAccessPolicy)->update($actor, $tenantId, $lead), 403);
                 if (array_key_exists('agent_id', $validated)) {
                     abort_unless((new LeadAccessPolicy)->assign($actor, $tenantId), 403);
+                }
+                // EVP-134: an editor saving a lead it loaded before someone else's save must not silently overwrite it.
+                // ponytail: version is optional so a panel deployed after the API keeps working; the panel always sends it from editors.
+                if (isset($validated['version']) && (int) $validated['version'] !== (int) $lead->version) {
+                    return response()->json(['error' => ['code' => 'LEAD_VERSION_CONFLICT',
+                        'message' => 'Otra persona modificó este lead mientras lo editabas.'], 'data' => ['version' => (int) $lead->version]], 409);
                 }
                 // ponytail: el rol rotador puede actualizar campos comerciales del lead provisoriamente (EVP-21)
                 $stageCode = strtoupper($validated['stage'] ?? '');
@@ -526,6 +542,7 @@ final class AdminLeadController extends Controller
                 $contactUpdates = [];
                 $updates = [
                     'updated_at' => Carbon::now('UTC'),
+                    'version' => (int) $lead->version + 1,
                 ];
                 if (array_key_exists('source_channel', $validated)) {
                     $updates['source_channel'] = $validated['source_channel'];
@@ -572,27 +589,35 @@ final class AdminLeadController extends Controller
                     }
                     $oldAssignedId = $lead->assigned_user_id ? (int) $lead->assigned_user_id : null;
 
-                    $updates['assigned_user_id'] = $newAssignedId;
+                    $this->assignments->change($tenantId, (int) $lead->id, $oldAssignedId, $newAssignedId, (int) $actor->id);
                     DB::table('visits')->where('tenant_id', $tenantId)->where('lead_id', $lead->id)
                         ->where('status', 'SCHEDULED')->update(['assigned_user_id' => $newAssignedId, 'updated_at' => Carbon::now('UTC')]);
 
-                    if ($newAssignedId && $newAssignedId !== $oldAssignedId) {
-                        try {
-                            $assignedUser = User::where('tenant_id', $tenantId)->where('id', $newAssignedId)->first();
-                            if ($assignedUser) {
-                                $contact = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $lead->contact_id)->first(['display_name']);
-                                $leadName = $contact?->display_name ?: $lead->title;
-                                $assignedUser->notify(new LeadAssignedNotification(
-                                    leadPublicId: $lead->public_id,
-                                    leadName: $leadName,
-                                    eventType: 'LEAD_REASSIGNED',
-                                    title: 'Lead reasignado',
-                                    message: "Se te ha reasignado el lead '{$leadName}'",
-                                    actionUrl: "/admin/leads/{$lead->public_id}"
-                                ));
-                            }
-                        } catch (\Throwable $notificationError) {
-                            throw $notificationError; // Roll back the operation rather than silently lose its notification.
+                    if ($newAssignedId !== $oldAssignedId) {
+                        // A notification failure rolls the change back rather than silently losing it.
+                        $users = User::where('tenant_id', $tenantId)->whereIn('id', array_filter([$newAssignedId, $oldAssignedId]))->get()->keyBy('id');
+                        $newOwner = $newAssignedId ? $users->get($newAssignedId) : null;
+                        $oldOwner = $oldAssignedId ? $users->get($oldAssignedId) : null;
+                        $leadName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $lead->contact_id)->value('display_name') ?: $lead->title;
+                        $newOwner?->notify(new LeadAssignedNotification(
+                            leadPublicId: $lead->public_id,
+                            leadName: $leadName,
+                            eventType: $oldAssignedId === null ? 'LEAD_ASSIGNED' : 'LEAD_REASSIGNED',
+                            title: $oldAssignedId === null ? 'Nuevo lead asignado' : 'Lead reasignado',
+                            message: $oldAssignedId === null ? "Se te asignó el lead '{$leadName}'" : "Se te reasignó el lead '{$leadName}'",
+                            actionUrl: "/admin/leads/{$lead->public_id}"
+                        ));
+                        // The previous owner can no longer open the lead: link to the list instead.
+                        if ($oldAssignedId !== (int) $actor->id) {
+                            $newName = $newOwner?->display_name;
+                            $oldOwner?->notify(new LeadAssignedNotification(
+                                leadPublicId: $lead->public_id,
+                                leadName: $leadName,
+                                eventType: 'LEAD_REASSIGNED_AWAY',
+                                title: 'Lead asignado a otro asesor',
+                                message: $newName ? "El lead '{$leadName}' pasó a {$newName}" : "El lead '{$leadName}' quedó sin asignar",
+                                actionUrl: '/admin/leads'
+                            ));
                         }
                     }
                 }
@@ -602,7 +627,7 @@ final class AdminLeadController extends Controller
                     ->where('id', $lead->id)
                     ->update($updates);
 
-                return response()->json(['status' => 'updated']);
+                return response()->json(['status' => 'updated', 'version' => $updates['version']]);
             });
         } catch (ValidationException|HttpExceptionInterface $e) {
             throw $e;

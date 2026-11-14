@@ -17,10 +17,12 @@ Crear/configurar tres servicios desde el mismo repositorio y commit, con raíz `
 | Servicio | Archivo | Función |
 | --- | --- | --- |
 | API | `/everprop-api/railway.json` | HTTP sobre `$PORT`, readiness `/readyz` |
-| Cola | `/everprop-api/railway-worker.json` | Worker de la conexión `QUEUE_CONNECTION` (redis o database; override con `QUEUE_WORKER_CONNECTION`), sin dominio público |
+| Cola | `/everprop-api/railway-worker.json` | Worker de la conexión `QUEUE_CONNECTION` (redis o database; override con `QUEUE_WORKER_CONNECTION`), sin dominio público. Consume las colas `webhooks,outbound,agent,default` en ese orden de prioridad (override con `QUEUE_WORKER_QUEUES`) |
 | Scheduler | `/everprop-api/railway-scheduler.json` | Scheduler continuo, una réplica, sin dominio público |
 
-Los tres comparten MySQL, Redis, APP_KEY y el almacenamiento privado. El proceso de cola termina de forma controlada cada hora; la política `ALWAYS` lo reinicia. Mantener una sola réplica del scheduler. Usar MySQL y Redis por red privada. No publicar sus puertos.
+Con la IA encendida, agregar un segundo servicio de cola con el mismo archivo y `QUEUE_WORKER_QUEUES=webhooks,outbound`: así los webhooks y las respuestas no esperan a que termine un turno de IA (EVP-131).
+
+Los servicios comparten MySQL, Redis, APP_KEY y el almacenamiento privado. El proceso de cola termina de forma controlada cada hora; la política `ALWAYS` lo reinicia. Mantener una sola réplica del scheduler. Usar MySQL y Redis por red privada. No publicar sus puertos.
 
 La API usa el ENTRYPOINT del Dockerfile. Quitar cualquier Start Command antiguo como `php artisan serve`. Los archivos de cola y scheduler incluyen su comando explícito porque Railway reemplaza el ENTRYPOINT al configurar Start Command.
 
@@ -32,7 +34,7 @@ Tomar `docker/production/environment.example` como lista de variables, sustituye
 - `TRUSTED_HOSTS`: hostname de la API y el hostname de healthcheck de Railway. Sin protocolo ni barras.
 - `TENANT_HOST_MAP_JSON`: mapa del hostname real de la API al slug `bellomo`. No habilitar el resolver local ni confiar en un tenant enviado desde el cliente.
 - `SANCTUM_STATEFUL_DOMAINS`: hostname del frontend, sin protocolo. `CORS_ALLOWED_ORIGINS`: su origen HTTPS completo.
-- `TRUSTED_PROXIES`: IPs/CIDRs del proxy de ingreso configurado. Se aceptan cabeceras de IP/protocolo/puerto únicamente desde esos proxies; no se confía en `X-Forwarded-Host` para resolver el tenant.
+- `TRUSTED_PROXIES`: en Railway, `REMOTE_ADDR` (confía solo en el proxy de borde que se conecta al contenedor; EVP-132). Nunca `*`: confía en todos los saltos y el cliente elige su IP; `everprop:production-check` lo rechaza. Si no, IPs/CIDRs del proxy de ingreso configurado. Se aceptan cabeceras de IP/protocolo/puerto únicamente desde esos proxies; no se confía en `X-Forwarded-Host` para resolver el tenant.
 - Sesiones seguras, HTTP-only y cifradas. El frontend sigue usando el proxy de Next para cookies del mismo origen y debe enviar `X-XSRF-TOKEN` en las operaciones con sesión.
 - MySQL: usuario de ejecución con permisos DML, separado del usuario de migraciones.
 - Redis: credenciales y bases 0–3, conservadas entre despliegues. Evitar configurar un `REDIS_URL` con un número de base fijo que sobrescriba las bases separadas.

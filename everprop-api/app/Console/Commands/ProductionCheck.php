@@ -32,6 +32,8 @@ final class ProductionCheck extends Command
             'Persistent sessions/cache and supported queue' => in_array(config('session.driver'), ['redis', 'database'], true) && in_array(config('cache.default'), ['redis', 'database'], true) && in_array(config('queue.default'), ['redis', 'database', 'sync'], true),
             'Secure HTTP-only encrypted sessions' => config('session.secure') && config('session.http_only') && config('session.encrypt'),
             'Trusted tenant hosts configured' => config('tenancy.hosts') !== [] && config('tenancy.trusted_hosts') !== [] && ! config('tenancy.allow_local_resolver'),
+            // EVP-132: '*' trusts every hop, so the client's own X-Forwarded-For picks the rate-limit key. Use REMOTE_ADDR.
+            'Trusted proxies not a wildcard' => array_intersect((array) config('trustedproxy.proxies'), ['*', '**']) === [],
             'Explicit frontend origins' => config('cors.allowed_origins') !== [] && ! in_array('*', config('cors.allowed_origins'), true),
         ];
         foreach (config('cors.allowed_origins', []) as $origin) {

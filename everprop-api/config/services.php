@@ -95,7 +95,6 @@ return [
         'tolerance_seconds' => (int) env('WEBHOOK_TOLERANCE_SECONDS', 300),
         'max_payload_bytes' => (int) env('WEBHOOK_MAX_PAYLOAD_BYTES', 1048576),
         'retention_days' => (int) env('WEBHOOK_RETENTION_DAYS', 30),
-        'queue' => env('WEBHOOK_QUEUE', 'default'),
     ],
 
 ];

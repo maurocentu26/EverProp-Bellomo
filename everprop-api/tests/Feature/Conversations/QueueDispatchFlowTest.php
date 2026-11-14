@@ -54,7 +54,7 @@ final class QueueDispatchFlowTest extends TestCase
         $this->assertSame(['Hola'], $visible());
 
         // A worker on the same connection delivers it.
-        $this->artisan('queue:work', ['connection' => 'database', '--once' => true, '--stop-when-empty' => true])->assertSuccessful();
+        $this->artisan('queue:work', ['connection' => 'database', '--queue' => 'outbound', '--once' => true, '--stop-when-empty' => true])->assertSuccessful();
 
         $this->assertSame(0, DB::table('jobs')->where('payload', 'like', '%DispatchOutboundJob%')->count());
         $this->assertSame('SENT', DB::table('messages')->where('conversation_id', $conversation->id)->where('direction', 'OUTBOUND')->value('delivery_status'));

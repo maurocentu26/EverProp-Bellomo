@@ -71,6 +71,11 @@ final class ConversationLeadTest extends TestCase
         $lead = DB::table('leads')->where('tenant_id', $tenant->id)->sole();
         $contact = DB::table('conversations')->where('tenant_id', $tenant->id)->value('contact_id');
         $this->assertSame([$first, (int) $contact, (int) $advisor->id], [$lead->public_id, (int) $lead->contact_id, (int) $lead->assigned_user_id]);
+        // EVP-133: taking the lead leaves a MANUAL assignment in the history, with its method and dates.
+        $row = DB::table('lead_assignments')->where('lead_id', $lead->id)->orderByDesc('id')->first();
+        $this->assertSame(['MANUAL', (int) $advisor->id, (int) $advisor->id], [$row->reason_code, (int) $row->to_user_id, (int) $row->actor_user_id]);
+        $this->assertSame('MANUAL', $lead->assignment_method);
+        $this->assertNotNull($lead->first_assigned_at);
         // The advisor can open the lead page it was sent to.
         $this->actingAs($advisor)->withHeaders($this->tenantHeaders($tenant))->getJson("/api/v1/admin/leads/$first")->assertOk();
     }
