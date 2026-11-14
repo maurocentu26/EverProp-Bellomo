@@ -457,6 +457,7 @@ export async function updateEverpropPropertyStatus(publicId: string, status: "av
 export type ApiLead = {
   source_channel?: string;
   id: string;
+  version?: number;
   db_id?: number;
   name: string;
   email?: string;
@@ -557,6 +558,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     phone: apiLead.phone || undefined,
     email: apiLead.email || undefined,
     notes: cleanText(apiLead.notes) || undefined,
+    version: apiLead.version,
     interests,
     agentId: apiLead.agent_id ? String(apiLead.agent_id) : undefined,
     agentName: apiLead.agent_name || undefined,
@@ -641,6 +643,7 @@ export async function updateEverpropLead(
     priority?: string;
     notes?: string;
     agentId?: string | number | null;
+    version?: number;
   }
 ) {
   const payload: Record<string, any> = {};
@@ -654,12 +657,21 @@ export async function updateEverpropLead(
   if (data.agentId !== undefined) {
     payload.agent_id = data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null;
   }
+  if (data.version !== undefined) payload.version = data.version;
 
-  return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
+  return apiFetch<{ status: string; version?: number }>(`/api/v1/admin/leads/${leadPublicId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
 }
+
+/** EVP-134: someone else saved the lead after this editor loaded it (API 409 LEAD_VERSION_CONFLICT). */
+export function isLeadVersionConflict(error: unknown) {
+  return error instanceof EverpropApiError && error.status === 409;
+}
+
+export const LEAD_VERSION_CONFLICT_MESSAGE =
+  "Otra persona modificó este lead mientras lo editabas. Cargamos sus cambios y tu texto sigue en el formulario: revisalo y guardá de nuevo.";
 
 export async function deleteEverpropLead(leadPublicId: string) {
   return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
