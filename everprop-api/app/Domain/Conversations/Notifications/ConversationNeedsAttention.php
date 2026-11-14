@@ -106,6 +106,8 @@ final class ConversationNeedsAttention extends Notification
                 : "El cliente pidió hablar con un asesor en {$channelLabel}.",
             'NO_EVIDENCE' => "La consulta en {$channelLabel} requiere datos comerciales que un asesor debe confirmar.",
             'COMMERCIAL_EXCEPTION' => "El cliente solicitó condiciones comerciales especiales en {$channelLabel}.",
+            'DELIVERY_FAILED' => "La última respuesta automática en {$channelLabel} no le llegó al cliente: necesita a un asesor.",
+            'DELIVERY_UNKNOWN' => "No pudimos confirmar si la última respuesta automática en {$channelLabel} llegó al cliente: revisala antes de responder.",
             'TOOL_FAILURE', 'LLM_UNAVAILABLE', 'OUTPUT_GUARD_BLOCKED', 'BUDGET_EXCEEDED', 'RUN_TIMEOUT' => "El asistente derivó la conversación de {$channelLabel} para atención humana.",
             default => $contactLabel !== ''
                 ? "{$contactLabel} espera respuesta de un asesor en {$channelLabel}."

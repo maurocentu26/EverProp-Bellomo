@@ -4,6 +4,7 @@ namespace App\Domain\Conversations\Services;
 
 use App\Domain\Conversations\Exceptions\DeliveryAmbiguous;
 use App\Domain\Conversations\Transports\TransportRegistry;
+use App\Domain\Integrations\Notifications\IntegrationRevoked;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -16,6 +17,7 @@ use Throwable;
  *    with a nonce and lease. A stale job is cancelled instead of sent.
  * 2. send: outside any transaction.
  * 3. settle: record SENT / RETRY / FAILED / UNKNOWN and complete a pending takeover.
+ * A bot reply that ends FAILED or UNKNOWN hands the conversation to a person (EVP-127, handOffUndelivered).
  */
 final class OutboundDispatcher
 {
@@ -33,20 +35,23 @@ final class OutboundDispatcher
             return $claim['status'];
         }
 
+        // Only the provider call can be ambiguous. settle() stays outside the try: an error while recording a known outcome
+        // must not rewrite it as UNKNOWN. If settle throws, the job stays PROCESSING and the reconciler's lease sweep takes over.
+        $providerMessageId = null;
+        $errorCode = 'DELIVERY_UNKNOWN';
         try {
             $result = $this->transports->for($claim['channel']['channel_type'])
                 ->send($claim['channel'], $claim['recipient'], $claim['text'], $claim['nonce'], $claim['media'], $claim['template']);
             $status = $result->accepted ? 'SENT' : ($result->retryable && $claim['attempt'] < $claim['max_attempts'] ? 'RETRY' : 'FAILED');
-            $this->settle($tenantId, $claim, $status, $result->providerMessageId, $result->errorCode);
+            [$providerMessageId, $errorCode] = [$result->providerMessageId, $result->errorCode];
         } catch (DeliveryAmbiguous) {
             $status = 'UNKNOWN';
-            $this->settle($tenantId, $claim, $status, null, 'DELIVERY_UNKNOWN');
         } catch (Throwable $e) {
             // Unexpected local failure before/while calling the provider: treat as ambiguous.
             report($e);
             $status = 'UNKNOWN';
-            $this->settle($tenantId, $claim, $status, null, 'DELIVERY_UNKNOWN');
         }
+        $this->settle($tenantId, $claim, $status, $providerMessageId, $errorCode);
 
         return $status;
     }
@@ -99,6 +104,7 @@ final class OutboundDispatcher
             DB::table('outbound_jobs')->where('tenant_id', $tenantId)->where('id', $jobId)->update(['status' => 'FAILED', 'last_error_code' => $blocked]);
             DB::table('messages')->where('tenant_id', $tenantId)->where('id', $job->message_id)
                 ->update(['delivery_status' => 'FAILED', 'failed_at' => $now, 'provider_error_code' => $blocked]);
+            $this->handOffUndelivered($tenantId, (int) $job->conversation_id, $isBot ? (int) $job->control_epoch : null, 'FAILED', $blocked, (int) ($channel['integration_id'] ?? 0));
 
             return ['status' => 'FAILED'];
         }
@@ -122,6 +128,7 @@ final class OutboundDispatcher
             'template' => is_array($template) ? ['name' => (string) $template['name'], 'language' => (string) $template['language'],
                 'params' => array_values(array_map('strval', (array) ($template['params'] ?? [])))] : null,
             'attempt' => (int) $job->attempt_count + 1, 'max_attempts' => (int) $job->max_attempts,
+            'control_epoch' => $isBot ? (int) $job->control_epoch : null,
         ];
     }
 
@@ -173,7 +180,50 @@ final class OutboundDispatcher
             if ($status !== 'UNKNOWN') {
                 $this->control->settleTransition($tenantId, $claim['conversation_id']);
             }
+            if (in_array($status, ['FAILED', 'UNKNOWN'], true)) {
+                $this->handOffUndelivered($tenantId, $claim['conversation_id'], $claim['control_epoch'], $status, (string) $errorCode, (int) ($claim['channel']['integration_id'] ?? 0));
+            }
         }, 3);
+    }
+
+    /**
+     * EVP-127: a bot reply that will not reach the client (FAILED, or UNKNOWN, which is never retried) hands the
+     * conversation to a person. Runs inside the transaction that records the outcome, under the conversation lock
+     * that takeovers also take, so it is atomic with that record and serialized with them: it only acts while the
+     * bot still holds control under the job's own epoch. An advisor already in control, or an earlier failure that
+     * already handed off (new epoch, WAITING_HUMAN), makes it a no-op: one alert per episode. Alerts go after commit.
+     * Callers hold a transaction: settle/claim here, the lease sweep in ReconcileConversations.
+     * UNKNOWN gets its own reason (DELIVERY_UNKNOWN): the reply may still have arrived.
+     */
+    public function handOffUndelivered(int $tenantId, int $conversationId, ?int $jobEpoch, string $status, string $errorCode, int $integrationId): void
+    {
+        if ($jobEpoch === null) {
+            return; // an advisor's message: control is theirs, nothing to hand off
+        }
+        $conversation = $this->control->lock($tenantId, $conversationId);
+        if ((int) $conversation->control_epoch !== $jobEpoch || ! in_array($conversation->control_state, ConversationControl::BOT_STATES, true)) {
+            return;
+        }
+        $this->control->requestHuman($tenantId, $conversationId, $jobEpoch, ($status === 'UNKNOWN' ? 'DELIVERY_UNKNOWN: ' : 'DELIVERY_FAILED: ').$errorCode);
+
+        if (! in_array($errorCode, ['META_TOKEN_REVOKED', 'CHANNEL_NOT_CONFIGURED'], true) || $integrationId === 0) {
+            return;
+        }
+        // Credentials: whoever manages integrations hears it once per integration and day, however many conversations fail.
+        // ponytail: a daily bucket, not the outage itself; tracking outages needs integration state history.
+        $first = DB::table('domain_outbox')->insertOrIgnore([
+            'tenant_id' => $tenantId, 'aggregate_type' => 'CONVERSATION', 'aggregate_id' => $conversationId, 'event_type' => 'CHANNEL_CANNOT_SEND',
+            'idempotency_key' => 'channel-cannot-send:'.$integrationId.':'.CarbonImmutable::now('UTC')->format('Y-m-d'),
+            'payload_json' => json_encode(['schema_version' => 1, 'conversation_id' => $conversationId, 'integration_id' => $integrationId, 'error_code' => $errorCode], JSON_THROW_ON_ERROR),
+            'status' => 'PENDING', 'available_at' => now(),
+        ]) === 1;
+        // META_TOKEN_REVOKED: the transport already told them, once, when it revoked the token (IntegrationTokens::revoke).
+        if ($first && $errorCode === 'CHANNEL_NOT_CONFIGURED') {
+            $publicId = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $integrationId)->value('public_id');
+            if ($publicId !== null) {
+                IntegrationRevoked::sendFor($tenantId, (string) $publicId, cannotSend: true);
+            }
+        }
     }
 
     /**
