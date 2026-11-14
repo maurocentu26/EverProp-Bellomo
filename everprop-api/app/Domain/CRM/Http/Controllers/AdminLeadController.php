@@ -317,6 +317,8 @@ final class AdminLeadController extends Controller
                     } catch (\Throwable $notificationError) {
                         throw $notificationError; // Roll back the operation rather than silently lose its notification.
                     }
+                } else {
+                    LeadAssignedNotification::sendUnassigned($tenantId, $leadUuid, $validated['name'], 'cargado a mano');
                 }
 
                 return response()->json([
