@@ -126,23 +126,23 @@ class AppServiceProvider extends ServiceProvider
         ]);
         // Throttle runs before tenant middleware; use the trusted resolver here too.
         RateLimiter::for('password-recovery', static fn (Request $request): Limit => Limit::perMinute(5)
-            ->by('password-recovery|'.app(TrustedTenantResolver::class)->resolve($request)->id.'|'.$request->ip()));
+            ->by('password-recovery|'.app(TrustedTenantResolver::class)->resolve($request)->id.'|'.self::clientIp($request)));
 
         RateLimiter::for('login', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('security.login_rate_limit_per_minute', 5),
-        )->by('login|'.$request->ip()));
+        )->by('login|'.self::clientIp($request)));
 
         RateLimiter::for('public-leads', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('security.public_lead_rate_limit_per_minute', 20),
-        )->by('public-leads|'.$request->ip()));
+        )->by('public-leads|'.self::clientIp($request)));
 
         // Keyed by IP (+ token when present): random bearer tokens cannot escape the per-IP budget.
         RateLimiter::for('public-chat', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('conversations.web_rate_limit_per_minute', 20),
-        )->by('public-chat|'.$request->ip()));
+        )->by('public-chat|'.self::clientIp($request)));
         RateLimiter::for('public-chat-read', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('conversations.web_read_rate_limit_per_minute', 120),
-        )->by('public-chat-read|'.$request->ip()));
+        )->by('public-chat-read|'.self::clientIp($request)));
         // Meta delivers from shared infrastructure in bursts; the signature is the real gate.
         RateLimiter::for('meta-webhooks', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('conversations.meta_webhook_rate_limit_per_minute', 2000),
@@ -150,5 +150,25 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('webhooks', static fn (Request $request): Limit => Limit::perMinute(120)
             ->by('webhooks|'.$request->ip()));
+    }
+
+    /**
+     * EVP-132: the panel (and the landing) call the API from their servers for many visitors, so request->ip() is
+     * the same for all of them. They sign the visitor's IP with the panel key: HMAC-SHA256 of
+     * "eversys-client-ip-v1\nip\ntimestamp", fresh within the panel TTL. Anything that does not verify falls back to
+     * request->ip(), which TRUSTED_PROXIES=REMOTE_ADDR resolves to the real caller behind Railway's edge.
+     */
+    private static function clientIp(Request $request): string
+    {
+        $ip = (string) $request->headers->get('X-Eversys-Client-Ip');
+        $timestamp = (string) $request->headers->get('X-Eversys-Client-Timestamp');
+        $key = (string) config('tenancy.panel_signing_key', '');
+        if ($key !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false && ctype_digit($timestamp)
+            && abs(time() - (int) $timestamp) <= (int) config('tenancy.panel_signature_ttl', 60)
+            && hash_equals(hash_hmac('sha256', "eversys-client-ip-v1\n".$ip."\n".$timestamp, $key), (string) $request->headers->get('X-Eversys-Client-Signature'))) {
+            return $ip;
+        }
+
+        return (string) $request->ip();
     }
 }
