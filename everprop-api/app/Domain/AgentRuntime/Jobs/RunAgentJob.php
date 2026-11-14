@@ -37,6 +37,7 @@ final class RunAgentJob implements ShouldQueue
     public function __construct(public readonly int $tenantId, public readonly int $conversationId, public readonly int $inputSequence)
     {
         $this->afterCommit();
+        $this->onQueue((string) config('queue.lanes.agent'));
     }
 
     public function retryUntil(): DateTimeInterface

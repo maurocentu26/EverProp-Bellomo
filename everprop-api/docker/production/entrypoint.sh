@@ -24,7 +24,10 @@ case "${1:-web}" in
             redis|database) ;;
             *) echo "queue worker: unsupported connection '$connection' (use redis or database)" >&2; exit 1 ;;
         esac
-        exec php artisan queue:work "$connection" --sleep=2 --tries=3 --timeout=60 --max-time=3600 ;;
+        # EVP-131: lanes in priority order (config/queue.php `lanes`), `default` last. A second worker service with
+        # QUEUE_WORKER_QUEUES=webhooks,outbound keeps webhooks and replies moving while this one runs AI turns.
+        queues="${QUEUE_WORKER_QUEUES:-webhooks,outbound,agent,default}"
+        exec php artisan queue:work "$connection" --queue="$queues" --sleep=2 --tries=3 --timeout=60 --max-time=3600 ;;
     scheduler) exec php artisan schedule:work ;;
     *) exec "$@" ;;
 esac
