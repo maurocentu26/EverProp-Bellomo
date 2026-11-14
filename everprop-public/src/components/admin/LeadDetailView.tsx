@@ -61,6 +61,8 @@ import {
   loadEverpropLeads,
   deleteEverpropLead,
   loadEverpropLeadById,
+  isLeadVersionConflict,
+  LEAD_VERSION_CONFLICT_MESSAGE,
   loadEverpropCatalog,
   updateEverpropLead,
   loadEverpropLeadFollowUps,
@@ -208,19 +210,28 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           closing: "WON",
           discarded: "LOST",
         };
-        await updateEverpropLead(nextLead.id, {
+        const saved = await updateEverpropLead(nextLead.id, {
           name: nextLead.name,
           email: nextLead.email,
           phone: nextLead.phone,
           ...(nextLead.stage !== lead?.stage ? { stage: stageApiMap[nextLead.stage] || "NEW" } : {}),
           notes: nextLead.notes,
+          version: nextLead.version,
         });
-        setLead(nextLead);
-        setAllLeads(allLeads.map((c) => (c.id === nextLead.id ? nextLead : c)));
+        const savedLead = { ...nextLead, version: saved?.version ?? nextLead.version };
+        setLead(savedLead);
+        setAllLeads(allLeads.map((c) => (c.id === nextLead.id ? savedLead : c)));
         setProfileEditorOpen(false);
         toast.success("Ficha del cliente actualizada en la base de datos");
         return;
       } catch (e: any) {
+        if (isLeadVersionConflict(e) && lead) {
+          // Show the other person's save behind the open editor; same key (lastActivity) keeps the draft mounted.
+          const fresh = await loadEverpropLeadById(nextLead.id).catch(() => null);
+          if (fresh) setLead({ ...fresh, lastActivity: lead.lastActivity });
+          toast.warning(LEAD_VERSION_CONFLICT_MESSAGE);
+          return;
+        }
         toast.error("Error al actualizar lead: " + (e.message || "Error desconocido"));
         return;
       }
@@ -368,10 +379,11 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
 
     if (!isMockDataMode) {
       try {
-        await updateEverpropLead(lead.id, {
+        const saved = await updateEverpropLead(lead.id, {
           agentId: agentId || null,
         });
         updatedLead.agentName = undefined;
+        updatedLead.version = saved?.version ?? updatedLead.version;
       } catch (err: any) {
         toast.error(err instanceof Error ? err.message : "No se pudo reasignar el lead.");
         return;
@@ -486,7 +498,8 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     };
     if (!isMockDataMode) {
       try {
-        await updateEverpropLead(lead.id, { stage: stageApiMap[newStage] || "CONTACTED" });
+        const saved = await updateEverpropLead(lead.id, { stage: stageApiMap[newStage] || "CONTACTED" });
+        updatedLead.version = saved?.version ?? updatedLead.version;
       } catch (err) {
         toast.error("No se pudo actualizar la etapa. Podés reintentar.");
         throw err;
