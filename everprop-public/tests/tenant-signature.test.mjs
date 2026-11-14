@@ -60,3 +60,20 @@ test('browser-sent channel headers are dropped, and a bad Host is refused when t
     assert.equal((await call('[::1]')).status, 404);
   } finally { delete process.env.TENANT_PANEL_SIGNING_KEY; }
 });
+
+test('EVP-132: the proxy signs the visitor IP (rightmost forwarded entry) and drops browser-sent copies', async () => {
+  assert.equal(await sig.clientIpHeaders('203.0.113.7', 'test-panel-key', 1791200000 * 1000).then((h) => h['x-eversys-client-signature']),
+    '5044c5d7cef53e864bb281d0c12f40e01e2162abddaa80484badc18935e10d97', 'same vector as ClientIpRateLimitTest');
+  assert.equal(sig.clientIpFromForwarded('6.6.6.6, 203.0.113.7'), '203.0.113.7');
+  assert.equal(sig.clientIpFromForwarded('2001:db8::1'), '2001:db8::1');
+  assert.equal(sig.clientIpFromForwarded('evil'), null);
+  assert.equal(sig.clientIpFromForwarded(null), null);
+  const forged = { 'x-forwarded-for': '6.6.6.6, 203.0.113.7', 'x-eversys-client-ip': '1.2.3.4', 'x-eversys-client-signature': 'f'.repeat(64) };
+  assert.deepEqual((await call('hierros.panel.test', forged)).forwarded, {}, 'without key nothing is forwarded');
+  process.env.TENANT_PANEL_SIGNING_KEY = 'test-panel-key';
+  try {
+    const { forwarded } = await call('hierros.panel.test', forged);
+    assert.equal(forwarded['x-middleware-request-x-eversys-client-ip'], '203.0.113.7');
+    assert.match(forwarded['x-middleware-request-x-eversys-client-signature'], /^[0-9a-f]{64}$/);
+  } finally { delete process.env.TENANT_PANEL_SIGNING_KEY; }
+});

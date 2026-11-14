@@ -34,7 +34,7 @@ Tomar `docker/production/environment.example` como lista de variables, sustituye
 - `TRUSTED_HOSTS`: hostname de la API y el hostname de healthcheck de Railway. Sin protocolo ni barras.
 - `TENANT_HOST_MAP_JSON`: mapa del hostname real de la API al slug `bellomo`. No habilitar el resolver local ni confiar en un tenant enviado desde el cliente.
 - `SANCTUM_STATEFUL_DOMAINS`: hostname del frontend, sin protocolo. `CORS_ALLOWED_ORIGINS`: su origen HTTPS completo.
-- `TRUSTED_PROXIES`: IPs/CIDRs del proxy de ingreso configurado. Se aceptan cabeceras de IP/protocolo/puerto únicamente desde esos proxies; no se confía en `X-Forwarded-Host` para resolver el tenant.
+- `TRUSTED_PROXIES`: en Railway, `REMOTE_ADDR` (confía solo en el proxy de borde que se conecta al contenedor; EVP-132). Nunca `*`: confía en todos los saltos y el cliente elige su IP; `everprop:production-check` lo rechaza. Si no, IPs/CIDRs del proxy de ingreso configurado. Se aceptan cabeceras de IP/protocolo/puerto únicamente desde esos proxies; no se confía en `X-Forwarded-Host` para resolver el tenant.
 - Sesiones seguras, HTTP-only y cifradas. El frontend sigue usando el proxy de Next para cookies del mismo origen y debe enviar `X-XSRF-TOKEN` en las operaciones con sesión.
 - MySQL: usuario de ejecución con permisos DML, separado del usuario de migraciones.
 - Redis: credenciales y bases 0–3, conservadas entre despliegues. Evitar configurar un `REDIS_URL` con un número de base fijo que sobrescriba las bases separadas.

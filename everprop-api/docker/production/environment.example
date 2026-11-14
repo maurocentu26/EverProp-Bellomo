@@ -43,8 +43,9 @@ CORS_ALLOWED_ORIGINS=https://app.example.com
 TRUSTED_HOSTS=api.example.com,healthcheck.railway.app
 TENANT_HOST_MAP_JSON={"api.example.com":"bellomo"}
 TENANT_ALLOW_LOCAL_RESOLVER=false
-# Exact proxy IPs/CIDRs supplied by the hosting platform. Do not trust arbitrary forwarded hosts.
-TRUSTED_PROXIES=
+# Railway: REMOTE_ADDR trusts only the edge proxy that connects to the container, so request->ip() is the real
+# caller (EVP-132). Never '*': it trusts every hop and lets the client pick its IP. Or exact IPs/CIDRs.
+TRUSTED_PROXIES=REMOTE_ADDR
 PRIVATE_FILES_DISK=s3
 FILESYSTEM_DISK=s3
 AWS_ACCESS_KEY_ID=REPLACE_WITH_SECRET

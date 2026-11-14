@@ -17,11 +17,37 @@ export function hostFromHeader(hostHeader: string | null): string | null {
   return /^[a-z0-9.-]{1,253}$/.test(host) ? host : null;
 }
 
-export async function signPanelHost(host: string, timestamp: number, key: string): Promise<string> {
+async function hmac(message: string, key: string): Promise<string> {
   const subtle = globalThis.crypto.subtle;
   const cryptoKey = await subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const mac = await subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(`${PURPOSE}\n${host}\n${timestamp}`));
+  const mac = await subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(message));
   return Array.from(new Uint8Array(mac), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function signPanelHost(host: string, timestamp: number, key: string): Promise<string> {
+  return hmac(`${PURPOSE}\n${host}\n${timestamp}`, key);
+}
+
+/**
+ * EVP-132: every panel request reaches the API from the platform's servers, so the API would rate-limit all users
+ * as one client. The panel signs the visitor's IP ("eversys-client-ip-v1\nip\ntimestamp") and the API keys its
+ * login/form/chat limits by it. Browser-sent copies are dropped like the host headers.
+ */
+export const CLIENT_HEADERS = ["x-eversys-client-ip", "x-eversys-client-timestamp", "x-eversys-client-signature"] as const;
+
+/** Rightmost X-Forwarded-For entry: the one the nearest proxy appended, so a client cannot choose it. */
+export function clientIpFromForwarded(forwarded: string | null): string | null {
+  const ip = (forwarded ?? "").split(",").pop()?.trim() ?? "";
+  return /^[0-9a-f.:]{2,45}$/i.test(ip) && /[.:]/.test(ip) ? ip : null;
+}
+
+export async function clientIpHeaders(ip: string, key: string, now = Date.now()): Promise<Record<string, string>> {
+  const timestamp = Math.floor(now / 1000);
+  return {
+    "x-eversys-client-ip": ip,
+    "x-eversys-client-timestamp": String(timestamp),
+    "x-eversys-client-signature": await hmac(`eversys-client-ip-v1\n${ip}\n${timestamp}`, key),
+  };
 }
 
 /** Headers to forward to the API for an already validated host. */
