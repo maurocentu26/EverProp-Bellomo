@@ -74,6 +74,11 @@ final class PublicLeadRequest extends FormRequest
                 $validator->errors()->add('payload', 'The request contains unexpected fields.');
             }
 
+            // EVP-137: a lead with neither email nor phone is a task no advisor can do (and it inflates the metrics).
+            if (blank($this->input('contact.email')) && blank($this->input('contact.phone_e164'))) {
+                $validator->errors()->add('contact', 'An email or a phone number is required to contact the lead.');
+            }
+
             $channel = $this->input('identity.channel_type');
             $providerId = trim((string) $this->input('identity.provider_user_id'));
 
