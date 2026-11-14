@@ -10,6 +10,8 @@ use Illuminate\Support\Str;
 
 final class ContactIdentityResolver
 {
+    private const MAX_ATTEMPTS = 5;
+
     /**
      * @param  array<string, mixed>  $contactData
      * @param  array<string, mixed>  $identityData
@@ -20,39 +22,39 @@ final class ContactIdentityResolver
         $channel = (string) $identityData['channel_type'];
         $providerId = $this->canonicalProviderId($channel, (string) $identityData['provider_user_id']);
 
-        try {
-            return DB::transaction(fn (): array => $this->resolveInTransaction(
-                $tenantId,
-                $contactData,
-                $identityData,
-                $channel,
-                $providerId,
-                $occurredAt,
-            ), 3);
-        } catch (QueryException $exception) {
-            if (! $this->isDuplicateKey($exception)) {
-                throw $exception;
-            }
+        // EVP-129: each attempt reruns the whole resolution in a new transaction. A lost race on the identity key
+        // (1062) rolls back the loser's contact and the rerun finds the winner. A deadlock (1213) is a safety net,
+        // retried with jitter; a lock wait (1205) only once, so a public request does not hang for several
+        // innodb_lock_wait_timeout periods. Inside a caller's transaction nothing is retried: a deadlock already
+        // rolled back the caller's work (Laravel throws DeadlockException), and after a 1062 or a 1205 Laravel only
+        // rolls back to the savepoint, so the caller's REPEATABLE READ snapshot would hide the winner on every rerun.
+        $nested = DB::transactionLevel() > 0;
+        $lockWaitRetried = false;
 
-            // A concurrent request may have won the identity unique key. The
-            // losing transaction is rolled back, so it is safe to read winner.
-            return DB::transaction(function () use ($tenantId, $channel, $providerId): array {
-                $identity = DB::table('contact_identities')
-                    ->where('tenant_id', $tenantId)
-                    ->where('channel_type', $channel)
-                    ->where('provider_scope_id', '')
-                    ->where('provider_user_id', $providerId)
-                    ->lockForUpdate()
-                    ->first(['contact_id']);
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                return DB::transaction(fn (): array => $this->resolveInTransaction(
+                    $tenantId,
+                    $contactData,
+                    $identityData,
+                    $channel,
+                    $providerId,
+                    $occurredAt,
+                ));
+            } catch (QueryException $exception) {
+                $duplicate = $this->isDuplicateKey($exception);
+                $code = (int) ($exception->errorInfo[1] ?? 0);
+                $retry = $duplicate || $code === 1213 || ($code === 1205 && ! $lockWaitRetried);
 
-                if ($identity === null) {
-                    throw new PublicLeadRejected('The contact identity could not be resolved.');
+                if ($nested || $attempt >= self::MAX_ATTEMPTS || ! $retry) {
+                    throw $exception;
                 }
 
-                $contact = $this->activeContact($tenantId, (int) $identity->contact_id, true);
-
-                return ['id' => (int) $contact->id, 'public_id' => (string) $contact->public_id, 'created' => false];
-            }, 3);
+                $lockWaitRetried = $lockWaitRetried || $code === 1205;
+                if (! $duplicate) {
+                    usleep(random_int(5_000, 25_000) * $attempt);
+                }
+            }
         }
     }
 
@@ -69,13 +71,18 @@ final class ContactIdentityResolver
         string $providerId,
         CarbonImmutable $occurredAt,
     ): array {
-        $identity = DB::table('contact_identities')
+        $query = DB::table('contact_identities')
             ->where('tenant_id', $tenantId)
             ->where('channel_type', $channel)
             ->where('provider_scope_id', '')
-            ->where('provider_user_id', $providerId)
-            ->lockForUpdate()
-            ->first(['id', 'contact_id', 'last_seen_at']);
+            ->where('provider_user_id', $providerId);
+
+        // EVP-129: lock only an identity that exists (record lock). A locking read of a missing key takes a gap lock
+        // that every new identity in that gap shares, and their inserts then deadlock each other. A new identity is
+        // inserted directly: the unique key settles a race (1062, rerun by resolve() as an existing identity).
+        $identity = (clone $query)->exists()
+            ? $query->lockForUpdate()->first(['id', 'contact_id', 'last_seen_at'])
+            : null;
 
         if ($identity !== null) {
             $contact = $this->activeContact($tenantId, (int) $identity->contact_id, true);
