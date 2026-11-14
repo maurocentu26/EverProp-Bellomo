@@ -22,6 +22,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/pear
 
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+# EVP-92: Oracle's mysqldump, same 8.4 line as the server. Debian ships MariaDB's, whose dumps write generated
+# columns that MySQL 8.4 refuses on restore. Its libraries (libssl3, libstdc++, zlib) are already in this image.
+COPY --from=mysql:8.4 /usr/bin/mysqldump /usr/local/bin/mysqldump
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/everprop.ini
 COPY docker/php/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-everprop.conf
 

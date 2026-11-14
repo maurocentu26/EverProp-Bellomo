@@ -62,6 +62,19 @@ return [
             'report' => false,
         ],
 
+        // EVP-92: off-platform database dumps. Own bucket and keys (write-only token, Bucket Lock in R2), never the app's.
+        'backups' => [
+            'driver' => 's3',
+            'key' => env('BACKUP_ACCESS_KEY_ID'),
+            'secret' => env('BACKUP_SECRET_ACCESS_KEY'),
+            'region' => env('BACKUP_REGION', 'auto'),
+            'bucket' => env('BACKUP_BUCKET'),
+            'endpoint' => env('BACKUP_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+            'report' => true,
+        ],
+
         'r2' => [
             'driver' => 's3',
             // The presigned PUT has no body yet; do not sign a checksum of an empty body.
