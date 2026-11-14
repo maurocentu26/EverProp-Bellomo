@@ -16,6 +16,7 @@ use App\Domain\Conversations\Services\WhatsAppMediaFetcher;
 use App\Domain\Conversations\Services\WhatsAppTemplates;
 use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\Services\CreateOrGetOpenLeadProcedure;
+use App\Domain\CRM\Services\LeadAssignments;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
@@ -356,7 +357,11 @@ final class AdminConversationController extends Controller
         }
         $leads = fn () => DB::table('leads')->where('tenant_id', $row->tenant_id)->where('id', $lead['lead_id']);
         if ($advisor && $lead['assigned_user_id'] === null) {
-            $leads()->whereNull('assigned_user_id')->update(['assigned_user_id' => $user->id]);
+            DB::transaction(function () use ($leads, $row, $lead, $user): void {
+                if ($leads()->lockForUpdate()->value('assigned_user_id') === null) {
+                    app(LeadAssignments::class)->change((int) $row->tenant_id, (int) $lead['lead_id'], null, (int) $user->id, (int) $user->id);
+                }
+            });
         }
         $lead = (array) $leads()->first(['public_id', 'assigned_user_id']) + $lead; // the current owner wins
         if ($advisor && (int) $lead['assigned_user_id'] !== (int) $user->id) {

@@ -4,6 +4,7 @@ namespace App\Domain\CRM\Http\Controllers;
 
 use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\Notifications\LeadAssignedNotification;
+use App\Domain\CRM\Services\LeadAssignments;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Inventory\Models\Property;
 use App\Domain\Inventory\Services\InventoryAccess;
@@ -24,6 +25,7 @@ final class AdminLeadController extends Controller
     public function __construct(
         private readonly TenantContext $tenantContext,
         private readonly InventoryAccess $inventoryAccess,
+        private readonly LeadAssignments $assignments,
     ) {}
 
     public function advisors(Request $request): JsonResponse
@@ -264,6 +266,9 @@ final class AdminLeadController extends Controller
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
+                if ($assignedId) {
+                    $this->assignments->change($tenantId, $leadId, null, $assignedId, $user->id);
+                }
 
                 // 4.1 Attach initial property if provided
                 $linkedPropertyIds = [];
@@ -572,27 +577,35 @@ final class AdminLeadController extends Controller
                     }
                     $oldAssignedId = $lead->assigned_user_id ? (int) $lead->assigned_user_id : null;
 
-                    $updates['assigned_user_id'] = $newAssignedId;
+                    $this->assignments->change($tenantId, (int) $lead->id, $oldAssignedId, $newAssignedId, (int) $actor->id);
                     DB::table('visits')->where('tenant_id', $tenantId)->where('lead_id', $lead->id)
                         ->where('status', 'SCHEDULED')->update(['assigned_user_id' => $newAssignedId, 'updated_at' => Carbon::now('UTC')]);
 
-                    if ($newAssignedId && $newAssignedId !== $oldAssignedId) {
-                        try {
-                            $assignedUser = User::where('tenant_id', $tenantId)->where('id', $newAssignedId)->first();
-                            if ($assignedUser) {
-                                $contact = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $lead->contact_id)->first(['display_name']);
-                                $leadName = $contact?->display_name ?: $lead->title;
-                                $assignedUser->notify(new LeadAssignedNotification(
-                                    leadPublicId: $lead->public_id,
-                                    leadName: $leadName,
-                                    eventType: 'LEAD_REASSIGNED',
-                                    title: 'Lead reasignado',
-                                    message: "Se te ha reasignado el lead '{$leadName}'",
-                                    actionUrl: "/admin/leads/{$lead->public_id}"
-                                ));
-                            }
-                        } catch (\Throwable $notificationError) {
-                            throw $notificationError; // Roll back the operation rather than silently lose its notification.
+                    if ($newAssignedId !== $oldAssignedId) {
+                        // A notification failure rolls the change back rather than silently losing it.
+                        $users = User::where('tenant_id', $tenantId)->whereIn('id', array_filter([$newAssignedId, $oldAssignedId]))->get()->keyBy('id');
+                        $newOwner = $newAssignedId ? $users->get($newAssignedId) : null;
+                        $oldOwner = $oldAssignedId ? $users->get($oldAssignedId) : null;
+                        $leadName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $lead->contact_id)->value('display_name') ?: $lead->title;
+                        $newOwner?->notify(new LeadAssignedNotification(
+                            leadPublicId: $lead->public_id,
+                            leadName: $leadName,
+                            eventType: $oldAssignedId === null ? 'LEAD_ASSIGNED' : 'LEAD_REASSIGNED',
+                            title: $oldAssignedId === null ? 'Nuevo lead asignado' : 'Lead reasignado',
+                            message: $oldAssignedId === null ? "Se te asignó el lead '{$leadName}'" : "Se te reasignó el lead '{$leadName}'",
+                            actionUrl: "/admin/leads/{$lead->public_id}"
+                        ));
+                        // The previous owner can no longer open the lead: link to the list instead.
+                        if ($oldAssignedId !== (int) $actor->id) {
+                            $newName = $newOwner?->display_name;
+                            $oldOwner?->notify(new LeadAssignedNotification(
+                                leadPublicId: $lead->public_id,
+                                leadName: $leadName,
+                                eventType: 'LEAD_REASSIGNED_AWAY',
+                                title: 'Lead asignado a otro asesor',
+                                message: $newName ? "El lead '{$leadName}' pasó a {$newName}" : "El lead '{$leadName}' quedó sin asignar",
+                                actionUrl: '/admin/leads'
+                            ));
                         }
                     }
                 }
