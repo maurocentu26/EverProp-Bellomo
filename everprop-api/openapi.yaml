@@ -4521,6 +4521,29 @@
                 "properties": {
                     "contact": {
                         "type": "object",
+                        "description": "EVP-137: email or phone_e164 is required (422 otherwise).",
+                        "anyOf": [
+                            {
+                                "required": [
+                                    "email"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            {
+                                "required": [
+                                    "phone_e164"
+                                ],
+                                "properties": {
+                                    "phone_e164": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        ],
                         "properties": {
                             "display_name": {
                                 "type": [
