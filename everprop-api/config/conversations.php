@@ -23,5 +23,7 @@ return [
     'web_message_max_chars' => (int) env('CONVERSATIONS_WEB_MESSAGE_MAX_CHARS', 2000),
     'web_rate_limit_per_minute' => (int) env('CONVERSATIONS_WEB_RATE_LIMIT_PER_MINUTE', 20),
     'web_read_rate_limit_per_minute' => (int) env('CONVERSATIONS_WEB_READ_RATE_LIMIT_PER_MINUTE', 120),
+    // EVP-126: with the assistant off, "new web chat" alerts per tenant every 10 minutes (social channels are not capped).
+    'web_new_conversation_alerts_per_10_minutes' => (int) env('CONVERSATIONS_WEB_NEW_CONVERSATION_ALERTS_PER_10_MINUTES', 30),
     'meta_webhook_rate_limit_per_minute' => (int) env('CONVERSATIONS_META_WEBHOOK_RATE_LIMIT_PER_MINUTE', 2000),
 ];
