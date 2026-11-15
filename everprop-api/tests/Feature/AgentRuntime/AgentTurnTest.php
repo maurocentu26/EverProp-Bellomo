@@ -13,6 +13,7 @@ use App\Domain\AgentRuntime\Tools\ToolGateway;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -191,6 +192,27 @@ final class AgentTurnTest extends TestCase
         $context = $this->confirmInterest($context, $other);
         $this->assertTrue($gateway->execute($context, 'registrar_interes', $other)['ok']);
         $this->assertSame('+5493885551234', DB::table('contacts')->where('id', $context->contactId)->value('phone_e164'));
+    }
+
+    /** EVP-124: deleting the lead frees the contact's open slot; the assistant opens a new lead instead of a 1062. */
+    public function test_interest_after_the_lead_was_deleted_opens_a_new_lead(): void
+    {
+        $f = $this->fixture();
+        $gateway = app(ToolGateway::class);
+        $args = ['property_id' => $f['priced'], 'interest_level' => 'HIGH', 'contact_phone' => '+54 9 388 555-1234'];
+        $context = $this->confirmInterest($this->context($f), $args);
+        $first = $gateway->execute($context, 'registrar_interes', $args)['data']['lead_id'];
+
+        $admin = User::factory()->for($f['tenant'])->create(['role_code' => RoleCode::TENANT_ADMIN->value]);
+        $this->actingAs($admin)->withHeaders($this->tenantHeaders($f['tenant']))->deleteJson("/api/v1/admin/leads/$first")->assertOk();
+        $this->flushHeaders();
+
+        $again = ['property_id' => $f['no_price'], 'interest_level' => 'LOW', 'contact_phone' => '+54 9 388 555-1234'];
+        $result = $gateway->execute($this->confirmInterest($context, $again), 'registrar_interes', $again);
+
+        $this->assertTrue($result['ok']);
+        $this->assertNotSame($first, $result['data']['lead_id']);
+        $this->assertSame(1, DB::table('leads')->where('tenant_id', $f['tenant']->id)->where('is_open', 1)->whereNull('deleted_at')->count());
     }
 
     public function test_property_tools_accept_the_unit_code_the_visitor_said(): void
