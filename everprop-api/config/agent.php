@@ -15,6 +15,8 @@ return [
     'timeout_seconds' => (int) env('AGENT_TIMEOUT_SECONDS', 20),
     'history_messages' => 20,
     'knowledge_top_k' => 4,
+    // Approved knowledge chunks per tenant: approval quota and hard read cap of the search (EVP-114, linear-time ranking).
+    'knowledge_max_chunks' => (int) env('AGENT_KNOWLEDGE_MAX_CHUNKS', 2500),
     'reply_max_chars' => 1200,
     // Micro-USD per token for the reservation (USD 1 / 5 per million = Haiku 4.5 published rate, economics.md).
     'input_micros_per_token' => (float) env('AGENT_INPUT_MICROS_PER_TOKEN', 1.0),

@@ -137,8 +137,8 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
 
         Route::get('/assistant/usage', [AdminUsageController::class, 'show']);
         Route::get('/knowledge', [AdminKnowledgeController::class, 'index']);
-        Route::post('/knowledge', [AdminKnowledgeController::class, 'store']);
-        Route::post('/knowledge/{document}/approve', [AdminKnowledgeController::class, 'approve'])->whereUuid('document');
+        Route::post('/knowledge', [AdminKnowledgeController::class, 'store'])->middleware('throttle:30,1');
+        Route::post('/knowledge/{document}/approve', [AdminKnowledgeController::class, 'approve'])->whereUuid('document')->middleware('throttle:30,1');
         Route::post('/knowledge/{document}/revoke', [AdminKnowledgeController::class, 'revoke'])->whereUuid('document');
 
         Route::get('/visit-requests', [AdminVisitRequestController::class, 'index']);

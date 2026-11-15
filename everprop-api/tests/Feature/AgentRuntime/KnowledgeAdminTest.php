@@ -39,4 +39,22 @@ final class KnowledgeAdminTest extends TestCase
         $this->actingAs($manager)->withHeaders($this->tenantHeaders($tenant))->postJson('/api/v1/admin/knowledge', $body + ['valid_until' => '2020-01-01'])
             ->assertUnprocessable();
     }
+
+    /** EVP-114 review: approving past the tenant's chunk quota is a 422 and leaves the document as it was. */
+    public function test_approving_over_the_chunk_quota_is_rejected(): void
+    {
+        ['tenant' => $tenant] = $this->tenantWithIntegration();
+        $manager = $this->user($tenant, RoleCode::SALES_MANAGER);
+        $as = fn () => $this->actingAs($manager)->withHeaders($this->tenantHeaders($tenant));
+        config(['agent.knowledge_max_chunks' => 2]);
+        $first = $as()->postJson('/api/v1/admin/knowledge', ['title' => 'Uno', 'body' => 'Cuotas fijas.'])->json('data.id');
+        $as()->postJson("/api/v1/admin/knowledge/$first/approve")->assertOk();
+        // Re-approving the same document does not count its own chunks twice.
+        $as()->postJson("/api/v1/admin/knowledge/$first/approve")->assertOk();
+        $second = $as()->postJson('/api/v1/admin/knowledge', ['title' => 'Dos', 'body' => "## A\n\nAnticipo.\n\n## B\n\nSaldo."])->json('data.id');
+
+        $as()->postJson("/api/v1/admin/knowledge/$second/approve")->assertUnprocessable()->assertJsonValidationErrors('document');
+        $this->assertSame('DRAFT', DB::table('knowledge_documents')->where('public_id', $second)->value('status'));
+        $this->assertSame(1, DB::table('knowledge_chunks')->where('tenant_id', $tenant->id)->count());
+    }
 }
