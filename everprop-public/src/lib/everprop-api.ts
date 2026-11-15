@@ -547,7 +547,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     id: apiLead.id,
     companyId: "c1",
     name: cleanText(apiLead.name),
-    origin: ({ WHATSAPP: "WhatsApp", WEB_FORM: "Web / Formulario", PORTAL: "Portal", REFERRAL: "Referido", INSTAGRAM: "Instagram" } as Record<string, string>)[apiLead.source_channel || "WEB_FORM"] || apiLead.source_channel || "Web / Formulario",
+    origin: ({ WHATSAPP: "WhatsApp", WEB_FORM: "Web / Formulario", PORTAL: "Portal", REFERRAL: "Referido", INSTAGRAM: "Instagram", MANUAL: "Carga manual" } as Record<string, string>)[apiLead.source_channel || "WEB_FORM"] || apiLead.source_channel || "Web / Formulario",
     propertyIds,
     budget: apiLead.budget ?? undefined,
     currency: apiLead.currency,
@@ -593,7 +593,7 @@ export async function loadEverpropLeadsPage(page: number): Promise<Lead[]> {
   return response.data.map(mapLead);
 }
 
-const leadOriginCode = (origin: string) => ({ "WhatsApp": "WHATSAPP", "Web / Formulario": "WEB_FORM", "Web": "WEB_FORM", "Portal Inmobiliario": "PORTAL", "Portal": "PORTAL", "Referido": "REFERRAL", "Instagram": "INSTAGRAM" } as Record<string, string>)[origin] || "WEB_FORM";
+const leadOriginCode = (origin: string) => ({ "WhatsApp": "WHATSAPP", "Web / Formulario": "WEB_FORM", "Web": "WEB_FORM", "Portal Inmobiliario": "PORTAL", "Portal": "PORTAL", "Referido": "REFERRAL", "Instagram": "INSTAGRAM", "Carga manual": "MANUAL" } as Record<string, string>)[origin] || "WEB_FORM";
 
 export async function createEverpropLead(data: {
   origin?: string;
@@ -607,9 +607,12 @@ export async function createEverpropLead(data: {
   notes?: string;
   agentId?: string | number | null;
   propertyId?: string | null;
-}) {
-  const response = await apiFetch<{ data: ApiLead }>("/api/v1/admin/leads", {
+  /** EVP-135: one key per form, reused on retries, so a double submit never creates two leads. */
+  idempotencyKey?: string;
+}): Promise<Lead & { duplicate?: boolean }> {
+  const response = await apiFetch<{ data: ApiLead; duplicate?: boolean }>("/api/v1/admin/leads", {
     method: "POST",
+    headers: data.idempotencyKey ? { "Idempotency-Key": data.idempotencyKey } : undefined,
     body: JSON.stringify({
       name: data.name,
       source_channel: data.origin ? leadOriginCode(data.origin) : undefined,
@@ -625,7 +628,8 @@ export async function createEverpropLead(data: {
     }),
   });
 
-  return mapLead(response.data);
+  // duplicate: the contact already had an open lead (or this was a retry); the API returns that lead.
+  return { ...mapLead(response.data), duplicate: response.duplicate === true };
 }
 
 export async function updateEverpropLead(
