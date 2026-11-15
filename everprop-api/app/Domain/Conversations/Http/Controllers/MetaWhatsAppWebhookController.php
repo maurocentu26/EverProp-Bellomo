@@ -4,11 +4,11 @@ namespace App\Domain\Conversations\Http\Controllers;
 
 use App\Domain\Conversations\Jobs\ProcessMetaWebhookReceipt;
 use App\Domain\Conversations\Services\MetaWebhookProcessor;
+use App\Domain\Conversations\Support\DroppedMetaEvents;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * WhatsApp Cloud API webhook for the EverSys Meta app (one endpoint for every tenant).
@@ -104,7 +104,7 @@ final class MetaWhatsAppWebhookController extends Controller
         // and the processor re-checks status and WABA before applying anything.
         $channel = $processor->channelFor($phoneNumberId);
         if ($channel === null) {
-            Log::warning('whatsapp.webhook.unmapped_phone_number', ['mapped' => false]);
+            DroppedMetaEvents::record('UNMAPPED_ACCOUNT', 'WHATSAPP', $phoneNumberId);
 
             return;
         }
@@ -118,7 +118,7 @@ final class MetaWhatsAppWebhookController extends Controller
         $channelType = $object === 'instagram' ? 'INSTAGRAM_DM' : 'FACEBOOK_MESSENGER';
         $channel = $processor->socialChannelFor($channelType, $accountId, $instagramLogin);
         if ($channel === null) {
-            Log::warning('meta.webhook.unmapped_social_account', ['channel_type' => $channelType, 'mapped' => false]);
+            DroppedMetaEvents::record('UNMAPPED_ACCOUNT', $channelType, $accountId);
 
             return;
         }
