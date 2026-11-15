@@ -3,6 +3,7 @@
 namespace App\Domain\Conversations\Jobs;
 
 use App\Domain\Conversations\Services\MetaWebhookProcessor;
+use App\Domain\Conversations\Support\DroppedMetaEvents;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,7 +43,7 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
     {
         $receipt = DB::transaction(function (): ?object {
             $row = DB::table('webhook_receipts')->where('tenant_id', $this->tenantId)->where('id', $this->receiptId)
-                ->where('provider', 'META')->lockForUpdate()->first(['raw_payload', 'processing_status', 'integration_id', 'provider_object']);
+                ->where('provider', 'META')->lockForUpdate()->first(['raw_payload', 'processing_status', 'integration_id', 'provider_object', 'provider_object_id']);
             // Only RECEIVED/RETRY are claimable: a receipt another worker holds (PROCESSING) is left alone.
             if ($row === null || ! in_array($row->processing_status, ['RECEIVED', 'RETRY'], true)) {
                 return null;
@@ -65,7 +66,7 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
                     throw new \UnexpectedValueException('INVALID_RECEIPT');
                 }
                 if (! $processor->social($stored['object'], $stored['account_id'], $processor->arrays($stored['messaging']), $this->tenantId, (int) $receipt->integration_id, ($stored['instagram_login'] ?? false) === true)) {
-                    $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
+                    $this->rejectChannelChanged($receipt);
 
                     return;
                 }
@@ -78,12 +79,12 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
                 $phone = $stored['value']['metadata']['phone_number_id'] ?? null;
                 $channel = $processor->channelFor(is_scalar($phone) ? (string) $phone : '');
                 if ($channel === null || (int) $channel->tenant_id !== $this->tenantId || (int) $channel->integration_id !== (int) $receipt->integration_id) {
-                    $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
+                    $this->rejectChannelChanged($receipt);
 
                     return;
                 }
                 if (! $processor->messages($stored['value'], is_string($stored['waba_id'] ?? null) ? $stored['waba_id'] : null, $this->tenantId, (int) $receipt->integration_id)) {
-                    $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
+                    $this->rejectChannelChanged($receipt);
 
                     return;
                 }
@@ -98,6 +99,13 @@ final class ProcessMetaWebhookReceipt implements ShouldQueue
     public function failed(?Throwable $error): void
     {
         $this->mark('DEAD_LETTER', $error === null ? 'FAILED' : class_basename($error), null, ['PROCESSING', 'RETRY']);
+    }
+
+    /** EVP-138: the channel moved or was disabled after the receipt was stored; counted like any other drop. */
+    private function rejectChannelChanged(object $receipt): void
+    {
+        $this->mark('REJECTED', 'CHANNEL_CHANGED', null, ['PROCESSING']);
+        DroppedMetaEvents::record('CHANNEL_CHANGED', (string) $receipt->provider_object, (string) $receipt->provider_object_id);
     }
 
     /** @param list<string> $from transitions are conditional, so a late RETRY/DEAD_LETTER never overwrites PROCESSED */

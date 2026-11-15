@@ -73,6 +73,19 @@ Los 30 casos de la otra sesión están commiteados (`16d75b6`): 80 válidos con 
 
 La API guarda el adjunto del asesor y el worker lo lee para subirlo a Meta; en Railway no comparten volumen. Desde EVP-19 el envío falla visible (`ATTACHMENT_MISSING`) en vez de mandar un archivo vacío. **Pendiente del dueño:** bucket S3 privado y `PRIVATE_FILES_DISK=s3` + variables `AWS_*` en `api`, `worker` y `scheduler`. Detalle e informe para Codex: `handoff-codex-meta.md`.
 
+## 6c. Verificar cada cuenta conectada (EVP-138)
+
+Un ID de cuenta equivocado, un `instagram_login` distinto o un canal que no está `ACTIVE` hacen que Meta entregue los mensajes y la API los descarte. Por eso, al conectar cada número de WhatsApp, página o cuenta de Instagram:
+
+1. **Primer mensaje real:** mandá un mensaje desde un teléfono de prueba (no de un cliente) y confirmá que aparece en la bandeja del tenant correcto.
+2. **Contador de descartes:** si no aparece, corré `php artisan everprop:meta:dropped-events` en el servicio `api`. Muestra los eventos descartados en esta hora y en la anterior, por motivo:
+   - `UNMAPPED_ACCOUNT`: no hay canal para esa cuenta;
+   - `INCOMPLETE_EVENT`: el evento llegó sin remitente o sin id;
+   - `CHANNEL_CHANGED`: el canal cambió o se desactivó entre que llegó el webhook y se procesó.
+3. **Detalle por cuenta:** buscá en los logs `meta.webhook.dropped_event`. Trae el motivo, el tipo de canal y el ID de cuenta que mandó Meta, que es el que hay que cargar en el canal. El texto del cliente no se guarda.
+
+Al llegar a 5 descartes de un mismo motivo en la hora, la API escribe el log de error `meta.webhook.dropped_events_alert`. Ese es el log que conviene alertar en Railway.
+
 ## 7. Resumen por estado
 
 | Ítem | Impl | Sim | Real | Pub | Pres | Apr | Responsable siguiente |

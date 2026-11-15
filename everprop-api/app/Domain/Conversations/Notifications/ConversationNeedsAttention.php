@@ -101,6 +101,8 @@ final class ConversationNeedsAttention extends Notification
         }
 
         $message = match ($reasonCode) {
+            // EVP-126: fixed text, nobody derived it and no client data even for the owner.
+            'NEW_CONVERSATION' => "Entró un mensaje nuevo por {$channelLabel} y nadie lo respondió todavía.",
             'ADVISOR_REQUESTED', 'USER_REQUEST' => $contactLabel !== ''
                 ? "{$contactLabel} pidió hablar con un asesor en {$channelLabel}."
                 : "El cliente pidió hablar con un asesor en {$channelLabel}.",
@@ -112,7 +114,7 @@ final class ConversationNeedsAttention extends Notification
                 : "Hay una conversación en {$channelLabel} que necesita a un asesor.",
         };
 
-        return [$title, $message];
+        return [$reasonCode === 'NEW_CONVERSATION' ? "Nueva conversación en {$channelLabel}" : $title, $message];
     }
 
     /** @return array<int, string> */

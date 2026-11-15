@@ -3,6 +3,7 @@
 namespace App\Domain\Conversations\Services;
 
 use App\Domain\Conversations\Data\InboundMessage;
+use App\Domain\Conversations\Support\DroppedMetaEvents;
 use App\Domain\Integrations\Services\IntegrationTokens;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -109,7 +110,12 @@ final class MetaWebhookProcessor
             }
             $senderId = is_scalar($event['sender']['id'] ?? null) ? trim((string) $event['sender']['id']) : '';
             $mid = is_scalar($msg['mid'] ?? null) ? trim((string) $msg['mid']) : '';
-            if ($senderId === '' || $mid === '' || $senderId === $accountId || preg_match('/\A[0-9A-Za-z_.-]{1,128}\z/', $senderId) !== 1) {
+            if ($senderId === $accountId) {
+                continue;
+            }
+            if ($senderId === '' || $mid === '' || preg_match('/\A[0-9A-Za-z_.-]{1,128}\z/', $senderId) !== 1) {
+                DroppedMetaEvents::record('INCOMPLETE_EVENT', $channelType, $accountId);
+
                 continue;
             }
             $text = is_string($msg['text'] ?? null) ? mb_substr($msg['text'], 0, 4096) : null;
@@ -165,6 +171,8 @@ final class MetaWebhookProcessor
             $from = is_scalar($message['from'] ?? null) ? (string) $message['from'] : '';
             $id = is_scalar($message['id'] ?? null) ? (string) $message['id'] : '';
             if ($from === '' || $id === '' || preg_match('/\A[0-9]{6,20}\z/', $from) !== 1) {
+                DroppedMetaEvents::record('INCOMPLETE_EVENT', 'WHATSAPP', $phoneNumberId);
+
                 continue;
             }
             $type = is_string($message['type'] ?? null) ? $message['type'] : 'unknown';
