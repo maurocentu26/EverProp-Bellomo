@@ -62,7 +62,7 @@ Stack aislado `everprop-rag` (PHP 8.4, MySQL 8.4), contenedor `everprop-rag-php1
 
   También se comprobaron `unread_count` y `latest_id`.
 - `WebPushTest`: pasa.
-- Pint, PHPStan y suite completa: ver más abajo.
+- Pint PASS, PHPStan sin errores y suite completa: **603 passed, 1 skipped** (5707 assertions).
 - Frontend:
   - `node --test`: 222 pasan y 1 falla. La falla, `assistant-trace.test.mjs`, ya ocurre en `develop` sin este cambio.
   - `tsc --noEmit` sin errores.
