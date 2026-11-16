@@ -145,7 +145,11 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
       } catch { /* The next check retries without overlapping requests. */ }
       finally { checking = false; }
     };
-    const poll = window.setInterval(() => void check(), 2000);
+    // EVP-143: every 2 s while visible; a hidden tab still checks (it raises the desktop alert) but every 10 s.
+    let poll = 0;
+    const schedule = () => { poll = window.setTimeout(() => { void check().finally(() => { if (mounted) schedule(); }); },
+      document.visibilityState === "hidden" ? 10_000 : 2_000); };
+    schedule();
     const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     window.addEventListener('focus', refresh);
     window.addEventListener('online', refresh);
@@ -190,7 +194,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     return () => {
       mounted = false;
       eventSource?.close();
-      window.clearInterval(poll);
+      window.clearTimeout(poll);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("online", refresh);
       document.removeEventListener("visibilitychange", onVisible);
