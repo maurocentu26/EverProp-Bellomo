@@ -40,6 +40,14 @@ final class NotificationWorkflowTest extends TestCase
         $this->getJson('/api/v1/admin/notifications/count')->assertJsonPath('unread_count', 2)->assertJsonPath('latest_id', $extra);
         $this->deleteJson("/api/v1/admin/notifications/$extra")->assertOk();
         $this->assertSame($beforeRevision, $revision());
+        // Swapping which one is read keeps both counts equal; the revision must still move (a CRC32 XOR would not).
+        $x = (string) Str::uuid();
+        $user->notifications()->create(['id' => $x, 'type' => 'QA', 'data' => ['message' => 'X'], 'read_at' => now()]);
+        $swapped = $revision();
+        $this->patchJson("/api/v1/admin/notifications/$x/unread")->assertOk();
+        $this->patchJson("/api/v1/admin/notifications/$id/read")->assertOk();
+        $this->assertNotSame($swapped, $revision());
+        $user->notifications()->where('id', $x)->delete();
         for ($i = 0; $i < 100; $i++) {
             $user->notifications()->create(['id' => (string) Str::uuid(), 'type' => 'QA', 'data' => ['message' => 'Pagination test']]);
         }
