@@ -11,6 +11,7 @@ use App\Domain\AgentRuntime\Tools\ContactConfirmation;
 use App\Domain\AgentRuntime\Tools\ToolContext;
 use App\Domain\AgentRuntime\Tools\ToolGateway;
 use App\Domain\Conversations\Services\ConversationControl;
+use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
@@ -602,6 +603,74 @@ final class AgentTurnTest extends TestCase
         $coordinator = app(AgentCoordinator::class);
         $this->assertSame('SKIPPED_SUPERSEDED', $coordinator->handle($f['tenant']->id, $conversationId, $latest - 1));
         $this->assertSame('REPLIED', $coordinator->handle($f['tenant']->id, $conversationId, $latest));
+    }
+
+    public function test_messages_delivered_out_of_order_reach_the_model_in_real_order(): void
+    {
+        // EVP-142: Meta delivered "¿y el precio?" (written second) before "Me interesa el L-101" (written first).
+        $f = $this->fixture();
+        $this->llm([ScriptedLlm::text('Hola, ¿en qué te ayudo?')]);
+        $this->visitorSays($f, 'Hola');
+        $c = $this->state($f);
+        $now = CarbonImmutable::now('UTC');
+        $insert = function (int $sequence, string $text, CarbonImmutable $occurred) use ($c, $now): void {
+            DB::table('messages')->insert(['tenant_id' => $c->tenant_id, 'conversation_id' => $c->id, 'channel_account_id' => $c->channel_account_id,
+                'sequence' => $sequence, 'direction' => 'INBOUND', 'sender_type' => 'CONTACT', 'message_type' => 'TEXT', 'text_body' => $text,
+                'occurred_at' => $occurred->format('Y-m-d H:i:s.v'), 'created_at' => $now->addSeconds($sequence)->format('Y-m-d H:i:s.v')]);
+        };
+        $first = (int) $c->next_sequence;
+        $insert($first, '¿y el precio?', $now->addSeconds(2));
+        $insert($first + 1, 'Me interesa el L-101', $now->addSeconds(1));
+        DB::table('conversations')->where('id', $c->id)->update(['next_sequence' => $first + 2]);
+
+        $llm = $this->llm([function (array $request) {
+            $last = $request['messages'][array_key_last($request['messages'])];
+            $this->assertSame('user', $last['role'], 'the turn always closes on the client');
+            $this->assertSame("Me interesa el L-101\n¿y el precio?", $last['content']);
+
+            return ScriptedLlm::text('El L-101 está disponible.')($request);
+        }]);
+        $this->assertSame('REPLIED', app(AgentCoordinator::class)->handle((int) $c->tenant_id, (int) $c->id, $first + 1));
+        $this->assertCount(1, $llm->calls);
+
+        // The inbox keeps paging by sequence (the polling cursor) and gives each message its real time to draw by.
+        $data = $this->actingAs($this->user($f['tenant'], RoleCode::SALES_MANAGER))->withHeaders($this->tenantHeaders($f['tenant']))
+            ->getJson('/api/v1/admin/conversations/'.$c->public_id.'/messages')->assertOk()->json('data');
+        $this->flushHeaders();
+        $this->assertSame(range(1, count($data)), array_column($data, 'sequence'));
+        $byText = array_column($data, 'order_at', 'text');
+        $this->assertLessThan($byText['¿y el precio?'], $byText['Me interesa el L-101']);
+
+        // A message written an hour ago that arrives after the reply never jumps over earlier replies: it is answered
+        // at the end, and on later turns it stays in the group its own reply answered.
+        $append = function (string $text, CarbonImmutable $occurred) use ($c, $insert): int {
+            $sequence = (int) DB::table('conversations')->where('id', $c->id)->value('next_sequence');
+            $insert($sequence, $text, $occurred);
+            DB::table('conversations')->where('id', $c->id)->update(['next_sequence' => $sequence + 1]);
+
+            return $sequence;
+        };
+        $expected = [['user', 'Hola'], ['assistant', 'Hola, ¿en qué te ayudo?'], ['user', "Me interesa el L-101\n¿y el precio?"],
+            ['assistant', 'El L-101 está disponible.'], ['user', 'Soy Ana']];
+        $seen = fn (array $request): array => array_map(fn ($t) => [$t['role'], $t['content']], $request['messages']);
+        $this->llm([function (array $request) use ($seen, $expected) {
+            $this->assertSame($expected, $seen($request));
+
+            return ScriptedLlm::text('Hola Ana.')($request);
+        }]);
+        $this->assertSame('REPLIED', app(AgentCoordinator::class)->handle((int) $c->tenant_id, (int) $c->id, $append('Soy Ana', $now->subHour())));
+        $this->llm([function (array $request) use ($seen, $expected) {
+            $this->assertSame([...$expected, ['assistant', 'Hola Ana.'], ['user', 'Gracias']], $seen($request));
+
+            return ScriptedLlm::text('De nada.')($request);
+        }]);
+        $this->assertSame('REPLIED', app(AgentCoordinator::class)->handle((int) $c->tenant_id, (int) $c->id, $append('Gracias', $now->addMinute())));
+
+        // A channel timestamp in the future is capped at our receipt; our own messages keep theirs.
+        $at = fn (string $direction, string $occurred) => InboundMessageService::chronologicalAt((object) ['direction' => $direction,
+            'occurred_at' => $occurred, 'created_at' => '2026-11-12 16:00:00.000'])->format('H:i');
+        $this->assertSame(['16:00', '15:59', '17:00'], [$at('INBOUND', '2026-11-12 17:00:00.000'), $at('INBOUND', '2026-11-12 15:59:00.000'),
+            $at('OUTBOUND', '2026-11-12 17:00:00.000')]);
     }
 
     // ---- fixtures ------------------------------------------------------------------------

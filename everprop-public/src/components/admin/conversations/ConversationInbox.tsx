@@ -22,7 +22,9 @@ import {
   dayLabel,
   deliveryLabel,
   initials,
+  lateSequences,
   sameDay,
+  shownAt,
   getConversationMessages,
   listConversations,
   MIN_SEARCH,
@@ -234,6 +236,7 @@ export function ConversationInbox() {
   const [replyWindow, setReplyWindow] = useState<{ closes_at: string | null } | null>(null);
   const [handoff, setHandoff] = useState<HandoffSummary | null>(null);
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const late = lateSequences(messages); // EVP-142: delivered late by the channel, drawn where they happened
   const messagesRef = useRef<ConversationMessage[]>([]);
   const [threadError, setThreadError] = useState("");
   const [draft, setDraft] = useState("");
@@ -316,7 +319,7 @@ export function ConversationInbox() {
         if (selectedRef.current !== conversation) return; // late answer for a conversation no longer open
         merged = mergeMessages(merged, response.data);
         if (response.data.length < MESSAGE_PAGE) break;
-        after = response.data[response.data.length - 1].sequence;
+        after = response.data[response.data.length - 1].sequence; // pages come in sequence order (EVP-142 sorts only for drawing)
       }
       if (!response) return;
       const added = merged.length - messagesRef.current.length;
@@ -771,12 +774,12 @@ export function ConversationInbox() {
               <ol ref={thread} onScroll={onThreadScroll} aria-label="Mensajes" aria-live="polite" className="wa-thread">
                 {messages.map((message, index) => {
                   const previous = messages[index - 1];
-                  const newDay = !previous || !sameDay(previous.at, message.at);
+                  const newDay = !previous || !sameDay(shownAt(previous), shownAt(message));
                   // Like WhatsApp: consecutive messages from the same side stack tightly; only the first gets the tail.
                   const first = newDay || previous.direction !== message.direction || previous.sender !== message.sender;
                   const separator = newDay && (
                     <li className="conversation-day">
-                      <span className="wa-chip first-letter:uppercase">{dayLabel(message.at)}</span>
+                      <span className="wa-chip first-letter:uppercase">{dayLabel(shownAt(message))}</span>
                     </li>
                   );
                   if (message.direction === "INTERNAL") {
@@ -790,7 +793,7 @@ export function ConversationInbox() {
                               <span>Nota interna{message.author ? ` de ${message.author}` : ""} · solo la ve el equipo</span>
                             </p>
                             <p className="whitespace-pre-wrap break-words">{message.text}</p>
-                            <p className="wa-meta"><time dateTime={message.at}>{clockTime(message.at)}</time></p>
+                            <p className="wa-meta"><time dateTime={shownAt(message)}>{clockTime(shownAt(message))}</time></p>
                           </div>
                         </li>
                       </Fragment>
@@ -811,7 +814,12 @@ export function ConversationInbox() {
                             <p className={`whitespace-pre-wrap break-words ${message.status === "CANCELLED" ? "line-through" : ""}`}>{messageDescription(message)}</p>
                           )}
                           <p className="wa-meta">
-                            <time dateTime={message.at}>{clockTime(message.at)}</time>
+                            {late.has(message.sequence) && (
+                              <span className="conversation-late" title="El canal entregó este mensaje después de otros más nuevos; se muestra en el momento en que se escribió.">
+                                <Clock className="h-3 w-3" aria-hidden /> Llegó tarde
+                              </span>
+                            )}
+                            <time dateTime={shownAt(message)}>{clockTime(shownAt(message))}</time>
                             {mine && <DeliveryMark status={message.status} />}
                           </p>
                         </div>
