@@ -33,7 +33,7 @@ Stack aislado `everprop-rag` (PHP 8.4, MySQL 8.4), contenedor `everprop-rag-php1
 - **Tests relacionados:** `PublicLeadEndpointTest`, `DeletedLeadReentryTest` y `PublicLeadServiceMySqlTest` pasan.
 - **Pint:** PASS.
 - **PHPStan:** sin errores.
-- **Suite completa:** ver el PR.
+- **Suite completa:** **604 passed, 1 skipped** (5700 assertions).
 
 ## Revisiones
 
