@@ -45,7 +45,8 @@ Stack aislado `everprop-rag` (PHP 8.4, MySQL 8.4), contenedor `everprop-rag-php1
 - **Reconciliador:** con los recibos vencidos, no los reprocesa y borra el texto del comentario; el estado sigue en `VERIFIED`.
 - **Sin regresiones:** `MetaSocialWebhookTest`, `MetaDroppedEventsTest` y `WhatsAppWebhookReceiptTest` dan 24 passed (191 assertions).
 - **Calidad:** Pint PASS.
-- **PHPStan y suite completa:** ver más abajo.
+- **PHPStan:** sin errores.
+- **Suite completa:** 603 passed, 1 skipped, 1 failed. La falla es `WhatsAppParallelQueueTest`, la carrera conocida del propio test (también en el CI de #133 y #137). Corrido solo, falló una vez y pasó la siguiente; no tiene relación con este cambio.
 
 ## Pendientes
 
