@@ -35,6 +35,7 @@ final class NotificationWorkflowTest extends TestCase
         $other->notifications()->create(['id' => (string) Str::uuid(), 'type' => 'QA', 'data' => ['message' => 'Someone else']]);
         $this->assertSame($beforeRevision, $revision(), "another user's notification does not move mine");
         $extra = (string) Str::uuid();
+        $this->travel(1)->seconds(); // created_at has second precision: without this, "latest" is a tie
         $user->notifications()->create(['id' => $extra, 'type' => 'QA', 'data' => ['message' => 'New']]);
         $this->assertNotSame($beforeRevision, $revision());
         $this->getJson('/api/v1/admin/notifications/count')->assertJsonPath('unread_count', 2)->assertJsonPath('latest_id', $extra);
