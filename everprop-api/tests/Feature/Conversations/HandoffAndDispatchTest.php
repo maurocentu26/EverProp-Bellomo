@@ -280,6 +280,42 @@ final class HandoffAndDispatchTest extends TestCase
         $this->assertDatabaseHas('conversations', ['id' => $conversation, 'control_epoch' => 1]);
     }
 
+    /**
+     * EVP-146 (decided 2026-11-16): READ_ONLY is a tenant-wide supervisor. It reads every conversation, messages
+     * included, like it reads every lead, and can change nothing; reading does not even clear the unread badge.
+     * Documented in docs/rbac.md. One assertion per role, so any change to this contract is a visible decision.
+     */
+    public function test_conversation_access_per_role(): void
+    {
+        [$tenant, $conversation, $manager, $publicId] = $this->conversation();
+        $owner = $this->user($tenant, RoleCode::SALES_ADVISOR);
+        DB::table('conversations')->where('id', $conversation)->update(['assigned_user_id' => $owner->id, 'unread_count' => 3]);
+        $as = fn (RoleCode $role) => $this->actingAs($role === RoleCode::SALES_MANAGER ? $manager : $this->user($tenant, $role))
+            ->withHeaders($this->tenantHeaders($tenant));
+
+        foreach ([RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::READ_ONLY] as $role) {
+            $as($role)->getJson('/api/v1/admin/conversations')->assertOk()->assertJsonFragment(['id' => $publicId]);
+            $as($role)->getJson("/api/v1/admin/conversations/$publicId/messages")->assertOk()->assertJsonPath('data.0.text', 'Hola');
+        }
+        $this->actingAs($owner)->getJson("/api/v1/admin/conversations/$publicId/messages")->assertOk();
+        $as(RoleCode::SALES_ADVISOR)->getJson("/api/v1/admin/conversations/$publicId/messages")->assertNotFound(); // someone else's
+        foreach ([RoleCode::ROTATOR, RoleCode::BOT_OPERATOR] as $role) {
+            $as($role)->getJson('/api/v1/admin/conversations')->assertForbidden();
+        }
+
+        // Read only: every write is refused and nothing changes, not even the unread badge.
+        $readOnly = $this->user($tenant, RoleCode::READ_ONLY);
+        DB::table('conversations')->where('id', $conversation)->update(['unread_count' => 3]); // the owner's read above cleared it
+        $this->actingAs($readOnly)->getJson("/api/v1/admin/conversations/$publicId/messages")->assertOk();
+        $key = ['idempotency_key' => 'read-only-key-0000001'];
+        foreach ([['messages', ['text' => 'hola'] + $key], ['notes', ['text' => 'nota'] + $key], ['takeover', []], ['resume', []],
+            ['close', []], ['lead', []]] as [$action, $body]) {
+            $this->actingAs($readOnly)->postJson("/api/v1/admin/conversations/$publicId/$action", $body)->assertForbidden();
+        }
+        $this->assertDatabaseHas('conversations', ['id' => $conversation, 'unread_count' => 3, 'control_epoch' => 1]);
+        $this->assertSame(1, DB::table('messages')->where('conversation_id', $conversation)->count());
+    }
+
     /** @return array{0: Tenant, 1: int, 2: User, 3: string} */
     private function conversation(): array
     {
