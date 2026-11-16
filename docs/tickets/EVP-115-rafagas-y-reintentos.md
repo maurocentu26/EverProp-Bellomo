@@ -74,7 +74,7 @@ Stack Compose aislado `everprop-rag` (PHP 8.4, MySQL 8.4, Redis), contenedor `ev
   - `ProductionEnvironmentTest`: colas iguales, `retry_after` bajo y timeout que no entra en el deadline.
 - **Tests existentes con cola real** (`WhatsAppGeminiFlowTest`, `WhatsAppParallelQueueTest`): corren con `burst_window_seconds = 0`, porque sus workers procesan y se detienen enseguida. La ventana queda cubierta por el test de ráfaga.
 - **Calidad:** Pint PASS, PHPStan sin errores, `node evals/validate.mjs` OK (206 casos).
-- **Suite completa:** ver el PR (se corrió antes y después de las correcciones de las revisiones).
+- **Suite completa:** **609 passed, 1 skipped** (5748 assertions), corrida después de las correcciones de las revisiones (antes de esas correcciones había dado 608 passed).
 
 ## 5. Revisiones independientes
 
