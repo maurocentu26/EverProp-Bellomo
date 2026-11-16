@@ -14,6 +14,9 @@ Schedule::command('everprop:collections:notify-upcoming')->hourly()->withoutOver
 
 Schedule::command('everprop:conversations:reconcile')->everyMinute()->withoutOverlapping();
 
+// EVP-148: the outbox has no consumer yet (ADR D20); keep it bounded.
+Schedule::command('everprop:outbox:prune')->dailyAt('04:30')->withoutOverlapping()->onOneServer();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
