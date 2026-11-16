@@ -28,6 +28,18 @@ final class NotificationWorkflowTest extends TestCase
         $this->getJson('/api/v1/admin/notifications')->assertOk()->assertJsonPath('data.0.read', true);
         $afterRevision = $this->getJson('/api/v1/admin/notifications/count')->assertOk()->json('revision');
         $this->assertNotSame($beforeRevision, $afterRevision);
+        // EVP-143: the cheap aggregate revision still moves on unread, create and delete, and only for its owner.
+        $revision = fn () => $this->getJson('/api/v1/admin/notifications/count')->assertOk()->json('revision');
+        $this->patchJson("/api/v1/admin/notifications/$id/unread")->assertOk();
+        $this->assertSame($beforeRevision, $revision(), 'same set and read state, same revision');
+        $other->notifications()->create(['id' => (string) Str::uuid(), 'type' => 'QA', 'data' => ['message' => 'Someone else']]);
+        $this->assertSame($beforeRevision, $revision(), "another user's notification does not move mine");
+        $extra = (string) Str::uuid();
+        $user->notifications()->create(['id' => $extra, 'type' => 'QA', 'data' => ['message' => 'New']]);
+        $this->assertNotSame($beforeRevision, $revision());
+        $this->getJson('/api/v1/admin/notifications/count')->assertJsonPath('unread_count', 2)->assertJsonPath('latest_id', $extra);
+        $this->deleteJson("/api/v1/admin/notifications/$extra")->assertOk();
+        $this->assertSame($beforeRevision, $revision());
         for ($i = 0; $i < 100; $i++) {
             $user->notifications()->create(['id' => (string) Str::uuid(), 'type' => 'QA', 'data' => ['message' => 'Pagination test']]);
         }
