@@ -49,7 +49,7 @@ final class RunAgentJob implements ShouldQueue
     {
         $lock = Cache::lock('agent-turn:'.$this->tenantId.':'.$this->conversationId, (int) config('agent.turn_lock_seconds', 180));
         if (! $lock->get()) {
-            $this->release(10);
+            $this->release((int) config('agent.lock_retry_seconds', 2));
 
             return;
         }

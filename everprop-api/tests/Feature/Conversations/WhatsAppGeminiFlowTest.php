@@ -13,6 +13,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -35,7 +36,9 @@ final class WhatsAppGeminiFlowTest extends TestCase
             'services.gemini.railway_environment' => 'staging', 'services.gemini.staging_enabled' => true,
             'conversations.ai_enabled' => true,
             'agent.input_micros_per_token' => 0.25, 'agent.output_micros_per_token' => 1.5,
+            'agent.burst_window_seconds' => 0, // `queue:work --once` right after each webhook (the window is covered in AgentTurnTest)
         ]);
+        Sleep::fake();
         $this->app->instance(LlmClient::class, new GeminiChatClient('synthetic-key', 'test-model', 5));
         Http::preventStrayRequests();
     }

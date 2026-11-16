@@ -63,6 +63,10 @@ CONVERSATIONS_AI_ENABLED=false
 CONVERSATIONS_COPILOT_ENABLED=false
 AGENT_LLM_PROVIDER=disabled
 AGENT_LLM_MODEL=
+# EVP-115: a turn starts 3 s after the visitor's last message (one answer per burst); one retry waits
+# Retry-After (+ jitter), never more than 10 s. Defaults shown; leave unset unless measured otherwise.
+# AGENT_BURST_WINDOW_SECONDS=3
+# AGENT_RETRY_MAX_WAIT_SECONDS=10
 ANTHROPIC_API_KEY=REPLACE_WITH_SECRET
 META_SEND_ENABLED=false
 # Embedded Signup (Tech Provider W4). Public IDs; onboarding stays off until X04 authorizes it.

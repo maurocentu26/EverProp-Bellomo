@@ -202,6 +202,18 @@ final class HandoffAndDispatchTest extends TestCase
             text: '¿Tienen departamentos de 2 dormitorios?',
             occurredAt: CarbonImmutable::now('UTC'),
         ));
+        // EVP-115: a photo after the question has no turn of its own; the question is still the one answered.
+        app(InboundMessageService::class)->accept(new InboundMessage(
+            tenantId: $tenant->id,
+            channelAccountId: (int) $convRow->channel_account_id,
+            identityChannelType: 'WEB_CHAT',
+            senderProviderId: 'visitor-1',
+            threadId: (string) $convRow->provider_thread_id,
+            providerMessageId: 'msg-pending-photo',
+            type: 'IMAGE',
+            text: null,
+            occurredAt: CarbonImmutable::now('UTC'),
+        ));
         $this->postJson("/api/v1/admin/conversations/$publicId/notes", ['text' => 'Nota interna antes de delegar', 'idempotency_key' => 'note-0001-abcdefgh'])->assertStatus(201);
         Queue::fake([RunAgentJob::class]);
 

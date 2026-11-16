@@ -11,13 +11,16 @@ use App\Domain\AgentRuntime\Tools\ContactConfirmation;
 use App\Domain\AgentRuntime\Tools\ToolContext;
 use App\Domain\AgentRuntime\Tools\ToolGateway;
 use App\Domain\Conversations\Services\ConversationControl;
+use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Conversations\ConversationTestSupport;
 use Tests\TestCase;
 
@@ -517,10 +520,12 @@ final class AgentTurnTest extends TestCase
         $f = $this->fixture();
         $timeout = fn () => new LlmFailure('TIMEOUT', retryable: true, billable: true);
         $llm = $this->llm([$timeout, $timeout]);
+        Sleep::fake();
 
         $this->visitorSays($f, 'Hola');
 
         $this->assertCount(2, $llm->calls);
+        Sleep::assertSleptTimes(1); // EVP-115: a jittered wait before the single retry
         $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'UNKNOWN')->count());
         $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
     }
@@ -602,6 +607,115 @@ final class AgentTurnTest extends TestCase
         $coordinator = app(AgentCoordinator::class);
         $this->assertSame('SKIPPED_SUPERSEDED', $coordinator->handle($f['tenant']->id, $conversationId, $latest - 1));
         $this->assertSame('REPLIED', $coordinator->handle($f['tenant']->id, $conversationId, $latest));
+    }
+
+    /** @return array<string, array{string}> */
+    public static function queueConnections(): array
+    {
+        return ['database' => ['database'], 'redis' => ['redis']];
+    }
+
+    #[DataProvider('queueConnections')]
+    public function test_a_burst_on_a_real_queue_gets_one_turn_one_call_and_one_reply(string $connection): void
+    {
+        $f = $this->fixture();
+        $queue = 'qa-burst-'.Str::uuid();
+        config(['queue.default' => $connection, "queue.connections.{$connection}.queue" => $queue, 'cache.default' => 'redis',
+            'queue.lanes' => array_fill_keys(['webhooks', 'outbound', 'agent'], $queue), 'agent.burst_window_seconds' => 3]);
+        $llm = $this->llm([ScriptedLlm::text('Hola, el lote L-101 está disponible.')]);
+        $work = fn () => $this->artisan('queue:work', ['connection' => $connection, '--queue' => $queue, '--stop-when-empty' => true]);
+
+        try {
+            foreach (['hola', 'quería saber', 'precio del lote L-101'] as $text) {
+                $this->visitorSays($f, $text);
+                $this->travel(1)->seconds();
+            }
+            // 1 s after the last message: the first turn is due (and superseded), the last one waits for its window.
+            $this->assertSame(3, Queue::connection($connection)->size($queue));
+            $work();
+            $this->assertCount(0, $llm->calls, 'an earlier message in the burst never calls the model');
+
+            $this->travel(3)->seconds();
+            $work();
+        } finally {
+            Queue::connection($connection)->clear($queue);
+        }
+
+        $this->assertCount(1, $llm->calls);
+        $prompt = json_encode($llm->calls[0]['messages'], JSON_UNESCAPED_UNICODE);
+        foreach (['hola', 'quería saber', 'precio del lote L-101'] as $text) {
+            $this->assertStringContainsString($text, (string) $prompt);
+        }
+        $this->assertSame(1, DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->count());
+        $this->assertSame(['Hola, el lote L-101 está disponible.'], array_values(array_diff($this->visible($f), ['hola', 'quería saber', 'precio del lote L-101'])));
+    }
+
+    public function test_a_photo_after_a_question_does_not_leave_the_question_unanswered(): void
+    {
+        $f = $this->fixture();
+        $this->llm([ScriptedLlm::text('Te paso el precio.')]);
+        Queue::fake([RunAgentJob::class]);
+        $this->visitorSays($f, 'precio del L-101?');
+        $conversationId = $this->conversationId($f);
+        $question = (int) DB::table('messages')->where('tenant_id', $f['tenant']->id)->where('direction', 'INBOUND')->max('sequence');
+        // A photo, and a WhatsApp text that is only a line break (no turn of its own: hasText() is false).
+        $this->assertFalse(InboundMessageService::hasText("\n\t "));
+        foreach ([['IMAGE', null], ['TEXT', "\n\t "]] as $n => [$type, $body]) {
+            DB::table('messages')->insert(['tenant_id' => $f['tenant']->id, 'conversation_id' => $conversationId,
+                'channel_account_id' => $this->state($f)->channel_account_id, 'sequence' => $question + 1 + $n, 'direction' => 'INBOUND',
+                'sender_type' => 'CONTACT', 'message_type' => $type, 'text_body' => $body, 'occurred_at' => now(), 'created_at' => now('UTC')]);
+        }
+        DB::table('conversations')->where('id', $conversationId)->update(['next_sequence' => $question + 3]);
+
+        $this->assertSame('REPLIED', app(AgentCoordinator::class)->handle($f['tenant']->id, $conversationId, $question));
+    }
+
+    public function test_a_sustained_burst_still_answers_a_message_waiting_too_long(): void
+    {
+        $f = $this->fixture();
+        $this->llm([ScriptedLlm::text('Primera respuesta'), ScriptedLlm::text('Segunda respuesta')]);
+        Queue::fake([RunAgentJob::class]);
+        $this->visitorSays($f, 'Uno');
+        $this->visitorSays($f, 'Dos');
+        $conversationId = $this->conversationId($f);
+        $latest = (int) DB::table('messages')->where('tenant_id', $f['tenant']->id)->where('direction', 'INBOUND')->max('sequence');
+        $coordinator = app(AgentCoordinator::class);
+
+        $this->assertSame('SKIPPED_SUPERSEDED', $coordinator->handle($f['tenant']->id, $conversationId, $latest - 1));
+        $this->travel((int) config('agent.burst_max_wait_seconds') + 1)->seconds();
+        $this->assertSame('REPLIED', $coordinator->handle($f['tenant']->id, $conversationId, $latest - 1));
+    }
+
+    public function test_a_rate_limit_waits_retry_after_once_and_a_long_one_hands_off(): void
+    {
+        $f = $this->fixture();
+        Sleep::fake();
+        $llm = $this->llm([fn () => LlmFailure::rateLimited('2'), ScriptedLlm::text('Hola, ¿en qué te ayudo?')]);
+        $this->visitorSays($f, 'Hola');
+
+        $this->assertCount(2, $llm->calls);
+        Sleep::assertSlept(fn ($duration) => $duration->totalMilliseconds >= 2000 && $duration->totalMilliseconds <= 3000, 1);
+        $this->assertSame('AI_ACTIVE', $this->state($f)->control_state);
+        $this->assertSame(0, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'RESERVED')->count(), 'no reservation is held while waiting');
+
+        // Asked to wait longer than agent.retry_max_wait_seconds: no blind retry, a person takes over.
+        $g = $this->fixture();
+        $llm = $this->llm([fn () => LlmFailure::rateLimited('60'), ScriptedLlm::text('no debería llegar')]);
+        $this->visitorSays($g, 'Hola');
+        $this->assertCount(1, $llm->calls);
+        $this->assertSame('WAITING_HUMAN', $this->state($g)->control_state);
+    }
+
+    public function test_retry_after_header_is_read_as_seconds_or_http_date(): void
+    {
+        $this->assertSame(7, LlmFailure::rateLimited('7')->retryAfter);
+        $this->assertNull(LlmFailure::rateLimited(null)->retryAfter);
+        $this->assertNull(LlmFailure::rateLimited('mañana')->retryAfter);
+        $this->assertSame(86400, LlmFailure::rateLimited('99999999999')->retryAfter);
+        $this->freezeTime();
+        $date = now()->addSeconds(5)->toRfc7231String();
+        $this->assertSame(5, LlmFailure::rateLimited($date)->retryAfter);
+        $this->assertSame(0, LlmFailure::rateLimited(now()->subMinute()->toRfc7231String())->retryAfter);
     }
 
     // ---- fixtures ------------------------------------------------------------------------
