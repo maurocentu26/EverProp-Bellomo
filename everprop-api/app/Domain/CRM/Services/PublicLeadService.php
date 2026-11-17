@@ -165,6 +165,10 @@ final readonly class PublicLeadService
                     } catch (\Throwable $notificationError) {
                         throw $notificationError; // Roll back the operation rather than silently lose its notification.
                     }
+                } elseif ($lead['created']) {
+                    // EVP-136: the rotation had nobody available, so the lead is UNASSIGNED.
+                    $contactName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $contact['id'])->value('display_name') ?? 'Nuevo Contacto Web';
+                    LeadAssignedNotification::sendUnassigned($tenantId, (string) $leadRecord->public_id, $contactName, 'web');
                 }
 
                 return new PublicLeadSubmission(
