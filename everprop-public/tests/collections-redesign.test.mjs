@@ -28,6 +28,7 @@ test('EVP-72 cards, plurals, payment and plan reviews only write on confirmation
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'next/navigation': { useRouter: () => ({}), useSearchParams: () => new URLSearchParams() },
     '@/hooks/use-current-session': { useCurrentSession: () => ({ user: { id: 'u1', name: 'Asesor' }, isAdmin: true }) },
+    '@/lib/dashboard-context': { useDashboardMode: () => ({ globalSelectedAgentId: 'all' }) },
     '@/hooks/use-collections': { useCollections: () => ({ agreements: [{ id: 'a1', publicId: 'A-1', projectName: 'Proyecto', propertyTitle: 'Unidad 3', totalInstallments: 24 }], installments, loading: false, canWrite: true, setInstallments: () => {}, refresh: async () => {} }) },
     '@/hooks/use-collection-action': { useCollectionAction: () => ({ run: fn => fn(), saving: false }) },
     '@/lib/installment-notifications': dates.exports,

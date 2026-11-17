@@ -116,11 +116,12 @@ export default function AdvisorCockpit() {
 
       if (!isMockDataMode) {
         try {
+          const selectedVisitAgent = user?.role === "ADMIN" && globalSelectedAgentId !== "all" ? globalSelectedAgentId : undefined;
           const [apiLeads, catalog, apiFollowUps, visits] = await Promise.all([
             loadEverpropLeads(),
             loadEverpropCatalog(),
             loadEverpropAllFollowUps(),
-            loadEverpropTodayVisits().catch(() => null),
+            loadEverpropTodayVisits(selectedVisitAgent).catch(() => null),
           ]);
           if (active) {
             setApiVisits(visits);
@@ -184,7 +185,7 @@ export default function AdvisorCockpit() {
       window.removeEventListener("everprop_leads_updated", handleLeadsUpdated);
       channel?.close();
     };
-  }, [user?.id]);
+  }, [user?.id, user?.role, globalSelectedAgentId]);
 
   const todayStr = commercialDay(clock);
   const todayFormatted = clock.toLocaleDateString("es-AR", {
@@ -195,10 +196,11 @@ export default function AdvisorCockpit() {
     const today = getTodayDateString();
     return installments.filter((inst) => {
       if (isMockDataMode && user && !isNotificationForUser(inst.advisorId, user)) return false;
+      if (user?.role === "ADMIN" && globalSelectedAgentId !== "all" && String(inst.advisorId) !== globalSelectedAgentId) return false;
       const { status } = evaluateInstallmentStatus(inst, today);
       return status === "OVERDUE";
     }).length;
-  }, [installments, user]);
+  }, [installments, user, globalSelectedAgentId]);
 
   // Filtrar leads del asesor comercial (si es admin, ve todos los leads de la empresa)
   const myLeads = useMemo(() => {
