@@ -96,6 +96,14 @@ final class SendWebPush implements ShouldQueue
                 'tag' => $overdue ? 'collections-overdue' : 'collections-due-today', 'url' => $overdue ? '/admin/cobranzas?status=overdue' : '/admin/cobranzas?status=dueToday'];
         }
 
+        // EVP-128: generic body; the title only says which channel and when (no client data).
+        if (($data['event_type'] ?? null) === 'INTEGRATION_TOKEN_EXPIRING') {
+            $url = in_array($data['action_url'] ?? null, ['/admin/settings#instagram', '/admin/settings#whatsapp'], true) ? $data['action_url'] : '/admin/settings';
+
+            return ['title' => is_string($data['title'] ?? null) ? $data['title'] : $title, 'body' => 'Volvé a conectar el canal en Configuración para seguir respondiendo mensajes.',
+                'tag' => 'integration-token-expiring', 'url' => $url];
+        }
+
         if (($data['event_type'] ?? null) === 'INTEGRATION_REVOKED') {
             return ['title' => $title, 'body' => 'WhatsApp se desconectó. Volvé a conectarlo en Configuración.', 'tag' => 'integration-revoked', 'url' => '/admin/settings#whatsapp'];
         }

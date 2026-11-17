@@ -60,9 +60,9 @@ export function InstagramConnect() {
     {!!config?.connections.length && <ul aria-label="Cuentas de Instagram conectadas" className="divide-y divide-border rounded-xl border border-border">
       {config.connections.map(connection => <li key={connection.id} className="space-y-2 p-3 text-sm">
         <p className="break-words font-semibold">{connection.username ? `@${connection.username}` : connection.display_name}</p>
-        <p>{connection.token_status === "VALID" ? "Conectado" : connection.token_status === "UNKNOWN" ? "Vigencia sin confirmar. Volvé a conectar para confirmar el acceso." : "Acceso vencido o retirado. Volvé a conectar Instagram."}</p>
+        <p>{connection.token_status === "VALID" ? "Conectado" : connection.token_status === "EXPIRING" ? "Conectado. El acceso vence pronto y no se pudo renovar solo: renovalo o volvé a conectar Instagram." : connection.token_status === "UNKNOWN" ? "Vigencia sin confirmar. Volvé a conectar para confirmar el acceso." : "Acceso vencido o retirado. Volvé a conectar Instagram."}</p>
         {connection.expires_at && <p>Vencimiento del acceso: <time dateTime={connection.expires_at}>{new Date(connection.expires_at).toLocaleString("es-AR")}</time></p>}
-        {connection.token_status === "VALID" && <button type="button" disabled={busy} onClick={() => void refresh(connection.id)} className="min-h-11 rounded-lg border border-border px-3 font-semibold disabled:opacity-50">Renovar acceso</button>}
+        {(connection.token_status === "VALID" || connection.token_status === "EXPIRING") && <button type="button" disabled={busy} onClick={() => void refresh(connection.id)} className="min-h-11 rounded-lg border border-border px-3 font-semibold disabled:opacity-50">Renovar acceso</button>}
       </li>)}
     </ul>}
     <p role="status" className="text-sm">{busy ? "Procesando la conexión con Instagram…" : message}</p>
