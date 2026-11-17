@@ -22,7 +22,7 @@ function inbox(messages = []) {
     visibleConversations: items => items,
     suggestReply: async () => ({ data: { suggestion_id: 'suggestion', text: 'Respuesta sugerida' } }),
     sendReply: async (...args) => sends.push(args),
-    threadCursor: () => 0, mergeMessages: () => [], MESSAGE_PAGE: 100,
+    threadCursor: () => 0, mergeMessages: () => [], lateSequences: () => new Set(), shownAt: (m) => m.at, MESSAGE_PAGE: 100,
     getConversationMessages: async () => ({ data: [], conversation: { state: 'HUMAN_ACTIVE', epoch: 1, ai_enabled: true, copilot_enabled: true } }),
   };
   const deps = {

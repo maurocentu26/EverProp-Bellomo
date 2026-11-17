@@ -45,6 +45,8 @@ export type ConversationMessage = {
   event_kind?: string | null;
   status: string;
   at: string;
+  /** EVP-142: when it really happened (the channel's time capped at receipt); the thread is sorted by it. */
+  order_at?: string;
   /** Internal notes only: who wrote it. */
   author?: string | null;
   /** Photo or PDF; `url` is an authorized endpoint (never a storage path). */
@@ -198,15 +200,35 @@ const SETTLED = new Set(["RECEIVED", "SENT", "DELIVERED", "READ", "FAILED", "CAN
 export function threadCursor(messages: ConversationMessage[]): number {
   const pending = messages.filter((m) => m.direction === "OUTBOUND" && !SETTLED.has(m.status));
   if (pending.length) return Math.min(...pending.map((m) => m.sequence)) - 1;
-  return messages.length ? messages[messages.length - 1].sequence : 0;
+  // The thread is drawn in real order (EVP-142), so the last one drawn is not always the last one received.
+  return messages.reduce((max, m) => Math.max(max, m.sequence), 0);
 }
 
-/** Newer copies replace older ones by sequence; the result stays ordered. */
+/** EVP-142: the time a message is drawn and dated by. Whole seconds: Meta's timestamps have no milliseconds, ours do. */
+export const shownAt = (m: ConversationMessage) => m.order_at ?? m.at;
+const when = (m: ConversationMessage) => Math.floor(Date.parse(shownAt(m)) / 1000);
+
+/**
+ * Newer copies replace older ones by sequence. Drawn in the order things happened (EVP-142: Meta can deliver a
+ * webhook late), with `sequence` (receipt order) breaking ties.
+ */
 export function mergeMessages(current: ConversationMessage[], incoming: ConversationMessage[]): ConversationMessage[] {
   if (!incoming.length) return current;
   const bySequence = new Map(current.map((m) => [m.sequence, m]));
   for (const message of incoming) bySequence.set(message.sequence, message);
-  return [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
+  return [...bySequence.values()].sort((a, b) => when(a) - when(b) || a.sequence - b.sequence);
+}
+
+/** EVP-142: incoming messages received after one drawn below them (they arrived late and are shown where they belong). */
+export function lateSequences(messages: ConversationMessage[]): Set<number> {
+  const late = new Set<number>();
+  let oldestBelow = Infinity;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.direction === "INBOUND" && m.sequence > oldestBelow) late.add(m.sequence);
+    oldestBelow = Math.min(oldestBelow, m.sequence);
+  }
+  return late;
 }
 
 export async function getConversationMessages(id: string, after = 0) {
