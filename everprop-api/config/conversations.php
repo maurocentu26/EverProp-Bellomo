@@ -26,4 +26,6 @@ return [
     // EVP-126: with the assistant off, "new web chat" alerts per tenant every 10 minutes (social channels are not capped).
     'web_new_conversation_alerts_per_10_minutes' => (int) env('CONVERSATIONS_WEB_NEW_CONVERSATION_ALERTS_PER_10_MINUTES', 30),
     'meta_webhook_rate_limit_per_minute' => (int) env('CONVERSATIONS_META_WEBHOOK_RATE_LIMIT_PER_MINUTE', 2000),
+    // EVP-148: domain_outbox has no consumer yet; events older than this are deleted daily (minimum 7).
+    'outbox_retention_days' => (int) env('OUTBOX_RETENTION_DAYS', 30),
 ];
