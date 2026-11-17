@@ -2,6 +2,7 @@
 
 namespace App\Domain\Integrations\Services;
 
+use App\Console\Commands\RefreshIntegrationTokens;
 use App\Domain\Identity\Enums\Capability;
 use App\Domain\Identity\Services\AuthorizationService;
 use App\Domain\Integrations\Exceptions\OnboardingFailed;
@@ -164,9 +165,23 @@ final class InstagramOnboarding
             ->where('ca.tenant_id', $tenant->id)->where('ic.public_id', $publicId)->where('ic.provider', 'META')->where('ca.channel_type', 'INSTAGRAM_DM')->first(['ca.provider_account_id', 'ic.id']);
         abort_if($channel === null, 404);
 
-        return $this->withAccountLock($channel->provider_account_id, function () use ($tenant, $user, $channel): array {
-            $row = DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('id', $channel->id)->first();
-            $token = $this->tokens->forSending($tenant->id, $channel->id);
+        return $this->renew($tenant->id, (int) $channel->id, (string) $channel->provider_account_id, $user->id);
+    }
+
+    /** EVP-128: the daily scheduler renews without an actor (audited as SYSTEM); same lock, checks and race guards. */
+    public function refreshScheduled(int $tenantId, int $integrationId, string $accountId): void
+    {
+        $this->renew($tenantId, $integrationId, $accountId, null);
+    }
+
+    /** @return array<string, mixed> */
+    private function renew(int $tenantId, int $integrationId, string $accountId, ?int $actorId): array
+    {
+        $channel = (object) ['id' => $integrationId];
+
+        return $this->withAccountLock($accountId, function () use ($tenantId, $actorId, $channel): array {
+            $row = DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $channel->id)->first();
+            $token = $this->tokens->forSending($tenantId, $channel->id);
             $settings = json_decode((string) $row->settings_json, true) ?? [];
             if ($token === null || $row->token_expires_at === null || empty($settings['token_issued_at']) || ($settings['instagram_login'] ?? false) !== true) {
                 throw new OnboardingFailed('RECONNECT_REQUIRED', 'Volvé a conectar Instagram para renovar el acceso y confirmar su vigencia.', 422);
@@ -179,18 +194,22 @@ final class InstagramOnboarding
             $newToken = $this->token($response->json('access_token'));
             $expires = $this->expires($response);
 
-            return DB::transaction(function () use ($tenant, $user, $channel, $token, $newToken, $expires, $settings): array {
-                $this->activeActor($tenant->id, $user->id);
-                DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('id', $channel->id)->lockForUpdate()->first();
-                if (! hash_equals($token, (string) $this->tokens->forSending($tenant->id, $channel->id))) {
+            return DB::transaction(function () use ($tenantId, $actorId, $channel, $token, $newToken, $expires, $settings): array {
+                if ($actorId !== null) {
+                    $this->activeActor($tenantId, $actorId);
+                } else {
+                    abort_unless(Tenant::query()->whereKey($tenantId)->where('status', 'ACTIVE')->lockForUpdate()->exists(), 403);
+                }
+                DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $channel->id)->lockForUpdate()->first();
+                if (! hash_equals($token, (string) $this->tokens->forSending($tenantId, $channel->id))) {
                     throw new OnboardingFailed('CONNECTION_CHANGED', 'La conexión cambió durante la renovación. Revisá su estado antes de continuar.', 409);
                 }
-                $this->tokens->store($tenant->id, $channel->id, $newToken, $expires);
+                $this->tokens->store($tenantId, $channel->id, $newToken, $expires);
                 $settings['token_issued_at'] = now()->toIso8601String();
-                DB::table('integration_connections')->where('tenant_id', $tenant->id)->where('id', $channel->id)->update(['settings_json' => json_encode($settings, JSON_THROW_ON_ERROR)]);
-                $this->audit($tenant->id, $user->id, $channel->id, 'INSTAGRAM_TOKEN_REFRESHED');
+                DB::table('integration_connections')->where('tenant_id', $tenantId)->where('id', $channel->id)->update(['settings_json' => json_encode($settings, JSON_THROW_ON_ERROR)]);
+                $this->audit($tenantId, $actorId, $channel->id, 'INSTAGRAM_TOKEN_REFRESHED');
 
-                return $this->connection($tenant->id, $channel->id);
+                return $this->connection($tenantId, $channel->id);
             });
         });
     }
@@ -206,7 +225,9 @@ final class InstagramOnboarding
                 return ['id' => $row->public_id, 'status' => $row->status,
                     'username' => json_decode((string) $row->metadata_json, true)['username'] ?? null,
                     'display_name' => $row->display_name, 'expires_at' => $expiry?->toIso8601String(),
-                    'token_status' => $row->status !== 'ACTIVE' ? 'REVOKED' : ($expiry === null ? 'UNKNOWN' : ($expiry->isPast() ? 'EXPIRED' : 'VALID'))];
+                    // EXPIRING (EVP-128): the daily renewal did not get it past the alert threshold; still usable.
+                    'token_status' => $row->status !== 'ACTIVE' ? 'REVOKED' : ($expiry === null ? 'UNKNOWN' : ($expiry->isPast() ? 'EXPIRED'
+                        : ($expiry->lessThanOrEqualTo(CarbonImmutable::now()->addDays(RefreshIntegrationTokens::ALERT_DAYS)) ? 'EXPIRING' : 'VALID')))];
             })->values()->all();
     }
 
@@ -295,9 +316,9 @@ final class InstagramOnboarding
         }
     }
 
-    private function audit(int $tenantId, int $userId, int $integrationId, string $action): void
+    private function audit(int $tenantId, ?int $userId, int $integrationId, string $action): void
     {
-        DB::table('audit_logs')->insert(['tenant_id' => $tenantId, 'actor_type' => 'USER', 'actor_user_id' => $userId,
+        DB::table('audit_logs')->insert(['tenant_id' => $tenantId, 'actor_type' => $userId === null ? 'SYSTEM' : 'USER', 'actor_user_id' => $userId,
             'action_code' => $action, 'entity_type' => 'INTEGRATION_CONNECTION', 'entity_id' => $integrationId, 'occurred_at' => now()]);
     }
 }

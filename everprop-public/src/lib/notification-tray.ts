@@ -32,7 +32,7 @@ export function urgencyLabel(eventType?: string | null): string | null {
     case "INSTALLMENT_OVERDUE": case "PAYMENT_OVERDUE": return "Vencida";
     case "INSTALLMENT_DUE_TODAY": case "PAYMENT_DUE_TODAY": return "Vence hoy";
     case "CONVERSATION_NEEDS_ATTENTION": return "Sin responder";
-    case "INTEGRATION_REVOKED": return "Requiere acción";
+    case "INTEGRATION_REVOKED": case "INTEGRATION_TOKEN_EXPIRING": return "Requiere acción";
     default: return null;
   }
 }

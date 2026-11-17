@@ -25,6 +25,7 @@ test('EVP-119: kind and urgency come from the event type, case-insensitively', (
   assert.equal(notificationKind(undefined), 'sys');
   assert.equal(urgencyLabel('installment_overdue'), 'Vencida');
   assert.equal(urgencyLabel('CONVERSATION_NEEDS_ATTENTION'), 'Sin responder');
+  assert.equal(urgencyLabel('INTEGRATION_TOKEN_EXPIRING'), 'Requiere acción'); // EVP-128
   assert.equal(urgencyLabel('LEAD_CREATED'), null);
 });
 
