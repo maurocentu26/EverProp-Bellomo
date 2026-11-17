@@ -51,13 +51,19 @@ final class AdminNotificationController extends Controller
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
-        $unreadCount = $user->unreadNotifications()->count();
+        // EVP-143: polled every few seconds per tab, so the revision is one aggregate row instead of every notification
+        // serialized and hashed in PHP. It changes when a notification is created, deleted, read or unread: the XOR of a
+        // per-row hash of (id, read state) covers the set and which ones are read. Not CRC32: it is linear under XOR, so
+        // reading one notification and unreading another would cancel out. 64 bits of SHA-256 per row, counts on top.
+        // ponytail: still an index range over the user's rows; past ~10k per user, keep a per-user version counter.
+        $state = $user->notifications()->toBase()->reorder() // the relation orders by created_at; an aggregate must not
+            ->selectRaw("COUNT(*) AS total, COALESCE(SUM(read_at IS NULL), 0) AS unread, COALESCE(BIT_XOR(CAST(CONV(SUBSTRING(SHA2(CONCAT(id, '|', read_at IS NULL), 256), 1, 16), 16, 10) AS UNSIGNED)), 0) AS fingerprint")
+            ->first();
+        $unreadCount = (int) $state->unread;
         $latest = $user->notifications()->latest()->first(['id', 'created_at']);
 
-        $revisionRows = $user->notifications()->orderBy('id')->get(['id', 'read_at', 'updated_at']);
-
         return response()->json([
-            'revision' => hash('sha256', $revisionRows->toJson()),
+            'revision' => hash('sha256', "{$state->total}:{$unreadCount}:{$state->fingerprint}"),
             'unread_count' => $unreadCount,
             'latest_id' => $latest?->id,
             'latest_timestamp' => $latest?->created_at?->toIso8601String(),

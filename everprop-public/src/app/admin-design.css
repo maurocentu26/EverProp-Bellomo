@@ -366,6 +366,7 @@ html[data-panel-text-size="grande"] .wa-inbox { --conversation-text: 20.4px; }
 .dark .wa-inbox .conversation-sender { color: #93c5fd; }
 .dark .wa-inbox .conversation-ai .conversation-sender { color: #ddd6fe; }
 .wa-inbox .wa-meta { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 2px; color: var(--wa-meta); }
+.wa-inbox .conversation-late { display: inline-flex; align-items: center; gap: 2px; margin-right: auto; font-style: italic; }
 .conversation-note-row { display: flex; justify-content: center; margin-block: 10px; }
 .wa-inbox .conversation-note { width: min(92%, 40rem); padding: 8px 14px 6px; border: 1.5px dashed #b45309; border-radius: 14px; background: #fffbeb; color: #713f12; }
 .dark .wa-inbox .conversation-note { border-color: #d97706; background: #3a2a0c; color: #fde68a; }

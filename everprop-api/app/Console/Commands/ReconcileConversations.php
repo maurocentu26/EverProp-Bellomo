@@ -9,6 +9,7 @@ use App\Domain\Conversations\Jobs\ProcessMetaWebhookReceipt;
 use App\Domain\Conversations\Services\BusinessHours;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Conversations\Services\InboundMessageService;
+use App\Domain\Conversations\Services\OutboundDispatcher;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -33,6 +34,22 @@ final class ReconcileConversations extends Command
             ->where('j.status', 'UNKNOWN')->where('m.delivery_status', 'QUEUED')->update(['m.delivery_status' => 'UNKNOWN']);
         // A late SENT from a worker whose lease expired is still accepted by the dispatcher (same nonce).
 
+        // EVP-127: a bot reply stuck in UNKNOWN by a dead worker hands the conversation to a person, like any undelivered
+        // bot reply. Selected by state, not by this sweep's update: a handoff that errors is retried next sweep, and once
+        // done the conversation is no longer under the bot with that epoch, so it never alerts twice.
+        $lost = DB::table('outbound_jobs as j')->join('conversations as c', fn ($j) => $j->on('c.id', '=', 'j.conversation_id')->on('c.tenant_id', '=', 'j.tenant_id'))
+            ->where('j.status', 'UNKNOWN')->where('j.last_error_code', 'LEASE_EXPIRED')->whereNotNull('j.control_epoch')
+            ->whereColumn('c.control_epoch', 'j.control_epoch')->whereIn('c.control_state', ConversationControl::BOT_STATES)
+            ->limit(200)->get(['j.tenant_id', 'j.conversation_id', 'j.control_epoch']);
+        foreach ($lost as $job) {
+            try {
+                DB::transaction(fn () => app(OutboundDispatcher::class)->handOffUndelivered((int) $job->tenant_id, (int) $job->conversation_id,
+                    (int) $job->control_epoch, 'UNKNOWN', 'LEASE_EXPIRED', 0), 3);
+            } catch (\Throwable $e) {
+                report($e); // one bad row must not stop the sweep
+            }
+        }
+
         $due = DB::table('outbound_jobs')->whereIn('status', ['PENDING', 'RETRY'])->where('scheduled_at', '<=', now())
             ->whereNotNull('message_id')->orderBy('scheduled_at')->limit(500)->get(['id', 'tenant_id']);
         foreach ($due as $job) {
@@ -54,8 +71,11 @@ final class ReconcileConversations extends Command
         foreach ($receipts as $receipt) {
             ProcessMetaWebhookReceipt::dispatch((int) $receipt->tenant_id, (int) $receipt->id);
         }
-        // Failed receipts keep the client text only until expires_at (30 days) for review.
-        $whatsapp()->where('expires_at', '<', now())->where('raw_payload', '!=', DB::raw("CAST('".ProcessMetaWebhookReceipt::REDACTED."' AS JSON)"))
+        // Failed receipts keep the client text only until expires_at (30 days) for review; so do recorded post comments
+        // (EVP-147: VERIFIED receipts, never processed yet), which are not in the processing set above.
+        DB::table('webhook_receipts')->where('provider', 'META')
+            ->whereIn('provider_object', ['whatsapp_messages', 'messenger_messages', 'instagram_messages', 'instagram_comments', 'facebook_comments'])
+            ->where('expires_at', '<', now())->where('raw_payload', '!=', DB::raw("CAST('".ProcessMetaWebhookReceipt::REDACTED."' AS JSON)"))
             ->update(['raw_payload' => ProcessMetaWebhookReceipt::REDACTED]);
 
         // Assistant turns that died mid-way (worker crash): fail them and hand the conversation to a human,

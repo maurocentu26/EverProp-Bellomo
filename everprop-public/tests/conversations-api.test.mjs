@@ -90,6 +90,22 @@ test('merging keeps order and lets a newer delivery status replace the old copy'
   assert.equal(merged.map((m) => `${m.sequence}:${m.status}`).join(' '), '1:RECEIVED 2:SENT 3:RECEIVED');
 });
 
+test('EVP-142: a webhook delivered late is drawn where it happened, marked, and polling still resumes after the newest', () => {
+  const at = (minute) => new Date(Date.UTC(2026, 10, 12, 16, minute)).toISOString();
+  // Meta delivered "segundo" (sequence 1) before "primero" (sequence 3, written a minute earlier); the bot answered in between.
+  const first = api.mergeMessages([], [{ ...msg(1, 'INBOUND', 'RECEIVED', 'segundo'), at: at(1), order_at: at(1) },
+    { ...msg(2, 'OUTBOUND', 'SENT', 'respuesta'), at: at(2), order_at: at(2) }]);
+  const thread = api.mergeMessages(first, [{ ...msg(3, 'INBOUND', 'RECEIVED', 'primero'), at: at(0), order_at: at(0) }]);
+  // Joined strings: arrays built inside the vm context fail deepStrictEqual on their prototype.
+  assert.equal(thread.map((m) => m.text).join(' '), 'primero segundo respuesta');
+  assert.equal([...api.lateSequences(thread)].join(' '), '3');
+  assert.equal(api.threadCursor(thread), 3);
+  // Same instant: receipt order decides, and nothing is late.
+  const tie = api.mergeMessages([], [{ ...msg(5, 'INBOUND', 'RECEIVED'), at: at(4) }, { ...msg(4, 'INBOUND', 'RECEIVED'), at: at(4) }]);
+  assert.equal(tie.map((m) => m.sequence).join(' '), '4 5');
+  assert.equal(api.lateSequences(tie).size, 0);
+});
+
 test('incremental reads pass the cursor and the list preview names who spoke', async () => {
   calls.length = 0;
   await api.getConversationMessages('a b', 41);

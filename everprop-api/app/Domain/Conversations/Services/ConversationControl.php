@@ -175,6 +175,10 @@ final class ConversationControl
     {
         $assigneeId = $lead['assigned_user_id'] ?? null;
         if ($assigneeId === null) {
+            if ($notify && $lead['created']) {
+                rescue(fn () => $this->notifyUnassigned($tenantId, $conversationId, (int) $lead['lead_id']));
+            }
+
             return null;
         }
 
@@ -222,6 +226,20 @@ final class ConversationControl
 
             return (int) $assigneeId;
         }, 3);
+    }
+
+    /** EVP-136: the chatbot created a lead the rotation could not assign; admins and managers take it from the conversation. */
+    private function notifyUnassigned(int $tenantId, int $conversationId, int $leadId): void
+    {
+        $row = DB::table('conversations')->join('contacts', fn ($j) => $j->on('contacts.id', '=', 'conversations.contact_id')->on('contacts.tenant_id', '=', 'conversations.tenant_id'))
+            ->where('conversations.tenant_id', $tenantId)->where('conversations.id', $conversationId)
+            ->first(['conversations.public_id', 'contacts.display_name', 'contacts.phone_e164', 'contacts.email']);
+        $leadPublicId = DB::table('leads')->where('tenant_id', $tenantId)->where('id', $leadId)->value('public_id');
+        if ($row === null || $leadPublicId === null) {
+            return;
+        }
+        LeadAssignedNotification::sendUnassigned($tenantId, (string) $leadPublicId, $row->display_name ?: ($row->phone_e164 ?: ($row->email ?: 'Nuevo Contacto')),
+            'del chat', "/admin/conversaciones?c={$row->public_id}");
     }
 
     public function isEligibleAssignee(int $tenantId, int $userId): bool
