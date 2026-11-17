@@ -10,21 +10,24 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification as Notifier;
 
-/** Meta stopped accepting a tenant's token: whoever can manage integrations must reconnect (Plan W7). */
+/**
+ * Meta stopped accepting a tenant's token: whoever can manage integrations must reconnect (Plan W7).
+ * $cannotSend (EVP-127): bot replies fail with CHANNEL_NOT_CONFIGURED (no usable credential, or a misconfigured channel).
+ */
 final class IntegrationRevoked extends Notification
 {
     use Queueable;
 
-    public function __construct(public readonly string $integrationPublicId) {}
+    public function __construct(public readonly string $integrationPublicId, public readonly bool $cannotSend = false) {}
 
     /** Active users of the tenant holding manageIntegrations, after commit; a failed alert never breaks sending. */
-    public static function sendFor(int $tenantId, string $integrationPublicId): void
+    public static function sendFor(int $tenantId, string $integrationPublicId, bool $cannotSend = false): void
     {
-        DB::afterCommit(function () use ($tenantId, $integrationPublicId): void {
+        DB::afterCommit(function () use ($tenantId, $integrationPublicId, $cannotSend): void {
             try {
                 $roles = array_values(array_map(fn (RoleCode $r) => $r->value, array_filter(RoleCode::cases(), fn (RoleCode $r) => $r->allows(Capability::MANAGE_INTEGRATIONS))));
                 $admins = User::query()->where('tenant_id', $tenantId)->where('status', 'ACTIVE')->whereIn('role_code', $roles)->get();
-                Notifier::send($admins, new self($integrationPublicId));
+                Notifier::send($admins, new self($integrationPublicId, $cannotSend));
             } catch (\Throwable $error) {
                 report($error);
             }
@@ -43,8 +46,10 @@ final class IntegrationRevoked extends Notification
         return [
             'integration_id' => $this->integrationPublicId,
             'event_type' => 'INTEGRATION_REVOKED',
-            'title' => 'WhatsApp se desconectó',
-            'message' => 'Meta dejó de aceptar el acceso de la inmobiliaria. Volvé a conectar WhatsApp en Configuración para seguir enviando mensajes.',
+            'title' => $this->cannotSend ? 'Un canal no puede enviar mensajes' : 'WhatsApp se desconectó',
+            'message' => $this->cannotSend
+                ? 'Un canal no puede enviar mensajes: revisá su conexión en Configuración. Las conversaciones afectadas pasaron a un asesor.'
+                : 'Meta dejó de aceptar el acceso de la inmobiliaria. Volvé a conectar WhatsApp en Configuración para seguir enviando mensajes.',
             'action_url' => '/admin/settings#whatsapp',
         ];
     }
