@@ -71,8 +71,11 @@ final class ReconcileConversations extends Command
         foreach ($receipts as $receipt) {
             ProcessMetaWebhookReceipt::dispatch((int) $receipt->tenant_id, (int) $receipt->id);
         }
-        // Failed receipts keep the client text only until expires_at (30 days) for review.
-        $whatsapp()->where('expires_at', '<', now())->where('raw_payload', '!=', DB::raw("CAST('".ProcessMetaWebhookReceipt::REDACTED."' AS JSON)"))
+        // Failed receipts keep the client text only until expires_at (30 days) for review; so do recorded post comments
+        // (EVP-147: VERIFIED receipts, never processed yet), which are not in the processing set above.
+        DB::table('webhook_receipts')->where('provider', 'META')
+            ->whereIn('provider_object', ['whatsapp_messages', 'messenger_messages', 'instagram_messages', 'instagram_comments', 'facebook_comments'])
+            ->where('expires_at', '<', now())->where('raw_payload', '!=', DB::raw("CAST('".ProcessMetaWebhookReceipt::REDACTED."' AS JSON)"))
             ->update(['raw_payload' => ProcessMetaWebhookReceipt::REDACTED]);
 
         // Assistant turns that died mid-way (worker crash): fail them and hand the conversation to a human,
