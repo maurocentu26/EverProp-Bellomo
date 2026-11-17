@@ -61,6 +61,8 @@ MAIL_FROM_NAME=EverProp
 # Eversys Conversations — see docs/eversys-conversations/go-live.md
 CONVERSATIONS_AI_ENABLED=false
 CONVERSATIONS_COPILOT_ENABLED=false
+# EVP-148: days domain_outbox keeps events with no consumer yet (daily prune, minimum 7)
+# OUTBOX_RETENTION_DAYS=30
 AGENT_LLM_PROVIDER=disabled
 AGENT_LLM_MODEL=
 # EVP-115: a turn starts 3 s after the visitor's last message (one answer per burst); one retry waits

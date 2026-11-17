@@ -532,7 +532,19 @@ final class AgentCoordinator
             ->where('sequence', '<=', $context->inputSequence)->whereNotNull('text_body')
             ->where(fn ($q) => $q->where('direction', 'INBOUND')->orWhere(fn ($o) => $o->where('direction', 'OUTBOUND')
                 ->whereNotIn('delivery_status', ['CANCELLED', 'FAILED'])))
-            ->orderByDesc('sequence')->limit((int) config('agent.history_messages'))->get(['direction', 'sender_type', 'text_body'])->reverse();
+            ->orderByDesc('sequence')->limit((int) config('agent.history_messages'))
+            ->get(['sequence', 'direction', 'sender_type', 'text_body', 'occurred_at', 'created_at']);
+        // EVP-142: Meta can deliver late, so client messages are put in real order, but only within the group each reply
+        // answered (the client messages received before it). Replies never move and a late message never jumps over
+        // one, so every turn reads as the model saw it; the unanswered group closes the turn.
+        $group = PHP_INT_MAX;
+        $keys = [];
+        foreach ($rows as $m) { // newest first
+            $outbound = $m->direction === 'OUTBOUND';
+            $group = $outbound ? (int) $m->sequence : $group;
+            $keys[$m->sequence] = [$group, (int) $outbound, $outbound ? '' : InboundMessageService::chronologicalAt($m)->format('Y-m-d H:i:s.u'), (int) $m->sequence];
+        }
+        $rows = $rows->sortBy(fn ($m): array => $keys[$m->sequence]);
 
         $turns = [];
         foreach ($rows as $row) {

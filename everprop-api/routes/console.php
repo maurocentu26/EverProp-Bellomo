@@ -14,9 +14,16 @@ Schedule::command('everprop:collections:notify-upcoming')->hourly()->withoutOver
 
 Schedule::command('everprop:conversations:reconcile')->everyMinute()->withoutOverlapping();
 
+// EVP-148: the outbox has no consumer yet (ADR D20); keep it bounded.
+Schedule::command('everprop:outbox:prune')->dailyAt('04:30')->withoutOverlapping()->onOneServer();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// EVP-128: renew Instagram tokens before they expire and alert integration admins when one is about to. Daily at
+// 09:00 UTC (06:00 in Argentina), so a failed renewal is visible during the working day.
+Schedule::command('everprop:integrations:refresh-tokens')->dailyAt('09:00')->withoutOverlapping()->onOneServer();
 
 // EVP-50: follow-up alerts and advisor nudges; claims are atomic, onOneServer keeps replicas from racing.
 Schedule::command('everprop:leads:follow-up-alerts')->hourly()->withoutOverlapping()->onOneServer();

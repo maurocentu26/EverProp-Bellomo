@@ -249,6 +249,19 @@ final class InboundMessageService
     }
 
     /**
+     * EVP-142: when a message really happened. Meta can deliver webhooks out of order, so `sequence` (receipt order)
+     * is not the conversation's order. Inbound uses the channel's timestamp capped at our receipt (a future-dated
+     * one can't jump ahead, as in ChannelPolicy); our own messages use theirs. `sequence` stays the polling cursor.
+     */
+    public static function chronologicalAt(object $message): CarbonImmutable
+    {
+        $at = CarbonImmutable::parse($message->occurred_at, 'UTC');
+
+        return $message->direction === 'INBOUND' && $message->created_at !== null
+            ? $at->min(CarbonImmutable::parse($message->created_at, 'UTC')) : $at;
+    }
+
+    /**
      * The assistant answers this tenant's conversations only when the platform allows it (env, global kill switch)
      * AND the tenant's admin switched it on (EVP-L01, off by default). Read from the database on every call so a
      * switch takes effect without a redeploy. Fail-safe: in production a synchronous queue would run the model call

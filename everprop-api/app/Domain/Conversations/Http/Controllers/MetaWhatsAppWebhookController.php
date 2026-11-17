@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * WhatsApp Cloud API webhook for the EverSys Meta app (one endpoint for every tenant).
@@ -89,6 +90,11 @@ final class MetaWhatsAppWebhookController extends Controller
                 if ($entryId !== null && $entryId !== '' && $messaging !== []) {
                     $this->storeSocial($processor, $object, $entryId, $messaging, $instagramLogin);
                 }
+                foreach ($processor->arrays($entry['changes'] ?? null) as $change) {
+                    if ($entryId !== null && $entryId !== '' && is_array($change['value'] ?? null)) {
+                        $this->recordChange($processor, $object, $entryId, $change, $instagramLogin);
+                    }
+                }
             }
         }
 
@@ -127,7 +133,42 @@ final class MetaWhatsAppWebhookController extends Controller
         $this->persistReceipt($channel, 'meta-social:', $providerObject, $accountId, $json);
     }
 
-    private function persistReceipt(object $channel, string $prefix, string $providerObject, string $objectId, string $json): void
+    /**
+     * EVP-147: comments on posts (Instagram field "comments", Facebook page field "feed" with item "comment") are not
+     * processed yet: capturing them as possible leads needs instagram_business_manage_comments (Meta App Review). They
+     * are no longer dropped in silence: each one becomes a durable receipt (same dedupe) in VERIFIED, the schema's
+     * "signature checked, not processed" state that the reconciler never picks up, ready for that future processing.
+     * Its client text is redacted after 30 days, like failed receipts.
+     * Any other field is only logged, with ids and never content.
+     *
+     * @param  array<string, mixed>  $change
+     */
+    private function recordChange(MetaWebhookProcessor $processor, string $object, string $accountId, array $change, bool $instagramLogin): void
+    {
+        $field = is_string($change['field'] ?? null) ? mb_substr($change['field'], 0, 40) : '';
+        $comment = ($object === 'instagram' && $field === 'comments')
+            || ($object === 'page' && $field === 'feed' && ($change['value']['item'] ?? null) === 'comment');
+        if (! $comment) {
+            Log::info('meta.webhook.unhandled_change', ['object' => $object, 'field' => $field, 'account_id' => mb_substr($accountId, 0, 64)]);
+
+            return;
+        }
+        $channelType = $object === 'instagram' ? 'INSTAGRAM_DM' : 'FACEBOOK_MESSENGER'; // the account's channel row
+        $channel = $processor->socialChannelFor($channelType, $accountId, $instagramLogin);
+        if ($channel === null) {
+            DroppedMetaEvents::record('UNMAPPED_ACCOUNT', $channelType, $accountId);
+
+            return;
+        }
+        $providerObject = $object === 'instagram' ? 'instagram_comments' : 'facebook_comments';
+        $json = json_encode(['object' => $object, 'account_id' => $accountId, 'field' => $field, 'value' => $change['value']],
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $this->persistReceipt($channel, 'meta-comment:', $providerObject, $accountId, $json, 'VERIFIED');
+        Log::info('meta.webhook.comment_recorded', ['object' => $object, 'tenant_id' => (int) $channel->tenant_id,
+            'account_id' => mb_substr($accountId, 0, 64), 'comment_id' => mb_substr((string) ($change['value']['id'] ?? $change['value']['comment_id'] ?? ''), 0, 64)]);
+    }
+
+    private function persistReceipt(object $channel, string $prefix, string $providerObject, string $objectId, string $json, string $status = 'RECEIVED'): void
     {
         $digest = hash('sha256', $json, true);
         $key = $prefix.bin2hex($digest);
@@ -136,7 +177,7 @@ final class MetaWhatsAppWebhookController extends Controller
             'tenant_id' => $channel->tenant_id, 'integration_id' => $channel->integration_id, 'provider' => 'META',
             'idempotency_key' => $key, 'provider_object' => $providerObject,
             'provider_object_id' => mb_substr($objectId, 0, 191), 'signature_algorithm' => 'HMAC-SHA256', 'signature_valid' => 1,
-            'payload_sha256' => $digest, 'raw_payload' => $json, 'processing_status' => 'RECEIVED',
+            'payload_sha256' => $digest, 'raw_payload' => $json, 'processing_status' => $status,
             // Client text is dropped once processed; failed receipts keep it this long for review, then the reconciler redacts it.
             'expires_at' => now()->addDays(30),
         ]);

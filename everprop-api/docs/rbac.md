@@ -23,6 +23,21 @@ El baseline no contiene tablas `roles` o `permissions`. La fuente canónica es `
 
 Todas las celdas permitidas requieren además usuario activo, coincidencia de tenant y Policy del recurso.
 
+## Conversaciones (bandeja)
+
+Decisión del 2026-11-16 (EVP-146): `READ_ONLY` es un **supervisor de todo el tenant**. Ve todas las conversaciones, incluido el texto de los mensajes y los adjuntos, con el mismo alcance con el que ve todos los leads, pero **no puede cambiar nada**.
+
+| Rol | Lista y mensajes | Responder, notas, tomar, devolver, cerrar, crear lead |
+|---|---|---|
+| `TENANT_ADMIN`, `SALES_MANAGER` | Todas las del tenant | Sí |
+| `SALES_ADVISOR` | Las asignadas a él y las sin asignar que esperan a una persona | Sí, sobre las que controla |
+| `READ_ONLY` | Todas las del tenant, mensajes incluidos | No (403) |
+| `ROTATOR`, `BOT_OPERATOR` | No (403) | No |
+
+- Que `READ_ONLY` lea una conversación no la marca como leída. El contador de no leídos es del asignado.
+- Este acceso a datos personales de clientes debe figurar en la política de privacidad del tenant. Quien le asigna el rol a alguien le está dando acceso a esas conversaciones.
+- Test que fija el contrato: `HandoffAndDispatchTest::test_conversation_access_per_role`. Cambiarlo es una decisión de producto, no un arreglo.
+
 ## Alcance de inventario
 
 Para asesores, la capacidad de rol no basta. `user_inventory_settings` y `user_inventory_scopes` filtran la query antes de paginar por proyecto, propiedad o categoría. `can_view_prices`, `can_manage_inventory` y `can_manage_prices` refinan campos y mutaciones. Un recurso cross-tenant siempre se trata como inexistente.

@@ -220,7 +220,7 @@ final class AdminConversationController extends Controller
         $after = max(0, (int) $request->query('after', 0));
         $messages = DB::table('messages')->where('tenant_id', $row->tenant_id)->where('conversation_id', $row->id)
             ->where('sequence', '>', $after)->orderBy('sequence')->limit(200)
-            ->get(['sequence', 'direction', 'sender_type', 'message_type', 'text_body', 'delivery_status', 'occurred_at', 'metadata_json', 'media_json']);
+            ->get(['sequence', 'direction', 'sender_type', 'message_type', 'text_body', 'delivery_status', 'occurred_at', 'created_at', 'metadata_json', 'media_json']);
         $noteAuthor = fn ($m): ?int => $m->direction === 'INTERNAL' ? (json_decode((string) $m->metadata_json, true)['author_user_id'] ?? null) : null;
         $authors = DB::table('users')->where('tenant_id', $row->tenant_id)->whereIn('id', $messages->map($noteAuthor)->filter()->unique()->all())->pluck('display_name', 'id');
         if ($user->role() !== RoleCode::READ_ONLY && (int) $row->assigned_user_id === (int) $user->id) {
@@ -242,6 +242,8 @@ final class AdminConversationController extends Controller
                 'type' => $m->message_type,
                 'event_kind' => MetaWebhookProcessor::presentEventKind(json_decode((string) $m->metadata_json, true)['event_kind'] ?? null),
                 'at' => CarbonImmutable::parse($m->occurred_at, 'UTC')->toISOString(),
+                // EVP-142: pages stay in `sequence` order (the cursor); the thread is drawn by `order_at`, then `sequence`.
+                'order_at' => InboundMessageService::chronologicalAt($m)->toISOString(),
                 'media' => ConversationAttachments::present($m->media_json, "/api/v1/admin/conversations/{$row->public_id}/media/{$m->sequence}"),
             ] + ($m->direction === 'INTERNAL' ? ['author' => $authors[$noteAuthor($m)] ?? null] : []))->all(),
         ]);
