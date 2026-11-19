@@ -15,8 +15,8 @@ const now = new Date('2026-10-25T15:00:00Z');
 const leads = ['current', 'new', 'today', 'late'].map(id => ({ id, name: id, companyId: 'c1', stage: 'new', propertyIds: [] }));
 const records = ['current', 'today', 'late'].map(id => ({ id, leadId: id, companyId: 'c1', type: 'call', occurredAt: '2026-10-24T12:00:00Z', nextContactAt: id === 'late' ? '2026-10-24T12:00:00Z' : id === 'today' ? now.toISOString() : undefined }));
 const groups = commercialQueueGroups(leads, records, now);
-test('Mi Día orders overdue, today, new and current; traffic counts share the queue', () => {
-  assert.deepEqual(Array.from(groups.all, item => item.lead.id), ['late', 'today', 'new', 'current']);
+test('Mi Día orders new, overdue, today and current (EVP-166); traffic counts share the queue', () => {
+  assert.deepEqual(Array.from(groups.all, item => item.lead.id), ['new', 'late', 'today', 'current']);
   assert.deepEqual(['overdue', 'today', 'new'].map(key => groups[key].length), [1, 1, 1]);
 });
 const jsx = (type, props) => ({ type, props });
