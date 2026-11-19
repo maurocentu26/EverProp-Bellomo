@@ -573,6 +573,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     priority: apiLead.priority,
     stage: stageMap[apiLead.stage?.toUpperCase() || ""] || "new",
     lastActivity: apiLead.updated_at || apiLead.created_at || new Date().toISOString(),
+    createdAt: apiLead.created_at || undefined,
     followUpUpdatedAt: apiLead.last_touch_at || apiLead.follow_up_updated_at || undefined,
     phone: apiLead.phone || undefined,
     email: apiLead.email || undefined,
