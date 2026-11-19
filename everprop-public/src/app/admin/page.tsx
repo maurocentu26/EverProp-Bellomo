@@ -25,7 +25,7 @@ import AdvisorCockpit from "@/components/admin/advisor/AdvisorCockpit";
 export default function AdminPage() {
   const { mode: dashboardMode, setMode: setDashboardMode } = useDashboardMode();
   const { isEngineer, isAdmin, isAdvisor } = useCurrentSession();
-  const [liveProperties, setLiveProperties] = useState<typeof properties>(properties);
+  const [liveProperties, setLiveProperties] = useState<typeof properties>(() => (isMockDataMode ? properties : []));
 
   useEffect(() => {
     let active = true;

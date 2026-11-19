@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Command, Eye, EyeOff, FlaskConical, Loader2 } from "lucide-react";
+import { AlertCircle, Command, Eye, EyeOff, Loader2 } from "lucide-react";
 import { MOCK_USERS } from "@/data/auth-sample";
 import { useAuth } from "@/lib/auth-context";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -111,25 +111,13 @@ export default function LoginPage() {
           <h1 className="mb-2 text-2xl font-semibold tracking-tight text-white">Panel de gestión Bellomo</h1>
           <p className="mb-3 text-xs font-semibold tracking-widest text-slate-300">50 AÑOS · 1976–2026</p>
           <p className="text-sm text-slate-400">
-            {isMockDataMode
-              ? "Entorno aislado para QA visual con datos no reales."
-              : "Ingresá a tu panel de gestión."}
+            Ingresá a tu panel de gestión.
           </p>
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/50 backdrop-blur-md sm:p-7">
           {isMockDataMode ? (
             <>
-              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4" role="note">
-                <FlaskConical className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />
-                <div>
-                  <h2 className="text-sm font-semibold text-white">QA visual mock</h2>
-                  <p className="mt-1 text-xs leading-5 text-slate-300">
-                    Usa muestras y localStorage. No crea una sesión ni confirma datos u operaciones en la API.
-                  </p>
-                </div>
-              </div>
-
               <div className="grid gap-3 sm:grid-cols-2">
                 {MOCK_USERS.map((user) => (
                   <button
