@@ -1,5 +1,6 @@
 "use client";
 
+import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -636,9 +637,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
           {cleanPhone && (
             <a
               href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
-                  interests[0]?.propertyTitle ? ` sobre ${interests[0].propertyTitle}` : ""
-                }. ¿Cómo estás?`
+                leadWhatsAppMessage({ id: lead.id, name: lead.name, propertyTitle: interests[0]?.propertyTitle })
               )}`}
               target="_blank"
               rel="noopener noreferrer"
