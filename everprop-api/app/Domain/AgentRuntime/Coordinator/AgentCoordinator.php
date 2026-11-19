@@ -224,8 +224,9 @@ final class AgentCoordinator
         $maxIn = (int) config('agent.max_input_tokens');
         $maxOut = (int) config('agent.max_output_tokens');
         $history = $this->history($context);
-        $query = implode(' ', array_slice(array_map(fn (array $m): string => $m['role'] === 'user' ? (string) $m['content'] : '', $history), -2));
-        $sources = $this->knowledge->search($context->tenantId, $query, ['PUBLIC'], (int) config('agent.knowledge_top_k'));
+        // The client's newest message, and the one before for follow-ups ("¿y en cuotas?"); search weighs them apart.
+        [$query, $previous] = $this->clientMessages($context) + ['', ''];
+        $sources = $this->knowledge->search($context->tenantId, $query, ['PUBLIC'], (int) config('agent.knowledge_top_k'), $previous);
         $trace['sources'] = array_column($sources, 'source_id');
         // Evidence is what the model saw of each approved source: its heading and its excerpt (EVP-113).
         $trace['knowledge'] = array_map(fn (array $s): string => $s['title'].': '.$s['excerpt'], $sources);
@@ -562,6 +563,19 @@ final class AgentCoordinator
     private function visitorMessages(ToolContext $context): array
     {
         return array_column(array_filter($this->history($context), static fn (array $turn): bool => $turn['role'] === 'user'), 'content');
+    }
+
+    /**
+     * The client's last two messages of this conversation up to the turn's input, newest first. Only INBOUND: never
+     * the assistant, an advisor or an internal note.
+     *
+     * @return list<string>
+     */
+    private function clientMessages(ToolContext $context): array
+    {
+        return DB::table('messages')->where('tenant_id', $context->tenantId)->where('conversation_id', $context->conversationId)
+            ->where('sequence', '<=', $context->inputSequence)->where('direction', 'INBOUND')->whereNotNull('text_body')
+            ->orderByDesc('sequence')->limit(2)->pluck('text_body')->map(fn ($t): string => (string) $t)->all();
     }
 
     /** @return list<array{role: string, content: string}> */

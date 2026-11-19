@@ -17,9 +17,11 @@ use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use Mockery\VerificationDirector;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Conversations\ConversationTestSupport;
 use Tests\TestCase;
@@ -780,6 +782,276 @@ final class AgentTurnTest extends TestCase
     private function trace(array $f): array
     {
         return json_decode((string) DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->orderByDesc('id')->value('trace_json'), true);
+    }
+
+    /** EVP-114: with many chunks sharing "lote"/"cuotas", the one with the rare term must not be cut before ranking. */
+    public function test_the_right_fragment_survives_many_chunks_that_share_common_words(): void
+    {
+        $f = $this->fixture();
+        $other = $this->fixture();
+        $knowledge = app(KnowledgeService::class);
+        $t = (int) $f['tenant']->id;
+        $author = (int) $this->user($f['tenant'], RoleCode::SALES_MANAGER)->id;
+        $approved = function (int $tenantId, int $userId, string $title, string $body) use ($knowledge): string {
+            $id = $knowledge->create($tenantId, $userId, ['title' => $title, 'body' => $body]);
+            $knowledge->approve($tenantId, $id, $userId);
+
+            return $id;
+        };
+        for ($i = 1; $i <= 64; $i++) {
+            $approved($t, $author, "Lote $i", "El lote $i se paga en cuotas mensuales. Consultá por los lotes del loteo $i.");
+        }
+        $wedding = $approved($t, $author, 'Salón de eventos', 'Salón para casamientos y fiestas.');
+        $nearby = $approved($t, $author, 'Ubicación', 'Arenales queda a diez minutos del centro.');
+        $right = $approved($t, $author, 'Financiación', 'En Arenales se paga en 48 cuotas fijas en pesos.');
+        $draft = $knowledge->create($t, $author, ['title' => 'Borrador Arenales', 'body' => 'Lotes de Arenales en 99 cuotas.']);
+        $expired = $approved($t, $author, 'Promo vieja Arenales', 'Lotes de Arenales en 12 cuotas.');
+        DB::table('knowledge_documents')->where('public_id', $expired)->update(['valid_until' => now()->subDay()]);
+        $revoked = $approved($t, $author, 'Revocada Arenales', 'Lotes de Arenales en 24 cuotas.');
+        $knowledge->revoke($t, $revoked);
+        // Approved, then sent back to DRAFT by SQL: its chunks stay in the table but never come back.
+        $demoted = $approved($t, $author, 'Devuelta a borrador Arenales', 'Lotes de Arenales en 36 cuotas.');
+        DB::table('knowledge_documents')->where('public_id', $demoted)->update(['status' => 'DRAFT']);
+        // A chunk of an older version of the right document (version 0, ordinal 99) never comes back either.
+        DB::table('knowledge_chunks')->insert(['tenant_id' => $t, 'document_id' => DB::table('knowledge_documents')->where('public_id', $right)->value('id'),
+            'document_version' => 0, 'ordinal' => 99, 'heading' => 'Financiación', 'body' => 'Versión anterior: lotes de Arenales en 72 cuotas.']);
+        $otherAuthor = (int) $this->user($other['tenant'], RoleCode::SALES_MANAGER)->id;
+        $foreign = $approved((int) $other['tenant']->id, $otherAuthor, 'Financiación', 'En Arenales se paga en 60 cuotas fijas en pesos.');
+        // Another tenant where "Arenales" is everywhere: none of it may come back, and it must not change this tenant's
+        // ranking (InnoDB's own FULLTEXT relevance counts every tenant's rows).
+        $floodId = (string) Str::uuid();
+        $flood = DB::table('knowledge_documents')->insertGetId(['tenant_id' => $other['tenant']->id, 'public_id' => $floodId,
+            'title' => 'Barrio', 'body' => 'x', 'audience' => 'PUBLIC', 'status' => 'APPROVED', 'created_by_user_id' => $otherAuthor]);
+        DB::table('knowledge_chunks')->insert(array_map(fn (int $o) => ['tenant_id' => $other['tenant']->id, 'document_id' => $flood,
+            'document_version' => 1, 'ordinal' => $o, 'heading' => 'Barrio', 'body' => "Arenales sector $o."], range(0, 599)));
+        $docs = fn (array $hits): array => array_map(fn ($h) => explode('#', $h['source_id'])[0], $hits);
+
+        $this->assertContains($right, $docs($knowledge->search($t, '¿Los lotes de Arenales tienen cuotas?', ['PUBLIC'], 100)), 'not cut before ranking');
+        $hits = $knowledge->search($t, '¿Los lotes de Arenales tienen cuotas?');
+
+        $this->assertSame($right, $docs($hits)[0] ?? null, 'the chunk with every term, the rare one included, comes first');
+        // A rare term outweighs two frequent ones: "Arenales" alone beats "lote" + "cuotas".
+        $this->assertSame($nearby, $docs($hits)[1] ?? null);
+        $this->assertSame([], array_intersect($docs($hits), [$draft, $expired, $revoked, $demoted, $foreign, $floodId]));
+        $all = $knowledge->search($t, '¿Los lotes de Arenales tienen cuotas?', ['PUBLIC'], 1000);
+        $this->assertSame([], array_intersect($docs($all), [$draft, $expired, $revoked, $demoted, $foreign, $floodId]));
+        $this->assertNotContains($right.'#99', array_column($all, 'source_id'), 'a chunk of another version never comes back');
+        $this->assertSame($docs($hits), $docs($knowledge->search($t, '¿Los lotes de Arenales tienen cuotas?')), 'deterministic');
+        // Whole words with simple plurals, case and accents folded: "casa" is not "casamientos".
+        $this->assertSame([], $knowledge->search($t, 'casa'));
+        $this->assertNotContains($wedding, $docs($knowledge->search($t, 'una casa en Arenales')));
+        $this->assertSame($right, $docs($knowledge->search($t, 'FINANCIACIONES en arenales'))[0] ?? null);
+        $this->assertSame($right, $docs($knowledge->search($t, 'una cuota en Arenales'))[0] ?? null);
+    }
+
+    /** EVP-114: "¿Y tiene alguna promoción?" keeps the topic of the client's previous message, never the assistant's. */
+    public function test_a_follow_up_question_keeps_the_topic_of_the_previous_client_message(): void
+    {
+        $f = $this->fixture();
+        $knowledge = app(KnowledgeService::class);
+        $t = (int) $f['tenant']->id;
+        $author = (int) $this->user($f['tenant'], RoleCode::SALES_MANAGER)->id;
+        $approved = function (string $title, string $body) use ($knowledge, $t, $author): string {
+            $id = $knowledge->create($t, $author, ['title' => $title, 'body' => $body]);
+            $knowledge->approve($t, $id, $author);
+
+            return $id;
+        };
+        $approved('Lanzamiento Arenales', 'Los lotes de Arenales cuentan con una promoción de lanzamiento del 10% de contado.');
+        $approved('Promoción Norte', 'Promoción vigente para el loteo Norte.');
+        $approved('Expensas Pinar', 'Las expensas del Pinar son mensuales.');
+
+        $llm = $this->llm([ScriptedLlm::text('Te cuento: también tenemos el Pinar.'), ScriptedLlm::text('Sí, hay una promoción de lanzamiento.'),
+            ScriptedLlm::text('Te ayudo con eso.')]);
+        $this->visitorSays($f, 'Contame de los lotes en Arenales');
+        app(ConversationControl::class)->addNote($f['tenant']->id, $this->conversationId($f), $this->user($f['tenant'], RoleCode::SALES_MANAGER),
+            'Ofrecerle las expensas del Pinar', 'note-key-evp114-0001');
+        $this->visitorSays($f, '¿Y tiene alguna promoción?');
+
+        $this->assertCount(2, $llm->calls);
+        $system = $llm->calls[1]['system'];
+        // EVP-113 hides internal document UUIDs behind F1..Fn aliases, keeping headings and excerpts in the prompt.
+        $this->assertStringContainsString('Lanzamiento Arenales', $system);
+        $this->assertLessThan(strpos($system, 'Promoción Norte') ?: PHP_INT_MAX, (int) strpos($system, 'Lanzamiento Arenales'), 'the topic of the previous message ranks first');
+        $this->assertStringNotContainsString('Expensas Pinar', $system, 'neither the assistant reply nor an internal note feeds the query');
+
+        // Newest first within 300 characters: a long new message pushes the previous one out of the query.
+        $this->visitorSays($f, 'Una consulta distinta: '.str_repeat('bla ', 80).'gracias');
+        $this->assertCount(3, $llm->calls);
+        $this->assertStringNotContainsString('Lanzamiento Arenales', $llm->calls[2]['system']);
+        $this->assertStringNotContainsString('Promoción Norte', $llm->calls[2]['system']);
+    }
+
+    /** EVP-114 review: a project named in the follow-up is never displaced by the previous message's project. */
+    public function test_a_new_project_in_the_follow_up_outranks_the_previous_topic(): void
+    {
+        $f = $this->fixture();
+        $knowledge = app(KnowledgeService::class);
+        $t = (int) $f['tenant']->id;
+        $author = (int) $this->user($f['tenant'], RoleCode::SALES_MANAGER)->id;
+        $approved = function (string $title, string $body) use ($knowledge, $t, $author): string {
+            $id = $knowledge->create($t, $author, ['title' => $title, 'body' => $body]);
+            $knowledge->approve($t, $id, $author);
+
+            return $id;
+        };
+        foreach (['Arenales', 'Loteo Norte', 'El Pinar'] as $name) {
+            DB::table('projects')->insert(['tenant_id' => $t, 'public_id' => (string) Str::uuid(), 'name' => $name,
+                'project_type' => 'LAND_DEVELOPMENT', 'status' => 'PRE_SALE', 'city' => 'Jujuy', 'province' => 'Jujuy']);
+        }
+        $promo = $approved('Lanzamiento Arenales', 'Los lotes de Arenales tienen una promoción del 10% de contado.');
+        $arenalesFees = $approved('Financiación Arenales', 'Los lotes de Arenales se pagan en 24 cuotas.');
+        $approved('Financiación Norte', 'En Loteo Norte los lotes se pagan en 36 cuotas.');
+        $pinar = $approved('El Pinar', "## Ubicación\n\nEl Pinar queda junto al río.\n\n## Lotes\n\nLotes de 300 m2 con todos los servicios en el Pinar.");
+        $docs = fn (array $hits): array => array_map(fn ($h) => explode('#', $h['source_id'])[0], $hits);
+
+        $hits = $docs($knowledge->search($t, '¿Y el Pinar tiene promoción?', ['PUBLIC'], 10, 'Contame de los lotes en Arenales'));
+        $this->assertSame([$pinar, $pinar], array_slice($hits, 0, 2), 'both Pinar chunks first');
+        $this->assertGreaterThan(1, array_search($promo, $hits, true), 'the Arenales promotion never outranks the Pinar');
+
+        // Without a new topic, the previous message still decides: "¿y en cuotas?" after Arenales.
+        $this->assertSame($arenalesFees, $docs($knowledge->search($t, '¿y en cuotas?', ['PUBLIC'], 4, 'Contame de los lotes en Arenales'))[0] ?? null);
+    }
+
+    /** EVP-114 review: the query reads only this conversation's client messages, up to the turn's input. */
+    public function test_the_query_reads_only_this_conversation_up_to_the_turn(): void
+    {
+        $f = $this->fixture();
+        $context = $this->context($f);
+        $insert = function (string $text) use ($context): int {
+            $sequence = (int) DB::table('messages')->where('tenant_id', $context->tenantId)->where('conversation_id', $context->conversationId)->max('sequence') + 1;
+            DB::table('messages')->insert(['tenant_id' => $context->tenantId, 'conversation_id' => $context->conversationId,
+                'channel_account_id' => $context->channelAccountId, 'sequence' => $sequence, 'direction' => 'INBOUND', 'sender_type' => 'CONTACT',
+                'message_type' => 'TEXT', 'text_body' => $text, 'occurred_at' => now()]);
+            DB::table('conversations')->where('id', $context->conversationId)->update(['next_sequence' => $sequence + 1]);
+
+            return $sequence;
+        };
+        $input = $insert('Contame de Arenales');
+        $insert('Mensaje posterior al turno');
+        // Another conversation of the same tenant (a second widget session, AI off so no turn runs).
+        config(['conversations.ai_enabled' => false]);
+        unset($f['token']);
+        $this->visitorSays($f, 'Mensaje de otra conversación');
+        $this->assertSame(2, DB::table('conversations')->where('tenant_id', $context->tenantId)->count());
+
+        $turn = new ToolContext($context->tenantId, $context->conversationId, $context->contactId, $context->channelAccountId,
+            $context->channelType, $context->runId, $context->epoch, $input, $context->traceId);
+        $messages = (new \ReflectionMethod(AgentCoordinator::class, 'clientMessages'))->invoke(app(AgentCoordinator::class), $turn);
+
+        $this->assertSame(['Contame de Arenales', 'Hola'], $messages);
+    }
+
+    /** EVP-114 review: at most 12 query terms, and the search never reads more chunks than the approval quota. */
+    public function test_the_search_is_bounded_in_terms_and_chunks(): void
+    {
+        $f = $this->fixture();
+        $knowledge = app(KnowledgeService::class);
+        $t = (int) $f['tenant']->id;
+        $author = (int) $this->user($f['tenant'], RoleCode::SALES_MANAGER)->id;
+        for ($i = 1; $i <= 5; $i++) {
+            $id = $knowledge->create($t, $author, ['title' => "Plan $i", 'body' => "Plan $i en cuotas."]);
+            $knowledge->approve($t, $id, $author);
+        }
+        $filler = implode(' ', array_map(fn (int $i): string => "relleno$i", range(1, 12)));
+        $this->assertSame([], $knowledge->search($t, "$filler cuotas"), 'the 13th term is never searched');
+        $this->assertCount(5, $knowledge->search($t, 'cuotas', ['PUBLIC'], 100));
+        // Compatibility forms are folded (NFKC): full-width letters still match.
+        $wide = $knowledge->create($t, $author, ['title' => 'Plan ancho', 'body' => 'Plan en ＣＵＯＴＡＳ fijas.']);
+        $knowledge->approve($t, $wide, $author);
+        $this->assertContains($wide.'#0', array_column($knowledge->search($t, 'cuotas', ['PUBLIC'], 100), 'source_id'));
+
+        $log = Log::spy();
+        // A failing regex (malformed UTF-8) is logged without the text, never silently treated as "no match".
+        $has = (new \ReflectionMethod(KnowledgeService::class, 'has'))->invoke($knowledge, ['/a/u'], "\xff a");
+        $this->assertSame([false], $has);
+        $failed = $log->shouldHaveReceived('warning', ['knowledge.search.text_failed', ['error' => 'Malformed UTF-8 characters, possibly incorrectly encoded']]);
+        $this->assertInstanceOf(VerificationDirector::class, $failed);
+        $failed->once();
+
+        config(['agent.knowledge_max_chunks' => 3]);
+        $this->assertCount(3, $knowledge->search($t, 'cuotas', ['PUBLIC'], 100));
+        $capped = $log->shouldHaveReceived('warning', ['knowledge.search.cap_reached', ['tenant_id' => $t, 'cap' => 3]]);
+        $this->assertInstanceOf(VerificationDirector::class, $capped);
+        $capped->once();
+    }
+
+    /**
+     * EVP-114 criterion 7, opt-in (never in CI): KNOWLEDGE_BENCH=1 php artisan test --filter=knowledge_search_benchmark.
+     * Prints p50/p95 over 2,000 approved chunks of one tenant. Default corpus: 120 words per chunk drawn with a Zipf-like
+     * law from 3,000 words (articles everywhere, "lote" in ~67% of chunks, project names in 2-4%). KNOWLEDGE_BENCH=flat is
+     * the adversarial corpus: 90 words out of 36, every query term in almost every chunk, so FULLTEXT filters nothing.
+     */
+    public function test_knowledge_search_benchmark(): void
+    {
+        if (! getenv('KNOWLEDGE_BENCH')) {
+            $this->markTestSkipped('Benchmark: KNOWLEDGE_BENCH=1 to run it locally against MySQL.');
+        }
+        // Only ever against a test database: it deletes tenants.
+        $this->assertStringEndsWith('_test', DB::getDatabaseName(), 'The benchmark only runs against a *_test database.');
+        // tearDown removes this run's tenants even when an assertion fails; a run killed mid-way (timeout, Ctrl+C) never
+        // reaches it, so its tenants carry a unique slug prefix and the next run removes them.
+        $this->deleteSyntheticTenants(DB::table('tenants')->where('slug', 'like', 'evp114-bench-%')->pluck('id')->map(fn ($id): int => (int) $id)->all());
+        $f = $this->fixture();
+        foreach ($this->tenants as $id) {
+            DB::table('tenants')->where('id', $id)->update(['slug' => 'evp114-bench-'.$id]);
+        }
+        $t = (int) $f['tenant']->id;
+        $author = (int) $this->user($f['tenant'], RoleCode::SALES_MANAGER)->id;
+        $flat = getenv('KNOWLEDGE_BENCH') === 'flat';
+        $vocabulary = $flat ? ['lote', 'lotes', 'cuotas', 'financiación', 'anticipo', 'pesos', 'dólares', 'escritura', 'posesión', 'barrio', 'servicios',
+            'agua', 'luz', 'gas', 'cloacas', 'asfalto', 'seguridad', 'expensas', 'promoción', 'descuento', 'contado', 'visita', 'oficina', 'horario',
+            'Arenales', 'Huasi', 'Colinas', 'Pinar', 'Norte', 'Torre', 'departamento', 'local', 'cochera', 'amenities', 'pileta', 'quincho']
+            : array_replace(array_map(fn (int $r): string => "voz$r", range(0, 2999)), [1 => 'de', 'la', 'que', 'el', 'en', 'los', 'del', 'las', 'por',
+                'con', 'una', 'para', 13 => 'lote', 15 => 'cuotas', 18 => 'barrio', 22 => 'pesos', 26 => 'financiación', 30 => 'visita', 35 => 'promoción',
+                40 => 'departamento', 45 => 'seguridad', 55 => 'expensas', 65 => 'oficina', 80 => 'horario', 110 => 'anticipo', 140 => 'posesión',
+                300 => 'Torre', 400 => 'Arenales', 600 => 'Huasi', 800 => 'Colinas']);
+        mt_srand(114);
+        for ($d = 0; $d < 200; $d++) {
+            $docId = DB::table('knowledge_documents')->insertGetId(['tenant_id' => $t, 'public_id' => (string) Str::uuid(), 'title' => "Documento $d",
+                'body' => 'x', 'audience' => 'PUBLIC', 'status' => 'APPROVED', 'created_by_user_id' => $author, 'approved_by_user_id' => $author, 'approved_at' => now()]);
+            $chunks = [];
+            for ($o = 0; $o < 10; $o++) {
+                $words = [];
+                for ($w = 0; $w < ($flat ? 90 : 120); $w++) {
+                    $u = mt_rand() / mt_getrandmax();
+                    // flat: early words more frequent; Zipf: log-uniform rank, P(rank r) ~ 1/r.
+                    $words[] = $vocabulary[$flat ? min(35, (int) floor(36 * $u ** 2)) : min(2999, (int) floor(exp($u * log(3000))))];
+                }
+                $chunks[] = ['tenant_id' => $t, 'document_id' => $docId, 'document_version' => 1, 'ordinal' => $o, 'heading' => "Documento $d — sección $o",
+                    'body' => implode(' ', $words).'.'];
+            }
+            DB::table('knowledge_chunks')->insert($chunks);
+        }
+        $this->assertSame(2000, DB::table('knowledge_chunks')->where('tenant_id', $t)->count());
+        $queries = ['¿Los lotes de Arenales tienen cuotas?', '¿Hay financiación en pesos? Contame de Huasi', 'expensas y seguridad del barrio',
+            '¿Y tiene alguna promoción? Quiero un lote en Colinas', 'horario de la oficina para una visita', 'anticipo y posesión del departamento en Torre'];
+        $knowledge = app(KnowledgeService::class);
+        $times = [];
+        for ($i = 0; $i < 320; $i++) {
+            $start = hrtime(true);
+            $hits = $knowledge->search($t, $queries[$i % count($queries)]);
+            $times[] = (hrtime(true) - $start) / 1e6;
+            $this->assertNotSame([], $hits);
+        }
+        $times = array_slice($times, 20); // warm-up
+        sort($times);
+        $p = fn (array $ts, float $q): float => round($ts[(int) floor($q * (count($ts) - 1))], 2);
+        fwrite(STDERR, sprintf("\nknowledge search, %s corpus, 2000 chunks of the tenant, %d in the table: p50 %.2f ms, p95 %.2f ms, max %.2f ms (n=%d)\n",
+            $flat ? 'flat' : 'zipf', DB::table('knowledge_chunks')->count(), $p($times, 0.5), $p($times, 0.95), $p($times, 1.0), count($times)));
+
+        // Worst case from the security review: 60 distinct vowel-heavy words as the new and the previous message.
+        $hostile = implode(' ', array_map(fn (int $i): string => str_repeat('aeiou'[$i % 5], 2).'a'.chr(97 + $i % 26).chr(97 + intdiv($i, 26)), range(0, 59)));
+        $times = [];
+        for ($i = 0; $i < 120; $i++) {
+            $start = hrtime(true);
+            $knowledge->search($t, $hostile, ['PUBLIC'], 4, $hostile);
+            $times[] = (hrtime(true) - $start) / 1e6;
+        }
+        $times = array_slice($times, 20);
+        sort($times);
+        fwrite(STDERR, sprintf("hostile query (%d chars, 60 words): p50 %.2f ms, p95 %.2f ms, max %.2f ms (n=%d)\n",
+            mb_strlen($hostile), $p($times, 0.5), $p($times, 0.95), $p($times, 1.0), count($times)));
     }
 
     public function test_turns_are_idempotent_and_superseded_turns_are_skipped(): void
