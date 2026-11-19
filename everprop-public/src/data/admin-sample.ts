@@ -143,6 +143,8 @@ export type Property = {
 
 export type Lead = {
   id: string;
+  /** EVP-134: row version, sent back on edits to detect someone else's save. */
+  version?: number;
   companyId: string;
   name: string;
   origin: string;
