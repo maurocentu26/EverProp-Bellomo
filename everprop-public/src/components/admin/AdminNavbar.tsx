@@ -109,9 +109,12 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
           if (soundEnabledRef.current) playCorporateNotificationChime();
           const notification = incoming[0];
           // With the tray open, new items just appear at the top (PatternFly): no toast over it.
-          if (!trayOpenRef.current) toast.info(incoming.length > 1 ? `${incoming.length} nuevas notificaciones` : notification.title || "Nueva notificación", {
-            description: notification.message, duration: 12000,
-            action: notification.actionUrl ? { label: "Ver", onClick: () => router.push(notification.actionUrl!) } : undefined,
+          // One arrival names its content and destination; a burst only counts (the tray lists them). Only in-panel links.
+          const single = incoming.length === 1;
+          const url = single && notification.actionUrl?.startsWith("/admin/") ? notification.actionUrl : null;
+          if (!trayOpenRef.current) toast.info(single ? notification.title || "Nueva notificación" : `${incoming.length} nuevas notificaciones`, {
+            description: single ? notification.message : undefined, duration: 8000,
+            action: url ? { label: "Ver", onClick: () => router.push(url) } : undefined,
           });
           if (document.visibilityState === "hidden") showDesktopNotification(notification.title || "Bellomo", { body: notification.message, tag: notification.id, data: { url: notification.actionUrl } });
         }
@@ -167,7 +170,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
           showDesktopNotification(data.title || "Nueva notificación", { body: data.message });
           if (!trayOpenRef.current) toast.info(data.title || "Nueva notificación", {
             description: data.message,
-            action: data.actionUrl
+            action: data.actionUrl?.startsWith("/admin/")
               ? { label: "Ver", onClick: () => router.push(data.actionUrl!) }
               : undefined,
           });
