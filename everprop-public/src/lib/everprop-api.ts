@@ -45,6 +45,14 @@ type ApiProject = {
   description?: string | null;
   masterplan_image_url?: string | null;
   properties_count?: number;
+  available_units_count?: number;
+  reserved_units_count?: number;
+  sold_units_count?: number;
+  available_sale_units_count?: number;
+  available_rent_units_count?: number;
+  rented_units_count?: number;
+  not_sellable_units_count?: number;
+  not_marketed_units_count?: number;
 };
 
 type ApiProperty = {
@@ -209,7 +217,15 @@ function mapProject(project: ApiProject): Project {
     description: project.description || undefined,
     masterplanImage: project.masterplan_image_url || undefined,
     coverImage: project.masterplan_image_url || undefined,
-    propertiesCount: project.properties_count || 0,
+    propertiesCount: project.properties_count ?? 0,
+    availableUnitsCount: project.available_units_count,
+    reservedUnitsCount: project.reserved_units_count,
+    soldUnitsCount: project.sold_units_count,
+    availableSaleUnitsCount: project.available_sale_units_count,
+    availableRentUnitsCount: project.available_rent_units_count,
+    rentedUnitsCount: project.rented_units_count,
+    notSellableUnitsCount: project.not_sellable_units_count,
+    notMarketedUnitsCount: project.not_marketed_units_count,
   };
 }
 
@@ -384,7 +400,7 @@ export type CreatePropertyPayload = {
   commercialFeatures?: Record<string, any>;
 };
 
-export async function createEverpropProperty(data: CreatePropertyPayload) {
+export async function createEverpropProperty(data: CreatePropertyPayload, intakeRequestKey?: string) {
   const categoryMap: Record<string, string> = {
     Lote: "LOT",
     Departamento: "APARTMENT",
@@ -395,7 +411,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
   };
 
   let projectId: number | null = null;
-  if (data.projectId) {
+  if (data.projectId && !intakeRequestKey) {
     const project = await apiFetch<ApiEnvelope<{id: number}>>(`/api/v1/admin/projects/${encodeURIComponent(data.projectId)}`);
     projectId = project.data.id;
     if (!Number.isInteger(projectId)) throw new Error("No se pudo identificar el proyecto seleccionado.");
@@ -421,9 +437,11 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     commercial_features_json: data.commercialFeatures || null,
   };
 
-  const response = await apiFetch<ApiEnvelope<ApiProperty>>("/api/v1/admin/properties", {
+  if (intakeRequestKey && !data.projectId) throw new Error("Falta el proyecto del ingreso.");
+  const { project_id, ...unitPayload } = payload;
+  const response = await apiFetch<ApiEnvelope<ApiProperty>>(intakeRequestKey ? `/api/v1/admin/project-intakes/${encodeURIComponent(data.projectId!)}/units` : "/api/v1/admin/properties", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(intakeRequestKey ? { ...unitPayload, request_key: intakeRequestKey } : { ...unitPayload, project_id }),
   });
 
   return mapProperty(response.data);

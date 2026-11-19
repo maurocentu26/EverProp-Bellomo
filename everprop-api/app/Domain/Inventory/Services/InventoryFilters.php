@@ -45,6 +45,10 @@ final class InventoryFilters
                 });
             });
 
+        if (! isset($filters['sort'])) {
+            $query->orderByRaw('EXISTS (SELECT 1 FROM properties WHERE properties.project_id = projects.id AND properties.tenant_id = projects.tenant_id AND properties.deleted_at IS NULL) DESC');
+        }
+
         $sort = self::PROJECT_SORTS[(string) ($filters['sort'] ?? 'created_at')] ?? self::PROJECT_SORTS['created_at'];
         $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
