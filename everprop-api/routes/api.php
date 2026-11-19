@@ -6,6 +6,7 @@ use App\Domain\Collections\CollectionsController;
 use App\Domain\CRM\Http\Controllers\AdminLeadController;
 use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
 use App\Domain\CRM\Http\Controllers\AdminVisitController;
+use App\Domain\CRM\Http\Controllers\CommercialStatisticsController;
 use App\Domain\CRM\Http\Controllers\PublicLeadController;
 use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AdminUserController;
@@ -73,6 +74,7 @@ Route::middleware(['tenant', 'auth:sanctum'])->group(function (): void {
             ->parameters(['media' => 'media']);
 
         Route::get('lead-advisors', [AdminLeadController::class, 'advisors']);
+        Route::get('/commercial-statistics', CommercialStatisticsController::class)->middleware('throttle:30,1');
         Route::apiResource('leads', AdminLeadController::class);
         Route::get('/visits', [AdminVisitController::class, 'index']);
         Route::post('/visits', [AdminVisitController::class, 'store']);
