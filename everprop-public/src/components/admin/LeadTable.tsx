@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
+import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 
 export const STAGE_OPTIONS: { id: Lead["stage"]; label: string; class: string }[] = [
   { id: "new", label: "Nuevo", class: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" },
@@ -48,9 +49,7 @@ function LeadActions({ lead, onView, onFollowUp, showLabels = false }: LeadActio
           onClick={() => {
             const propTitle = lead.interests?.[0]?.propertyTitle;
             const message = encodeURIComponent(
-              `Hola ${lead.name}, te escribo de Bellomo Inmobiliaria respecto a tu consulta${
-                propTitle ? ` sobre ${propTitle}` : ""
-              }. ¿Cómo estás?`
+              leadWhatsAppMessage({ id: lead.id, name: lead.name, propertyTitle: propTitle })
             );
             window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank");
           }}
