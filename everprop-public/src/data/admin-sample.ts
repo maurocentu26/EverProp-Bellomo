@@ -144,6 +144,8 @@ export type Lead = {
   unitIds?: string[];
   stage: 'new' | 'contacted' | 'visiting' | 'negotiation' | 'closing' | 'discarded';
   lastActivity: string;
+  // Alta del lead en el CRM (API created_at); ordena la cola del vendedor.
+  createdAt?: string;
   // Compatibilidad con registros creados antes del historial independiente.
   followUpUpdatedAt?: string;
   phone?: string;
