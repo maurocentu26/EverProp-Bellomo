@@ -27,6 +27,10 @@ jobs:
           cache-dependency-path: everprop-public/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm run test:statistics
+      - run: npm run test:mi-dia
+      - run: npm run test:projects
+      - run: node --test tests/leads-api.test.mjs
       - run: npm run test:materials
       - run: npm run test:password-recovery
       - run: node --test tests/login-password.test.mjs
