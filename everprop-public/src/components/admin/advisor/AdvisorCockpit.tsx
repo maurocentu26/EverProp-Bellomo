@@ -1,4 +1,5 @@
 "use client";
+import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 import { FINAL_DELIVERY_ENABLED } from "@/lib/release-visibility";
 import { useCollections } from "@/hooks/use-collections";
 
@@ -424,7 +425,7 @@ export default function AdvisorCockpit() {
                 "lastContactAt" in lead && typeof lead.lastContactAt === "string" ? lead.lastContactAt : undefined,
                 lead.followUpUpdatedAt, lead.lastActivity,
               ].find(value => value && !Number.isNaN(parseArgentinaDate(value).getTime()));
-              const message = `Hola ${lead.name}, te contacto por tu interés en ${propertyLabel}. ¿Coordinamos el próximo paso?`;
+              const message = leadWhatsAppMessage({ id: lead.id, name: lead.name, propertyTitle: propertyLabel });
               const phone = lead.phone?.replace(/[^+0-9]/g, "");
               return <article className="day-next-row" key={lead.id}>
                 <span className={cn("day-avatar", color)} aria-hidden>{leadInitials(lead.name)}</span>
