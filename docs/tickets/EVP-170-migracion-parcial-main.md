@@ -45,4 +45,20 @@ En producción (`main`), ejecutar en orden antes o junto al deploy de la API:
 
 ## Verificación
 
-- En ejecución (se completará con resultados exactos de política CI, grep de exclusiones, MySQL/Docker backend, lint/build/tests de Next.js y QA visual con Playwright/browser).
+- **Política de PR local (`check-pr-policy.mjs`, `BASE=main HEAD=release/evp-170-migracion-parcial`):** `OK: release/evp-170-migracion-parcial → main`.
+- **Tests de política (`node --test .github/scripts/check-pr-policy.test.mjs`):** 4/4 passed.
+- **Grep de exclusiones (`ProjectWebEditor|project-landing|project_landing|LeadMessagesLink|conversation-presentation|VisitRequestsBoard|solicitudes-visita|ConversationKpis|SeedBellomoOfficialCopy|SeedStatisticsDemo` en `everprop-api/{app,routes,config}` y `everprop-public/src`):** vacío (0 coincidencias).
+- **Backend (`everprop-api`, Docker MySQL 8.4 + Redis 8.2 aislado `evp170-qa` tras importar baseline + 3 forwards):**
+  - `php artisan everprop:schema:verify` (entorno desarrollo y `--env=testing`): `PASS` (`53` tablas, `50` con `tenant_id`, `118` FKs, `2` procedimientos, `3` vistas).
+  - `vendor/bin/pint --test`: `PASS` (204 archivos).
+  - `vendor/bin/phpstan analyse --no-progress --memory-limit=1G`: `[OK] No errors`.
+  - Validación `openapi.yaml` (JSON 3.1.0, 35 paths) + `redocly lint /spec/openapi.yaml`: válido (0 errores; 5 warnings preexistentes de `operationId`).
+  - `php artisan test --no-coverage`: `175 passed (1195 assertions)`. Incluye `CommercialStatisticsTest`, `DeletedLeadReentryTest`, `LeadAssignmentHistoryTest`, `LeadVersionConflictTest`, `ManualLeadContactTest`, `UnassignedLeadNotificationTest` (adaptado sin canal chatbot/conversaciones), `PublicLeadEndpointTest`, `ContactIdentityConcurrencyMySqlTest`, `TenantIsolationAndRbacTest`, `PublicInventoryTest`, `ProjectIntakeTest` y `ProductionEnvironmentTest`.
+- **Frontend (`everprop-public`):**
+  - `npm run lint`: 0 errores (solo warnings preexistentes).
+  - `npm run build` (`next build` 16.3.6 Turbopack): compilación y chequeo TypeScript exitosos en las 29 rutas (sin `/admin/conversaciones`, `/admin/conocimiento` ni `/admin/solicitudes-visita`).
+  - Tests unitarios Node: 99/99 passed (`test:statistics` 1/1, `test:mi-dia` 32/32, `test:projects` 23/23, `leads-api.test.mjs` 5/5, `test:materials` 6/6, `test:password-recovery` 3/3, `login-password`/`logout`/`notifications-worker`/`push-registration`/`text-size-preference` 25/25, `test:collections` 4/4).
+- **QA funcional y visual en navegador (`http://127.0.0.1:3000` contra API Docker `127.0.0.1:18170`):**
+  - **Asesor (`asesor1@bellomo.invalid`):** aterrizaje en Mi Día (`/admin`), cola priorizada según EVP-166 (`Camila Pereyra` sin contacto -> `Diego Villagra` vencido -> `Valeria Sosa` vence hoy), botón `Mensaje por wpp` como `<a target="_blank">` hacia `https://wa.me/549...` con texto rotativo prellenado, cero links a `Mensajes` o `/admin/conversaciones` en barra superior/menú/dock móvil, sin creación de proyectos en `/admin/desarrollos`.
+  - **Administrador (`admin@bellomo.invalid`):** filtro por asesor EVP-123 en Mi Día, tarjetas de `/admin/desarrollos` con contadores de unidades por estado y precios en detalle (con fallback `Precio a confirmar` para precio nulo), matriz de unidades (`12`, `12A`, `13`, `14`), `/admin/desarrollos/nuevo` estrictamente en 2 pasos (`Datos básicos`, `Unidades`) sin paso de material ni etiqueta Publicado/Borrador, `/admin/estadisticas` con pestañas `Resumen` y `Equipo` sin métricas de Atención/IA/conversaciones, `/admin/leads/new` con opción `Carga manual`, y revisión visual en escritorio y móvil (`390x844`) en modo claro y oscuro en Leads, Cobranzas, Propiedades, Agenda y Configuración sin errores de consola ni 5xx.
+
