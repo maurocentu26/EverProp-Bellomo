@@ -1,6 +1,6 @@
 # EVP-168 — Mostrar los avisos del panel: montar el Toaster de sonner
 
-Rama `ticket/EVP-168-toaster-avisos` · commits pendientes · fecha 2026-11-19 · Claude (Opus 5.5) con Mauro Centurión
+Rama `ticket/EVP-168-toaster-avisos` · commit `5e27024` · fecha 2026-11-19 · Claude (Opus 5.5) con Mauro Centurión
 
 ## 1. Qué pedía el ticket
 
