@@ -70,6 +70,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Badge from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 
 const STAGE_OPTIONS: { id: Lead["stage"]; label: string; apiCode: string; color: string }[] = [
   { id: "new", label: "Nuevo", apiCode: "NEW", color: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" },
@@ -731,9 +732,7 @@ export default function AdvisorCockpit() {
                 const currentStageObj = STAGE_OPTIONS.find((s) => s.id === activePropStage) || STAGE_OPTIONS[0];
 
                 const whatsappText = encodeURIComponent(
-                  `Hola ${lead.name}, te escribo de Bellomo Inmobiliaria respecto a tu consulta${
-                    displayTitle ? ` sobre ${displayTitle}` : ""
-                  }. ¿Cómo estás?`
+                  leadWhatsAppMessage({ id: lead.id, name: lead.name, propertyTitle: displayTitle })
                 );
 
                 return (

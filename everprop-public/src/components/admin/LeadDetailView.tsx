@@ -71,6 +71,7 @@ import { LeadFollowUpTimeline } from "@/components/admin/LeadFollowUpTimeline";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 import { FINAL_DELIVERY_ENABLED } from "@/lib/release-visibility";
 import { LeadFinancingAgreements } from "@/components/admin/LeadFinancingAgreements";
+import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
   loteo: "Loteos",
@@ -523,9 +524,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               {cleanPhone && (
                 <a
                   href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                    `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
-                      interests[0]?.propertyTitle ? ` sobre ${interests[0].propertyTitle}` : ""
-                    }. ¿Cómo estás?`
+                    leadWhatsAppMessage({ id: lead.id, name: lead.name, propertyTitle: interests[0]?.propertyTitle })
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"

@@ -21,6 +21,7 @@ import { type Lead, type LeadFollowUp, type Project, type Property } from "@/dat
 import { formatArgentinaDateTime } from "@/lib/lead-follow-up";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 
 interface AdminMonthBalanceWidgetProps {
   leads: Lead[];
@@ -344,9 +345,7 @@ export function AdminMonthBalanceWidget({
                                 </a>
                                 <a
                                   href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                                    `Hola ${lead.name}, te contacto de Bellomo Inmobiliaria respecto a tu consulta${
-                                      propTitle ? ` sobre ${propTitle}` : ""
-                                    }. ¿Cómo estás?`
+                                    leadWhatsAppMessage({ id: lead.id, name: lead.name, propertyTitle: propTitle })
                                   )}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
