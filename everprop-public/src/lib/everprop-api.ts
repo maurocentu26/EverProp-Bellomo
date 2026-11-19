@@ -45,6 +45,14 @@ type ApiProject = {
   description?: string | null;
   masterplan_image_url?: string | null;
   properties_count?: number;
+  available_units_count?: number;
+  reserved_units_count?: number;
+  sold_units_count?: number;
+  available_sale_units_count?: number;
+  available_rent_units_count?: number;
+  rented_units_count?: number;
+  not_sellable_units_count?: number;
+  not_marketed_units_count?: number;
 };
 
 type ApiProperty = {
@@ -75,6 +83,7 @@ export class EverpropApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly errors?: Record<string, string[]>,
   ) {
     super(message);
     this.name = "EverpropApiError";
@@ -138,6 +147,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
     throw new EverpropApiError(
       validationMessage || payload?.error?.message || payload?.message || `La API respondió ${response.status}.`,
       response.status,
+      payload?.errors,
     );
   }
 
@@ -209,7 +219,15 @@ function mapProject(project: ApiProject): Project {
     description: project.description || undefined,
     masterplanImage: project.masterplan_image_url || undefined,
     coverImage: project.masterplan_image_url || undefined,
-    propertiesCount: project.properties_count || 0,
+    propertiesCount: project.properties_count ?? 0,
+    availableUnitsCount: project.available_units_count,
+    reservedUnitsCount: project.reserved_units_count,
+    soldUnitsCount: project.sold_units_count,
+    availableSaleUnitsCount: project.available_sale_units_count,
+    availableRentUnitsCount: project.available_rent_units_count,
+    rentedUnitsCount: project.rented_units_count,
+    notSellableUnitsCount: project.not_sellable_units_count,
+    notMarketedUnitsCount: project.not_marketed_units_count,
   };
 }
 
@@ -235,6 +253,8 @@ function mapProperty(property: ApiProperty): Property {
     propertyType: categoryLabels[property.category.toUpperCase()] || property.category,
     price: Number(property.price || 0),
     priceKnown: property.price != null && property.currency_code != null,
+    inventoryPrice: property.price == null ? null : Number(property.price),
+    inventoryCurrency: property.currency_code ?? null,
     currency: property.currency_code === "ARS" ? "ARS" : "USD",
     city: property.city || "Sin ciudad informada",
     neighborhood: property.neighborhood || "",
@@ -326,9 +346,12 @@ async function catalogFrom(prefix: "/api/v1/admin" | "/api/v1/public") {
   };
 }
 
-export async function loadEverpropPropertiesPage(page: number, filters?: { projectId?: string; status?: string }): Promise<Property[]> {
+export async function loadEverpropPropertiesPage(page: number, filters?: { projectId?: string; status?: string; category?: string; operation?: string }): Promise<Property[]> {
   let url = `/api/v1/admin/properties?per_page=100&page=${page}`;
   if (filters?.projectId && filters.projectId !== 'all') url += `&project=${filters.projectId}`;
+  // The API validates category against its enum; free-text types from the data only filter locally.
+  if (filters?.category && ['LOT', 'GARAGE', 'LOCAL', 'TRADITIONAL', 'APARTMENT', 'HOUSE'].includes(filters.category)) url += `&category=${encodeURIComponent(filters.category)}`;
+  if (filters?.operation && filters.operation !== 'all') url += `&operation=${encodeURIComponent(filters.operation === 'temporal' ? 'TEMPORARY' : filters.operation.toUpperCase())}`;
   if (filters?.status && filters.status !== 'all') {
     // If the frontend uses 'reserved' we map it, else pass as is
     const apiStatus = filters.status === 'reserved' ? 'RESERVED' : filters.status.toUpperCase();
@@ -379,7 +402,7 @@ export type CreatePropertyPayload = {
   commercialFeatures?: Record<string, any>;
 };
 
-export async function createEverpropProperty(data: CreatePropertyPayload) {
+export async function createEverpropProperty(data: CreatePropertyPayload, intakeRequestKey?: string) {
   const categoryMap: Record<string, string> = {
     Lote: "LOT",
     Departamento: "APARTMENT",
@@ -390,7 +413,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
   };
 
   let projectId: number | null = null;
-  if (data.projectId) {
+  if (data.projectId && !intakeRequestKey) {
     const project = await apiFetch<ApiEnvelope<{id: number}>>(`/api/v1/admin/projects/${encodeURIComponent(data.projectId)}`);
     projectId = project.data.id;
     if (!Number.isInteger(projectId)) throw new Error("No se pudo identificar el proyecto seleccionado.");
@@ -416,9 +439,11 @@ export async function createEverpropProperty(data: CreatePropertyPayload) {
     commercial_features_json: data.commercialFeatures || null,
   };
 
-  const response = await apiFetch<ApiEnvelope<ApiProperty>>("/api/v1/admin/properties", {
+  if (intakeRequestKey && !data.projectId) throw new Error("Falta el proyecto del ingreso.");
+  const { project_id, ...unitPayload } = payload;
+  const response = await apiFetch<ApiEnvelope<ApiProperty>>(intakeRequestKey ? `/api/v1/admin/project-intakes/${encodeURIComponent(data.projectId!)}/units` : "/api/v1/admin/properties", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(intakeRequestKey ? { ...unitPayload, request_key: intakeRequestKey } : { ...unitPayload, project_id }),
   });
 
   return mapProperty(response.data);
@@ -477,6 +502,7 @@ export async function createEverpropProject(data: CreateProjectPayload) {
 export type ApiLead = {
   source_channel?: string;
   id: string;
+  version?: number;
   db_id?: number;
   name: string;
   email?: string;
@@ -566,7 +592,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     id: apiLead.id,
     companyId: "c1",
     name: cleanText(apiLead.name),
-    origin: ({ WHATSAPP: "WhatsApp", WEB_FORM: "Web / Formulario", PORTAL: "Portal", REFERRAL: "Referido", INSTAGRAM: "Instagram" } as Record<string, string>)[apiLead.source_channel || "WEB_FORM"] || apiLead.source_channel || "Web / Formulario",
+    origin: ({ WHATSAPP: "WhatsApp", WEB_FORM: "Web / Formulario", PORTAL: "Portal", REFERRAL: "Referido", INSTAGRAM: "Instagram", MANUAL: "Carga manual" } as Record<string, string>)[apiLead.source_channel || "WEB_FORM"] || apiLead.source_channel || "Web / Formulario",
     propertyIds,
     budget: apiLead.budget ?? undefined,
     currency: apiLead.currency,
@@ -578,6 +604,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     phone: apiLead.phone || undefined,
     email: apiLead.email || undefined,
     notes: cleanText(apiLead.notes) || undefined,
+    version: apiLead.version,
     interests,
     agentId: apiLead.agent_id ? String(apiLead.agent_id) : undefined,
     agentName: apiLead.agent_name || undefined,
@@ -612,7 +639,7 @@ export async function loadEverpropLeadsPage(page: number): Promise<Lead[]> {
   return response.data.map(mapLead);
 }
 
-const leadOriginCode = (origin: string) => ({ "WhatsApp": "WHATSAPP", "Web / Formulario": "WEB_FORM", "Web": "WEB_FORM", "Portal Inmobiliario": "PORTAL", "Portal": "PORTAL", "Referido": "REFERRAL", "Instagram": "INSTAGRAM" } as Record<string, string>)[origin] || "WEB_FORM";
+const leadOriginCode = (origin: string) => ({ "WhatsApp": "WHATSAPP", "Web / Formulario": "WEB_FORM", "Web": "WEB_FORM", "Portal Inmobiliario": "PORTAL", "Portal": "PORTAL", "Referido": "REFERRAL", "Instagram": "INSTAGRAM", "Carga manual": "MANUAL" } as Record<string, string>)[origin] || "WEB_FORM";
 
 export async function createEverpropLead(data: {
   origin?: string;
@@ -626,9 +653,12 @@ export async function createEverpropLead(data: {
   notes?: string;
   agentId?: string | number | null;
   propertyId?: string | null;
-}) {
-  const response = await apiFetch<{ data: ApiLead }>("/api/v1/admin/leads", {
+  /** EVP-135: one key per form, reused on retries, so a double submit never creates two leads. */
+  idempotencyKey?: string;
+}): Promise<Lead & { duplicate?: boolean }> {
+  const response = await apiFetch<{ data: ApiLead; duplicate?: boolean }>("/api/v1/admin/leads", {
     method: "POST",
+    headers: data.idempotencyKey ? { "Idempotency-Key": data.idempotencyKey } : undefined,
     body: JSON.stringify({
       name: data.name,
       source_channel: data.origin ? leadOriginCode(data.origin) : undefined,
@@ -644,7 +674,8 @@ export async function createEverpropLead(data: {
     }),
   });
 
-  return mapLead(response.data);
+  // duplicate: the contact already had an open lead (or this was a retry); the API returns that lead.
+  return { ...mapLead(response.data), duplicate: response.duplicate === true };
 }
 
 export async function updateEverpropLead(
@@ -658,6 +689,7 @@ export async function updateEverpropLead(
     priority?: string;
     notes?: string;
     agentId?: string | number | null;
+    version?: number;
   }
 ) {
   const payload: Record<string, any> = {};
@@ -671,12 +703,21 @@ export async function updateEverpropLead(
   if (data.agentId !== undefined) {
     payload.agent_id = data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null;
   }
+  if (data.version !== undefined) payload.version = data.version;
 
-  return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
+  return apiFetch<{ status: string; version?: number }>(`/api/v1/admin/leads/${leadPublicId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
 }
+
+/** EVP-134: someone else saved the lead after this editor loaded it (API 409 LEAD_VERSION_CONFLICT). */
+export function isLeadVersionConflict(error: unknown) {
+  return error instanceof EverpropApiError && error.status === 409;
+}
+
+export const LEAD_VERSION_CONFLICT_MESSAGE =
+  "Otra persona modificó este lead mientras lo editabas. Cargamos sus cambios y tu texto sigue en el formulario: revisalo y guardá de nuevo.";
 
 export async function deleteEverpropLead(leadPublicId: string) {
   return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {

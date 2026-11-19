@@ -7,6 +7,11 @@ use App\Models\User;
 
 final class LeadAccessPolicy
 {
+    public function statistics(User $user, int $tenantId): bool
+    {
+        return $this->viewAny($user, $tenantId) && in_array($user->role(), [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER], true);
+    }
+
     public function assign(User $user, int $tenantId): bool
     {
         return $this->viewAny($user, $tenantId) && in_array($user->role(), [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::ROTATOR], true);

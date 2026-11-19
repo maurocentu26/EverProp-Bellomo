@@ -1,5 +1,6 @@
 import { isReleaseRouteVisible } from "@/lib/release-visibility";
 import { 
+  BarChart3,
   Home, 
   Building2, 
   Users, 
@@ -37,12 +38,14 @@ type NavigationAccess = {
   isMockMode: boolean;
   isAdvisor?: boolean;
   isTenantAdmin?: boolean;
+  canViewCommercialStats?: boolean;
 };
 
 export const advisorNavigationGroups: NavGroup[] = [
   {
     label: "Mi Gestión",
     items: [
+      { title: "Estadísticas", href: "/admin/estadisticas", icon: BarChart3, matchPath: "/admin/estadisticas" },
       { title: "Mi Día", href: "/admin", icon: Home, matchPath: "/admin" },
       { 
         title: "Mis Leads", 
@@ -82,6 +85,7 @@ export const navigationGroups: NavGroup[] = [
   {
     label: "Comercializadora",
     items: [
+      { title: "Estadísticas", href: "/admin/estadisticas", icon: BarChart3, matchPath: "/admin/estadisticas" },
       { 
         title: "Activos", 
         href: "/admin/properties", 
@@ -114,13 +118,14 @@ export function getAvailableNavigationGroups({
   isEngineer,
   isAdvisor,
   isTenantAdmin,
+  canViewCommercialStats,
 }: NavigationAccess): NavGroup[] {
   if (isAdvisor) {
-    return advisorNavigationGroups.map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))}));
+    return advisorNavigationGroups.map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href) && (item.href !== "/admin/estadisticas" || !!canViewCommercialStats))}));
   }
 
   if (isEngineer) {
-    return navigationGroups.map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))}))
+    return navigationGroups.map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href) && (item.href !== "/admin/estadisticas" || !!canViewCommercialStats))}))
       .map((group) => {
         if (group.label !== "Gestión") return group;
         return {
@@ -133,5 +138,5 @@ export function getAvailableNavigationGroups({
 
   return navigationGroups.map(group => group.label === "Gestión" && isTenantAdmin
     ? {...group, items: [...group.items, {title: "Alta de usuarios", href: "/admin/asesores", icon: Users, matchPath: "/admin/asesores"}]}
-    : group).map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href))})).filter(group => group.items.length > 0);
+    : group).map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href) && (item.href !== "/admin/estadisticas" || !!canViewCommercialStats))})).filter(group => group.items.length > 0);
 }

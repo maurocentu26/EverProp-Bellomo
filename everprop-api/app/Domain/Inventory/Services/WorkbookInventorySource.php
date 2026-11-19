@@ -76,11 +76,24 @@ final class WorkbookInventorySource
             if ($area !== null && $area <= 0) {
                 $issues[] = ['sheet' => 'Productos', 'row' => $record['row'], 'key' => $code, 'issue' => 'Nonpositive area retained only in source'];
             }
-            $category = match ($r['ProTId']) {
+            $description = trim(trim((string) $r['ProDes1']).' '.trim((string) $r['ProDes2'])) ?: null;
+            $area = $area !== null && $area > 0 ? round((float) $area, 2) : $this->areaFromDescription($description);
+            if ($area !== null && ($r['ProM2'] === null || $r['ProM2'] <= 0)) {
+                $issues[] = ['sheet' => 'Productos', 'row' => $record['row'], 'key' => $code, 'issue' => 'Area taken from description'];
+            }
+            // The workbook types Huasi VII parking as apartments (floor COCH) and Huasi VIII office floors (1P..4P) as lots.
+            $typeId = match (true) {
+                strtoupper($pis) === 'COCH' => 2,
+                in_array($r['ProTId'], [9, 10, 12], true) && preg_match('/^\d+P$/i', $pis) === 1 => 3,
+                default => $r['ProTId'],
+            };
+            $category = match ($typeId) {
                 1 => 'APARTMENT', 2 => 'GARAGE', 3 => 'LOCAL', 4, 5, 33 => 'HOUSE',
                 9, 10, 12 => 'LOT', 11 => 'TRADITIONAL', default => 'UNKNOWN',
             };
-            $label = trim($catalogs['ProdT01'][$r['ProTId']]['ProTTip'] ?? 'Sin tipo');
+            $label = trim($catalogs['ProdT01'][$typeId]['ProTTip'] ?? 'Sin tipo');
+            // Rows with no unit key or no parent project cannot be offered, so they are kept but never marketed.
+            $unmarketable = $building === [] || ($pis === '' && $dep === '');
             $properties[mb_strtolower($code)] = [
                 'code' => $code, 'legacy_ed_id' => $r['EdId'], 'legacy_pis' => $pis, 'legacy_dep' => $dep,
                 'legacy_status_id' => $r['ProEId'], 'legacy_type_id' => $r['ProTId'],
@@ -88,14 +101,14 @@ final class WorkbookInventorySource
                 'operation' => match ($r['ProEId']) {
                     1, 3 => 'RENT', 2, 4 => 'SALE', 5 => 'LEASING', default => 'UNKNOWN'
                 },
-                'status' => match ($r['ProEId']) {
+                'status' => $unmarketable ? 'NOT_MARKETED' : match ($r['ProEId']) {
                     1, 2 => 'AVAILABLE', 3 => 'RENTED', 4 => 'SOLD', 6 => 'RESERVED', 7 => 'NOT_SELLABLE', 8 => 'NOT_MARKETED', default => 'UNKNOWN'
                 },
-                'category' => $category, 'area_m2' => $area !== null && $area > 0 ? round((float) $area, 2) : null,
+                'category' => $category, 'area_m2' => $area,
                 'city' => trim($catalogs['Localidades'][$building['LocCod'] ?? null]['LocDes'] ?? ''),
                 'neighborhood' => trim((string) $r['ProUbic']) ?: (trim($building['EdBar'] ?? '') ?: null),
                 'sector_name' => $pis ?: null, 'unit_number' => $dep ?: null,
-                'description' => trim(trim((string) $r['ProDes1']).' '.trim((string) $r['ProDes2'])) ?: null,
+                'description' => $description,
                 'legacy_data_json' => $r,
             ];
             $counts[$r['EdId']] = ($counts[$r['EdId']] ?? 0) + 1;
@@ -122,6 +135,29 @@ final class WorkbookInventorySource
         }
 
         return ['projects' => $projects, 'properties' => array_values($properties), 'issues' => $issues];
+    }
+
+    /**
+     * Reads the area only when the text states exactly one "N M2" value and no other decimal figure.
+     * "LOTE DE 296 M2 OCH. 4 M2" or "LOTE DE 973.18 ESQUINA OCH 2.65 M2" stay empty.
+     */
+    private function areaFromDescription(?string $text): ?float
+    {
+        if ($text === null || preg_match_all('/(?<![\d.,])(\d+(?:[.,]\d+)?)\s*M(?:2|²)(?![\dA-Z])/iu', $text, $m, PREG_OFFSET_CAPTURE) !== 1) {
+            return null;
+        }
+        [$value, $offset] = $m[1][0];
+        $before = substr($text, 0, $offset);
+        // Skip chamfers, one side of "10X30M2", hectares and "1.002" (dot as thousands separator).
+        if (preg_match('/OCH(AVA)?[.:\s]*$|\d\s*X\s*$/i', $before) === 1
+            || preg_match('/\d\s*HAS?\b/i', $text) === 1
+            || preg_match('/^\d{1,3}\.\d{3}$/', $value) === 1
+            || preg_match_all('/\d+[.,]\d+/', $text) > (str_contains($value, '.') || str_contains($value, ',') ? 1 : 0)) {
+            return null;
+        }
+        $area = round((float) str_replace(',', '.', $value), 2);
+
+        return $area > 0 ? $area : null;
     }
 
     /** @param list<array<string, mixed>> $records

@@ -31,7 +31,19 @@ final class PublicInventoryTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonFragment(['public_id' => $publicProject['public_id']])
             ->assertJsonMissing(['public_id' => $draftProject['public_id']])
-            ->assertJsonMissing(['public_id' => $otherProject['public_id']]);
+            ->assertJsonMissing(['public_id' => $otherProject['public_id']])
+            ->assertJsonMissingPath('data.0.sold_units_count')
+            ->assertJsonMissingPath('data.0.available_sale_units_count')
+            ->assertJsonMissingPath('data.0.available_rent_units_count')
+            ->assertJsonMissingPath('data.0.rented_units_count')
+            ->assertJsonMissingPath('data.0.not_sellable_units_count')
+            ->assertJsonMissingPath('data.0.not_marketed_units_count');
+
+        $this->withHeaders($headers)
+            ->getJson('/api/v1/public/projects/'.$publicProject['public_id'])
+            ->assertOk()
+            ->assertJsonMissingPath('data.sold_units_count')
+            ->assertJsonMissingPath('data.not_sellable_units_count');
 
         $this->withHeaders($headers)
             ->getJson('/api/v1/public/properties?category=HOUSE&per_page=10')

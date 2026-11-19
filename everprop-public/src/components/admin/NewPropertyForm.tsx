@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { properties as sampleProperties, type Property, type Project, projects as sampleProjects, JUJUY_CITIES } from "@/data/admin-sample";
 import { loadPropertyList, savePropertyList, loadProjectList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { createEverpropProperty, loadEverpropCatalog } from "@/lib/everprop-api";
+import { createEverpropProperty, EverpropApiError, loadEverpropCatalog, type CreatePropertyPayload } from "@/lib/everprop-api";
 import { Car, Store, Map, Building2, Home, ArrowLeft, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
@@ -29,18 +29,23 @@ import { toast } from "sonner";
 
 type Props = {
   companyId?: string;
+  initialProjectId?: string;
+  initialCategory?: Category;
+  initialType?: "Casa" | "Departamento" | "Lote" | "Cochera" | "Local";
+  onSaved?: () => void;
+  onBusyChange?: (busy: boolean) => void;
 };
 
-export default function NewPropertyForm({ companyId = "c1" }: Props) {
+export default function NewPropertyForm({ companyId = "c1", initialProjectId, initialCategory, initialType, onSaved, onBusyChange }: Props) {
   const router = useRouter();
   const { isAdvisor } = useCurrentSession();
   const searchParams = useSearchParams();
-  const paramCategory = searchParams.get("category") as Category | null;
-  const paramType = searchParams.get("type") as "Casa" | "Departamento" | "Lote" | "Cochera" | "Local" | null;
+  const paramCategory = initialCategory ?? searchParams.get("category") as Category | null;
+  const paramType = initialType ?? searchParams.get("type") as "Casa" | "Departamento" | "Lote" | "Cochera" | "Local" | null;
 
   const [error, setError] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState(initialProjectId ?? "");
   const [projectsError, setProjectsError] = useState("");
   useEffect(() => {
     let active = true;
@@ -49,6 +54,27 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     return () => { active = false; };
   }, [companyId]);
   const [isSaving, setIsSaving] = useState(false);
+  const submitLock = useRef(false);
+  const [pendingUnit, setPendingUnit] = useState<{ key: string; payload: CreatePropertyPayload } | null>(null);
+  const pendingKey = initialProjectId ? `everprop:intake-unit:${initialProjectId}` : "";
+  useEffect(() => {
+    if (!pendingKey) return;
+    try { const stored = sessionStorage.getItem(pendingKey); if (stored) setPendingUnit(JSON.parse(stored)); }
+    catch { setError("No se pudo recuperar la unidad pendiente. Revisá el inventario antes de volver a cargarla."); }
+  }, [pendingKey]);
+  useEffect(() => { onBusyChange?.(isSaving || !!pendingUnit); }, [isSaving, pendingUnit, onBusyChange]);
+
+  async function retryUnit() {
+    if (!pendingUnit || submitLock.current) return;
+    submitLock.current = true; setIsSaving(true); setError("");
+    try {
+      await createEverpropProperty(pendingUnit.payload, pendingUnit.key);
+      sessionStorage.removeItem(pendingKey); setPendingUnit(null); onSaved?.();
+    } catch (reason) {
+      if (reason instanceof EverpropApiError && reason.status === 422) { sessionStorage.removeItem(pendingKey); setPendingUnit(null); }
+      setError(reason instanceof Error ? reason.message : "No se pudo recuperar la unidad.");
+    } finally { submitLock.current = false; setIsSaving(false); }
+  }
   
   // Stepper State
   const [step, setStep] = useState<1 | 2>(() => (paramCategory ? 2 : 1));
@@ -77,7 +103,7 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     }
   }, [paramCategory, paramType]);
 
-  const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isDirty }, reset } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       propertyType: "Casa",
@@ -97,18 +123,34 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     });
   }, [category, paramCategory, paramType]);
 
+  const errorRef = useRef<HTMLDivElement>(null);
+  const draftKey = `everprop:new-property-draft:${companyId}`;
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+  useEffect(() => {
+    if (!isDirty || typeof window === "undefined") return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
   // Sync activeTab to form
   useEffect(() => {
     setValue("propertyType", activeTab);
   }, [activeTab, setValue]);
 
   const onSubmit = async (data: FormData) => {
+    if (submitLock.current) return;
     if (isAdvisor) {
       setError("Acceso no autorizado: Los asesores no tienen permisos para crear propiedades.");
       toast.error("Acceso restringido: Los asesores no tienen permisos para crear propiedades.");
       return;
     }
     if (projectsError) { setError(projectsError); return; }
+    submitLock.current = true;
     setError("");
     setIsSaving(true);
 
@@ -157,7 +199,7 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
       };
 
       if (!isMockDataMode) {
-        await createEverpropProperty({
+        const payload: CreatePropertyPayload = {
           title: nextProperty.title,
           projectId: nextProperty.projectId,
           commercialFeatures: nextProperty.commercialFeatures,
@@ -174,16 +216,25 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
           bedrooms: nextProperty.bedrooms,
           bathrooms: nextProperty.bathrooms,
           description: nextProperty.description,
-        });
+        };
+        const request = initialProjectId ? { key: crypto.randomUUID(), payload } : null;
+        if (request) { sessionStorage.setItem(pendingKey, JSON.stringify(request)); setPendingUnit(request); }
+        await createEverpropProperty(payload, request?.key);
+        if (request) { sessionStorage.removeItem(pendingKey); setPendingUnit(null); }
       } else {
         const existingProperties = loadPropertyList(sampleProperties, companyId);
         savePropertyList([nextProperty, ...existingProperties]);
       }
 
-      router.push("/admin/properties");
+      if (typeof sessionStorage !== "undefined") { try { sessionStorage.removeItem(draftKey); } catch { /* ignore */ } }
+      if (onSaved) onSaved();
+      else router.push("/admin/properties");
     } catch (e: any) {
+      if (e instanceof EverpropApiError && e.status === 422 && pendingKey) { sessionStorage.removeItem(pendingKey); setPendingUnit(null); }
       setError(e.message || "Error al guardar el activo.");
       setIsSaving(false);
+    } finally {
+      submitLock.current = false;
     }
   };
 
@@ -196,11 +247,13 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
     return <CategorySelector onSelect={handleCategorySelect} />;
   }
 
+  if (pendingUnit) return <div className="space-y-4 rounded-xl border border-border p-5"><h3 className="font-semibold">Unidad pendiente de confirmar</h3><p>Reintentá la misma solicitud para recuperar la unidad sin duplicarla.</p>{error && <p role="alert" className="text-red-700 dark:text-red-300">{error}</p>}<Button type="button" disabled={isSaving} onClick={() => void retryUnit()}>{isSaving ? "Confirmando…" : "Reintentar guardado de unidad"}</Button></div>;
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <button onClick={() => setStep(1)} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">
+    <div className="inventory-view inventory-form max-w-4xl mx-auto space-y-6">
+      {!initialCategory && <button disabled={isSaving} onClick={() => { if (isDirty && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Hay cambios sin guardar en el activo. ¿Querés volver y descartarlos?")) return; setStep(1); }} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Volver a categorías
-      </button>
+      </button>}
 
       <Card className="w-full overflow-hidden border border-slate-200 bg-white shadow-lg rounded-2xl p-0">
         <div className="border-b border-border bg-card px-4 py-5 text-card-foreground sm:px-6 sm:py-6">
@@ -268,8 +321,8 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit, invalid => setError(Object.values(invalid).map(field => field?.message).filter(Boolean).join(" ")))} className="space-y-5">
-            <Field><FieldLabel htmlFor="property-project">Desarrollo / Proyecto</FieldLabel><select id="property-project" value={projectId} onChange={e => setProjectId(e.target.value)} className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"><option value="">Activo independiente</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select>{projectsError && <p role="alert" className="text-sm text-red-600">{projectsError}</p>}</Field>
+          <form onSubmit={(event) => void handleSubmit(onSubmit, invalid => setError(Object.values(invalid).map(field => field?.message).filter(Boolean).join(" ")))(event)} className="space-y-5">
+            <Field><FieldLabel htmlFor="property-project">Desarrollo / Proyecto</FieldLabel><select id="property-project" disabled={!!initialProjectId} value={projectId} onChange={e => setProjectId(e.target.value)} className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"><option value="">Activo independiente</option>{projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select>{projectsError && <p role="alert" className="text-sm text-red-600">{projectsError}</p>}</Field>
             <FieldGroup className="grid gap-4 md:grid-cols-2">
               
               <Field className="md:col-span-2">
@@ -341,12 +394,12 @@ export default function NewPropertyForm({ companyId = "c1" }: Props) {
 
             </FieldGroup>
 
-            {error && <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-xs font-semibold">{error}</div>}
+            {error && <div ref={errorRef} tabIndex={-1} role="alert" aria-live="assertive" className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold">{error}</div>}
 
             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-              <Button type="button" variant="outline" size="sm" className="rounded-lg px-4 h-9 text-xs font-semibold" onClick={() => setStep(1)}>
+              {!initialCategory && <Button type="button" variant="outline" size="sm" className="rounded-lg px-4 h-9 text-xs font-semibold" disabled={isSaving} onClick={() => { if (isDirty && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Hay cambios sin guardar en el activo. ¿Querés cancelar y descartarlos?")) return; setStep(1); }}>
                 Cancelar
-              </Button>
+              </Button>}
               <Button type="submit" size="sm" disabled={isSaving} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 h-9 text-xs font-semibold shadow-sm">
                 {isSaving ? "Guardando..." : `Guardar ${activeTab}`}
               </Button>

@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Inventory;
 
+use App\Domain\Inventory\Models\Property;
 use App\Domain\Inventory\Services\InventorySourceImport;
 use App\Domain\Inventory\Services\WorkbookInventorySource;
 use App\Domain\Tenancy\Models\Tenant;
+use App\Domain\Tenancy\TenantContext;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -66,6 +68,69 @@ final class WorkbookImportTest extends TestCase
         self::assertSame('ARS', $row->currency_code);
         self::assertSame('https://example.test/real.jpg', $row->main_image_url);
         self::assertSame('New source description', $row->description);
+    }
+
+    public function test_existing_project_keeps_its_stage_unless_metadata_is_replaced(): void
+    {
+        $source = $this->source();
+        $this->applySource($source);
+        $query = DB::table('projects')->where('tenant_id', $this->tenant->id);
+        self::assertSame('UNKNOWN', $query->value('status'));
+        $query->update(['status' => 'PRE_SALE', 'progress' => 40, 'name' => 'Las Colinas 1', 'city' => 'San Salvador de Jujuy', 'address' => 'Ruta 9']);
+
+        $source['sha256'] = str_repeat('b', 64);
+        $this->applySource($source);
+        self::assertSame('PRE_SALE', $query->value('status'));
+        self::assertSame(40, (int) $query->value('progress'));
+        self::assertSame(1, (int) $query->value('total_units'));
+        self::assertSame('Las Colinas 1', $query->value('name'));
+        self::assertSame('San Salvador de Jujuy', $query->value('city'));
+        self::assertSame('Ruta 9', $query->value('address'));
+
+        $source['sha256'] = str_repeat('c', 64);
+        $plan = $this->importer->plan($source, $this->tenant->slug, 'preserve', [], true);
+        $this->importer->apply($source, $plan, ['target' => $plan['target'], 'rows' => $this->importer->snapshot($this->tenant->id)], false);
+        self::assertSame('UNKNOWN', $query->value('status'));
+        self::assertSame('Test loteo', $query->value('name'));
+    }
+
+    public function test_reviving_a_deleted_project_does_not_republish_it(): void
+    {
+        $source = $this->source();
+        $this->applySource($source);
+        $query = DB::table('projects')->where('tenant_id', $this->tenant->id);
+        $query->update(['status' => 'PRE_SALE', 'deleted_at' => now()]);
+
+        $source['sha256'] = str_repeat('b', 64);
+        $source['sheets']['Edificio']['records'][0]['data']['EdEst'] = 'EN OBRA';
+        $this->applySource($source);
+
+        self::assertNull($query->value('deleted_at'));
+        self::assertSame('UNKNOWN', $query->value('status'));
+    }
+
+    public function test_only_units_on_sale_or_for_rent_are_public_after_import(): void
+    {
+        $source = $this->source();
+        $product = $source['sheets']['Productos']['records'][0];
+        $status = $source['sheets']['Estado']['records'][0];
+        $source['sheets']['Productos']['records'] = [];
+        $source['sheets']['Estado']['records'] = [];
+        foreach ([1, 2, 3, 4, 6, 7, 8] as $i => $id) {
+            $product['row'] = $status['row'] = $i + 2;
+            $product['data'] = array_replace($product['data'], ['ProDep' => (string) $id, 'ProEId' => $id]);
+            $status['data'] = ['ProEId' => $id, 'ProEEst' => 'Estado '.$id];
+            $source['sheets']['Productos']['records'][] = $product;
+            $source['sheets']['Estado']['records'][] = $status;
+        }
+        $this->applySource($source);
+        DB::table('projects')->where('tenant_id', $this->tenant->id)->update(['status' => 'PRE_SALE']);
+
+        $this->app->instance(TenantContext::class, TenantContext::forTenant($this->tenant));
+        $public = Property::query()->publiclyVisible()
+            ->orderBy('legacy_status_id')->get(['legacy_status_id', 'operation']);
+
+        self::assertSame([[1, 'RENT'], [2, 'SALE']], $public->map(fn ($p) => [(int) $p->legacy_status_id, $p->operation->value])->all());
     }
 
     public function test_other_tenants_are_unchanged_and_cross_tenant_cleanup_is_rejected(): void
@@ -148,6 +213,48 @@ final class WorkbookImportTest extends TestCase
         self::assertNull($row->area_m2);
         self::assertSame(999, $row->legacy_ed_id);
         self::assertSame(0, json_decode($row->legacy_data_json, true)['ProM2']);
+    }
+
+    public function test_workbook_types_areas_and_orphan_rows_are_corrected_without_guessing(): void
+    {
+        $source = $this->source();
+        $base = $source['sheets']['Productos']['records'][0];
+        $source['sheets']['Productos']['records'] = [];
+        foreach ([
+            ['COCH', '1', 1, null, 'COCHERA 13,4 M2'], ['2P', '1', 9, 362, 'SEGUNDO PISO 362 M2'],
+            ['AP8', '1', 9, null, 'LOTE DE 315,99 M2'], ['AP8', '2', 9, null, 'LOTE 10X30 SUP. 300 M2'],
+            ['AP8', '3', 9, null, 'LOTE DE 296 M2 OCH. 4 M2'], ['AP8', '4', 9, null, 'LOTE DE 973.18 ESQUINA OCH 2.65 M2'],
+            ['AP8', '5', 9, 0, 'LOTE DE: 1002,95M2 OCH.13,90'], ['AP8', '6', 9, 125.5, 'LOTE DE 300 M2'], ['', '', 9, null, null],
+            ['AP9', '1', 9, null, 'LOTE DE 1.002 M2'], ['AP9', '2', 9, null, 'LOTE 10X30M2'], ['AP9', '3', 9, null, '2 HAS. 5000 M2'],
+        ] as $i => [$pis, $dep, $type, $area, $text]) {
+            $record = $base;
+            $record['row'] = $i + 2;
+            $record['data'] = array_replace($record['data'], ['ProPis' => $pis, 'ProDep' => $dep, 'ProTId' => $type, 'ProM2' => $area, 'ProDes1' => $text, 'ProEId' => 7]);
+            $source['sheets']['Productos']['records'][] = $record;
+        }
+        $orphan = $base;
+        $orphan['row'] = 20;
+        $orphan['data'] = array_replace($orphan['data'], ['EdId' => 999, 'ProPis' => 'F', 'ProM2' => null, 'ProDes1' => '1HA.1980.40M2']);
+        $source['sheets']['Productos']['records'][] = $orphan;
+
+        $type = $source['sheets']['ProdT01']['records'][0];
+        $type['data'] = ['ProTId' => 1, 'ProTTip' => 'DEPARTAMENTO'];
+        $source['sheets']['ProdT01']['records'][] = $type;
+        /** @var list<array<string, mixed>> $normalized */
+        $normalized = (new WorkbookInventorySource)->normalize($source)['properties'];
+        $properties = array_column($normalized, null, 'code');
+        self::assertSame('GARAGE', $properties['41-COCH-1']['category']);
+        self::assertSame('LOCAL', $properties['41-2P-1']['category']);
+        self::assertSame('LOT', $properties['41-AP8-1']['category']);
+        self::assertSame(1, $properties['41-COCH-1']['legacy_type_id']);
+        self::assertSame([13.4, 362.0, 315.99, 300.0, null, null, null, 125.5, null, null, null, null, null], array_column($normalized, 'area_m2'));
+        self::assertSame('NOT_MARKETED', $properties['41--']['status']);
+        self::assertSame('NOT_MARKETED', $properties['999-F-01']['status']);
+        self::assertSame('NOT_SELLABLE', $properties['41-AP8-1']['status']);
+
+        $source['sheets']['Productos']['records'] = [$source['sheets']['Productos']['records'][1]];
+        $source['sheets']['Edificio']['records'][0]['data']['EdNom'] = 'HUASI VIII';
+        self::assertSame('COMMERCIAL', (new WorkbookInventorySource)->normalize($source)['projects'][0]['project_type']);
     }
 
     public function test_duplicate_keys_and_unrecognized_headers_are_rejected(): void

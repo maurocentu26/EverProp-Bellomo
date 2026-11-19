@@ -1,92 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Building2, ChevronRight, Map, RotateCcw } from "lucide-react";
+import { AlertTriangle, Building2, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { useAuth } from "@/lib/auth-context";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { isInvalidEverpropSession, loadEverpropCatalog } from "@/lib/everprop-api";
-import { cn } from "@/lib/utils";
+import { apiFetch, isInvalidEverpropSession, loadEverpropProjects, loadEverpropPropertiesByProject } from "@/lib/everprop-api";
+import ProjectCard from "@/components/admin/ProjectCard";
+import { useCurrentSession } from "@/hooks/use-current-session";
 import { useBellomoMaterials } from "@/hooks/use-bellomo-materials";
-import type { PublicMaterialProject } from "@/lib/bellomo-policy";
+import { projectUnitSummary } from "@/lib/project-labels";
+
+const searchable = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const formatCount = (value: number) => value.toLocaleString("es-AR");
 
 type DataState =
   | { status: "loading" }
   | { status: "ready"; source: "admin-api" | "mock" }
   | { status: "error"; message: string };
 
-function ProjectCard({ project, properties, readOnly, material }: { project: Project; properties: Property[]; readOnly: boolean; material?: PublicMaterialProject }) {
-  const projectProperties = properties.filter((property) => property.projectId === project.id);
-  const availableCount = projectProperties.filter((property) => property.status === "available").length;
-  const cover = material?.assets.find(asset => asset.kind === "photo") || material?.assets.find(asset => asset.kind === "render");
-  const coverUrl = cover?.url || project.masterplanImage;
-
-  return (
-    <article
-      className={cn(
-        "group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-300",
-        !readOnly && "cursor-pointer hover:-translate-y-1 hover:shadow-xl",
-      )}
-    >
-      <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-        {coverUrl ? (
-          <div
-            role="img"
-            aria-label={project.name}
-            className="h-full w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-            style={{ backgroundImage: `url("${coverUrl.replaceAll('"', '\\"')}")` }}
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-slate-200">
-            <Building2 className="h-12 w-12 text-slate-400" aria-hidden="true" />
-          </div>
-        )}
-
-        <div className="absolute left-4 top-4 flex gap-2">
-          {cover?.kind === "render" && <span className="rounded-lg bg-white/95 px-3 py-1 text-xs font-semibold text-slate-800">Render</span>}
-          <span
-            className={cn(
-              "rounded-lg px-3 py-1 text-xs font-black uppercase tracking-wider text-white backdrop-blur-md",
-              project.type === "land_development" ? "bg-emerald-500/90" : "bg-blue-600/90",
-            )}
-          >
-            {project.type === "land_development" ? "Loteo" : "Edificio"}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col p-6">
-        <h2 className="text-xl font-bold text-slate-900 transition-colors group-hover:text-blue-600">{project.name}</h2>
-        <p className="mb-6 mt-1 flex items-center gap-1 text-sm text-slate-500">
-          <Map className="h-4 w-4" aria-hidden="true" /> {project.location.city}, {project.location.province}
-        </p>
-
-        <div className="mt-auto space-y-5">
-          <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
-            <div>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Unidades cargadas</span>
-              <span className="text-lg font-black text-slate-700">{project.propertiesCount || 0}</span>
-            </div>
-            <div>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Disponibles</span>
-              <span className="text-lg font-black text-emerald-600">{availableCount > 0 ? availableCount : "-"}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-sm font-bold text-blue-600">
-            Ver detalle del proyecto
-            <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
 export default function DesarrollosPage() {
+  const { isAdvisor } = useCurrentSession();
   const { data: materials } = useBellomoMaterials();
   const { invalidateSession } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -94,6 +31,17 @@ export default function DesarrollosPage() {
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterStock, setFilterStock] = useState<'all' | 'with' | 'without'>('all');
+  const [query, setQuery] = useState('');
+  const [canCreate, setCanCreate] = useState(false);
+
+  useEffect(() => {
+    if (isMockDataMode) return;
+    const controller = new AbortController();
+    apiFetch<{ can_create: boolean }>("/api/v1/admin/project-intakes", { signal: controller.signal })
+      .then((result) => setCanCreate(result.can_create)).catch(() => setCanCreate(false));
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -109,10 +57,11 @@ export default function DesarrollosPage() {
       }
 
       try {
-        const catalog = await loadEverpropCatalog();
+        const fetchedProjects = await loadEverpropProjects();
+        const units = await Promise.all(fetchedProjects.filter(project => project.availableUnitsCount == null).map(project => loadEverpropPropertiesByProject(project.id)));
         if (!active) return;
-        setProjects(catalog.projects);
-        setProperties(catalog.properties);
+        setProjects(fetchedProjects);
+        setProperties(units.flat());
         setDataState({ status: "ready", source: "admin-api" });
       } catch (reason) {
         if (isInvalidEverpropSession(reason)) {
@@ -135,6 +84,11 @@ export default function DesarrollosPage() {
     };
   }, [attempt, invalidateSession]);
 
+  const summaries = useMemo(() => projects.map(project => ({
+    project,
+    summary: projectUnitSummary(project, properties.filter(property => property.projectId === project.id)),
+  })), [projects, properties]);
+
   if (dataState.status === "loading") {
     return (
       <div className="animate-pulse space-y-4" role="status" aria-label="Cargando proyectos">
@@ -148,12 +102,12 @@ export default function DesarrollosPage() {
 
   if (dataState.status === "error") {
     return (
-      <section className="rounded-3xl border border-rose-200 bg-white p-6 shadow-sm" role="alert">
+      <section className="rounded-3xl border border-rose-200 bg-card p-6 shadow-sm" role="alert">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" aria-hidden="true" />
           <div>
-            <h1 className="text-xl font-bold text-slate-900">No se pudo cargar el catálogo de proyectos</h1>
-            <p className="mt-2 text-sm text-slate-600">{dataState.message} No se cargaron proyectos mock.</p>
+            <h1 className="text-xl font-bold text-foreground">No se pudo cargar el catálogo de proyectos</h1>
+            <p className="mt-2 text-sm text-foreground">Volvé a intentar cargar los proyectos.</p>
             <Button
               type="button"
               variant="outline"
@@ -171,47 +125,59 @@ export default function DesarrollosPage() {
     );
   }
 
+  const needle = searchable(query);
+  const rows = summaries
+    .filter(({ project }) => filterType === "all" || project.type === filterType)
+    .filter(({ summary }) => filterStock === "all" || (filterStock === "with") === (summary.available > 0))
+    .filter(({ project }) => !needle || searchable(`${project.name} ${project.location.city}`).includes(needle))
+    .sort((a, b) => b.summary.available - a.summary.available || b.summary.total - a.summary.total || a.project.name.localeCompare(b.project.name, "es"));
+  const sum = (pick: (summary: (typeof summaries)[number]["summary"]) => number) => summaries.reduce((total, { summary }) => total + pick(summary), 0);
+
   return (
-    <div className="space-y-8">
-      <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+    <div className="inventory-view projects-view space-y-6">
+      <header className="projects-header">
         <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold text-slate-900">
-            <Building2 className="h-8 w-8 text-blue-600" aria-hidden="true" /> Proyectos y desarrollos
-          </h1>
-          <p className="mt-1 text-slate-500">Catálogo de loteos, barrios y edificios.</p>
-        </div>
-
-        {isMockDataMode && (
-          <Button className="h-11 rounded-xl bg-emerald-600 px-6 text-white shadow-sm hover:bg-emerald-700" nativeButton={false} role="link" render={<Link href="/admin/inventory-matrix" />}>
-              <Map className="mr-2 h-5 w-5" aria-hidden="true" /> Matriz mock de inventario
-            </Button>
-        )}
-      </header>
-
-
-
-
-      <div className="flex flex-wrap gap-2">
-        <Button variant={filterType === "all" ? "default" : "outline"} onClick={() => setFilterType("all")} className="rounded-full">Todos</Button>
-        <Button variant={filterType === "land_development" ? "default" : "outline"} onClick={() => setFilterType("land_development")} className="rounded-full">Loteos</Button>
-        <Button variant={filterType === "building" ? "default" : "outline"} onClick={() => setFilterType("building")} className="rounded-full">Edificios</Button>
-        <Button variant={filterType === "commercial" ? "default" : "outline"} onClick={() => setFilterType("commercial")} className="rounded-full">Comerciales</Button>
-      </div>
-
-      {projects.filter(p => filterType === "all" || p.type === filterType).length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <Building2 className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
-          <h2 className="mt-4 text-lg font-bold text-slate-900">No hay proyectos para mostrar</h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
-            La consulta fue válida y el catálogo administrativo está vacío. No se sustituyó con datos mock.
+          <h1 className="font-bold text-foreground">Proyectos y desarrollos</h1>
+          <p className="mt-1 text-foreground">
+            <strong>{formatCount(sum(item => item.available))} disponibles</strong> de {formatCount(sum(item => item.total))} unidades · {formatCount(sum(item => item.counts.sale))} en venta, {formatCount(sum(item => item.counts.rent))} en alquiler · {formatCount(sum(item => item.counts.reserved))} reservadas
           </p>
         </div>
+        {!isAdvisor && canCreate && <Button nativeButton={false} role="link" render={<Link href="/admin/desarrollos/nuevo" />}>Nuevo proyecto</Button>}
+      </header>
+
+      <section className="projects-toolbar" aria-label="Filtros de proyectos">
+        <label className="projects-search">
+          <Search aria-hidden="true" size={20} />
+          <span className="sr-only">Buscar proyecto</span>
+          <input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar por nombre o ciudad" />
+        </label>
+        <div className="project-filters flex flex-wrap gap-2" role="group" aria-label="Tipo de proyecto">
+          {[["all", "Todos"], ["land_development", "Loteos"], ["building", "Edificios"], ["commercial", "Comerciales"]].map(([value, label]) => (
+            <Button key={value} variant={filterType === value ? "default" : "outline"} aria-pressed={filterType === value} onClick={() => setFilterType(value)} className="rounded-full">{label}</Button>
+          ))}
+        </div>
+        <label className="projects-stock">
+          <span>Mostrar</span>
+          <select value={filterStock} onChange={event => setFilterStock(event.target.value as typeof filterStock)}>
+            <option value="all">Todos</option>
+            <option value="with">Con disponibles</option>
+            <option value="without">Sin disponibles</option>
+          </select>
+        </label>
+      </section>
+
+      <p className="project-meta" aria-live="polite">{rows.length === 1 ? "1 proyecto" : `${rows.length} proyectos`}, primero los que tienen más disponibles</p>
+
+      {rows.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-card px-6 py-14 text-center">
+          <Building2 className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
+          <h2 className="mt-4 text-lg font-bold text-foreground">No hay proyectos para mostrar</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-foreground">Probá con otra búsqueda o con otro filtro.</p>
+        </div>
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
-          {projects.filter(p => filterType === "all" || p.type === filterType).map((project) => (
-            <Link href={`/admin/desarrollos/${project.id}`} key={project.id}>
-              <ProjectCard project={project} properties={properties} readOnly={false} material={materials?.projects.find(p=>p.operationalIds.includes(project.id))} />
-            </Link>
+        <div className="project-rows">
+          {rows.map(({ project }) => (
+            <ProjectCard key={project.id} project={project} properties={properties} material={materials?.projects.find(p=>p.operationalIds.includes(project.id))} />
           ))}
         </div>
       )}

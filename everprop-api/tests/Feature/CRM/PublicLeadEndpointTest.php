@@ -112,4 +112,29 @@ final class PublicLeadEndpointTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('payload');
     }
+
+    /** EVP-137: a lead nobody can contact was accepted (201), assigned and notified. */
+    public function test_a_lead_without_email_or_phone_is_refused_and_phone_alone_is_enough(): void
+    {
+        $payload = fn (array $contact, array $identity) => [
+            'contact' => $contact,
+            'identity' => $identity,
+            'lead' => ['source_channel' => 'WEB_CHAT', 'source_kind' => 'BELLOMITO_AI', 'priority' => 'NORMAL'],
+            'touchpoint' => ['type' => 'WEB_CHAT', 'summary' => 'EVP-137'],
+        ];
+        $headers = ['X-Everprop-Tenant' => $this->tenantPublicId, 'Idempotency-Key' => 'evp137-anonymous-0001'];
+
+        foreach ([['display_name' => null, 'email' => null, 'phone_e164' => null], ['display_name' => 'Laura', 'email' => '  ']] as $contact) {
+            $this->withHeaders($headers)
+                ->postJson('/api/v1/public/leads', $payload($contact, ['channel_type' => 'WEB_VISITOR', 'provider_user_id' => (string) Str::uuid()]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('contact');
+        }
+        self::assertSame(0, DB::table('leads')->where('tenant_id', $this->tenantId)->count());
+
+        $this->withHeaders(['Idempotency-Key' => 'evp137-phone-only-0001'] + $headers)
+            ->postJson('/api/v1/public/leads', $payload(['display_name' => 'Laura', 'phone_e164' => '+541155550137'], ['channel_type' => 'PHONE', 'provider_user_id' => '+541155550137']))
+            ->assertCreated();
+        self::assertSame(1, DB::table('leads')->where('tenant_id', $this->tenantId)->count());
+    }
 }
