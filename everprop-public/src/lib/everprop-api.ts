@@ -83,6 +83,7 @@ export class EverpropApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly errors?: Record<string, string[]>,
   ) {
     super(message);
     this.name = "EverpropApiError";
@@ -146,6 +147,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
     throw new EverpropApiError(
       validationMessage || payload?.error?.message || payload?.message || `La API respondió ${response.status}.`,
       response.status,
+      payload?.errors,
     );
   }
 
