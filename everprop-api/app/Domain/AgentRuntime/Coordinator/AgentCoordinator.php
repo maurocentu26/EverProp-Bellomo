@@ -19,6 +19,7 @@ use App\Domain\Usage\UsageLedger;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -46,9 +47,16 @@ final class AgentCoordinator
         private readonly OutputGuard $guard,
     ) {}
 
+    /** Monotonic start of the current turn or draft, and its deadline: a retry wait never pushes a call past it. */
+    private float $startedAt = 0.0;
+
+    private int $deadline = 0;
+
     /** @return string outcome code (for logs/tests) */
     public function handle(int $tenantId, int $conversationId, int $inputSequence): string
     {
+        $this->startedAt = hrtime(true) / 1e9;
+        $this->deadline = (int) config('agent.turn_deadline_seconds');
         $conversation = DB::table('conversations as c')
             ->join('channel_accounts as ca', fn ($j) => $j->on('ca.id', '=', 'c.channel_account_id')->on('ca.tenant_id', '=', 'c.tenant_id'))
             ->where('c.tenant_id', $tenantId)->where('c.id', $conversationId)
@@ -62,9 +70,13 @@ final class AgentCoordinator
 
             return 'SKIPPED_AI_DISABLED';
         }
-        $latestInbound = (int) DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
-            ->where('direction', 'INBOUND')->max('sequence');
-        if ($latestInbound > $inputSequence) {
+        // EVP-115: only a newer text message has its own turn (InboundMessageService); a photo or audio sent
+        // right after a question must not leave the question unanswered. A message waiting longer than
+        // agent.burst_max_wait_seconds is answered anyway, so a sustained burst never postpones the reply forever.
+        $messages = fn () => DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)->where('direction', 'INBOUND');
+        $latestInbound = (int) $messages()->where('message_type', 'TEXT')->whereRaw(InboundMessageService::HAS_TEXT_SQL)->max('sequence');
+        if ($latestInbound > $inputSequence && $messages()->where('sequence', $inputSequence)
+            ->where('created_at', '>=', CarbonImmutable::now('UTC')->subSeconds((int) config('agent.burst_max_wait_seconds'))->format('Y-m-d H:i:s.v'))->exists()) {
             return 'SKIPPED_SUPERSEDED'; // the newer message's turn answers both
         }
 
@@ -135,6 +147,8 @@ final class AgentCoordinator
      */
     public function suggest(int $tenantId, int $conversationId): array
     {
+        $this->startedAt = hrtime(true) / 1e9;
+        $this->deadline = (int) config('agent.copilot_deadline_seconds'); // the advisor's HTTP request (php-fpm cuts at 35 s)
         if (! InboundMessageService::copilotEnabled($tenantId)) {
             throw new CopilotFailure('COPILOT_DISABLED');
         }
@@ -305,8 +319,11 @@ final class AgentCoordinator
                 }
                 $e->billable ? $this->ledger->markUnknown($context->tenantId, $key) : $this->ledger->release($context->tenantId, $key);
                 $retriesUsed = $trace['retries'] ?? 0;
-                if ($e->retryable && $retriesUsed < (int) config('agent.max_retries')) {
+                $wait = $e->retryable && $retriesUsed < (int) config('agent.max_retries') ? $this->retryWait($e) : null;
+                if ($wait !== null) {
                     $trace['retries'] = $retriesUsed + 1;
+                    $trace['retry_wait_ms'] = $wait;
+                    Sleep::for($wait)->milliseconds(); // no open reservation while waiting: released (429) or UNKNOWN at its maximum
 
                     continue;
                 }
@@ -320,6 +337,25 @@ final class AgentCoordinator
 
             return $response;
         }
+    }
+
+    /**
+     * EVP-115: wait before the single retry so a momentary limit does not become a handoff. Honors the
+     * provider's Retry-After plus jitter; without one, a jittered base. Null (no retry) when the provider asks
+     * for longer than agent.retry_max_wait_seconds or the retried call could outlive the turn deadline (which
+     * stays below the job timeout and the turn lock).
+     */
+    private function retryWait(LlmFailure $e): ?int
+    {
+        $base = $e->retryAfter !== null ? $e->retryAfter * 1000 : max(0, (int) config('agent.retry_base_wait_ms'));
+        if ($base > (int) config('agent.retry_max_wait_seconds') * 1000) {
+            return null;
+        }
+        $wait = $base + random_int(0, max(0, (int) config('agent.retry_jitter_ms')));
+        $elapsed = hrtime(true) / 1e9 - $this->startedAt;
+        $worstCall = (int) config('agent.timeout_seconds') + 5; // + connect timeout of the clients
+
+        return $elapsed + $wait / 1000 + $worstCall <= $this->deadline ? $wait : null;
     }
 
     /**

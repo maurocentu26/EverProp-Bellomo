@@ -70,6 +70,15 @@ final class ProductionCheck extends Command
         if (config('conversations.ai_enabled')) {
             // The assistant needs a real worker (turn lock, delayed retries) and an approved provider.
             $checks['Assistant: asynchronous queue'] = in_array(config('queue.connections.'.config('queue.default').'.driver'), ['database', 'redis'], true);
+            $lanes = array_filter(array_map('strval', (array) config('queue.lanes')));
+            $checks['Assistant: separate webhooks, outbound and agent queues'] = count($lanes) === 3
+                && count(array_unique($lanes)) === 3 && array_keys($lanes) === ['webhooks', 'outbound', 'agent'];
+            // EVP-115: a whole turn (3 calls + the retry wait) fits the deadline, which fits the job timeout and the lock.
+            $call = (int) config('agent.timeout_seconds') + 5;
+            $checks['Assistant: turn deadline covers its calls and waits'] = (int) config('agent.burst_window_seconds') >= 0
+                && (int) config('agent.burst_window_seconds') <= 10 && (int) config('agent.retry_base_wait_ms') >= 0
+                && 3 * $call + (int) config('agent.retry_max_wait_seconds') <= (int) config('agent.turn_deadline_seconds')
+                && (int) config('agent.turn_deadline_seconds') < (int) config('agent.turn_lock_seconds');
             $checks['Assistant: queue retry_after above turn lock'] = (int) config('queue.connections.'.config('queue.default').'.retry_after', 0) > (int) config('agent.turn_lock_seconds');
             // Resolve the runtime binding so Gemini retains its staging, credentials and budget guards.
             /** @var LlmClient $client */

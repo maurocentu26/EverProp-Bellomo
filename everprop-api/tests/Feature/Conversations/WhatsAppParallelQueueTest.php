@@ -23,7 +23,7 @@ final class WhatsAppParallelQueueTest extends TestCase
         $tenants = $workers = [];
         $script = tempnam(sys_get_temp_dir(), 'evp86-worker-');
         $this->assertNotFalse($script);
-        config(['queue.default' => 'database', 'queue.connections.database.queue' => $queue,
+        config(['queue.default' => 'database', 'queue.connections.database.queue' => $queue, 'agent.burst_window_seconds' => 0,
             'queue.lanes' => array_fill_keys(['webhooks', 'outbound', 'agent'], $queue),
             'services.meta.app_secret' => self::APP_SECRET, 'conversations.ai_enabled' => true]);
         Http::preventStrayRequests();
@@ -54,7 +54,7 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (! $app->environment('testing') || Illuminate\Support\Facades\DB::getDatabaseName() !== $argv[3]) {
     exit(2);
 }
-config(['queue.default' => 'database', 'queue.connections.database.queue' => $argv[2], 'cache.default' => 'redis',
+config(['queue.default' => 'database', 'queue.connections.database.queue' => $argv[2], 'agent.burst_window_seconds' => 0, 'cache.default' => 'redis',
     'queue.lanes' => array_fill_keys(['webhooks', 'outbound', 'agent'], $argv[2]),
     'conversations.ai_enabled' => true, 'services.meta.send_enabled' => true,
     'services.meta.whatsapp_sandbox_phone_number_id' => null,

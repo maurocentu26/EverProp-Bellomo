@@ -84,13 +84,14 @@ final class ConversationControl
             ]);
             $this->outbox($tenantId, $conversationId, 'CONVERSATION_AI_RESUMED', ['epoch' => $epoch, 'user_id' => $user->id, 'reason' => mb_substr($reason, 0, 500)]);
 
-            $last = DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
-                ->where(fn ($q) => $q->where('direction', 'INBOUND')->orWhere(fn ($o) => $o->where('direction', 'OUTBOUND')
-                    ->where('delivery_status', '!=', 'CANCELLED')))
-                ->orderByDesc('sequence')->first(['sequence', 'direction', 'message_type', 'text_body']);
+            // The visitor's last unanswered text, even if a photo or audio came after it (EVP-115).
+            $thread = fn () => DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId);
+            $answered = (int) $thread()->where('direction', 'OUTBOUND')->where('delivery_status', '!=', 'CANCELLED')->max('sequence');
+            $pending = $thread()->where('direction', 'INBOUND')->where('message_type', 'TEXT')->where('sequence', '>', $answered)
+                ->whereRaw(InboundMessageService::HAS_TEXT_SQL)->max('sequence');
 
-            if ($last !== null && $last->direction === 'INBOUND' && $last->message_type === 'TEXT' && trim((string) $last->text_body) !== '') {
-                $pendingSequence = (int) $last->sequence;
+            if ($pending !== null) {
+                $pendingSequence = (int) $pending;
                 DB::table('chatbot_runs')->where('tenant_id', $tenantId)
                     ->where('provider_run_id', 'turn:'.$conversationId.':'.$pendingSequence)
                     ->update(['provider_run_id' => DB::raw("CONCAT(provider_run_id, ':e', COALESCE(control_epoch, 0))")]);
