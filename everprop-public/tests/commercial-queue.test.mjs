@@ -20,13 +20,13 @@ test('business day uses Argentina at the UTC date boundary', () => {
   assert.equal(commercialDay('2026-09-15T01:00:00Z'), '2026-09-14');
   assert.equal(item(lead, [contact({ nextContactAt: '2026-09-15T01:00:00Z' })], now).isDueToday, true);
 });
-test('strict overdue > today > new ordering, including commitments before ten days', () => {
+test('EVP-166: new uncontacted > overdue > today, including commitments before ten days', () => {
   const overdue = item(lead, [contact({ nextContactAt: '2026-09-13T18:00:00Z' })], now);
   const today = item(lead, [contact({ nextContactAt: '2026-09-14T18:00:00Z' })], now);
   const fresh = item(lead, [], now);
   assert.equal(overdue.isOverdue, true);
+  assert.ok(fresh.priorityWeight > overdue.priorityWeight);
   assert.ok(overdue.priorityWeight > today.priorityWeight);
-  assert.ok(today.priorityWeight > fresh.priorityWeight);
 });
 test('old commitments are superseded and approaching ten days is not due today', () => {
   const old = contact({ occurredAt: '2026-09-05T12:00:00Z', nextContactAt: '2026-09-14T18:00:00Z' });
@@ -100,4 +100,14 @@ test('won and discarded clients never enter the actionable queue', () => {
   assert.equal(result.all.length, 0);
   assert.equal(result.overdue.length, 0);
   assert.equal(result.new.length, 0);
+});
+
+test('EVP-166: a freshly assigned lead is first in the queue even behind many overdue leads', () => {
+  const overdueRows = Array.from({ length: 40 }, (_, i) => ({ ...lead, id: 'z' + i, stage: 'contacted', createdAt: '2026-08-01T00:00:00Z' }));
+  const followups = overdueRows.map(r => contact({ leadId: r.id, occurredAt: '2026-08-20T15:00:00Z' }));
+  const older = { ...lead, id: 'a-older', createdAt: '2026-09-13T12:00:00Z', followUpUpdatedAt: '2026-09-13T12:00:00Z' };
+  const newest = { ...lead, id: 'b-newest', createdAt: '2026-09-14T14:00:00Z', followUpUpdatedAt: '2026-09-14T14:00:00Z' };
+  const queue = groups([...overdueRows, older, newest], followups, now).all;
+  assert.deepEqual(queue.slice(0, 2).map(x => x.lead.id), ['b-newest', 'a-older']);
+  assert.equal(queue.filter(x => x.isOverdue).length, 40);
 });
