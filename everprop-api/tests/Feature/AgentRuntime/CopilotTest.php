@@ -205,6 +205,40 @@ final class CopilotTest extends TestCase
         $this->assertSame([], $llm->calls, 'refusals never call the model');
     }
 
+    public function test_draft_citations_are_removed_and_unknown_sources_or_terms_are_refused(): void
+    {
+        $f = $this->inControl();
+        $g = $this->inControl(); // tenant B, created before any request
+        config(['conversations.copilot_drafts_per_message' => 10]);
+        $knowledge = app(KnowledgeService::class);
+        $doc = $knowledge->create((int) $f['tenant']->id, (int) $f['advisor']->id,
+            ['title' => 'L-101 financiación', 'body' => '¿Cuánto sale el L-101? Se financia en 36 cuotas fijas en pesos.']);
+        $knowledge->approve((int) $f['tenant']->id, $doc, (int) $f['advisor']->id);
+        $source = $knowledge->search((int) $f['tenant']->id, '¿Cuánto sale el L-101?')[0]['source_id'];
+        $trace = fn (): array => json_decode((string) DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->orderByDesc('id')->value('trace_json'), true);
+
+        $this->llm([ScriptedLlm::text('El L-101 se financia en 36 cuotas fijas [Fuente: '.$source.'].')]);
+        $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk()->assertJsonPath('data.text', 'El L-101 se financia en 36 cuotas fijas.');
+        $this->assertSame([$source], $trace()['cited']);
+        $this->assertSame(hash('sha256', 'El L-101 se financia en 36 cuotas fijas.'), $trace()['draft_sha256'], 'the advisor sends the clean text');
+
+        foreach (['El L-101 se financia en 60 cuotas [fuente: '.$source.'].' => 'UNSUPPORTED_TERM',
+            'El L-101 se financia en 36 cuotas [fuente: '.$doc.'#99].' => 'UNKNOWN_SOURCE', 'El L-101 se financia en 36 cuotas [fuente: F2].' => 'UNKNOWN_SOURCE'] as $unsafe => $code) {
+            $this->llm([ScriptedLlm::text($unsafe)]);
+            $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertStatus(422)->assertJsonPath('error.code', 'UNSAFE_DRAFT');
+            $this->assertSame([$code], $trace()['guard']);
+        }
+
+        // Tenant A's draft citing tenant B's real source id is refused.
+        $docB = $knowledge->create((int) $g['tenant']->id, (int) $g['advisor']->id, ['title' => 'Financiación B', 'body' => '¿Cuánto sale el L-101? 36 cuotas fijas.']);
+        $knowledge->approve((int) $g['tenant']->id, $docB, (int) $g['advisor']->id);
+        $sourceB = $knowledge->search((int) $g['tenant']->id, '¿Cuánto sale el L-101?')[0]['source_id'];
+        $this->llm([ScriptedLlm::text('El L-101 se financia en 36 cuotas fijas [fuente: '.$sourceB.'].')]);
+        $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertStatus(422)->assertJsonPath('error.code', 'UNSAFE_DRAFT');
+        $this->assertSame(['UNKNOWN_SOURCE'], $trace()['guard']);
+        $this->assertSame([], $trace()['cited']);
+    }
+
     public function test_a_stuck_draft_never_hands_the_conversation_off(): void
     {
         $f = $this->inControl();

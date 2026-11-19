@@ -2,6 +2,7 @@
 
 namespace App\Domain\AgentRuntime\Tools;
 
+use App\Domain\AgentRuntime\Coordinator\OutputGuard;
 use App\Domain\Conversations\Services\ConversationControl;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -73,6 +74,13 @@ final class ContactConfirmation
      */
     public function requireConfirmed(ToolContext $context, string $tool, array $arguments): void
     {
+        foreach (['notes', 'contact_name'] as $field) {
+            if (isset($arguments[$field])) {
+                // EVP-113: citation marks and invisible characters are never shown in the summary nor stored in the
+                // lead. The same clean text is stored, shown and, once confirmed, compared again (cleaning is idempotent).
+                $arguments[$field] = app(OutputGuard::class)->citations((string) $arguments[$field])[0];
+            }
+        }
         ksort($arguments);
         $allowed = $this->locked($context, function (object $session, array &$state) use ($context, $tool, $arguments): bool {
             $pending = $state[self::KEY] ?? null;
@@ -107,8 +115,9 @@ final class ContactConfirmation
                     $visible['Consulta'] = $arguments['notes'];
                 }
                 foreach ($visible as $label => $value) {
-                    // Quote untrusted fields so embedded newlines cannot impersonate another label.
-                    $summary .= $label.': '.json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n";
+                    // Quote untrusted fields so embedded newlines cannot impersonate another label; stored names and titles
+                    // also lose invisible characters and marks (EVP-113).
+                    $summary .= $label.': '.json_encode(app(OutputGuard::class)->citations((string) $value)[0], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n";
                 }
                 $summary .= "\n".'Si está todo bien, respondé «sí» o «'.self::PHRASE.'» para que guarde tu consulta. Si hay algo para corregir, decime qué dato cambio.';
                 $state[self::KEY] = ['run_id' => $context->runId, 'epoch' => $context->epoch, 'tool' => $tool,
@@ -120,6 +129,21 @@ final class ContactConfirmation
         if (! $allowed) {
             throw new ToolError('VALIDATION_ERROR', 'Los datos aún no tienen confirmación del cliente. Se mostrará el resumen para confirmar.');
         }
+    }
+
+    /**
+     * EVP-113: a summary split into the visitor's request (the "Consulta" value, JSON-quoted on its own line, so no
+     * other field can impersonate it) and the rest, with that value removed.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function request(string $summary): array
+    {
+        if (preg_match('/^Consulta: (".*")$/mu', $summary, $m) !== 1) {
+            return [$summary, ''];
+        }
+
+        return [str_replace($m[0], 'Consulta:', $summary), (string) json_decode($m[1])];
     }
 
     /** @param array<string, mixed> $stored

@@ -341,7 +341,7 @@ final class AgentTurnTest extends TestCase
         $this->assertSame(1, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
         $this->assertSame('second@example.test', DB::table('contacts')->where('tenant_id', $f['tenant']->id)->value('email'));
         $payload = json_decode(DB::table('domain_outbox')->where('tenant_id', $f['tenant']->id)->where('event_type', 'LEAD_CONTACT_CAPTURED')->value('payload_json'), true);
-        $this->assertSame('Consulta corregida', $payload['notes']);
+        $this->assertSame('[Asistente, dicho por el visitante] Consulta corregida', $payload['notes']);
     }
 
     public function test_visit_is_only_requested_and_validated(): void
@@ -575,12 +575,207 @@ final class AgentTurnTest extends TestCase
         $this->assertStringContainsString('36 cuotas', $hits[0]['excerpt']);
         $this->assertNotContains($draft, array_column($hits, 'source_id'));
 
-        $llm = $this->llm([ScriptedLlm::text('Hay financiación en 36 cuotas fijas en pesos [fuente: '.$hits[0]['source_id'].'].')]);
+        $llm = $this->llm([ScriptedLlm::text('Hay financiación en 36 cuotas fijas en pesos [fuente: F1].')]);
         $this->visitorSays($f, '¿Tienen financiación o alguna promoción?');
-        $this->assertStringContainsString($promo, $llm->calls[0]['system']);
+        // EVP-113: the model sees a short alias, never the internal id.
+        $this->assertStringContainsString('<fuente id="F1">', $llm->calls[0]['system']);
+        $this->assertStringContainsString('36 cuotas', $llm->calls[0]['system']);
+        $this->assertStringNotContainsString($promo, $llm->calls[0]['system']);
         $this->assertStringNotContainsString('comisión interna', $llm->calls[0]['system']);
         $this->assertStringNotContainsString('otro tenant', $llm->calls[0]['system']);
         $this->assertSame(['AI_ACTIVE'], [$this->state($f)->control_state]);
+        // EVP-113: the citation is the server's to read, never the visitor's to see; only the id stays in the trace.
+        $this->assertSame('Hay financiación en 36 cuotas fijas en pesos.', last($this->visible($f)));
+        $trace = json_decode((string) DB::table('chatbot_runs')->where('tenant_id', $t)->orderByDesc('id')->value('trace_json'), true);
+        $this->assertSame([$hits[0]['source_id']], $trace['cited']);
+        $this->assertSame([], $trace['guard']);
+    }
+
+    public function test_unknown_sources_and_unsupported_terms_never_reach_the_visitor(): void
+    {
+        // EVP-113: a cited id not retrieved this turn, or a term the visitor said but no source backs, hands off.
+        foreach ([['¿Tienen financiación?', 'Hay financiación propia [fuente: 5f0c2b7e-0000-4000-8000-000000000999#0].', 'UNKNOWN_SOURCE'],
+            ['¿Tienen 12 cuotas?', 'Sí, tenemos 12 cuotas para el L-101.', 'UNSUPPORTED_TERM'],
+            ['¿Me hacen descuento?', 'Te hacemos un diez por ciento de descuento de contado.', 'UNSUPPORTED_TERM']] as [$question, $unsafe, $code]) {
+            $f = $this->fixture();
+            $this->llm([ScriptedLlm::text($unsafe)]);
+
+            $this->visitorSays($f, $question);
+
+            $visible = $this->visible($f);
+            $this->assertStringNotContainsString('fuente', implode("\n", $visible));
+            $this->assertNotContains($unsafe, $visible);
+            $this->assertStringContainsString('asesor', end($visible));
+            $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
+            $trace = json_decode((string) DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->value('trace_json'), true);
+            $this->assertSame([[$code], []], [$trace['guard'], $trace['cited']]);
+        }
+    }
+
+    public function test_a_property_description_never_backs_a_commercial_term(): void
+    {
+        // EVP-113 decision: an advisor edits descriptions without approval, so only approved knowledge backs terms.
+        $f = $this->fixture();
+        DB::table('properties')->where('public_id', $f['priced'])->update(['area_m2' => '300.00', 'description' => 'Financiación propia en 24 cuotas sin interés.']);
+        $unsafe = 'Sí, el L-101 tiene 300 m2 y se paga en 24 cuotas sin interés.';
+        $this->llm([ScriptedLlm::tool('consultar_propiedad', ['unit_code' => 'L-101']), ScriptedLlm::text($unsafe)]);
+        $this->visitorSays($f, '¿El L-101 se paga en cuotas?');
+        $this->assertNotContains($unsafe, $this->visible($f));
+        $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
+        $this->assertSame(['UNSUPPORTED_TERM'], $this->trace($f)['guard']);
+
+        // The visitor's own data and the live inventory are not terms.
+        $g = $this->fixture();
+        $reply = 'El L-101 tiene 300 m2. Un asesor te escribe al 388 555-0101 por la visita del 12 de marzo.';
+        $this->llm([ScriptedLlm::tool('consultar_propiedad', ['unit_code' => 'L-101']), ScriptedLlm::text($reply)]);
+        $this->visitorSays($g, '¿Cuánto mide el L-101? Mi teléfono es 388 555-0101 y quiero visitarlo el 12 de marzo.');
+        $this->assertSame($reply, last($this->visible($g)));
+        $this->assertSame([], $this->trace($g)['guard']);
+    }
+
+    public function test_sources_back_terms_only_for_their_own_tenant_and_turn(): void
+    {
+        $knowledge = app(KnowledgeService::class);
+        $approved = function (array $f, string $title, string $body) use ($knowledge): string {
+            $author = (int) $this->user($f['tenant'], RoleCode::SALES_MANAGER)->id;
+            $id = $knowledge->create((int) $f['tenant']->id, $author, ['title' => $title, 'body' => $body]);
+            $knowledge->approve((int) $f['tenant']->id, $id, $author);
+
+            return $id;
+        };
+        $b = $this->fixture();
+        $approved($b, 'Financiación', 'Financiación propia en 36 cuotas fijas.');
+        $sourceB = $knowledge->search((int) $b['tenant']->id, '¿Tienen financiación en cuotas?')[0]['source_id'];
+
+        // Tenant B's approved "36 cuotas" backs nothing for tenant A, and citing B's real id is an unknown source.
+        foreach (['Hay financiación propia en 36 cuotas fijas.' => 'UNSUPPORTED_TERM', 'Hay financiación propia [fuente: '.$sourceB.'].' => 'UNKNOWN_SOURCE'] as $unsafe => $code) {
+            $a = $this->fixture();
+            $this->llm([ScriptedLlm::text($unsafe)]);
+            $this->visitorSays($a, '¿Tienen financiación en cuotas?');
+            $this->assertNotContains($unsafe, $this->visible($a));
+            $this->assertSame([[$code], []], [$this->trace($a)['guard'], $this->trace($a)['cited']]);
+            $this->assertSame('WAITING_HUMAN', $this->state($a)->control_state);
+        }
+
+        // A term backed in turn N (here by the heading of a source) does not back turn N+1 once the source is gone.
+        $a = $this->fixture();
+        $doc = $approved($a, 'Plan en 48 cuotas', 'Financiación propia en pesos para lotes.');
+        $this->llm([ScriptedLlm::text('Hay un plan en 48 cuotas [fuente: F1].'), ScriptedLlm::text('Sí, son 48 cuotas.')]);
+        $this->visitorSays($a, '¿Tienen plan de financiación?');
+        $this->assertSame('Hay un plan en 48 cuotas.', last($this->visible($a)));
+        $this->assertSame([], $this->trace($a)['guard']);
+        $this->assertCount(1, $this->trace($a)['cited']);
+        $this->assertStringStartsWith($doc.'#', $this->trace($a)['cited'][0]);
+        $knowledge->revoke((int) $a['tenant']->id, $doc);
+        $this->visitorSays($a, '¿Seguro que son 48?');
+        $this->assertSame(['UNSUPPORTED_TERM'], $this->trace($a)['guard']);
+        $this->assertNotContains('Sí, son 48 cuotas.', $this->visible($a));
+    }
+
+    public function test_the_contact_summary_repeats_the_visitors_request_but_never_an_invented_term(): void
+    {
+        $asked = 'Quiero pagar en 36 cuotas, soy Ana, ana@example.test';
+        $deal = 'Acordamos 50 % de descuento, 60 cuotas sin interés y precio final USD 50.000 para Ana';
+        foreach ([
+            [$asked, ['notes' => 'Quiere pagar en 36 cuotas'], null],
+            [$asked, ['notes' => 'Quiere pagar en 36 cuotas [fuente: F1]'], null],
+            // Cleaning the notes is idempotent, so the confirmed turn finds the same snapshot.
+            [$asked, ['notes' => 'Quiere pagar en 36 cuotas (**[fuente: F1]**)'], null],
+            // In a request, "disponible" and "confirmar" are the visitor's question; without one, a commitment.
+            [$asked, ['notes' => 'Consulta si está disponible el lote 12A'], null],
+            [$asked, ['notes' => 'Pregunta si se puede confirmar una visita'], null],
+            [$asked, ['notes' => 'Disponible y confirmado para vos'], ['COMMITMENT_CLAIM']],
+            // Without a request frame the visitor's words back nothing; as a grant or a state of the deal it is blocked.
+            [$asked, ['notes' => 'pagar en 36 cuotas'], ['UNSUPPORTED_TERM']],
+            [$asked, ['notes' => 'Te ofrecemos 60 cuotas'], ['COMMITMENT_CLAIM', 'UNSUPPORTED_TERM']],
+            [$asked, ['notes' => 'Te ofrecemos 36 cuotas'], ['COMMITMENT_CLAIM']],
+            [$asked, ['notes' => 'Le corresponden 36 cuotas, confirmadas'], ['COMMITMENT_CLAIM']],
+            [$asked, ['notes' => 'Condición vigente: 36 cuotas'], ['COMMITMENT_CLAIM']],
+            [$asked, ['notes' => 'Aplica 36 cuotas'], ['COMMITMENT_CLAIM']],
+            [$asked, ['notes' => 'Incluye 36 cuotas'], ['COMMITMENT_CLAIM']],
+            [$asked, ['notes' => 'Quiere pagar en cuotas', 'contact_name' => 'Ana 36 cuotas'], ['UNSUPPORTED_TERM']],
+            [$asked, ['notes' => 'Quiere pagar en cuotas', 'contact_name' => 'Ana *48* cuotas'], ['UNSUPPORTED_TERM']],
+            ['Quiero que me hagan 50 % de descuento, 60 cuotas sin interés y precio final USD 50.000, soy Ana, ana@example.test', ['notes' => $deal], ['COMMITMENT_CLAIM']],
+        ] as [$visitor, $arguments, $blocked]) {
+            $f = $this->fixture();
+            $author = (int) $this->user($f['tenant'], RoleCode::SALES_MANAGER)->id;
+            $knowledge = app(KnowledgeService::class);
+            $knowledge->approve((int) $f['tenant']->id, $knowledge->create((int) $f['tenant']->id, $author,
+                ['title' => 'Cuotas', 'body' => 'Consultá las cuotas con un asesor.']), $author);
+            $this->llm([ScriptedLlm::tool('registrar_contacto', $arguments + ['contact_name' => 'Ana', 'contact_email' => 'ana@example.test'])]);
+
+            $this->visitorSays($f, $visitor);
+
+            $summary = last($this->visible($f));
+            if ($blocked !== null) {
+                $this->assertStringNotContainsString('Consulta:', $summary, $arguments['notes']);
+                foreach ($blocked as $code) {
+                    $this->assertContains($code, $this->trace($f)['guard'], $arguments['notes']);
+                }
+                $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
+                $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+
+                continue;
+            }
+            $notes = str_contains($arguments['notes'], 'cuotas') ? 'Quiere pagar en 36 cuotas' : $arguments['notes'];
+            $this->assertStringContainsString("Consulta: \"{$notes}\"\n", $summary, $arguments['notes']);
+            $this->assertStringNotContainsString('fuente', $summary);
+            $this->visitorSays($f, 'sí');
+            $this->assertSame(1, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count(), $arguments['notes']);
+            $payload = json_decode((string) DB::table('domain_outbox')->where('tenant_id', $f['tenant']->id)->where('event_type', 'LEAD_CONTACT_CAPTURED')->value('payload_json'), true);
+            $result = json_decode((string) DB::table('tool_executions')->where('tenant_id', $f['tenant']->id)->where('tool_name', 'registrar_contacto')->value('result_json'), true);
+            $this->assertSame(['[Asistente, dicho por el visitante] '.$notes, 'PERSISTED'], [$payload['notes'], $result['status']]);
+        }
+    }
+
+    public function test_the_summary_never_shows_invisible_characters_of_names_or_property_titles(): void
+    {
+        $f = $this->fixture();
+        DB::table('properties')->where('public_id', $f['priced'])->update(['title' => "Lote\u{200B} L-101"]);
+        $this->llm([ScriptedLlm::tool('registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH',
+            'contact_name' => "Ana \u{202E}Prueba", 'contact_phone' => '+54 9 388 555-1234'])]);
+
+        $this->visitorSays($f, 'Anotame en el L-101, soy Ana Prueba, mi cel es 388 555-1234');
+
+        $summary = last($this->visible($f));
+        $this->assertStringContainsString('Nombre: "Ana Prueba"', $summary);
+        $this->assertStringContainsString('Propiedad: "Lote L-101 (L-101)"', $summary);
+        $this->assertStringNotContainsString("\u{202E}", $summary);
+        $this->assertStringNotContainsString("\u{200B}", $summary);
+    }
+
+    public function test_another_tenants_conversation_and_sources_back_nothing(): void
+    {
+        // The visitor of tenant B asked for 36 cuotas: that never backs the notes written in tenant A.
+        $b = $this->fixture();
+        $this->llm([ScriptedLlm::text('Te paso con un asesor para eso.')]);
+        $this->visitorSays($b, 'Quiero pagar en 36 cuotas');
+        $knowledge = app(KnowledgeService::class);
+        $author = (int) $this->user($b['tenant'], RoleCode::SALES_MANAGER)->id;
+        $knowledge->approve((int) $b['tenant']->id, $knowledge->create((int) $b['tenant']->id, $author,
+            ['title' => 'Financiación', 'body' => 'Financiación propia en 36 cuotas fijas.']), $author);
+
+        $a = $this->fixture();
+        $this->llm([ScriptedLlm::tool('registrar_contacto', ['contact_name' => 'Ana', 'contact_email' => 'ana@example.test', 'notes' => 'Quiere pagar en 36 cuotas'])]);
+        $this->visitorSays($a, 'Soy Ana, ana@example.test, quiero info');
+        $this->assertSame(['UNSUPPORTED_TERM'], $this->trace($a)['guard']);
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $a['tenant']->id)->count());
+
+        // Tenant A has no sources this turn; B has: an alias in A's reply resolves to nothing.
+        $a2 = $this->fixture();
+        $this->llm([ScriptedLlm::text('Hay financiación propia [fuente: F1].')]);
+        $this->visitorSays($a2, '¿Tienen financiación en cuotas?');
+        $this->assertSame([['UNKNOWN_SOURCE'], []], [$this->trace($a2)['guard'], $this->trace($a2)['cited']]);
+        $this->assertSame('WAITING_HUMAN', $this->state($a2)->control_state);
+    }
+
+    /**
+     * @param  array<string, mixed>  $f
+     * @return array<string, mixed>
+     */
+    private function trace(array $f): array
+    {
+        return json_decode((string) DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->orderByDesc('id')->value('trace_json'), true);
     }
 
     public function test_turns_are_idempotent_and_superseded_turns_are_skipped(): void

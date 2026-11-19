@@ -94,8 +94,7 @@ final class AgentCoordinator
             } else {
                 $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage);
             }
-            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], $trace['visit_requested'] ?? false,
-                outOfHours: $this->back($tenantId) !== null, visitorMessages: $this->visitorMessages($context));
+            [$text, $violations] = $this->screen($text, $context, $trace);
             if ($text === '' || $violations !== []) {
                 $trace['guard'] = $violations === [] ? ['EMPTY_REPLY'] : $violations;
                 $context->handoff ??= ['reason' => 'NO_EVIDENCE', 'summary' => 'Respuesta descartada por control de salida.'];
@@ -172,8 +171,7 @@ final class AgentCoordinator
 
         try {
             $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage, copilot: true);
-            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], draft: true,
-                visitorMessages: $this->visitorMessages($context));
+            [$text, $violations] = $this->screen($text, $context, $trace, draft: true);
             if ($text === '' || $violations !== []) {
                 $trace['guard'] = $violations === [] ? ['EMPTY_REPLY'] : $violations;
                 $this->finish($context, 'BLOCK', 'SUCCEEDED', 'UNSAFE_DRAFT', $trace, $usage);
@@ -215,7 +213,8 @@ final class AgentCoordinator
         $query = implode(' ', array_slice(array_map(fn (array $m): string => $m['role'] === 'user' ? (string) $m['content'] : '', $history), -2));
         $sources = $this->knowledge->search($context->tenantId, $query, ['PUBLIC'], (int) config('agent.knowledge_top_k'));
         $trace['sources'] = array_column($sources, 'source_id');
-        $trace['knowledge'] = array_map(fn (array $s): string => $s['excerpt'], $sources);
+        // Evidence is what the model saw of each approved source: its heading and its excerpt (EVP-113).
+        $trace['knowledge'] = array_map(fn (array $s): string => $s['title'].': '.$s['excerpt'], $sources);
         $trace['prices'] = [];
 
         $tenantName = (string) DB::table('tenants')->where('id', $context->tenantId)->value('name');
@@ -325,7 +324,8 @@ final class AgentCoordinator
 
     /**
      * Only prices the tools actually returned are evidence for the OutputGuard (never ids, dates or
-     * other numbers from the payload).
+     * other numbers from the payload). Property descriptions never back commercial terms (EVP-113): an
+     * advisor edits them without approval.
      *
      * @param  array<string, mixed>  $envelope
      * @param  array<string, mixed>  $trace
@@ -344,11 +344,50 @@ final class AgentCoordinator
         }
     }
 
+    /**
+     * The only way out for text, to the channel (deliver) or to the advisor (copilot draft). EVP-113: the model cites
+     * [fuente: F1] as a sign of support, but ids are internal. The ORIGINAL text is sent (no NFKC copy): without
+     * invisible characters and marks, then truncated; the guard checks exactly that text (it normalizes internally).
+     * Aliases become source ids; a citation of anything not retrieved this turn, or a mark/source id left in the
+     * text, is UNKNOWN_SOURCE. The trace keeps only the cited source ids of this turn.
+     *
+     * @param  array<string, mixed>  $trace
+     * @return array{0: string, 1: list<string>} text to send and violation codes
+     */
+    private function screen(string $text, ToolContext $context, array &$trace, bool $draft = false): array
+    {
+        $sources = $trace['sources'] ?? [];
+        [$clean, $cited, $unknown] = $this->guard->citations($text, $sources);
+        $trace['cited'] = $cited;
+        $visitor = $this->visitorMessages($context);
+        $check = fn (string $part, array $requested = []): array => $this->guard->check($part, $trace['prices'] ?? [], $trace['knowledge'] ?? [],
+            $trace['visit_requested'] ?? false, $draft, outOfHours: ! $draft && $this->back($context->tenantId) !== null,
+            visitorMessages: $visitor, requested: $requested);
+
+        if (! $draft && $text === app(ContactConfirmation::class)->summary($context)) {
+            // The contact summary is built by the server (notes and name already without marks) and goes out byte for
+            // byte so bind() finds it. Only its "Consulta" value repeats the visitor's request: there, and only with
+            // the visitor's messages of this turn and the previous one, their words back terms and amounts; it never
+            // reads as an offer (COMMITMENT_CLAIM). The rest of the summary is checked like any reply.
+            [$frame, $request] = ContactConfirmation::request($text);
+            $unknown = $unknown || $cited !== [] || $this->guard->leftover($text, $sources);
+            // The visitor's words back the request only when it reads as one ("Quiere…", "Consulta…", "¿…?").
+            $asked = $this->guard->asks($request);
+            $violations = [...$check($frame), ...($this->guard->commits($request, $asked) ? ['COMMITMENT_CLAIM'] : []),
+                ...$check($request, $asked ? array_slice($visitor, -2) : [])];
+        } else {
+            $text = mb_substr($clean, 0, (int) config('agent.reply_max_chars'));
+            $unknown = $unknown || $this->guard->leftover($text, $sources);
+            $violations = $check($text);
+        }
+
+        return [$text, array_values(array_unique($unknown ? [...$violations, 'UNKNOWN_SOURCE'] : $violations))];
+    }
+
+    /** Not truncated here: screen() cuts after removing citation marks, so a mark is never cut open. */
     private function finalText(LlmResponse $response): string
     {
-        $text = trim((string) preg_replace('/[ \t]+\n/', "\n", $response->text()));
-
-        return mb_substr($text, 0, (int) config('agent.reply_max_chars'));
+        return trim((string) preg_replace('/[ \t]+\n/', "\n", $response->text()));
     }
 
     /**
