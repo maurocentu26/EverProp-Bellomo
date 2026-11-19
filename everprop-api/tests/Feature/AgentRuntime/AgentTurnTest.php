@@ -857,9 +857,9 @@ final class AgentTurnTest extends TestCase
 
             return $id;
         };
-        $arenales = $approved('Lanzamiento Arenales', 'Los lotes de Arenales cuentan con una promoción de lanzamiento del 10% de contado.');
-        $north = $approved('Promoción Norte', 'Promoción vigente para el loteo Norte.');
-        $expenses = $approved('Expensas Pinar', 'Las expensas del Pinar son mensuales.');
+        $approved('Lanzamiento Arenales', 'Los lotes de Arenales cuentan con una promoción de lanzamiento del 10% de contado.');
+        $approved('Promoción Norte', 'Promoción vigente para el loteo Norte.');
+        $approved('Expensas Pinar', 'Las expensas del Pinar son mensuales.');
 
         $llm = $this->llm([ScriptedLlm::text('Te cuento: también tenemos el Pinar.'), ScriptedLlm::text('Sí, hay una promoción de lanzamiento.'),
             ScriptedLlm::text('Te ayudo con eso.')]);
@@ -870,15 +870,16 @@ final class AgentTurnTest extends TestCase
 
         $this->assertCount(2, $llm->calls);
         $system = $llm->calls[1]['system'];
-        $this->assertStringContainsString($arenales, $system);
-        $this->assertLessThan(strpos($system, $north) ?: PHP_INT_MAX, (int) strpos($system, $arenales), 'the topic of the previous message ranks first');
-        $this->assertStringNotContainsString($expenses, $system, 'neither the assistant reply nor an internal note feeds the query');
+        // EVP-113 hides internal document UUIDs behind F1..Fn aliases, keeping headings and excerpts in the prompt.
+        $this->assertStringContainsString('Lanzamiento Arenales', $system);
+        $this->assertLessThan(strpos($system, 'Promoción Norte') ?: PHP_INT_MAX, (int) strpos($system, 'Lanzamiento Arenales'), 'the topic of the previous message ranks first');
+        $this->assertStringNotContainsString('Expensas Pinar', $system, 'neither the assistant reply nor an internal note feeds the query');
 
         // Newest first within 300 characters: a long new message pushes the previous one out of the query.
         $this->visitorSays($f, 'Una consulta distinta: '.str_repeat('bla ', 80).'gracias');
         $this->assertCount(3, $llm->calls);
-        $this->assertStringNotContainsString($arenales, $llm->calls[2]['system']);
-        $this->assertStringNotContainsString($north, $llm->calls[2]['system']);
+        $this->assertStringNotContainsString('Lanzamiento Arenales', $llm->calls[2]['system']);
+        $this->assertStringNotContainsString('Promoción Norte', $llm->calls[2]['system']);
     }
 
     /** EVP-114 review: a project named in the follow-up is never displaced by the previous message's project. */
