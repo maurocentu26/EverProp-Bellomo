@@ -5,10 +5,24 @@ return [
     'llm_provider' => env('AGENT_LLM_PROVIDER', 'disabled'),
     // No default model on purpose: pick it explicitly (economics D13 anchors cost on Haiku-class).
     'llm_model' => env('AGENT_LLM_MODEL'),
-    'prompt_version' => 'coordinator-2026-11-09.1',
+    'prompt_version' => 'coordinator-2026-11-14.1',
     // Per-turn limits (ADR D13/D14).
     'max_llm_calls' => 2,
     'max_retries' => 1,
+    // EVP-115: wait before that retry (429/529, timeout, 5xx). Retry-After wins over the base; never longer than the max.
+    'retry_base_wait_ms' => (int) env('AGENT_RETRY_BASE_WAIT_MS', 1000),
+    'retry_jitter_ms' => (int) env('AGENT_RETRY_JITTER_MS', 1000),
+    'retry_max_wait_seconds' => (int) env('AGENT_RETRY_MAX_WAIT_SECONDS', 10),
+    // A retry is skipped if it could end after this: below RunAgentJob::$timeout (150) and turn_lock_seconds.
+    'turn_deadline_seconds' => 120,
+    // EVP-115: a turn starts this long after the visitor's last message, so a burst gets one answer.
+    'burst_window_seconds' => (int) env('AGENT_BURST_WINDOW_SECONDS', 3),
+    // ...but a message already waiting this long is answered even if newer ones keep coming.
+    'burst_max_wait_seconds' => 20,
+    // The copilot runs inside the advisor's request: php-fpm cuts it at 35 s (docker/php/fpm-pool.conf).
+    'copilot_deadline_seconds' => 30,
+    // A turn that finds the conversation's lock taken retries this soon.
+    'lock_retry_seconds' => 2,
     'max_tool_calls' => 3,
     'max_input_tokens' => (int) env('AGENT_MAX_INPUT_TOKENS', 8000),
     'max_output_tokens' => (int) env('AGENT_MAX_OUTPUT_TOKENS', 600),

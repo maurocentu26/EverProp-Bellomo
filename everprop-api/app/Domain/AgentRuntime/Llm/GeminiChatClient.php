@@ -180,7 +180,7 @@ final class GeminiChatClient implements LlmClient
         }
 
         if ($response->status() === 429) {
-            throw new LlmFailure('RATE_LIMITED', retryable: true, billable: false);
+            throw LlmFailure::rateLimited($response->header('Retry-After'));
         }
 
         if ($response->serverError()) {

@@ -380,7 +380,7 @@ final class ModelEvalTest extends TestCase
                 'code' => $code, 'title' => ($p['category'] ?? 'LOT') === 'LOT' ? 'Lote '.$p['code'] : 'Unidad '.$p['code'],
                 'operation' => $p['operation'] ?? 'SALE', 'category' => $p['category'] ?? 'LOT', 'status' => $p['status'] ?? 'AVAILABLE',
                 'price' => $p['price']['amount'] ?? null, 'currency_code' => $p['price']['currency'] ?? null,
-                'city' => $p['city'] ?? 'San Salvador de Jujuy', 'province' => 'Jujuy',
+                'city' => $p['city'] ?? 'San Salvador de Jujuy', 'province' => 'Jujuy', 'description' => $p['description'] ?? null,
             ]);
         };
 

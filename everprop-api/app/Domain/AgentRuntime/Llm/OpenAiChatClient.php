@@ -60,7 +60,7 @@ final class OpenAiChatClient implements LlmClient
             throw new LlmFailure('TIMEOUT', retryable: true, billable: true);
         }
         if ($response->status() === 429) {
-            throw new LlmFailure('RATE_LIMITED', retryable: true, billable: false);
+            throw LlmFailure::rateLimited($response->header('Retry-After'));
         }
         if ($response->serverError()) {
             throw new LlmFailure('PROVIDER_ERROR', retryable: true, billable: true);

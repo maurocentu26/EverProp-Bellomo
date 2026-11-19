@@ -117,6 +117,43 @@ final class MetaSocialWebhookTest extends TestCase
         $this->getJson('/api/v1/admin/conversations/'.$thread->public_id.'/messages')->assertNotFound();
     }
 
+    /** EVP-147: post comments are recorded (durable, deduplicated, redacted later) instead of dropped, but not processed. */
+    public function test_post_comments_are_recorded_as_ignored_receipts_without_creating_conversations(): void
+    {
+        Queue::fake([ProcessMetaWebhookReceipt::class, RunAgentJob::class]);
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration();
+        $this->socialChannel($tenant->id, $integration, 'INSTAGRAM_DM', 'IG-COMMENTS');
+        $this->socialChannel($tenant->id, $integration, 'FACEBOOK_MESSENGER', 'PAGE-COMMENTS');
+        $changes = fn (string $object, string $account, array $changes) => json_encode(['object' => $object,
+            'entry' => [['id' => $account, 'time' => now()->getTimestampMs(), 'changes' => $changes]]], JSON_THROW_ON_ERROR);
+        $igComment = $changes('instagram', 'IG-COMMENTS', [['field' => 'comments', 'value' => [
+            'id' => '17865799348089039', 'text' => '¿precio del 12A?', 'from' => ['id' => '555', 'username' => 'ana'], 'media' => ['id' => '9001']]]]);
+
+        $this->postWebhook($igComment)->assertOk();
+        $this->postWebhook($igComment)->assertOk(); // Meta redelivers: still one receipt
+        $this->postWebhook($changes('page', 'PAGE-COMMENTS', [
+            ['field' => 'feed', 'value' => ['item' => 'comment', 'comment_id' => '1_2', 'message' => 'Info', 'post_id' => '1']],
+            ['field' => 'feed', 'value' => ['item' => 'post', 'post_id' => '1']], // a page's own post: only logged
+        ]))->assertOk();
+        $this->postWebhook($changes('instagram', 'IG-UNKNOWN', [['field' => 'comments', 'value' => ['id' => '1', 'text' => 'x']]]))->assertOk();
+
+        $receipts = DB::table('webhook_receipts')->where('tenant_id', $tenant->id)->get(['provider_object', 'processing_status', 'expires_at']);
+        $this->assertEqualsCanonicalizing(['instagram_comments', 'facebook_comments'], $receipts->pluck('provider_object')->all());
+        $this->assertSame(['VERIFIED'], $receipts->pluck('processing_status')->unique()->values()->all());
+        $this->assertNotNull($receipts->first()->expires_at);
+        $this->assertSame(0, DB::table('webhook_receipts')->where('provider_object', 'instagram_comments')->where('provider_object_id', 'IG-UNKNOWN')->count());
+        $this->assertSame(0, DB::table('conversations')->where('tenant_id', $tenant->id)->count());
+        Queue::assertNotPushed(ProcessMetaWebhookReceipt::class);
+
+        // The reconciler never processes them and redacts the client's text once expired.
+        DB::table('webhook_receipts')->where('tenant_id', $tenant->id)->update(['expires_at' => now()->subMinute()]);
+        $this->artisan('everprop:conversations:reconcile')->assertSuccessful();
+        Queue::assertNotPushed(ProcessMetaWebhookReceipt::class);
+        $payloads = DB::table('webhook_receipts')->where('tenant_id', $tenant->id)->pluck('raw_payload')->implode(' ');
+        $this->assertStringNotContainsString('precio', $payloads);
+        $this->assertSame(['VERIFIED'], DB::table('webhook_receipts')->where('tenant_id', $tenant->id)->distinct()->pluck('processing_status')->all());
+    }
+
     /**
      * @param  list<array<string, mixed>>  $messaging
      */

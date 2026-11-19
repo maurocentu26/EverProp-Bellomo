@@ -1,5 +1,6 @@
 "use client";
 
+import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 import { useState } from "react";
 import {
   MessageCircle,
@@ -51,9 +52,7 @@ function LeadActions({ lead, onView, onFollowUp, showLabels = true }: LeadAction
           onClick={() => {
             const propTitle = lead.interests?.[0]?.propertyTitle;
             const message = encodeURIComponent(
-              `Hola ${lead.name}, te escribo de Bellomo Inmobiliaria respecto a tu consulta${
-                propTitle ? ` sobre ${propTitle}` : ""
-              }. ¿Cómo estás?`
+              leadWhatsAppMessage({ id: lead.id, name: lead.name, propertyTitle: propTitle })
             );
             window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank");
           }}

@@ -84,13 +84,14 @@ final class ConversationControl
             ]);
             $this->outbox($tenantId, $conversationId, 'CONVERSATION_AI_RESUMED', ['epoch' => $epoch, 'user_id' => $user->id, 'reason' => mb_substr($reason, 0, 500)]);
 
-            $last = DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
-                ->where(fn ($q) => $q->where('direction', 'INBOUND')->orWhere(fn ($o) => $o->where('direction', 'OUTBOUND')
-                    ->where('delivery_status', '!=', 'CANCELLED')))
-                ->orderByDesc('sequence')->first(['sequence', 'direction', 'message_type', 'text_body']);
+            // The visitor's last unanswered text, even if a photo or audio came after it (EVP-115).
+            $thread = fn () => DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId);
+            $answered = (int) $thread()->where('direction', 'OUTBOUND')->where('delivery_status', '!=', 'CANCELLED')->max('sequence');
+            $pending = $thread()->where('direction', 'INBOUND')->where('message_type', 'TEXT')->where('sequence', '>', $answered)
+                ->whereRaw(InboundMessageService::HAS_TEXT_SQL)->max('sequence');
 
-            if ($last !== null && $last->direction === 'INBOUND' && $last->message_type === 'TEXT' && trim((string) $last->text_body) !== '') {
-                $pendingSequence = (int) $last->sequence;
+            if ($pending !== null) {
+                $pendingSequence = (int) $pending;
                 DB::table('chatbot_runs')->where('tenant_id', $tenantId)
                     ->where('provider_run_id', 'turn:'.$conversationId.':'.$pendingSequence)
                     ->update(['provider_run_id' => DB::raw("CONCAT(provider_run_id, ':e', COALESCE(control_epoch, 0))")]);
@@ -175,6 +176,10 @@ final class ConversationControl
     {
         $assigneeId = $lead['assigned_user_id'] ?? null;
         if ($assigneeId === null) {
+            if ($notify && $lead['created']) {
+                rescue(fn () => $this->notifyUnassigned($tenantId, $conversationId, (int) $lead['lead_id']));
+            }
+
             return null;
         }
 
@@ -222,6 +227,20 @@ final class ConversationControl
 
             return (int) $assigneeId;
         }, 3);
+    }
+
+    /** EVP-136: the chatbot created a lead the rotation could not assign; admins and managers take it from the conversation. */
+    private function notifyUnassigned(int $tenantId, int $conversationId, int $leadId): void
+    {
+        $row = DB::table('conversations')->join('contacts', fn ($j) => $j->on('contacts.id', '=', 'conversations.contact_id')->on('contacts.tenant_id', '=', 'conversations.tenant_id'))
+            ->where('conversations.tenant_id', $tenantId)->where('conversations.id', $conversationId)
+            ->first(['conversations.public_id', 'contacts.display_name', 'contacts.phone_e164', 'contacts.email']);
+        $leadPublicId = DB::table('leads')->where('tenant_id', $tenantId)->where('id', $leadId)->value('public_id');
+        if ($row === null || $leadPublicId === null) {
+            return;
+        }
+        LeadAssignedNotification::sendUnassigned($tenantId, (string) $leadPublicId, $row->display_name ?: ($row->phone_e164 ?: ($row->email ?: 'Nuevo Contacto')),
+            'del chat', "/admin/conversaciones?c={$row->public_id}");
     }
 
     public function isEligibleAssignee(int $tenantId, int $userId): bool

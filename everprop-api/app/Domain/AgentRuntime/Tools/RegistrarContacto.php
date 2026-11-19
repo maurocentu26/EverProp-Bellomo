@@ -88,7 +88,8 @@ final class RegistrarContacto implements AgentTool
                     'lead_id' => $lead['lead_id'],
                     'conversation_id' => $context->conversationId,
                     'lead_created' => $lead['created'],
-                    'notes' => $arguments['notes'] ?? null,
+                    // Same label as registrar_interes: the visitor's words, never a commitment of the team.
+                    'notes' => isset($arguments['notes']) ? '[Asistente, dicho por el visitante] '.$arguments['notes'] : null,
                 ], JSON_THROW_ON_ERROR),
                 'status' => 'PENDING',
                 'available_at' => $now,

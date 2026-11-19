@@ -33,6 +33,12 @@ El baseline `everprop-api/database/schema/bellomo_crm_omnichannel_mysql8.baselin
 | Audit | audit_logs:1074, data_subject_requests:1100 | Eventos de soporte, exportación, revocación y eliminación verificable |
 | Inmobiliario | projects:1577, properties:1612, lead_properties:1812, visits:1852 | Adapter RealEstateTools; solicitud de visita separada de cita confirmada |
 
+**`domain_outbox` hoy (EVP-148, 2026-11-16).**
+- **Escritura:** se escribe en la misma transacción que cada cambio de dominio (D10). El consumidor previsto (D20: eventos firmados para n8n o webhooks salientes, con deduplicación en `outbox_consumptions`) **todavía no existe**, por eso los eventos quedan en `PENDING`.
+- **Idempotencia:** la tabla ya cumple esa función de dos maneras. Guarda las claves de reapertura en `ConversationControl::reopen`, y su índice único deduplica los eventos de webhook.
+- **Purga:** `everprop:outbox:prune` corre todos los días a las 04:30. Borra los eventos `PENDING`, `PUBLISHED` y `DEAD_LETTER` más viejos que `OUTBOX_RETENTION_DAYS`: por defecto 30 días, mínimo 7, para no reabrir esas ventanas de idempotencia. Los `PROCESSING` y `RETRY` no se tocan.
+- **Cuando exista un consumidor:** la purga tiene que respetar lo que todavía no consumió.
+
 El núcleo conversacional no lee tablas inmobiliarias directamente: invoca interfaces `InventoryQuery`, `InterestWriter`, `VisitRequester`. Implementaciones iniciales llaman servicios Laravel compartidos y sus policies; futura extracción puede conservar contratos sin exigir HTTP interno hoy. Bellomo aporta configuración, catálogo y documentos; no condicionales `if tenant == bellomo`.
 
 Evolución futura exclusivamente mediante scripts forward versionados, con preflight de esquema y ensayo aislado; nunca editar ni reimportar baseline. Runtime faltante/no acreditado: inbox conversacional operativo, consumidor/dispatcher de outbound completo, toma humana concurrente, ejecución LLM y herramientas, ingestión RAG, metering/suscripción y conectores de canales reales. La existencia de domain_outbox y chatbot_runs no acredita ninguno de esos recorridos. Inventario/CRM sí tienen controllers y policies reutilizables, con los bloqueantes arriba indicados. La API pública de tools debe tener actor de visitante con capacidades propias; no pasar credenciales ni llamar endpoints admin como atajo.

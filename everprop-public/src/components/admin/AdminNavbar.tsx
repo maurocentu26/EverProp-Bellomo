@@ -109,9 +109,12 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
           if (soundEnabledRef.current) playCorporateNotificationChime();
           const notification = incoming[0];
           // With the tray open, new items just appear at the top (PatternFly): no toast over it.
-          if (!trayOpenRef.current) toast.info(incoming.length > 1 ? `${incoming.length} nuevas notificaciones` : notification.title || "Nueva notificación", {
-            description: notification.message, duration: 12000,
-            action: notification.actionUrl ? { label: "Ver", onClick: () => router.push(notification.actionUrl!) } : undefined,
+          // One arrival names its content and destination; a burst only counts (the tray lists them). Only in-panel links.
+          const single = incoming.length === 1;
+          const url = single && notification.actionUrl?.startsWith("/admin/") ? notification.actionUrl : null;
+          if (!trayOpenRef.current) toast.info(single ? notification.title || "Nueva notificación" : `${incoming.length} nuevas notificaciones`, {
+            description: single ? notification.message : undefined, duration: 8000,
+            action: url ? { label: "Ver", onClick: () => router.push(url) } : undefined,
           });
           if (document.visibilityState === "hidden") {
             const isConversationAlert = notification.eventType === "CONVERSATION_NEEDS_ATTENTION";
@@ -145,11 +148,24 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
       } catch { /* The next check retries without overlapping requests. */ }
       finally { checking = false; }
     };
-    const poll = window.setInterval(() => void check(), 2000);
+    // EVP-143: every 2 s while visible; a hidden tab still checks (it raises the desktop alert) but every 10 s.
+    // One chain only: the next check is scheduled when the previous one ends, never while one is in flight.
+    let poll = 0;
+    let inFlight = false;
+    const schedule = () => {
+      poll = window.setTimeout(() => {
+        inFlight = true;
+        void check().finally(() => { inFlight = false; if (mounted) schedule(); });
+      }, document.visibilityState === "hidden" ? 10_000 : 2_000);
+    };
+    schedule();
+    // Back on the tab: drop the pending 10 s wait and resume at 2 s (a check in flight reschedules by itself).
+    const onShown = () => { if (document.visibilityState === "visible" && !inFlight) { window.clearTimeout(poll); schedule(); } };
     const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     window.addEventListener('focus', refresh);
     window.addEventListener('online', refresh);
     document.addEventListener('visibilitychange', onVisible);
+    document.addEventListener('visibilitychange', onShown);
 
     eventSource?.addEventListener('notification', (e) => {
       try {
@@ -164,7 +180,7 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
           showDesktopNotification(data.title || "Nueva notificación", { body: data.message });
           if (!trayOpenRef.current) toast.info(data.title || "Nueva notificación", {
             description: data.message,
-            action: data.actionUrl
+            action: data.actionUrl?.startsWith("/admin/")
               ? { label: "Ver", onClick: () => router.push(data.actionUrl!) }
               : undefined,
           });
@@ -190,10 +206,11 @@ export function AdminNavbar({ companyName = "Bellomo", className }: Props) {
     return () => {
       mounted = false;
       eventSource?.close();
-      window.clearInterval(poll);
+      window.clearTimeout(poll);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("online", refresh);
       document.removeEventListener("visibilitychange", onVisible);
+      document.removeEventListener("visibilitychange", onShown);
       window.removeEventListener("everprop_notifications_updated", handleLocalUpdate);
       channel?.close();
     };

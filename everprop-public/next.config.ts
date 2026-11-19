@@ -19,6 +19,17 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   async headers() {
     return [
+      // EVP-145: every response, widget included. Next applies matching rules in order and the last value of a
+      // key wins, so this baseline goes first and the narrower rules below can override it (Instagram's referrer).
+      // HSTS is ignored by browsers over plain http, so local development is unaffected; no "preload" on purpose.
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
       {
         source: "/integrations/instagram/callback",
         headers: [

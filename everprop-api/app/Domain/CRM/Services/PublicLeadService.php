@@ -153,18 +153,23 @@ final readonly class PublicLeadService
                         $assignedUser = User::find($leadRecord->assigned_user_id);
                         if ($assignedUser) {
                             $contactName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $contact['id'])->value('display_name') ?? 'Nuevo Contacto Web';
+                            // EVP-140: a reused open lead is a new inquiry from a known contact, not a new lead.
                             $assignedUser->notify(new LeadAssignedNotification(
                                 leadPublicId: (string) $leadRecord->public_id,
                                 leadName: $contactName,
-                                eventType: 'LEAD_CREATED',
-                                title: 'Nuevo lead web asignado',
-                                message: "Ha ingresado un nuevo lead web: '{$contactName}'",
+                                eventType: $lead['created'] ? 'LEAD_CREATED' : 'LEAD_RECONTACT',
+                                title: $lead['created'] ? 'Nuevo lead web asignado' : 'Nueva consulta web de un lead',
+                                message: $lead['created'] ? "Ha ingresado un nuevo lead web: '{$contactName}'" : "'{$contactName}' volvió a escribir desde la web",
                                 actionUrl: "/admin/leads/{$leadRecord->public_id}"
                             ));
                         }
                     } catch (\Throwable $notificationError) {
                         throw $notificationError; // Roll back the operation rather than silently lose its notification.
                     }
+                } elseif ($lead['created']) {
+                    // EVP-136: the rotation had nobody available, so the lead is UNASSIGNED.
+                    $contactName = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $contact['id'])->value('display_name') ?? 'Nuevo Contacto Web';
+                    LeadAssignedNotification::sendUnassigned($tenantId, (string) $leadRecord->public_id, $contactName, 'web');
                 }
 
                 return new PublicLeadSubmission(

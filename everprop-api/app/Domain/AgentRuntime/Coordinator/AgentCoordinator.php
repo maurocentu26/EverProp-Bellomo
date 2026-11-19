@@ -19,6 +19,7 @@ use App\Domain\Usage\UsageLedger;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -46,9 +47,16 @@ final class AgentCoordinator
         private readonly OutputGuard $guard,
     ) {}
 
+    /** Monotonic start of the current turn or draft, and its deadline: a retry wait never pushes a call past it. */
+    private float $startedAt = 0.0;
+
+    private int $deadline = 0;
+
     /** @return string outcome code (for logs/tests) */
     public function handle(int $tenantId, int $conversationId, int $inputSequence): string
     {
+        $this->startedAt = hrtime(true) / 1e9;
+        $this->deadline = (int) config('agent.turn_deadline_seconds');
         $conversation = DB::table('conversations as c')
             ->join('channel_accounts as ca', fn ($j) => $j->on('ca.id', '=', 'c.channel_account_id')->on('ca.tenant_id', '=', 'c.tenant_id'))
             ->where('c.tenant_id', $tenantId)->where('c.id', $conversationId)
@@ -62,9 +70,13 @@ final class AgentCoordinator
 
             return 'SKIPPED_AI_DISABLED';
         }
-        $latestInbound = (int) DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)
-            ->where('direction', 'INBOUND')->max('sequence');
-        if ($latestInbound > $inputSequence) {
+        // EVP-115: only a newer text message has its own turn (InboundMessageService); a photo or audio sent
+        // right after a question must not leave the question unanswered. A message waiting longer than
+        // agent.burst_max_wait_seconds is answered anyway, so a sustained burst never postpones the reply forever.
+        $messages = fn () => DB::table('messages')->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)->where('direction', 'INBOUND');
+        $latestInbound = (int) $messages()->where('message_type', 'TEXT')->whereRaw(InboundMessageService::HAS_TEXT_SQL)->max('sequence');
+        if ($latestInbound > $inputSequence && $messages()->where('sequence', $inputSequence)
+            ->where('created_at', '>=', CarbonImmutable::now('UTC')->subSeconds((int) config('agent.burst_max_wait_seconds'))->format('Y-m-d H:i:s.v'))->exists()) {
             return 'SKIPPED_SUPERSEDED'; // the newer message's turn answers both
         }
 
@@ -94,8 +106,7 @@ final class AgentCoordinator
             } else {
                 $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage);
             }
-            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], $trace['visit_requested'] ?? false,
-                outOfHours: $this->back($tenantId) !== null, visitorMessages: $this->visitorMessages($context));
+            [$text, $violations] = $this->screen($text, $context, $trace);
             if ($text === '' || $violations !== []) {
                 $trace['guard'] = $violations === [] ? ['EMPTY_REPLY'] : $violations;
                 $context->handoff ??= ['reason' => 'NO_EVIDENCE', 'summary' => 'Respuesta descartada por control de salida.'];
@@ -136,6 +147,8 @@ final class AgentCoordinator
      */
     public function suggest(int $tenantId, int $conversationId): array
     {
+        $this->startedAt = hrtime(true) / 1e9;
+        $this->deadline = (int) config('agent.copilot_deadline_seconds'); // the advisor's HTTP request (php-fpm cuts at 35 s)
         if (! InboundMessageService::copilotEnabled($tenantId)) {
             throw new CopilotFailure('COPILOT_DISABLED');
         }
@@ -172,8 +185,7 @@ final class AgentCoordinator
 
         try {
             $text = $this->converse($context, (string) $conversation->channel_type, $trace, $usage, copilot: true);
-            $violations = $this->guard->check($text, $trace['prices'] ?? [], $trace['knowledge'] ?? [], draft: true,
-                visitorMessages: $this->visitorMessages($context));
+            [$text, $violations] = $this->screen($text, $context, $trace, draft: true);
             if ($text === '' || $violations !== []) {
                 $trace['guard'] = $violations === [] ? ['EMPTY_REPLY'] : $violations;
                 $this->finish($context, 'BLOCK', 'SUCCEEDED', 'UNSAFE_DRAFT', $trace, $usage);
@@ -216,7 +228,8 @@ final class AgentCoordinator
         [$query, $previous] = $this->clientMessages($context) + ['', ''];
         $sources = $this->knowledge->search($context->tenantId, $query, ['PUBLIC'], (int) config('agent.knowledge_top_k'), $previous);
         $trace['sources'] = array_column($sources, 'source_id');
-        $trace['knowledge'] = array_map(fn (array $s): string => $s['excerpt'], $sources);
+        // Evidence is what the model saw of each approved source: its heading and its excerpt (EVP-113).
+        $trace['knowledge'] = array_map(fn (array $s): string => $s['title'].': '.$s['excerpt'], $sources);
         $trace['prices'] = [];
 
         $tenantName = (string) DB::table('tenants')->where('id', $context->tenantId)->value('name');
@@ -307,8 +320,11 @@ final class AgentCoordinator
                 }
                 $e->billable ? $this->ledger->markUnknown($context->tenantId, $key) : $this->ledger->release($context->tenantId, $key);
                 $retriesUsed = $trace['retries'] ?? 0;
-                if ($e->retryable && $retriesUsed < (int) config('agent.max_retries')) {
+                $wait = $e->retryable && $retriesUsed < (int) config('agent.max_retries') ? $this->retryWait($e) : null;
+                if ($wait !== null) {
                     $trace['retries'] = $retriesUsed + 1;
+                    $trace['retry_wait_ms'] = $wait;
+                    Sleep::for($wait)->milliseconds(); // no open reservation while waiting: released (429) or UNKNOWN at its maximum
 
                     continue;
                 }
@@ -325,8 +341,28 @@ final class AgentCoordinator
     }
 
     /**
+     * EVP-115: wait before the single retry so a momentary limit does not become a handoff. Honors the
+     * provider's Retry-After plus jitter; without one, a jittered base. Null (no retry) when the provider asks
+     * for longer than agent.retry_max_wait_seconds or the retried call could outlive the turn deadline (which
+     * stays below the job timeout and the turn lock).
+     */
+    private function retryWait(LlmFailure $e): ?int
+    {
+        $base = $e->retryAfter !== null ? $e->retryAfter * 1000 : max(0, (int) config('agent.retry_base_wait_ms'));
+        if ($base > (int) config('agent.retry_max_wait_seconds') * 1000) {
+            return null;
+        }
+        $wait = $base + random_int(0, max(0, (int) config('agent.retry_jitter_ms')));
+        $elapsed = hrtime(true) / 1e9 - $this->startedAt;
+        $worstCall = (int) config('agent.timeout_seconds') + 5; // + connect timeout of the clients
+
+        return $elapsed + $wait / 1000 + $worstCall <= $this->deadline ? $wait : null;
+    }
+
+    /**
      * Only prices the tools actually returned are evidence for the OutputGuard (never ids, dates or
-     * other numbers from the payload).
+     * other numbers from the payload). Property descriptions never back commercial terms (EVP-113): an
+     * advisor edits them without approval.
      *
      * @param  array<string, mixed>  $envelope
      * @param  array<string, mixed>  $trace
@@ -345,11 +381,50 @@ final class AgentCoordinator
         }
     }
 
+    /**
+     * The only way out for text, to the channel (deliver) or to the advisor (copilot draft). EVP-113: the model cites
+     * [fuente: F1] as a sign of support, but ids are internal. The ORIGINAL text is sent (no NFKC copy): without
+     * invisible characters and marks, then truncated; the guard checks exactly that text (it normalizes internally).
+     * Aliases become source ids; a citation of anything not retrieved this turn, or a mark/source id left in the
+     * text, is UNKNOWN_SOURCE. The trace keeps only the cited source ids of this turn.
+     *
+     * @param  array<string, mixed>  $trace
+     * @return array{0: string, 1: list<string>} text to send and violation codes
+     */
+    private function screen(string $text, ToolContext $context, array &$trace, bool $draft = false): array
+    {
+        $sources = $trace['sources'] ?? [];
+        [$clean, $cited, $unknown] = $this->guard->citations($text, $sources);
+        $trace['cited'] = $cited;
+        $visitor = $this->visitorMessages($context);
+        $check = fn (string $part, array $requested = []): array => $this->guard->check($part, $trace['prices'] ?? [], $trace['knowledge'] ?? [],
+            $trace['visit_requested'] ?? false, $draft, outOfHours: ! $draft && $this->back($context->tenantId) !== null,
+            visitorMessages: $visitor, requested: $requested);
+
+        if (! $draft && $text === app(ContactConfirmation::class)->summary($context)) {
+            // The contact summary is built by the server (notes and name already without marks) and goes out byte for
+            // byte so bind() finds it. Only its "Consulta" value repeats the visitor's request: there, and only with
+            // the visitor's messages of this turn and the previous one, their words back terms and amounts; it never
+            // reads as an offer (COMMITMENT_CLAIM). The rest of the summary is checked like any reply.
+            [$frame, $request] = ContactConfirmation::request($text);
+            $unknown = $unknown || $cited !== [] || $this->guard->leftover($text, $sources);
+            // The visitor's words back the request only when it reads as one ("Quiere…", "Consulta…", "¿…?").
+            $asked = $this->guard->asks($request);
+            $violations = [...$check($frame), ...($this->guard->commits($request, $asked) ? ['COMMITMENT_CLAIM'] : []),
+                ...$check($request, $asked ? array_slice($visitor, -2) : [])];
+        } else {
+            $text = mb_substr($clean, 0, (int) config('agent.reply_max_chars'));
+            $unknown = $unknown || $this->guard->leftover($text, $sources);
+            $violations = $check($text);
+        }
+
+        return [$text, array_values(array_unique($unknown ? [...$violations, 'UNKNOWN_SOURCE'] : $violations))];
+    }
+
+    /** Not truncated here: screen() cuts after removing citation marks, so a mark is never cut open. */
     private function finalText(LlmResponse $response): string
     {
-        $text = trim((string) preg_replace('/[ \t]+\n/', "\n", $response->text()));
-
-        return mb_substr($text, 0, (int) config('agent.reply_max_chars'));
+        return trim((string) preg_replace('/[ \t]+\n/', "\n", $response->text()));
     }
 
     /**
@@ -510,7 +585,19 @@ final class AgentCoordinator
             ->where('sequence', '<=', $context->inputSequence)->whereNotNull('text_body')
             ->where(fn ($q) => $q->where('direction', 'INBOUND')->orWhere(fn ($o) => $o->where('direction', 'OUTBOUND')
                 ->whereNotIn('delivery_status', ['CANCELLED', 'FAILED'])))
-            ->orderByDesc('sequence')->limit((int) config('agent.history_messages'))->get(['direction', 'sender_type', 'text_body'])->reverse();
+            ->orderByDesc('sequence')->limit((int) config('agent.history_messages'))
+            ->get(['sequence', 'direction', 'sender_type', 'text_body', 'occurred_at', 'created_at']);
+        // EVP-142: Meta can deliver late, so client messages are put in real order, but only within the group each reply
+        // answered (the client messages received before it). Replies never move and a late message never jumps over
+        // one, so every turn reads as the model saw it; the unanswered group closes the turn.
+        $group = PHP_INT_MAX;
+        $keys = [];
+        foreach ($rows as $m) { // newest first
+            $outbound = $m->direction === 'OUTBOUND';
+            $group = $outbound ? (int) $m->sequence : $group;
+            $keys[$m->sequence] = [$group, (int) $outbound, $outbound ? '' : InboundMessageService::chronologicalAt($m)->format('Y-m-d H:i:s.u'), (int) $m->sequence];
+        }
+        $rows = $rows->sortBy(fn ($m): array => $keys[$m->sequence]);
 
         $turns = [];
         foreach ($rows as $row) {

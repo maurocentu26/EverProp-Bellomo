@@ -21,8 +21,9 @@ export function commercialQueueItem(lead: Lead, followUps: LeadFollowUp[], now: 
   const isDueToday = !isOverdue && nextDay === today;
   // The API initializes last_touch_at when a lead is created; that is not a contact.
   const isNew = lead.stage === "new" && !contacts.length;
-  // Disjoint tiers ensure a new lead due today never overtakes an overdue lead.
-  const priorityWeight = isOverdue ? 3 : isDueToday ? 2 : isNew ? 1 : 0;
+  // EVP-166: un lead asignado que nadie contactó todavía va primero (velocidad de primer contacto);
+  // antes quedaba debajo de todos los vencidos y fuera de las 5 filas visibles.
+  const priorityWeight = isNew ? 4 : isOverdue ? 3 : isDueToday ? 2 : 0;
   const isCurrent = contacts.length > 0 && state.kind === "current" && !isOverdue && !isDueToday;
   return { lead, state, isOverdue, isDueToday, isNew, isCurrent, priorityWeight };
 }
@@ -30,7 +31,10 @@ export function commercialQueueItem(lead: Lead, followUps: LeadFollowUp[], now: 
 export function commercialQueueGroups(leads: Lead[], followUps: LeadFollowUp[], now: Date) {
   const all = leads.filter(lead => lead.stage !== "closing" && lead.stage !== "discarded")
     .map(lead => commercialQueueItem(lead, followUps, now))
-    .sort((a, b) => b.priorityWeight - a.priorityWeight || a.lead.id.localeCompare(b.lead.id));
+    .sort((a, b) => b.priorityWeight - a.priorityWeight
+      // EVP-166: dentro de cada grupo, el más reciente primero (antes: orden por UUID, al azar).
+      || (b.lead.createdAt ?? "").localeCompare(a.lead.createdAt ?? "")
+      || a.lead.id.localeCompare(b.lead.id));
   return {
     all,
     overdue: all.filter(item => item.isOverdue),

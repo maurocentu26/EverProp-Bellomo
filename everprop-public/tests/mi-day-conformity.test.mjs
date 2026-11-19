@@ -10,13 +10,14 @@ function load(path, dependencies = {}) {
   return context.exports;
 }
 const followUp = load('src/lib/lead-follow-up.ts');
+const whatsapp = load('src/lib/lead-whatsapp-message.ts');
 const { commercialQueueGroups } = load('src/lib/commercial-queue.ts', { './lead-follow-up': followUp });
 const now = new Date('2026-10-25T15:00:00Z');
 const leads = ['current', 'new', 'today', 'late'].map(id => ({ id, name: id, companyId: 'c1', stage: 'new', propertyIds: [] }));
 const records = ['current', 'today', 'late'].map(id => ({ id, leadId: id, companyId: 'c1', type: 'call', occurredAt: '2026-10-24T12:00:00Z', nextContactAt: id === 'late' ? '2026-10-24T12:00:00Z' : id === 'today' ? now.toISOString() : undefined }));
 const groups = commercialQueueGroups(leads, records, now);
-test('Mi Día orders overdue, today, new and current; traffic counts share the queue', () => {
-  assert.deepEqual(Array.from(groups.all, item => item.lead.id), ['late', 'today', 'new', 'current']);
+test('Mi Día orders new, overdue, today and current (EVP-166); traffic counts share the queue', () => {
+  assert.deepEqual(Array.from(groups.all, item => item.lead.id), ['new', 'late', 'today', 'current']);
   assert.deepEqual(['overdue', 'today', 'new'].map(key => groups[key].length), [1, 1, 1]);
 });
 const jsx = (type, props) => ({ type, props });
@@ -30,7 +31,7 @@ function renderCockpit({ rows = leads, contacts = records, properties = [], proj
     react: { useState: () => [state[index++], () => {}], useMemo: fn => fn(), useEffect: () => {} },
     'next/link': { default: 'Link' }, 'lucide-react': {}, sonner: {},
     '@/lib/release-visibility': {}, '@/hooks/use-collections': { useCollections: () => ({ installments: [] }) },
-    '@/data/admin-sample': {}, '@/lib/admin-storage': {}, '@/lib/installment-notifications': { getTodayDateString: () => '2026-10-25' }, '@/lib/notifications': {},
+    '@/data/admin-sample': {}, '@/lib/admin-storage': {}, '@/lib/installment-notifications': { getTodayDateString: () => '2026-10-25' }, '@/lib/notifications': {}, '@/lib/lead-whatsapp-message': whatsapp,
     '@/lib/commercial-queue': { commercialDay: () => '2026-10-25', commercialQueueGroups: () => commercialQueueGroups(rows, contacts, now) },
     '@/lib/lead-follow-up': followUp, '@/lib/data-mode': { isMockDataMode: false }, '@/lib/everprop-api': {},
     '@/hooks/use-current-session': { useCurrentSession: () => ({ user: { id: 'u', name: 'Nombre Completo', role: 'ADVISOR' } }) },

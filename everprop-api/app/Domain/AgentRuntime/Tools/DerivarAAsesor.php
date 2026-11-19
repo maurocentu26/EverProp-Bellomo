@@ -31,7 +31,8 @@ final class DerivarAAsesor implements AgentTool
     public function description(): string
     {
         return 'Pasa la conversación a un asesor humano. Usala si el visitante lo pide, si no tenés datos verificados para responder, '
-            .'si una herramienta falla o si pide una excepción comercial (descuentos, financiación especial). '
+            .'si una herramienta falla o si pide una excepción comercial que no está publicada en una fuente aprobada (un descuento o una financiación especial); '
+            .'los descuentos y condiciones publicados se informan sin derivar. '
             .'Incluí contact_name, contact_phone y/o contact_email si el visitante los proporcionó. No garantiza un asesor en línea.';
     }
 

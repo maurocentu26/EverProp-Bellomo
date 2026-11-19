@@ -21,6 +21,18 @@ use Illuminate\Support\Str;
  */
 final class InboundMessageService
 {
+    /**
+     * EVP-115: a text message gets its own assistant turn only if it has a non-whitespace character. The SQL
+     * form is used to find that message again; ICU [:space:] covers every ASCII \s, so a message the PHP check
+     * skips is never seen as text by the query (which would leave the earlier question unanswered).
+     */
+    public const HAS_TEXT_SQL = "text_body REGEXP '[^[:space:]]'";
+
+    public static function hasText(?string $text): bool
+    {
+        return $text !== null && preg_match('/\S/', $text) === 1;
+    }
+
     public function __construct(private readonly ContactIdentityResolver $contacts) {}
 
     /** @return array{message_id: int, conversation_id: int, conversation_public_id: string, sequence: int, replayed: bool} */
@@ -57,8 +69,11 @@ final class InboundMessageService
             return ($this->existing($message) ?? throw new \RuntimeException('Inbound message dedupe failed.')) + ['replayed' => true];
         }
 
-        if ($ai && $message->type === 'TEXT' && $message->text !== null && trim($message->text) !== '') {
-            RunAgentJob::dispatch($message->tenantId, $result['conversation_id'], $result['sequence']);
+        if ($ai && $message->type === 'TEXT' && self::hasText($message->text)) {
+            // EVP-115: delayed so a burst ("hola" / "quería saber" / "precio") gets one turn: earlier turns see the
+            // newer text and skip as superseded; the last one answers all of them.
+            RunAgentJob::dispatch($message->tenantId, $result['conversation_id'], $result['sequence'])
+                ->delay(max(0, (int) config('agent.burst_window_seconds')));
         } elseif (! $ai) {
             // Assistant switched off (rollback) while this conversation was under bot control: nobody would
             // answer it and it would not show under "Esperan asesor". Hand it to a human. The message is already
@@ -231,6 +246,19 @@ final class InboundMessageService
         } catch (ConversationConflict) {
             return false; // control moved meanwhile
         }
+    }
+
+    /**
+     * EVP-142: when a message really happened. Meta can deliver webhooks out of order, so `sequence` (receipt order)
+     * is not the conversation's order. Inbound uses the channel's timestamp capped at our receipt (a future-dated
+     * one can't jump ahead, as in ChannelPolicy); our own messages use theirs. `sequence` stays the polling cursor.
+     */
+    public static function chronologicalAt(object $message): CarbonImmutable
+    {
+        $at = CarbonImmutable::parse($message->occurred_at, 'UTC');
+
+        return $message->direction === 'INBOUND' && $message->created_at !== null
+            ? $at->min(CarbonImmutable::parse($message->created_at, 'UTC')) : $at;
     }
 
     /**

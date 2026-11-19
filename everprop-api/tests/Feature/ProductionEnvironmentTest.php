@@ -41,6 +41,14 @@ final class ProductionEnvironmentTest extends TestCase
         }
         config(['agent.llm_provider' => 'anthropic', 'services.anthropic.key' => 'synthetic-key']);
         $this->artisan('everprop:production-check')->assertSuccessful();
+
+        // EVP-115: AI turns, sends and webhooks need their own queues, and a turn's lock must expire before the job is retried.
+        config(['queue.lanes.agent' => 'outbound']);
+        $this->artisan('everprop:production-check')->expectsOutputToContain('FAIL Assistant: separate webhooks, outbound and agent queues')->assertFailed();
+        config(['queue.lanes.agent' => 'agent', 'queue.connections.redis.retry_after' => 180]);
+        $this->artisan('everprop:production-check')->expectsOutputToContain('FAIL Assistant: queue retry_after above turn lock')->assertFailed();
+        config(['queue.connections.redis.retry_after' => 240, 'agent.timeout_seconds' => 60]); // 3 x 65 s no longer fit the 120 s deadline
+        $this->artisan('everprop:production-check')->expectsOutputToContain('FAIL Assistant: turn deadline covers its calls and waits')->assertFailed();
     }
 
     public function test_production_check_rejects_local_and_accepts_secure_configuration(): void
