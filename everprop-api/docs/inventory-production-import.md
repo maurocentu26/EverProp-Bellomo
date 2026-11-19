@@ -41,6 +41,8 @@ Review the plan's target database/server/tenant, changes, issues, removals and c
 
 Existing matching UUIDs and non-source operational metadata are preserved by default. `--replace-metadata` explicitly clears non-source media and commercial metadata on matching inventory. Source project unit totals count workbook units; unrelated retained properties are not part of those source totals.
 
+Matched projects keep their status, progress, name, city and address by default: `EdEst` is mostly blank and status decides which units are public, so taking it from the workbook would hide the catalog. Status and progress come from the workbook only with `--replace-metadata`.
+
 Cleanup is opt-in: `--cleanup=/private/cleanup.json` accepts only individually reviewed `properties` and `projects` UUID arrays. It rejects foreign-tenant IDs. Database references block deletion; there is no cascading cleanup of CRM, accounts, agreements or payments. Audit any production mock CRM separately before deciding what can be removed. A source row's absence alone does not prove it is mock data.
 
 ```sh

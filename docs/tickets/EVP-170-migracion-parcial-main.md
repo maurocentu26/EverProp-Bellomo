@@ -13,7 +13,7 @@ No se recorta `develop` ni se reutiliza `release/develop-a-main`: se parte de `o
 | Guardas de CI | `.github/workflows/ticket-branch.yml` y `.github/scripts/check-pr-policy{,.test}.mjs` para validar la política de `main` en el PR. |
 | Base visual y EVP-73 | `admin-catalog.css`, `admin-design.css`, `panel-text-size.css`, `globals.css` (sin reglas de Conversaciones, Visitas ni Conocimiento), `inventoryPriceLabel`, `inventoryPrice`/`inventoryCurrency` y filtros de catálogo. |
 | Mi Día | `AdvisorDayGuide`, `advisor-day-guide.ts`, `AdvisorCockpit` (con `agent_id` de EVP-123, filtro de cuotas y plantillas rotativas de EVP-167), navegación `advisor-top-menu`/`advisor-dock`/`advisor-mobile-shell` y botón **Mensaje por wpp** directo a `wa.me` con `cleanPhoneNumber`. |
-| Proyectos | Vista de desarrollos y matriz de inventario con contadores por estado/operación (**EVP-106** / **EVP-109**), `UpdateProjectRequest` con `progress` nullable, y alta guiada `ProjectIntakeForm` / `ProjectIntakeController` reducida a **2 pasos** (Datos y Unidades), con forwards `2026-10-23.001` y `2026-10-23.002`. |
+| Proyectos | Vista de desarrollos y matriz de inventario con contadores por estado/operación (**EVP-106** / **EVP-109**), `UpdateProjectRequest` con `progress` nullable, alta guiada `ProjectIntakeForm` / `ProjectIntakeController` reducida a **2 pasos** (Datos y Unidades) con forwards `2026-10-23.001` y `2026-10-23.002`, y mejoras al importador del Excel (**EVP-107** / **EVP-110**: `InventorySourceImport` conserva etapa/nombre/ciudad/dirección de proyectos existentes y `WorkbookInventorySource` corrige cocheras de Huasi VII, locales de Huasi VIII, superficies únicas en descripción y filas huérfanas). |
 | Estadísticas | `/admin/estadisticas`, `StatisticsCharts`, `CommercialStatisticsController`, `LeadAccessPolicy::statistics()`, ruta `commercial-statistics` con `throttle:30,1`, y `is_open`/`won_at`/`lost_at` en `AdminLeadController`, limitado a **Resumen** y **Equipo** (sin métricas de Atención, conversaciones ni IA). |
 | Fixes de leads | **EVP-124** (forward `2026-11-14.001_close_deleted_open_leads.sql`, `destroy()` transaccional, check en `ProductionCheck`), **EVP-129** (`ContactIdentityResolver` + concurrencia MySQL), **EVP-133** (`LeadAssignments` + historial/notificaciones), **EVP-134** (`version` + `409 LEAD_VERSION_CONFLICT`), **EVP-135** (`PhoneNumber` E.164, `Idempotency-Key`, reuso de contacto/lead abierto, canal `MANUAL`), **EVP-136** (`LeadAssignedNotification::sendUnassigned`), **EVP-137** (`PublicLeadRequest` exige email o `phone_e164`, más `openapi.yaml`). |
 | CI y scripts | `everprop-public/package.json` (`test:statistics`, `test:mi-dia`, `test:projects`) y `.github/workflows/web.yml` alineados al subconjunto portado; `.github/workflows/api.yml` sin cambios. |
@@ -29,9 +29,12 @@ No se recorta `develop` ni se reutiliza `release/develop-a-main`: se parte de `o
 
 - **EVP-29** y **EVP-132** (y rediseño completo del panel / bandeja de notificaciones si aplica).
 - **EVP-50** (alertas de seguimiento: requiere forward adicional, middleware `TouchLastActive` y web push).
-- Paso 3+ de material y módulo Web de proyectos (`project_landing`, `ProjectWebEditor`).
-- **EVP-107** / **EVP-110** (importación masiva de inventario).
+- Paso 3+ de material y módulo Web de proyectos (`project_landing`, `ProjectWebEditor`, `SeedBellomoOfficialCopy` / `everprop:seed-bellomo-copy`).
 - Conversaciones, Atención/IA y Solicitudes de Visita.
+
+## Reimportación de inventario en producción (`everprop:inventory-import`)
+
+Si producción todavía conserva la carga previa del Excel (antes de las correcciones de Huasi VII/VIII y superficies de **EVP-107** / **EVP-110**), después de hacer backup y desplegar este release corresponde ejecutar el flujo seguro `plan` → `rehearse` → `apply` → `verify` de [everprop-api/docs/inventory-production-import.md](../../everprop-api/docs/inventory-production-import.md) (respetando la política `--currency` que corresponda y verificando antes si existen `user_inventory_scopes` por categoría). No se ejecuta `everprop:seed-bellomo-copy` porque depende de `project_landing`.
 
 ## Forwards de base de datos y contrato de esquema
 
@@ -53,7 +56,8 @@ En producción (`main`), ejecutar en orden antes o junto al deploy de la API:
   - `vendor/bin/pint --test`: `PASS` (204 archivos).
   - `vendor/bin/phpstan analyse --no-progress --memory-limit=1G`: `[OK] No errors`.
   - Validación `openapi.yaml` (JSON 3.1.0, 35 paths) + `redocly lint /spec/openapi.yaml`: válido (0 errores; 5 warnings preexistentes de `operationId`).
-  - `php artisan test --no-coverage`: `175 passed (1195 assertions)`. Incluye `CommercialStatisticsTest`, `DeletedLeadReentryTest`, `LeadAssignmentHistoryTest`, `LeadVersionConflictTest`, `ManualLeadContactTest`, `UnassignedLeadNotificationTest` (adaptado sin canal chatbot/conversaciones), `PublicLeadEndpointTest`, `ContactIdentityConcurrencyMySqlTest`, `TenantIsolationAndRbacTest`, `PublicInventoryTest`, `ProjectIntakeTest` y `ProductionEnvironmentTest`.
+  - `php artisan test --no-coverage` (previo al agregado del importador): `175 passed (1195 assertions)`. Incluye `CommercialStatisticsTest`, `DeletedLeadReentryTest`, `LeadAssignmentHistoryTest`, `LeadVersionConflictTest`, `ManualLeadContactTest`, `UnassignedLeadNotificationTest` (adaptado sin canal chatbot/conversaciones), `PublicLeadEndpointTest`, `ContactIdentityConcurrencyMySqlTest`, `TenantIsolationAndRbacTest`, `PublicInventoryTest`, `ProjectIntakeTest` y `ProductionEnvironmentTest`.
+  - Tras sumar **EVP-107** / **EVP-110** (`InventorySourceImport`, `WorkbookInventorySource`): `vendor/bin/pint --test` (`PASS`, 204 archivos), `vendor/bin/phpstan analyse` (`[OK] No errors`) y `php artisan test --filter=WorkbookImportTest` (`13 passed`, `88 assertions`).
 - **Frontend (`everprop-public`):**
   - `npm run lint`: 0 errores (solo warnings preexistentes).
   - `npm run build` (`next build` 16.3.6 Turbopack): compilación y chequeo TypeScript exitosos en las 29 rutas (sin `/admin/conversaciones`, `/admin/conocimiento` ni `/admin/solicitudes-visita`).
