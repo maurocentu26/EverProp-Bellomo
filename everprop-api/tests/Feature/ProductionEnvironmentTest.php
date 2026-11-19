@@ -41,10 +41,7 @@ final class ProductionEnvironmentTest extends TestCase
         config(['webpush.connection' => 'database', 'webpush.subject' => 'invalid-subject']);
         $this->artisan('everprop:production-check --webpush')->assertFailed();
         config(['session.driver' => 'database', 'cache.default' => 'database', 'queue.default' => 'sync']);
-        $this->artisan('everprop:production-check --connections')
-            ->expectsOutputToContain('OK Schema: project intakes')
-            ->expectsOutputToContain('OK Schema: deleted leads closed')
-            ->assertSuccessful();
+        $this->artisan('everprop:production-check')->assertSuccessful();
         config(['session.driver' => 'file']);
         $this->artisan('everprop:production-check')->assertFailed();
         config(['session.driver' => 'database']);

@@ -49,15 +49,19 @@ final class ProjectIntakeTest extends TestCase
         // Progress updates and default-UNKNOWN units stay out of public catalog until explicit publication.
         $this->patchJson('/api/v1/admin/projects/'.$uuid, ['status' => 'PLANNING', 'progress' => 12])->assertOk();
         $this->patchJson('/api/v1/admin/projects/'.$uuid, ['progress' => null])->assertOk()->assertJsonPath('data.progress', null);
-        $propertyUuid = $this->postJson('/api/v1/admin/project-intakes/'.$uuid.'/units', [
+        $createdUnit = $this->postJson('/api/v1/admin/project-intakes/'.$uuid.'/units', [
             'request_key' => (string) Str::uuid(), 'title' => 'Unidad oculta', 'operation' => 'SALE',
             'category' => 'APARTMENT', 'city' => 'Jujuy', 'province' => 'Jujuy',
-        ])->assertCreated()->assertJsonPath('data.status', 'UNKNOWN')->json('data.public_id');
+        ])->assertCreated()->assertJsonPath('data.status', 'UNKNOWN');
+        $propertyUuid = $createdUnit->json('data.public_id');
         $this->getJson('/api/v1/public/projects/'.$uuid)->assertNotFound();
         $this->getJson('/api/v1/public/properties/'.$propertyUuid)->assertNotFound();
 
         $this->patchJson('/api/v1/admin/projects/'.$uuid.'/publish', ['status' => 'PRE_SALE'])->assertOk();
-        $this->patchJson('/api/v1/admin/properties/'.$propertyUuid.'/publish', ['status' => 'AVAILABLE'])->assertOk();
+        $this->patchJson('/api/v1/admin/properties/'.$propertyUuid.'/publish', [
+            'status' => 'AVAILABLE',
+            'version' => $createdUnit->json('data.version') ?? 1,
+        ])->assertOk();
         $this->getJson('/api/v1/public/projects/'.$uuid)->assertOk();
         $this->getJson('/api/v1/public/properties/'.$propertyUuid)->assertOk();
     }
