@@ -9,7 +9,6 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
-use Tests\Feature\Conversations\ConversationTestSupport;
 use Tests\TestCase;
 
 /**
@@ -19,8 +18,6 @@ use Tests\TestCase;
  */
 final class PublicLeadRecontactNotificationTest extends TestCase
 {
-    use ConversationTestSupport;
-
     /** @var list<int> */
     private array $tenants = [];
 
@@ -28,6 +25,28 @@ final class PublicLeadRecontactNotificationTest extends TestCase
     {
         $this->deleteSyntheticTenants($this->tenants);
         parent::tearDown();
+    }
+
+    /**
+     * Same cleanup as DeletedLeadReentryTest: main has no ConversationTestSupport (EVP-174).
+     *
+     * @param  list<int>  $tenantIds
+     */
+    private function deleteSyntheticTenants(array $tenantIds): void
+    {
+        if ($tenantIds === []) {
+            return;
+        }
+        $tables = DB::table('information_schema.COLUMNS')->where('COLUMNS.TABLE_SCHEMA', DB::getDatabaseName())
+            ->where('COLUMNS.COLUMN_NAME', 'tenant_id')->join('information_schema.TABLES as t', fn ($j) => $j
+            ->on('t.TABLE_NAME', '=', 'COLUMNS.TABLE_NAME')->on('t.TABLE_SCHEMA', '=', 'COLUMNS.TABLE_SCHEMA'))
+            ->where('t.TABLE_TYPE', 'BASE TABLE')->pluck('COLUMNS.TABLE_NAME');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        foreach ($tables as $table) {
+            DB::table($table)->whereIn('tenant_id', $tenantIds)->delete();
+        }
+        DB::table('tenants')->whereIn('id', $tenantIds)->delete();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
     }
 
     public function test_a_resubmitted_form_notifies_a_new_inquiry_not_a_new_lead(): void
