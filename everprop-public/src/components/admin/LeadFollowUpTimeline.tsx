@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import type { LeadFollowUp, LeadFollowUpType } from "@/data/admin-sample";
+import { isMockDataMode } from "@/lib/data-mode";
 import { getAdvisor } from "@/data/auth-sample";
 import { formatArgentinaDateTime, getLeadFollowUps } from "@/lib/lead-follow-up";
 import {
@@ -114,7 +115,7 @@ export function LeadFollowUpTimeline({
   const activeAdvisor = selectedFollowUp
     ? selectedFollowUp.agentName
       ? { name: selectedFollowUp.agentName }
-      : getAdvisor(selectedFollowUp.agentId)
+      : (isMockDataMode ? getAdvisor(selectedFollowUp.agentId) : undefined)
     : null;
 
   return (
@@ -124,7 +125,7 @@ export function LeadFollowUpTimeline({
           {items.map((item) => {
             const meta = TYPE_META[item.type];
             const Icon = meta.icon;
-            const advisorName = item.agentName || getAdvisor(item.agentId)?.name || "Asesor";
+            const advisorName = item.agentName || (isMockDataMode ? getAdvisor(item.agentId)?.name : undefined) || "Asesor";
             const formattedDate = formatArgentinaDateTime(item.occurredAt);
 
             return (
@@ -178,7 +179,7 @@ export function LeadFollowUpTimeline({
 
                   {/* Fila inferior: Próximo contacto / Ver Detalle */}
                   <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 pt-2 text-xs text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center gap-1.5 truncate">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                       {item.nextContactAt ? (
                         <span className="inline-flex items-center gap-1 font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 text-[11px] dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-300">
                           <CalendarCheck className="size-3" />
@@ -232,7 +233,7 @@ export function LeadFollowUpTimeline({
           if (!open) setSelectedFollowUp(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto dark:bg-card dark:border-border">
+        <DialogContent showCloseButton={false} className="mi-day leads-workspace lead-review sm:max-w-xl max-h-[90vh] overflow-y-auto dark:bg-card dark:border-border">
           {selectedFollowUp && activeMeta && (
             <>
               <DialogHeader>

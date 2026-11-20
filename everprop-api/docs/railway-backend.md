@@ -8,6 +8,24 @@ La imagen `production` usa Nginx + PHP-FPM con usuario 10001. No usa el servidor
 
 Este proyecto ya dispone de API y MySQL. Para actualizarlo, conservar ambos servicios y aplicar únicamente los forward SQL pendientes. No importar el baseline ni los seeds. Configurar `SESSION_DRIVER=database`, `CACHE_STORE=database` y `QUEUE_CONNECTION=sync`; las tablas `sessions`, `cache` y `cache_locks` deben existir. No requiere Redis para este modo. Readiness verifica las dependencias seleccionadas. La cola síncrona ejecuta los trabajos durante la petición; los recordatorios requieren ejecutar el scheduler por separado.
 
+#### Avisos push en `awake-dedication` (EVP-173)
+
+Con `QUEUE_CONNECTION=sync`, las peticiones no encolan nada, pero el push (`SendWebPush`) se encola en `WEBPUSH_QUEUE_CONNECTION=database` para no demorar la acción que lo dispara. Hace falta un servicio de cola desde el mismo repositorio y commit:
+
+- Raíz `/everprop-api` y config `/everprop-api/railway-worker.json`.
+- Sin dominio público.
+- Las mismas variables que la API (MySQL, APP_KEY, sesiones, tenant), más `QUEUE_WORKER_CONNECTION=database`. La petición sigue en `sync`.
+
+Orden:
+1. Aplicar el forward `2026-09-30.001_queue_tables.sql`, que crea `jobs` y `failed_jobs`, con la conexión de migraciones.
+2. Cargar en la API y en la cola `WEBPUSH_PUBLIC_KEY`, `WEBPUSH_PRIVATE_KEY`, `WEBPUSH_SUBJECT` y `WEBPUSH_QUEUE_CONNECTION=database`. Ver `web-push.md`.
+3. Crear el servicio de cola.
+4. Correr `php artisan everprop:production-check --connections --webpush` en la API.
+
+Hasta que haya `WEBPUSH_PRIVATE_KEY` la API no encola push. Por eso la cola puede crearse antes, pero sin claves no tiene trabajo. El panel lee la clave pública desde `/api/v1/admin/push/config`, así que Vercel no necesita variables nuevas.
+
+El scheduler (`railway-scheduler.json`), que corre los recordatorios de cobranzas, queda fuera de este paso.
+
 El frontend publicado es `https://ever-prop-bellomo.vercel.app`. Configurar ese origen exacto para CORS y su hostname para Sanctum. La raíz del frontend redirige a `/login`.
 
 ### Alternativa con Redis y procesos separados
