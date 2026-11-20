@@ -45,7 +45,7 @@ final class TodayVisitsTest extends TestCase
     {
         [$tenant, $advisor, $lead] = $this->fixture();
         $this->actingAs($advisor)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173']);
-        $body = ['name' => 'QA origin', 'source_channel' => 'INSTAGRAM'];
+        $body = ['phone' => '11 5555-0111', 'name' => 'QA origin', 'source_channel' => 'INSTAGRAM'];
         $this->postJson('/api/v1/admin/leads', array_merge($body, ['stage' => 'NEGOTIATION']))->assertUnprocessable();
         $created = $this->postJson('/api/v1/admin/leads', $body)->assertCreated()->assertJsonPath('data.source_channel', 'INSTAGRAM');
         $id = $created->json('data.id');

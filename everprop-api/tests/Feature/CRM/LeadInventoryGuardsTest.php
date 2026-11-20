@@ -26,7 +26,7 @@ final class LeadInventoryGuardsTest extends TestCase
         $this->as($advisor, $tenant)->postJson($path, ['property_id' => $inScope])->assertOk();
         $this->as($advisor, $tenant)->postJson($path, ['property_id' => $outOfScope])->assertNotFound();
         $this->as($advisor, $tenant)->postJson($path, ['property_id' => $deleted])->assertNotFound();
-        $this->as($advisor, $tenant)->postJson('/api/v1/admin/leads', ['name' => 'Nuevo', 'property_id' => $deleted])
+        $this->as($advisor, $tenant)->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0104', 'name' => 'Nuevo', 'property_id' => $deleted])
             ->assertUnprocessable()->assertJsonValidationErrors('property_id');
 
         $this->assertSame(1, DB::table('lead_properties')->where('tenant_id', $tenant->id)->count());
