@@ -20,13 +20,15 @@ import {
   MapPin,
   Phone,
   Search,
-  Sparkles,
+  UserPlus,
   Store,
   User,
   X,
   type LucideIcon,
 } from "lucide-react";
 
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { STAGE_LABELS } from "@/components/admin/LeadTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -43,7 +45,6 @@ import {
   type Project,
   type Property,
 } from "@/data/admin-sample";
-import { MOCK_USERS } from "@/data/auth-sample";
 import { appendLeadToStorage, loadLeadList, loadProjectList, loadPropertyList, saveLeadList } from "@/lib/admin-storage";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -53,6 +54,7 @@ import {
   loadEverpropCatalog,
   loadEverpropLeadById,
   isLeadVersionConflict,
+  LEAD_VERSION_CONFLICT_MESSAGE,
   updateEverpropLead,
 } from "@/lib/everprop-api";
 import { createLeadInterest, isProjectUnit } from "@/lib/lead-interests";
@@ -86,7 +88,7 @@ const CATEGORIES: AssetCategoryOption[] = [
   },
   {
     id: "comercial",
-    title: "Comerciales (cochera/locales)",
+    title: "Locales y cocheras",
     subtitle: "Espacios de estacionamiento, locales y oficinas",
     icon: Store,
     color: "text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100/70 dark:text-indigo-400 dark:border-indigo-800 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60",
@@ -146,8 +148,11 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [review, setReview] = useState<FormValues | null>(null);
+  const savingReview = useRef(false);
   const idempotencyKey = useRef(typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
   const versionAfterConflict = useRef<number | undefined>(undefined);
+  const [resetPending, setResetPending] = useState(false);
 
   const { advisors: advisorList, error: advisorsError } = useLeadAdvisors(!isAdvisor);
 
@@ -246,6 +251,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       agentId: isAdvisor ? user?.id : "",
     },
   });
+  const hasDraft = form.formState.isDirty || Boolean(selectedCategory || selectedProjectId || selectedAsset || assetSearchQuery.trim());
 
   useEffect(() => {
     if (activeLead) {
@@ -295,6 +301,15 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     }
   }, [activeLead, allProperties, selectedAsset, selectedCategory, selectedProjectId]);
 
+  const draftStorageKey = !isEditing ? `everprop:new-lead-draft:${companyId}` : "";
+  const watchedName = form.watch("name");
+  const watchedOrigin = form.watch("origin");
+  const watchedStage = form.watch("stage");
+  const watchedPriority = form.watch("priority");
+  const watchedBudget = form.watch("budget");
+  const watchedCurrency = form.watch("currency");
+  const watchedNotes = form.watch("notes");
+  const watchedAgentId = form.watch("agentId");
   const watchedPhone = form.watch("phone");
   const watchedEmail = form.watch("email");
   const isContactModified = useMemo(() => {
@@ -303,6 +318,73 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     const emailChanged = (watchedEmail?.trim() || "") !== (activeLead.email?.trim() || "");
     return phoneChanged || emailChanged;
   }, [isEditing, activeLead, watchedPhone, watchedEmail]);
+
+  useEffect(() => {
+    if (!draftStorageKey || typeof sessionStorage === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(draftStorageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved?.values && typeof saved.values === "object") {
+        form.reset({
+          name: "",
+          origin: "WhatsApp",
+          email: "",
+          phone: "",
+          stage: "new",
+          priority: "NORMAL",
+          budget: "",
+          currency: "USD",
+          notes: "",
+          agentId: isAdvisor ? user?.id : "",
+          ...saved.values,
+        });
+      }
+      if (saved?.selectedCategory) setSelectedCategory(saved.selectedCategory);
+      if (saved?.selectedProjectId) setSelectedProjectId(saved.selectedProjectId);
+      if (saved?.assetSearchQuery) setAssetSearchQuery(saved.assetSearchQuery);
+    } catch { /* ignore */ }
+  }, [draftStorageKey, form, isAdvisor, user?.id]);
+
+  useEffect(() => {
+    if (!draftStorageKey || typeof sessionStorage === "undefined") return;
+    try {
+      const hasAnyValue = Boolean(
+        watchedName?.trim() || watchedPhone?.trim() || watchedEmail?.trim() || watchedBudget?.trim() || watchedNotes?.trim() || selectedCategory || selectedProjectId || assetSearchQuery.trim()
+      );
+      if (!hasAnyValue) return;
+      sessionStorage.setItem(
+        draftStorageKey,
+        JSON.stringify({
+          values: {
+            name: watchedName || "",
+            origin: watchedOrigin || "WhatsApp",
+            email: watchedEmail || "",
+            phone: watchedPhone || "",
+            stage: watchedStage || "new",
+            priority: watchedPriority || "NORMAL",
+            budget: watchedBudget || "",
+            currency: watchedCurrency || "USD",
+            notes: watchedNotes || "",
+            agentId: watchedAgentId || (isAdvisor ? user?.id : ""),
+          },
+          selectedCategory,
+          selectedProjectId,
+          assetSearchQuery,
+        })
+      );
+    } catch { /* ignore */ }
+  }, [draftStorageKey, watchedName, watchedOrigin, watchedEmail, watchedPhone, watchedStage, watchedPriority, watchedBudget, watchedCurrency, watchedNotes, watchedAgentId, selectedCategory, selectedProjectId, assetSearchQuery, isAdvisor, user?.id]);
+
+  useEffect(() => {
+    if (!hasDraft || typeof window === "undefined") return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [hasDraft]);
 
   const availableProjects = useMemo(() => {
     if (!selectedCategory) {
@@ -367,6 +449,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   };
 
   const handleReset = () => {
+    if (draftStorageKey && typeof sessionStorage !== "undefined") {
+      try { sessionStorage.removeItem(draftStorageKey); } catch { /* ignore */ }
+    }
     setSelectedCategory(null);
     setSelectedProjectId("");
     setSelectedAsset(null);
@@ -481,11 +566,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
         }
       }
 
-      const stored = loadLeadList(sampleLeads, companyId);
-      const nextLeads = stored.some((l) => l.id === updatedLead.id)
-        ? stored.map((l) => (l.id === updatedLead.id ? updatedLead : l))
-        : [updatedLead, ...stored];
-      if (isMockDataMode) saveLeadList(nextLeads, companyId);
+      if (isMockDataMode) {
+        const stored = loadLeadList(sampleLeads, companyId);
+        const nextLeads = stored.some((l) => l.id === updatedLead.id)
+          ? stored.map((l) => (l.id === updatedLead.id ? updatedLead : l))
+          : [updatedLead, ...stored];
+        saveLeadList(nextLeads, companyId);
+      }
 
       toast.success("Ficha del lead completada con éxito.");
       router.push(`/admin/leads/${activeLead.id}`);
@@ -538,6 +625,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
         nextLead.id = created.id;
         if (created.duplicate) {
           toast.info("Este contacto ya tiene un lead abierto", { description: `Te llevamos a la ficha de ${created.name}. No se creó otro lead.` });
+          if (draftStorageKey && typeof sessionStorage !== "undefined") {
+            try { sessionStorage.removeItem(draftStorageKey); } catch { /* ignore */ }
+          }
           router.push(`/admin/leads/${created.id}`);
           return;
         }
@@ -573,6 +663,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           : `${trimmedName} se registró correctamente en el pipeline.`,
       });
 
+      if (draftStorageKey && typeof sessionStorage !== "undefined") {
+        try { sessionStorage.removeItem(draftStorageKey); } catch { /* ignore */ }
+      }
       router.push("/admin/leads");
     } catch {
       toast.error("No pudimos guardar el lead en almacenamiento local");
@@ -583,7 +676,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   if (loadError) return <p role="alert" className="rounded-xl border border-amber-500/40 p-4">{loadError}</p>;
   if (isEditing && isLoadingLead) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="mi-day leads-workspace lead-form max-w-[1500px] mx-auto space-y-6">
         <div className="h-6 w-44 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
         <div className="h-[36rem] animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
       </div>
@@ -591,34 +684,35 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="mi-day leads-workspace lead-form max-w-[1500px] mx-auto space-y-6">
       <Link
         href={isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads"}
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-100"
       >
-        <ArrowLeft className="h-4 w-4" /> {isEditing ? "Volver a la ficha del lead" : "Volver a la lista de leads"}
+        <ArrowLeft className="h-4 w-4" /> {isEditing ? "Volver a la ficha del lead" : "Mis Leads"}
       </Link>
 
       <Card className="w-full overflow-hidden border border-border bg-card shadow-sm rounded-2xl p-0">
         <div className="bg-card px-5 py-5 text-card-foreground border-b border-border sm:px-6">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-              <Sparkles size={20} aria-hidden="true" />
+              <UserPlus size={20} aria-hidden="true" />
             </span>
             <div>
               <h1 className="text-xl font-bold text-card-foreground">
-                {isEditing ? `Completar Ficha: ${activeLead?.name || ""}` : "Alta de nuevo lead"}
+                {isEditing ? `Completar Ficha: ${activeLead?.name || ""}` : "Nuevo lead"}
               </h1>
               <CardDescription className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {isEditing
                   ? "Actualizá los datos de contacto, requerimientos comerciales y activos de interés del prospecto."
-                  : "Registrá sus datos de contacto y, si lo conocés, el inmueble de interés."}
+                  : "Completá el nombre y un teléfono o correo. El interés y las notas son opcionales."}
               </CardDescription>
             </div>
           </div>
         </div>
 
-        <form id="new-lead-page-form" onSubmit={form.handleSubmit(onSubmit, onFormError)}>
+        <form id="new-lead-page-form" onSubmit={form.handleSubmit(data => setReview(data), onFormError)}>
+          <aside className="leads-focus lead-form-help"><h2>Antes de guardar</h2><p>Revisá los datos y el asesor responsable. En el siguiente paso vas a confirmar la ficha completa.</p></aside>
           <CardContent className="p-3 sm:p-6 space-y-6">
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
               {/* ── Seccion 1: Datos basicos del lead ── */}
@@ -786,7 +880,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {!isEditing && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field>
                     <FieldLabel htmlFor="lead-priority">Prioridad</FieldLabel>
                     <select id="lead-priority" {...form.register("priority")} className="h-10 rounded-lg border bg-background px-3">
@@ -802,7 +896,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                     <FieldLabel htmlFor="lead-currency">Moneda</FieldLabel>
                     <select id="lead-currency" {...form.register("currency")} className="h-10 rounded-lg border bg-background px-3"><option value="USD">USD</option><option value="ARS">ARS</option></select>
                   </Field>
-                </div>
+                </div>}
 
                 <Controller
                   name="notes"
@@ -852,21 +946,21 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
 
               {/* ── Seccion 2: Interes inmobiliario (Opcional) ── */}
               <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50" aria-labelledby="lead-interest-data">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-950/80 dark:text-violet-300">
                       <Building2 size={16} aria-hidden="true" />
                     </span>
                     <h2 id="lead-interest-data" className="text-sm font-bold text-slate-900 dark:text-slate-100">Interés inmobiliario</h2>
                   </div>
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                  <span className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
                     Opcional
                   </span>
                 </div>
 
                 <Field>
                   <FieldLabel className="text-xs font-semibold text-slate-700 dark:text-slate-300">Categoría de interés</FieldLabel>
-                  <div className="grid grid-cols-2 gap-2 mt-1">
+                  <div className="lead-categories grid grid-cols-2 gap-2 mt-1">
                     {CATEGORIES.map((category) => {
                       const Icon = category.icon;
                       const isSelected = selectedCategory === category.id;
@@ -921,7 +1015,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                   </FieldLabel>
 
                   {selectedAsset && (
-                    <div className="my-2 flex items-center gap-2.5 rounded-lg border border-blue-300 bg-blue-50 p-2.5 shadow-sm dark:border-blue-900 dark:bg-blue-950/40">
+                    <div className="lead-selected-asset my-2 flex flex-wrap items-center gap-2.5 rounded-lg border border-blue-300 bg-blue-50 p-2.5 shadow-sm dark:border-blue-900 dark:bg-blue-950/40">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white">
                         <Building2 size={14} aria-hidden="true" />
                       </span>
@@ -937,9 +1031,9 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                         size="icon"
                         onClick={() => setSelectedAsset(null)}
                         className="h-7 w-7 shrink-0 text-slate-500 hover:bg-muted hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                        aria-label="Quitar activo seleccionada"
+                        aria-label="Quitar activo seleccionado"
                       >
-                        <X size={14} aria-hidden="true" />
+                        <X size={14} aria-hidden="true" /> Quitar activo
                       </Button>
                     </div>
                   )}
@@ -1000,7 +1094,13 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push(isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads")}
+              onClick={() => {
+                if (hasDraft && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Tenés datos sin guardar en el borrador. ¿Querés salir y descartarlos?")) return;
+                if (draftStorageKey && typeof sessionStorage !== "undefined") {
+                  try { sessionStorage.removeItem(draftStorageKey); } catch { /* ignore */ }
+                }
+                router.push(isEditing && (activeLead?.id || leadId) ? `/admin/leads/${activeLead?.id || leadId}` : "/admin/leads");
+              }}
               className="h-10 px-4 text-xs font-semibold border-slate-300 text-slate-700 hover:bg-muted dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Cancelar
@@ -1011,7 +1111,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={handleReset}
+                  onClick={() => { if (hasDraft) setResetPending(true); }}
+                  disabled={isSubmitting || !hasDraft}
                   className="h-10 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                 >
                   Limpiar formulario
@@ -1023,12 +1124,52 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                 disabled={isSubmitting}
                 className="h-10 bg-blue-600 px-6 text-xs font-bold text-white hover:bg-blue-700 shadow-sm disabled:opacity-50"
               >
-                {isSubmitting ? "Guardando..." : isEditing ? "Guardar y completar ficha" : "Guardar lead"}
+                {isSubmitting ? "Guardando..." : isEditing ? "Revisar cambios" : "Revisar lead"}
               </Button>
             </div>
           </CardFooter>
         </form>
       </Card>
+      <Dialog open={Boolean(review)} onOpenChange={open => !open && !isSubmitting && setReview(null)}>
+        <DialogContent showCloseButton={false} className="mi-day leads-workspace lead-review sm:max-w-2xl">
+          <DialogTitle>{isEditing ? "Confirmar cambios del lead" : "Confirmar nuevo lead"}</DialogTitle>
+          <DialogDescription>Revisá los datos antes de guardarlos. Podés volver al formulario sin perderlos.</DialogDescription>
+          {review && <dl className="lead-review-data">
+            {Object.entries({
+              Nombre: review.name,
+              Teléfono: review.phone || "Sin informar",
+              Correo: review.email || "Sin informar",
+              Origen: review.origin,
+              Etapa: STAGE_LABELS[review.stage]?.label || review.stage,
+              Asesor: isAdvisor ? (isEditing ? activeLead?.agentName : user?.name) || "Asesor actual" : advisorList.find(advisor => advisor.id === review.agentId)?.name || (review.agentId === activeLead?.agentId ? activeLead?.agentName : undefined) || "Sin asignar",
+              ...(!isEditing ? { Prioridad: ({ NORMAL: "Normal", LOW: "Baja", HIGH: "Alta", URGENT: "Urgente" })[review.priority || "NORMAL"],
+              Presupuesto: review.budget ? `${review.currency || "USD"} ${Number(review.budget).toLocaleString("es-AR")}` : "Sin informar" } : {}),
+              Interés: CATEGORIES.find(category => category.id === selectedCategory)?.title || "Sin categoría",
+              Proyecto: allProjects.find(project => project.id === (selectedAsset?.projectId || selectedProjectId))?.name || "Sin informar",
+              Activo: selectedAsset ? `${selectedAsset.title} · Unidad ${selectedAsset.unitNumber || "sin informar"} · ${selectedAsset.currency} ${selectedAsset.price.toLocaleString("es-AR")}` : "Sin activo nuevo seleccionado",
+              Notas: review.notes || "Sin notas",
+            }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>}
+          <DialogFooter>
+            <Button variant="outline" disabled={isSubmitting} onClick={() => setReview(null)}>Volver a editar</Button>
+            <Button disabled={isSubmitting || !review} onClick={async () => {
+              if (!review || savingReview.current) return;
+              savingReview.current = true;
+              try { await onSubmit(review); } finally { savingReview.current = false; }
+            }}>{isSubmitting ? "Guardando…" : "Confirmar y guardar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={resetPending} onOpenChange={setResetPending}>
+        <DialogContent showCloseButton={false} className="mi-day leads-workspace lead-review sm:max-w-lg">
+          <DialogTitle>¿Limpiar el formulario?</DialogTitle>
+          <DialogDescription>Se borrarán los datos ingresados en este formulario. No se elimina ningún cliente guardado.</DialogDescription>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setResetPending(false)}>Seguir completando</Button>
+            <Button type="button" variant="destructive" onClick={() => { handleReset(); setResetPending(false); }}>Sí, limpiar formulario</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import { isMockDataMode } from "@/lib/data-mode";
 import { Loader2, ShieldAlert } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function MainLayout({ children }: Props) {
     const pathname = usePathname();
     const router = useRouter();
     const { currentUser, isLoaded, invalidateSession } = useAuth();
+    const { theme } = useTheme();
     const currentUserId = currentUser?.id;
 
     useEffect(() => {
@@ -50,10 +52,7 @@ export default function MainLayout({ children }: Props) {
             const channel = new BroadcastChannel("everprop_events");
             channel.onmessage = (event) => {
                 if (event.data?.type === "LEAD_REASSIGNED" && event.data?.targetAgentId === currentUserId) {
-                    toast.info(`Nuevo lead asignado: ${event.data.leadName}`, {
-                        position: "top-center",
-                        duration: 5000,
-                    });
+                    toast.info(`Nuevo lead asignado: ${event.data.leadName}`, { duration: 5000 });
                 }
             };
             return () => channel.close();
@@ -137,6 +136,8 @@ export default function MainLayout({ children }: Props) {
                     </div>
                 </div>
             </SidebarProvider>
+            {/* The panel's only Toaster (EVP-168): without it every toast() was silent. Inside the shell so the advisor dock can push it up via --toast-offset-bottom. */}
+            <Toaster theme={theme} position="bottom-right" richColors closeButton containerAriaLabel="Avisos" toastOptions={{ closeButtonAriaLabel: "Cerrar aviso" }} offset={{ bottom: "var(--toast-offset-bottom, 24px)" }} mobileOffset={{ bottom: "var(--toast-offset-bottom, 16px)" }} />
         </div>
         </PanelTextSizeProvider>
     );

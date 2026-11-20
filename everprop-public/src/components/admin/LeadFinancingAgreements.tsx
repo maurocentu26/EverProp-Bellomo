@@ -203,7 +203,7 @@ export function LeadFinancingAgreements({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/admin/cobranzas?search=${encodeURIComponent(leadName)}`}
             className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-muted dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -324,7 +324,7 @@ export function LeadFinancingAgreements({
 
                 {/* Installments Table */}
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="lead-installments w-full text-left text-xs">
                     <thead className="border-b border-slate-200 bg-slate-100/80 font-bold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
                       <tr>
                         <th className="px-4 py-2.5">Cuota</th>
@@ -346,13 +346,13 @@ export function LeadFinancingAgreements({
                             key={inst.id}
                             className="transition-colors hover:bg-muted dark:hover:bg-slate-800/40"
                           >
-                            <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
+                            <td data-label="Cuota" className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
                               Cuota {inst.installmentNumber}
                             </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                            <td data-label="Vencimiento" className="px-4 py-3 text-slate-600 dark:text-slate-400">
                               {formatDueDate(inst.dueDate)}
                             </td>
-                            <td className="px-4 py-3">
+                            <td data-label="Estado" className="px-4 py-3">
                               {statusInfo.status === "OVERDUE" && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 dark:bg-rose-950 dark:text-rose-300">
                                   <AlertCircle className="size-3" />
@@ -377,11 +377,11 @@ export function LeadFinancingAgreements({
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
+                            <td data-label="Importe" className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
                               {formatInstallmentAmount(inst.amountExpected, inst.currency)}
                           {inst.serverManaged && <span className="block text-xs font-normal">Saldo: {formatInstallmentAmount(inst.amountRemaining ?? 0, inst.currency)}</span>}
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td data-label="Acciones" className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
                                 {whatsappUrl && inst.status !== "PAID" && (
                                   <a
