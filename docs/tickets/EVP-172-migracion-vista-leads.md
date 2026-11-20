@@ -29,4 +29,19 @@ Rama `release/evp-172-vista-leads` cortada desde `origin/main` (`f79fb03`). Migr
 
 ## Verificación
 
-Pendiente de ejecución en trabajo de verificación de la rama.
+Ejecutada sobre el worktree aislado `EverProp-EVP-172-vista-leads` (`npm ci` limpio, sin modificaciones en `everprop-api/` ni en `everprop-api.ts`):
+
+- `node .github/scripts/check-pr-policy.mjs` (`BASE=main`, `HEAD=release/evp-172-vista-leads`): `OK: release/evp-172-vista-leads → main`.
+- Grep de exclusiones (`LeadMessagesLink`, `/admin/conversaciones`, `conversations-api`, `needsFollowUp`, `FollowUpNotification`, `seguimiento=1`) sobre `origin/main..HEAD`: 0 coincidencias.
+- `npm run lint`: 0 errores.
+- `npx tsc --noEmit`: 0 errores.
+- `npm run test:leads`: **13/13** (`leads-redesign.test.mjs`, `lead-search.test.mjs`, `leads-api.test.mjs`).
+- `npm run test:mi-dia`: **32/32**.
+- `npm run test:projects`: **25/25**.
+- `npm run test:statistics`: **1/1**.
+- `npm run test:materials`: **6/6**.
+- `npm run test:password-recovery`: **3/3**.
+- `npm run test:collections`: **4/4**.
+- `node --test tests/login-password.test.mjs`: **1/1**.
+- Total suites frontend: **85/85** aprobadas.
+- `npm run build` (`NEXT_PUBLIC_DATA_MODE=api`): compilación y tipeo exitosos (`29/29` páginas estáticas generadas).
