@@ -36,7 +36,10 @@ En producción los nombres siguen siendo los rótulos del Excel ("LA ARBOLADA.",
   - El aviso de publicación aparece solo al pasar a una etapa pública.
 
   Además, `projects-redesign.test.mjs` ahora verifica que el asesor no ve "Editar" y que el administrador lo ve en cada unidad.
-- **`npx eslint`** sobre los archivos tocados: 0 errores y ningún warning nuevo (los de `any` en `everprop-api.ts` ya existían).
+- **`npx eslint`** sobre los archivos tocados: 0 errores. Los warnings de `any` en `everprop-api.ts` ya existían.
+  - **Corrección (2026-11-20, al portar a `develop`):** `ProjectIntakeForm.tsx` sí suma 2 warnings `react-hooks/set-state-in-effect` (líneas 49 y 72). El código señalado no cambió: son los `setLoading`/`setPending` de dos efectos que ya existían.
+  - Al quitar el helper `input()`, el lint del React Compiler empezó a analizar el componente que antes salteaba.
+  - Son warnings, no errores, así que no frenan `npm run lint` en CI. Corregirlos cambia la carga del ingreso guiado y queda fuera de este ticket.
 - **`npm run build`** (Next 16.3.6): compila y pasa el chequeo de TypeScript.
 - **QA en navegador en modo mock** (`http://localhost:3171`), sobre "Loteo San Pablo 1":
   - **Administrador:** "Editar" en cada unidad. Al cambiar Lote 20 a precio USD 19.000 y estado Reservado, la fila muestra "Reservado · USD 19.000" y la barra pasa a "1 en venta · 12 reservadas".
@@ -56,3 +59,11 @@ En producción los nombres siguen siendo los rótulos del Excel ("LA ARBOLADA.",
 - No incluye borrar proyectos, subir materiales (módulo Web) ni reimportar el Excel.
 - Una reimportación futura del Excel vuelve a pisar estado y precio de las unidades. Desde EVP-110 conserva nombre, ciudad y dirección del proyecto.
 - Después del merge a `main`, sync `main` → `develop`, porque `develop` tampoco tiene esta edición.
+
+## Port a `develop` (2026-11-20)
+
+Se mergeó en `main` con el PR #150 (`f79fb03`). Igual que EVP-166 y EVP-167, se porta con `cherry-pick` en `ticket/EVP-171-editar-ficha-proyecto` desde `origin/develop`, y no con un merge de `main`, que arrastraría los 24 commits del port de EVP-170.
+
+- **Conflicto en los imports de `ProjectIntakeForm.tsx`:** se conservan los 5 pasos de `develop` y `ProjectWebEditor`, se agrega `ProjectBasicsFields` y se quita `fieldClass`, que ya no se usa. Los campos del paso 1 de `develop` eran idénticos a los de `main`.
+- **Backend:** el de proyectos (`AdminProjectController`, `UpdateProjectRequest`, `ProjectStatus::publicValues`) es igual en las dos ramas. `EditPropertyModal` cambió por dentro en `develop`, pero sus props son las mismas.
+- **Verificación en la rama del port:** los 4 archivos de `test:projects` dan 25 pass y 0 fail; corren con `node --test` porque `develop` no tiene ese script. `npm run build` compila y pasa TypeScript. El lint da los mismos 2 warnings que en `main`.
