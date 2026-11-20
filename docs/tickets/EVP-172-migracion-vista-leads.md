@@ -27,6 +27,11 @@ Rama `release/evp-172-vista-leads` cortada desde `origin/main` (`f79fb03`). Migr
 - Alertas automáticas/push de **EVP-50** (`FollowUpNotification.php`, estado `attention`, `needsFollowUp`, `?seguimiento=1`).
 - Backend (`everprop-api/`), base de datos y `everprop-public/src/lib/everprop-api.ts`.
 
+## Ajustes visuales posteriores al preview (`bfb6220`)
+
+- `everprop-public/src/components/ui/popover.tsx`: agregado `className="isolate z-50 outline-none"` en `PopoverPrimitive.Positioner` para que el popover `"Tamaño de texto"` apile por encima del `<thead>` sticky (`z-10`) de la tabla de leads.
+- `everprop-public/src/components/admin/LeadTable.tsx` y `everprop-public/src/app/admin-design.css`: eliminada la 6.ª columna `Acciones` (22%), ampliadas las 5 columnas de datos (`26%`, `22%`, `17%`, `12%`, `23%`), incorporados `tabIndex={0} role="region" aria-label="Lista de leads"` y trasladados los botones de acción a una segunda fila a ancho completo (`<td colSpan={5} className="leads-row-actions-cell">`) dentro del `<tbody>` de cada lead (contacto a la izquierda y CRM a la derecha mediante `data-lead-action="crm-start"` con `margin-inline-start: auto`, además de `w-full` en vista card).
+
 ## Verificación
 
 Ejecutada sobre el worktree aislado `EverProp-EVP-172-vista-leads` (`npm ci` limpio, sin modificaciones en `everprop-api/` ni en `everprop-api.ts`):
@@ -45,3 +50,13 @@ Ejecutada sobre el worktree aislado `EverProp-EVP-172-vista-leads` (`npm ci` lim
 - `node --test tests/login-password.test.mjs`: **1/1**.
 - Total suites frontend: **85/85** aprobadas.
 - `npm run build` (`NEXT_PUBLIC_DATA_MODE=api`): compilación y tipeo exitosos (`29/29` páginas estáticas generadas).
+
+### Verificación posterior a `bfb6220`
+
+- `npm run lint`: 0 errores.
+- `npx tsc --noEmit`: 0 errores.
+- `npm run test:leads`: **13/13**.
+- `npm run test:mi-dia`: **32/32**.
+- `npm run build` (`NEXT_PUBLIC_DATA_MODE=api` y `NEXT_PUBLIC_DATA_MODE=mock`): compilación exitosa (`29/29` páginas estáticas).
+- `node .github/scripts/check-pr-policy.mjs`: `OK: release/evp-172-vista-leads → main`.
+- Revisión visual en navegador sobre `http://127.0.0.1:3000/admin/leads` (`1600×900`, modo oscuro, tamaños `Actual` y `20 % más grande`): los botones de acción se alinean en 1 fila horizontal, el popover `"Tamaño de texto"` queda por encima del `<thead>` sticky y no se registraron errores de consola ni de página.
