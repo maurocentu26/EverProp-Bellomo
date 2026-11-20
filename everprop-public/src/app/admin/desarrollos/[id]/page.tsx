@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowRight, Layers, Ruler } from "lucide-react";
+import { ArrowRight, Layers, Pencil, Ruler } from "lucide-react";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
 import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
@@ -17,6 +17,8 @@ import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
 import { useCurrentSession } from "@/hooks/use-current-session";
 import { useAuth } from "@/lib/auth-context";
 import { ProjectMaterials, MaterialErrorNotice } from "@/components/admin/BellomoResources";
+import { ProjectEditDialog } from "@/components/admin/ProjectEditDialog";
+import { EditPropertyModal } from "@/components/admin/EditPropertyModal";
 
 type UnitFilter = UnitState | "all" | "offered";
 const PAGE_SIZE = 24;
@@ -35,6 +37,8 @@ export default function ProjectDetailView() {
   const [attempt, setAttempt] = useState(0);
   const [pickedFilter, setPickedFilter] = useState<UnitFilter | null>(null);
   const [visibleUnits, setVisibleUnits] = useState(PAGE_SIZE);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<Property | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -111,7 +115,10 @@ export default function ProjectDetailView() {
           <p className="project-meta">{projectLocationLabel(project)}</p>
           {project.description && <p>{project.description}</p>}
         </div>
-        {!isAdvisor && <Button variant="outline" onClick={() => setIsGenerateLotsOpen(true)}><Layers aria-hidden="true" /> Cargar manzana y lotes</Button>}
+        {!isAdvisor && <div className="flex flex-wrap gap-3">
+          {!isMockDataMode && <Button variant="outline" onClick={() => setIsEditOpen(true)}><Pencil aria-hidden="true" /> Editar datos</Button>}
+          <Button variant="outline" onClick={() => setIsGenerateLotsOpen(true)}><Layers aria-hidden="true" /> Cargar manzana y lotes</Button>
+        </div>}
       </header>
 
       {summary.total > 0 && <section className="project-state-summary" aria-label="Estado de las unidades">
@@ -141,7 +148,10 @@ export default function ProjectDetailView() {
           <p className="project-unit-area"><Ruler aria-hidden="true" size={18} />{property.area_m2 == null ? "Superficie sin informar" : `${property.area_m2.toLocaleString("es-AR", { maximumFractionDigits: 2 })} m²`}</p>
           <p className="project-unit-state"><span aria-hidden="true" className="project-dot" data-state={unitState(property)} />{property.status === "available" && property.operation === "sale" ? "En venta" : property.status === "available" && property.operation === "rent" ? "En alquiler" : propertyStatusLabel(property.status)}</p>
           <p className="project-unit-price">{inventoryPriceLabel(property)}</p>
-          <Link href={`/admin/properties/${property.id}`} className="inventory-secondary">Ver ficha <ArrowRight aria-hidden="true" size={18} /></Link>
+          <div className="project-unit-actions">
+            {!isAdvisor && <button type="button" className="inventory-secondary" onClick={() => setEditingUnit(property)} aria-label={`Editar ${unitDisplay(property).name}`}><Pencil aria-hidden="true" size={18} /> Editar</button>}
+            <Link href={`/admin/properties/${property.id}`} className="inventory-secondary">Ver ficha <ArrowRight aria-hidden="true" size={18} /></Link>
+          </div>
         </article>)}
         <div className="project-units-more">
           <p className="project-meta" aria-live="polite">Mostrando {Math.min(visibleUnits, filteredUnits.length).toLocaleString("es-AR")} de {filteredUnits.length.toLocaleString("es-AR")}{isAdvisor ? " · Solo lectura" : ""}</p>
@@ -154,6 +164,15 @@ export default function ProjectDetailView() {
         {!isMockDataMode && <ProjectMaterials key={project.id} projectId={project.id} />}
         {isMockDataMode && !project.masterplanImage && <p className="inventory-empty">Este proyecto todavía no tiene materiales cargados.</p>}
       </>}
+
+      {!isAdvisor && !isMockDataMode && isEditOpen && <ProjectEditDialog projectId={project.id} open onOpenChange={setIsEditOpen} onSaved={setProject} />}
+      {!isAdvisor && editingUnit && <EditPropertyModal
+        key={editingUnit.id}
+        open
+        onOpenChange={(open) => { if (!open) setEditingUnit(null); }}
+        property={editingUnit}
+        onSuccess={(updated) => setProperties((previous) => previous.map((unit) => (unit.id === updated.id ? updated : unit)))}
+      />}
 
       {!isAdvisor && <GenerateLotsModal
         open={isGenerateLotsOpen}

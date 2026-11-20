@@ -95,6 +95,8 @@ test('EVP-109 detail starts on what is offered, preserves 12, 12A, 12B and null 
   assert.equal(all.filter(n=>n.type==='GenerateLotsModal').length,0);
   assert.doesNotMatch(text(tree),/Cargar manzana|QA|Datos de muestra/);
   assert.match(text(tree),/Solo lectura/);
+  assert.doesNotMatch(text(tree),/Editar/);
+  assert.equal(all.filter(n=>['ProjectEditDialog','EditPropertyModal'].includes(n.type)).length,0);
   assert.equal(rows(tree).length,1);
   assert.equal(text(nodes(rows(tree)[0]).find(n=>n.type==='h2')),'Lote 12');
   assert.equal(all.find(n=>n.type==='button'&&n.props['aria-pressed']===true&&/en venta/.test(text(n)))!==undefined,true);
@@ -107,6 +109,8 @@ test('EVP-109 detail starts on what is offered, preserves 12, 12A, 12B and null 
   states[6]=null;states[7]=24;advisor=false;tree=render();
   assert.equal(nodes(tree).find(n=>n.type==='GenerateLotsModal').props.confirmBeforeSave,true);
   assert.match(text(tree),/Cargar manzana y lotes/);
+  // EVP-171: each unit row of a non-advisor offers an edit action next to "Ver ficha".
+  assert.ok(rows(tree).length>0&&rows(tree).every(row=>nodes(row).some(n=>n.type==='button'&&/Editar/.test(text(n)))));
   states[1]=[properties[0],{...properties[0],id:'r',unitNumber:'R1',operation:'rent'}];tree=render();
   assert.equal(rows(tree).length,2);
   assert.ok(nodes(tree).some(n=>n.type==='button'&&n.props['aria-pressed']===true&&/2.*disponibles/.test(text(n))));
