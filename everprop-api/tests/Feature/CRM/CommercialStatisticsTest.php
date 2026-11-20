@@ -63,7 +63,7 @@ final class CommercialStatisticsTest extends TestCase
         $row = DB::table('leads')->where('tenant_id', $tenant->id)->where('public_id', $lead)->first();
         $this->assertNotNull($row->won_at);
         $this->assertNull($row->lost_at);
-        $created = $this->postJson('/api/v1/admin/leads', ['name' => 'Synthetic closed', 'stage' => 'WON'])->assertCreated();
+        $created = $this->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0101', 'name' => 'Synthetic closed', 'stage' => 'WON'])->assertCreated();
         $this->assertNotNull(DB::table('leads')->where('tenant_id', $tenant->id)->where('title', 'Interés: Synthetic closed')->value('won_at'));
         $this->travel(1)->hours();
         $this->patchJson('/api/v1/admin/leads/'.$lead, ['stage' => 'WON', 'notes' => 'Same stage'])->assertOk();

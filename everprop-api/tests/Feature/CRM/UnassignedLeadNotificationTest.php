@@ -75,14 +75,14 @@ final class UnassignedLeadNotificationTest extends TestCase
 
     public function test_a_manual_lead_without_advisor_tells_every_active_admin_and_manager(): void
     {
-        $id = $this->actingAs($this->admin)->postJson('/api/v1/admin/leads', ['name' => 'Laura Gómez'])->assertCreated()->json('data.id');
+        $id = $this->actingAs($this->admin)->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0109', 'name' => 'Laura Gómez'])->assertCreated()->json('data.id');
 
         $this->assertManagersToldOnce($id, "/admin/leads/{$id}");
     }
 
     public function test_an_assigned_manual_lead_only_tells_its_advisor(): void
     {
-        $this->actingAs($this->admin)->postJson('/api/v1/admin/leads', ['name' => 'Laura Gómez', 'agent_id' => $this->advisor->public_id])->assertCreated();
+        $this->actingAs($this->admin)->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0110', 'name' => 'Laura Gómez', 'agent_id' => $this->advisor->public_id])->assertCreated();
 
         Notification::assertSentTo($this->advisor, LeadAssignedNotification::class, fn (LeadAssignedNotification $n) => $n->eventType === 'LEAD_CREATED');
         Notification::assertNotSentTo([$this->admin, $this->manager], LeadAssignedNotification::class);

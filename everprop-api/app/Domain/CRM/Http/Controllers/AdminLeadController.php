@@ -203,9 +203,9 @@ final class AdminLeadController extends Controller
 
             abort_unless($user && (new LeadAccessPolicy)->viewAny($user, $tenantId) && $user->role() !== RoleCode::READ_ONLY, 403);
             $validated = $request->validate([
-                'name' => 'required|string|max:200',
+                'name' => 'nullable|string|max:200',
                 'email' => 'nullable|email|max:320',
-                'phone' => 'nullable|string|max:32',
+                'phone' => 'required|string|max:32',
                 'source_channel' => 'nullable|string|in:WHATSAPP,WEB_FORM,PORTAL,REFERRAL,INSTAGRAM,MANUAL',
                 'stage' => 'nullable|string|max:40',
                 'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT,low,normal,high,urgent',
@@ -227,47 +227,39 @@ final class AdminLeadController extends Controller
 
             // EVP-135: same phone or email → same contact (PHONE/EMAIL identity, like the web form) and, while it has an
             // open lead, that lead instead of a second one. A retried submit (Idempotency-Key) returns its first result.
-            $validated['phone'] = $this->normalizedPhone($validated['phone'] ?? null);
+            $validated['phone'] = (string) $this->normalizedPhone($validated['phone']);
             $validated['email'] = isset($validated['email']) ? mb_strtolower(trim($validated['email'])) : null;
+            // EVP-176: only the phone is required; until a name is typed the formatted phone labels the lead everywhere.
+            $named = trim((string) ($validated['name'] ?? '')) !== '';
+            $validated['name'] = $named ? trim($validated['name']) : (string) PhoneNumber::international((string) $validated['phone']);
+            $title = $named ? 'Interés: '.$validated['name'] : $validated['name'];
             $replayKey = $this->replayKey($request, $tenantId, (int) $user->id);
             if ($replayKey !== null && is_numeric($replayed = Cache::get($replayKey))) { // Redis returns numbers as strings
                 return $this->existingLead($user, $tenantId, (int) $replayed);
             }
-            $contact = null;
-            if ($validated['phone'] !== null || $validated['email'] !== null) {
-                try {
-                    $contact = $this->contacts->resolve($tenantId,
-                        ['display_name' => $validated['name'], 'first_name' => explode(' ', $validated['name'])[0], 'email' => $validated['email'], 'phone_e164' => $validated['phone']],
-                        ['channel_type' => $validated['phone'] !== null ? 'PHONE' : 'EMAIL', 'provider_user_id' => $validated['phone'] ?? $validated['email']],
-                        CarbonImmutable::now('UTC'));
-                } catch (PublicLeadRejected) {
-                    throw ValidationException::withMessages(['phone' => 'Ese contacto está inactivo o se unificó con otro: buscalo en Leads.']);
-                }
+            try {
+                $contact = $this->contacts->resolve($tenantId,
+                    ['display_name' => $validated['name'], 'first_name' => $named ? explode(' ', $validated['name'])[0] : null, 'email' => $validated['email'], 'phone_e164' => $validated['phone']],
+                    ['channel_type' => 'PHONE', 'provider_user_id' => $validated['phone']],
+                    CarbonImmutable::now('UTC'));
+            } catch (PublicLeadRejected) {
+                throw ValidationException::withMessages(['phone' => 'Ese contacto está inactivo o se unificó con otro: buscalo en Leads.']);
             }
             $stageCode = strtoupper($validated['stage'] ?? 'NEW');
-            $openLead = fn (): ?int => $contact === null ? null : (DB::table('leads')->where('tenant_id', $tenantId)->where('contact_id', $contact['id'])
-                ->where('is_open', 1)->whereNull('deleted_at')->value('id') ?: null);
+            $openLead = fn (): ?int => DB::table('leads')->where('tenant_id', $tenantId)->where('contact_id', $contact['id'])
+                ->where('is_open', 1)->whereNull('deleted_at')->value('id') ?: null;
 
             try {
-                return DB::transaction(function () use ($tenantId, $validated, $user, $contact, $stageCode, $openLead, $replayKey) {
+                return DB::transaction(function () use ($tenantId, $validated, $title, $user, $contact, $stageCode, $openLead, $replayKey) {
                     $now = Carbon::now('UTC');
 
-                    // 1. Contact: the resolved one, or a new one without phone/email (nothing to match it by)
+                    // 1. Contact: the one resolved by its PHONE identity; its open lead is reused
                     if (! in_array($stageCode, ['WON', 'LOST'], true) && ($existing = $openLead()) !== null) {
                         $this->rememberReplay($replayKey, $existing);
 
                         return $this->existingLead($user, $tenantId, $existing);
                     }
-                    $contactId = $contact['id'] ?? DB::table('contacts')->insertGetId([
-                        'tenant_id' => $tenantId,
-                        'public_id' => (string) Str::uuid(),
-                        'display_name' => $validated['name'],
-                        'first_name' => explode(' ', $validated['name'])[0],
-                        'first_seen_at' => $now,
-                        'last_seen_at' => $now,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ]);
+                    $contactId = $contact['id'];
 
                     // 2. Resolve stage
                     $stage = DB::table('pipeline_stages')
@@ -299,7 +291,7 @@ final class AdminLeadController extends Controller
                         'assignment_method' => $assignedId ? 'MANUAL' : 'UNASSIGNED',
                         'source_channel' => $validated['source_channel'] ?? 'MANUAL',
                         'source_kind' => 'ADMIN_MANUAL',
-                        'title' => 'Interés: '.$validated['name'],
+                        'title' => $title,
                         'priority' => strtoupper($validated['priority'] ?? 'NORMAL'),
                         'budget_max' => $validated['budget'] ?? null,
                         'currency_code' => $validated['currency'] ?? 'USD',
@@ -1018,7 +1010,7 @@ final class AdminLeadController extends Controller
         }
 
         return PhoneNumber::e164($phone) ?? throw ValidationException::withMessages([
-            'phone' => 'Revisá el teléfono: con código de área y sin 0 ni 15 (11 5555-0000), o internacional (+54 9 11 5555-0000).',
+            'phone' => 'Revisá el teléfono: incluí el código de área (0388 15 412-3456, 11 5555-0000) o el código de país (+591 7...).',
         ]);
     }
 
