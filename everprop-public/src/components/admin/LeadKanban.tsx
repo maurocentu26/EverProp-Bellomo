@@ -9,7 +9,7 @@ import { useCurrentSession } from "@/hooks/use-current-session";
 import { useDashboardMode } from "@/lib/dashboard-context";
 import { KanbanColumn } from "./kanban/KanbanColumn";
 import { KanbanCard } from "./kanban/KanbanCard";
-import { STAGE_ORDER, type Stage } from "./kanban/types";
+import { STAGE_LABELS, STAGE_ORDER, type Stage } from "./kanban/types";
 import {
   type UniqueIdentifier,
   DndContext,
@@ -20,28 +20,35 @@ import {
   type DragOverEvent,
   TouchSensor,
   MouseSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { isMockDataMode } from "@/lib/data-mode";
 import { loadEverpropLeads, loadEverpropCatalog, updateEverpropLead } from "@/lib/everprop-api";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 
 // --- Componente Principal ---
-export default function LeadKanban({ companyId = "c1", dashboardMode = "enterprise" }: { companyId?: string, dashboardMode?: "agency" | "enterprise" }) {
+export default function LeadKanban({ companyId = "c1", dashboardMode = "enterprise" }: { companyId?: string; dashboardMode?: "agency" | "enterprise" }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [stageError, setStageError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [activeDragId, setActiveDragId] = useState<UniqueIdentifier | null>(null);
   const [overStageId, setOverStageId] = useState<Stage | null>(null);
-  
+
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [projects, setProjects] = useState<typeof sampleProjects>(() => loadProjectList(sampleProjects, companyId));
+  const [projects, setProjects] = useState<typeof sampleProjects>(() =>
+    isMockDataMode ? loadProjectList(sampleProjects, companyId) : []
+  );
   const { isAdvisor, isAdmin, user } = useCurrentSession();
   const { globalSelectedAgentId } = useDashboardMode();
 
-  // Sensores optimizados para Mobile y Desktop
+  // Sensores optimizados para Mobile, Desktop y Teclado
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: { distance: 5 },
@@ -51,6 +58,9 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
         delay: 250, // Presión larga para permitir scroll
         tolerance: 8,
       },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
@@ -59,6 +69,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
     async function loadData() {
       if (!isMockDataMode) {
         try {
+          setLoadError(null);
           const [apiLeads, catalog] = await Promise.all([
             loadEverpropLeads(),
             loadEverpropCatalog(),
@@ -71,6 +82,12 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
           return;
         } catch (e) {
           console.error("Error loading leads in kanban:", e);
+          if (!active) return;
+          setLeads([]);
+          setProjects([]);
+          setLoadError("No se pudieron cargar los leads del tablero. Verificá tu conexión y reintentá.");
+          setHydrated(true);
+          return;
         }
       }
       if (!active) return;
@@ -83,7 +100,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
     return () => {
       active = false;
     };
-  }, [companyId]);
+  }, [companyId, retryCount]);
 
   useEffect(() => {
     if (!hydrated || !isMockDataMode) return;
@@ -95,6 +112,36 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
     if (STAGE_ORDER.includes(id as Stage)) return id as Stage;
     const lead = leads.find((l) => l.id === id);
     return lead ? lead.stage : null;
+  };
+
+  const changeLeadStage = (leadId: string, targetStage: Stage) => {
+    const currentLead = leads.find((l) => l.id === leadId);
+    if (!currentLead || currentLead.stage === targetStage) return;
+    const previousStage = currentLead.stage;
+
+    setStageError(null);
+    setLeads((prev) =>
+      prev.map((lead) => (lead.id === leadId ? { ...lead, stage: targetStage } : lead))
+    );
+
+    if (!isMockDataMode) {
+      const STAGE_API_MAP: Record<string, string> = {
+        new: "NEW",
+        contacted: "CONTACTED",
+        visiting: "VISIT_SCHEDULED",
+        negotiation: "NEGOTIATION",
+        closing: "WON",
+        discarded: "LOST",
+      };
+      const stageCode = STAGE_API_MAP[targetStage] || targetStage.toUpperCase();
+      updateEverpropLead(leadId, { stage: stageCode }).catch((err) => {
+        console.error("Error updating lead stage in API:", err);
+        setLeads((prev) =>
+          prev.map((lead) => (lead.id === leadId ? { ...lead, stage: previousStage } : lead))
+        );
+        setStageError(`No se pudo actualizar la etapa de ${currentLead.name}. Se restauró a ${STAGE_LABELS[previousStage]}.`);
+      });
+    }
   };
 
   // Handlers de Arrastre
@@ -115,7 +162,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     setActiveDragId(null);
     setOverStageId(null);
 
@@ -126,24 +173,7 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
 
     if (!targetStage) return;
 
-    setLeads((prev) => 
-      prev.map((lead) => (lead.id === leadId ? { ...lead, stage: targetStage } : lead))
-    );
-
-    if (!isMockDataMode) {
-      const STAGE_API_MAP: Record<string, string> = {
-        new: "NEW",
-        contacted: "CONTACTED",
-        visiting: "VISIT_SCHEDULED",
-        negotiation: "NEGOTIATION",
-        closing: "WON",
-            discarded: "LOST",
-      };
-      const stageCode = STAGE_API_MAP[targetStage] || targetStage.toUpperCase();
-      updateEverpropLead(leadId, { stage: stageCode }).catch((err) => {
-        console.error("Error updating lead stage in API:", err);
-      });
-    }
+    changeLeadStage(leadId, targetStage);
   };
 
   const activeLead = leads.find((l) => l.id === activeDragId) ?? null;
@@ -160,21 +190,21 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
   // Filtered Leads
   const filteredLeads = useMemo(() => {
     let result = leads;
-    
+
     // Strict Filtering
     if (isAdvisor) {
       result = result.filter((l) => l.agentId === user?.id);
     } else if (isAdmin && globalSelectedAgentId !== "all") {
       result = result.filter((l) => l.agentId === globalSelectedAgentId);
     }
-    
+
     // In Comercializadora (agency) mode, show ALL leads by default, bypassing any project-specific filter
     if (dashboardMode === "enterprise" && selectedProjectId !== "all") {
-      result = result.filter(l => l.projectId === selectedProjectId);
+      result = result.filter((l) => l.projectId === selectedProjectId);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(l => l.name.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q) || l.phone?.includes(q));
+      result = result.filter((l) => l.name.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q) || l.phone?.includes(q));
     }
     return result;
   }, [leads, selectedProjectId, searchQuery, dashboardMode, isAdvisor, isAdmin, user, globalSelectedAgentId]);
@@ -192,18 +222,41 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
 
   return (
     <div className="space-y-4">
+      {loadError && (
+        <div role="alert" aria-live="assertive" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+          <p>{loadError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setHydrated(false);
+              setRetryCount((n) => n + 1);
+            }}
+            className="min-h-11 rounded-lg border border-red-300 bg-white px-4 py-2 text-xs font-semibold text-red-900 hover:bg-red-100 dark:border-red-800 dark:bg-slate-900 dark:text-red-100"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {stageError && (
+        <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+          {stageError}
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Selector de Proyecto - Only show if in Enterprise Mode */}
         {dashboardMode === "enterprise" ? (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Proyecto:</label>
-            <select 
-              className="text-sm border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+            <label htmlFor="kanban-project-filter" className="text-sm font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">Proyecto:</label>
+            <select
+              id="kanban-project-filter"
+              className="min-h-11 text-sm border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
             >
               <option value="all">Todos los proyectos</option>
-              {projects.map(p => (
+              {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
@@ -219,7 +272,8 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
           </div>
           <input
             type="text"
-            className="block w-full pl-9 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            aria-label="Buscar lead rápido"
+            className="block min-h-11 w-full pl-9 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             placeholder="Buscar lead rápido..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -228,80 +282,80 @@ export default function LeadKanban({ companyId = "c1", dashboardMode = "enterpri
       </div>
 
       <DndContext
-      id="everprop-kanban"
-      sensors={sensors}
-      collisionDetection={pointerWithin}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {STAGE_ORDER.map((stage) => {
-          const priority = { overdue: 0, dueSoon: 1, none: 2, current: 3 } as const;
-          const stageLeads = filteredLeads
-            .filter((lead) => lead.stage === stage)
-            .sort((a, b) => {
-              if (!isAdvisor) return 0;
-              const now = new Date();
-              const stateA = getLeadFollowUpState(followUps, a.id, a.followUpUpdatedAt, now, a.companyId);
-              const stateB = getLeadFollowUpState(followUps, b.id, b.followUpUpdatedAt, now, b.companyId);
-              return priority[stateA.kind] - priority[stateB.kind];
-            });
-          return (
-            <KanbanColumn 
-              key={stage} 
-              stage={stage} 
-              items={stageLeads.map((l) => l.id)}
-              isHighlighted={overStageId === stage}
-            >
-              {stageLeads.slice(0, 5).map((lead) => (
-                <KanbanCard 
-                  key={lead.id} 
-                  lead={lead} 
-                  followUps={followUps}
-                  isActive={activeDragId === lead.id} 
-                />
-              ))}
-            </KanbanColumn>
-          );
-        })}
-      </div>
+        id="everprop-kanban"
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {STAGE_ORDER.map((stage) => {
+            const priority = { overdue: 0, dueSoon: 1, none: 2, current: 3 } as const;
+            const stageLeads = filteredLeads
+              .filter((lead) => lead.stage === stage)
+              .sort((a, b) => {
+                if (!isAdvisor) return 0;
+                const now = new Date();
+                const stateA = getLeadFollowUpState(followUps, a.id, a.followUpUpdatedAt, now, a.companyId);
+                const stateB = getLeadFollowUpState(followUps, b.id, b.followUpUpdatedAt, now, b.companyId);
+                return priority[stateA.kind] - priority[stateB.kind];
+              });
+            return (
+              <KanbanColumn
+                key={stage}
+                stage={stage}
+                items={stageLeads.map((l) => l.id)}
+                isHighlighted={overStageId === stage}
+              >
+                {stageLeads.slice(0, 5).map((lead) => (
+                  <KanbanCard
+                    key={lead.id}
+                    lead={lead}
+                    followUps={followUps}
+                    isActive={activeDragId === lead.id}
+                    onStageChange={(nextStage) => changeLeadStage(lead.id, nextStage)}
+                  />
+                ))}
+              </KanbanColumn>
+            );
+          })}
+        </div>
 
-      {/* Overlay para el efecto visual flotante */}
-      <DragOverlay dropAnimation={null} zIndex={1000}>
-        {activeLead ? (
-          <div className="relative pointer-events-none">
-            {/* Backdrop oscuro que pedías */}
-            <div className="fixed inset-0 -z-10 bg-slate-950/40 backdrop-blur-sm" />
-            
-            <div className="scale-105 rotate-2 shadow-2xl opacity-95">
-              <CardLead
-                className="border-2 border-blue-500 bg-white dark:bg-slate-900"
-                id={activeLead.id}
-                name={activeLead.name}
-                phone={activeLead.phone}
-                email={activeLead.email}
-                origin={activeLead.origin}
-                properties={activeLead.propertyIds.map((pid) => {
-                  const prop = sampleProperties.find((p) => p.id === pid);
-                  return prop ? { 
-                    title: prop.title, 
-                    bedrooms: prop.bedrooms, 
-                    price: prop.price, 
-                    currency: prop.currency, 
-                    operation: prop.operation 
-                  } : undefined;
-                }).filter((property): property is NonNullable<typeof property> => property !== undefined)}
-                agentId={activeLead.agentId}
-                followUpUpdatedAt={activeLead.followUpUpdatedAt}
-                followUps={followUps}
-                companyId={activeLead.companyId}
-              />
+        {/* Overlay para el efecto visual flotante */}
+        <DragOverlay dropAnimation={null} zIndex={1000}>
+          {activeLead ? (
+            <div className="relative pointer-events-none">
+              <div className="fixed inset-0 -z-10 bg-slate-950/40 backdrop-blur-sm" />
+
+              <div className="scale-105 rotate-2 shadow-2xl opacity-95">
+                <CardLead
+                  className="border-2 border-blue-500 bg-white dark:bg-slate-900"
+                  id={activeLead.id}
+                  name={activeLead.name}
+                  phone={activeLead.phone}
+                  email={activeLead.email}
+                  origin={activeLead.origin}
+                  properties={activeLead.propertyIds.map((pid) => {
+                    const prop = sampleProperties.find((p) => p.id === pid);
+                    return prop ? {
+                      title: prop.title,
+                      bedrooms: prop.bedrooms,
+                      price: prop.price,
+                      currency: prop.currency,
+                      operation: prop.operation,
+                    } : undefined;
+                  }).filter((property): property is NonNullable<typeof property> => property !== undefined)}
+                  agentId={activeLead.agentId}
+                  followUpUpdatedAt={activeLead.followUpUpdatedAt}
+                  followUps={followUps}
+                  companyId={activeLead.companyId}
+                />
+              </div>
             </div>
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }
