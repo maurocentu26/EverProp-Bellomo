@@ -1878,6 +1878,7 @@ export const leads: Lead[] = leadScenarios.map((sc, index) => {
     projectId,
     stage,
     lastActivity: new Date(Date.now() - 1000 * 60 * 60 * (index + 1)).toISOString(),
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * (index + 1)).toISOString(),
     followUpUpdatedAt: index % 4 === 0
       ? undefined
       : new Date(Date.now() - 1000 * 60 * 60 * 24 * (

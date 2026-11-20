@@ -35,6 +35,7 @@ import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 type LeadStageFilter = "all" | "new" | "contacted" | "visiting" | "negotiation" | "closing" | "discarded";
 type AssetTypeFilter = "all" | "lote" | "departamento" | "comercial" | "tradicional";
 type FollowUpFilter = "all" | "attention" | "dueSoon" | "overdue";
+type LeadSortOrder = "newest" | "oldest" | "priority";
 
 const LEAD_STAGE_FILTERS: { id: LeadStageFilter; label: string }[] = [
   { id: "all", label: "Todos" },
@@ -58,8 +59,32 @@ const FOLLOW_UP_FILTERS: { id: FollowUpFilter; label: string }[] = [
   { id: "overdue", label: "Vencidos" },
 ];
 
+const LEAD_SORT_OPTIONS: { id: LeadSortOrder; label: string }[] = [
+  { id: "newest", label: "Más nuevos primero" },
+  { id: "oldest", label: "Más antiguos primero" },
+  { id: "priority", label: "Urgencia de seguimiento" },
+];
+
 function normalizeLeadSearch(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function getLeadCreatedTimestamp(lead: Pick<Lead, "createdAt" | "lastActivity">) {
+  const timestamp = Date.parse(lead.createdAt || lead.lastActivity || "");
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function compareLeadCreatedAt(
+  a: Pick<Lead, "createdAt" | "lastActivity">,
+  b: Pick<Lead, "createdAt" | "lastActivity">,
+  direction: 1 | -1,
+) {
+  const tsA = getLeadCreatedTimestamp(a);
+  const tsB = getLeadCreatedTimestamp(b);
+  if (tsA === tsB) return 0;
+  if (tsA === 0) return 1;
+  if (tsB === 0) return -1;
+  return direction * (tsA - tsB);
 }
 
 export default function LeadsPage() {
@@ -80,6 +105,8 @@ function AllLeadsPage() {
   const [activeStage, setActiveStage] = useState<LeadStageFilter>("all");
   const [assetType, setAssetType] = useState<AssetTypeFilter>("all");
   const [followUpFilter, setFollowUpFilter] = useState<FollowUpFilter>("all");
+  const [sortOrder, setSortOrder] = useState<LeadSortOrder>("newest");
+  const [sortAnnouncement, setSortAnnouncement] = useState<LeadSortOrder | null>(null);
   const [loadError, setLoadError] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
   const [page, setPage] = useState(1);
@@ -133,12 +160,13 @@ function AllLeadsPage() {
         setAssetType("all");
         setActiveStage("all");
         setFollowUpFilter("all");
+        setSortOrder("newest");
         setSearchQuery("");
       }
     });
   }, [dashboardMode]);
 
-  const hasActiveFilters = originFilter !== "all" || advisorFilter !== "all" || searchQuery !== "" || activeStage !== "all" || assetType !== "all" || followUpFilter !== "all";
+  const hasActiveFilters = originFilter !== "all" || advisorFilter !== "all" || searchQuery !== "" || activeStage !== "all" || assetType !== "all" || followUpFilter !== "all" || sortOrder !== "newest";
 
   const handleClearFilters = () => {
     setOriginFilter("all");
@@ -147,6 +175,8 @@ function AllLeadsPage() {
     setActiveStage("all");
     setAssetType("all");
     setFollowUpFilter("all");
+    if (sortOrder !== "newest") setSortAnnouncement("newest");
+    setSortOrder("newest");
   };
 
   // Conteo dinámico para los tabs de etapas
@@ -215,18 +245,21 @@ function AllLeadsPage() {
     if (isAdvisor && isMockDataMode) {
       filtered = filtered.filter(l => l.agentId === user?.id);
     }
-    if (isAdvisor) {
+    if (sortOrder === "priority") {
       const now = new Date();
       const priority = { overdue: 0, dueSoon: 1, none: 2, current: 3 } as const;
       filtered = [...filtered].sort((a, b) => {
         const stateA = getLeadFollowUpState(followUps, a.id, a.followUpUpdatedAt, now, a.companyId);
         const stateB = getLeadFollowUpState(followUps, b.id, b.followUpUpdatedAt, now, b.companyId);
-        return priority[stateA.kind] - priority[stateB.kind];
+        return priority[stateA.kind] - priority[stateB.kind] || compareLeadCreatedAt(a, b, -1);
       });
+    } else {
+      const direction = sortOrder === "oldest" ? 1 : -1;
+      filtered = [...filtered].sort((a, b) => compareLeadCreatedAt(a, b, direction));
     }
 
     return filtered;
-  }, [allLeads, catalogProperties, originFilter, advisorFilter, searchQuery, activeStage, assetType, followUpFilter, followUps, isAdvisor, user]);
+  }, [allLeads, catalogProperties, originFilter, advisorFilter, searchQuery, activeStage, assetType, followUpFilter, followUps, isAdvisor, user, sortOrder]);
 
   // Actualización de estado en 1 clic
   async function handleStageChange(leadId: string, newStage: Lead["stage"]) {
@@ -394,8 +427,20 @@ function AllLeadsPage() {
           <option value="all">Todos</option><option value="unassigned">Sin asignar</option>
           {[...new Map(allLeads.filter(lead => lead.agentId).map(lead => [lead.agentId!, lead.agentName || "Asesor asignado"])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select></label>}
+        <label>Ordenar<select aria-label="Ordenar clientes" value={sortOrder} onChange={(e) => {
+          const nextOrder = e.target.value as LeadSortOrder;
+          setSortOrder(nextOrder);
+          setSortAnnouncement(nextOrder);
+        }}>
+          {LEAD_SORT_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+        </select></label>
         {hasActiveFilters && <Button variant="outline" onClick={handleClearFilters}><RotateCcw aria-hidden="true" /> Limpiar filtros</Button>}
       </div>
+      <p role="status" className="sr-only">
+        {sortAnnouncement
+          ? `Clientes ordenados por ${LEAD_SORT_OPTIONS.find((option) => option.id === sortAnnouncement)?.label.toLowerCase()}, ${filteredLeads.length} ${filteredLeads.length === 1 ? "cliente" : "clientes"}.`
+          : ""}
+      </p>
       <div className="leads-stage-counts" aria-label="Clientes cargados por etapa">
         {LEAD_STAGE_FILTERS.filter(stage => stage.id !== "all").map(stage => <button type="button" key={stage.id} aria-pressed={activeStage === stage.id} onClick={() => setActiveStage(stage.id)}><span>{stage.label}</span><strong>{stageCounts[stage.id]}</strong></button>)}
       </div>
