@@ -7,14 +7,14 @@ import { ArrowLeft, Check, FolderPlus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, EverpropApiError, loadEverpropPropertiesByProject } from "@/lib/everprop-api";
 import { useAuth } from "@/lib/auth-context";
-import { JUJUY_CITIES, type Property } from "@/data/admin-sample";
+import type { Property } from "@/data/admin-sample";
 import { emptyIntakeBasics, intakeBasics, intakePayload, type IntakeBasics, type IntakeOption, type ProjectIntake } from "@/lib/project-intake";
 import { GenerateLotsModal } from "@/components/admin/GenerateLotsModal";
 import NewPropertyForm from "@/components/admin/NewPropertyForm";
 import ProjectWebEditor from "@/components/admin/ProjectWebEditor";
+import { ProjectBasicsFields } from "@/components/admin/ProjectBasicsFields";
 
 const steps = ["Datos básicos", "Unidades", "Material comercial", "Presentación Web", "Revisión y publicación"];
-const fieldClass = "mt-2 min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-ring";
 type PendingCreate = { request_key: string; payload: ReturnType<typeof intakePayload> };
 
 export default function ProjectIntakeForm() {
@@ -120,10 +120,6 @@ export default function ProjectIntakeForm() {
       showError(reason);
     } finally { submitLock.current = false; setSaving(false); }
   }
-  function input(label: string, key: keyof IntakeBasics, type = "text", max?: number) {
-    return <label className="block text-sm font-medium" htmlFor={`intake-${key}`}>{label}<input id={`intake-${key}`} type={type} value={form[key]} onChange={(event) => change(key, event.target.value)} className={fieldClass} min={type === "number" ? 0 : undefined} max={max} step={type === "number" ? 1 : undefined} maxLength={type === "text" ? (key === "name" ? 200 : key === "address" ? 500 : 160) : undefined} aria-invalid={!!fieldErrors[key]} aria-describedby={fieldErrors[key] ? `intake-${key}-error` : undefined} />{fieldErrors[key] && <span id={`intake-${key}-error`} className="mt-1 block text-sm text-red-700 dark:text-red-300">{fieldErrors[key].join(" ")}</span>}</label>;
-  }
-
   return <div className="mx-auto max-w-5xl space-y-6 pb-10">
     <Link href="/admin/desarrollos" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground" onClick={(event) => { if (dirty || blocked || pending) { event.preventDefault(); setError("Guardá los cambios o terminá la operación antes de salir."); } }}><ArrowLeft className="size-4" aria-hidden="true" />Proyectos y desarrollos</Link>
     <header className="space-y-2"><p className="text-sm font-medium text-muted-foreground">Inventario · Ingreso de proyectos</p><h1 className="text-3xl font-bold tracking-tight">{intake?.project.name ?? "Nuevo proyecto"}</h1><p className="text-muted-foreground">Completá lo que ya conocés, guardá el avance y prepará su publicación.</p></header>
@@ -137,13 +133,7 @@ export default function ProjectIntakeForm() {
           <div><h2 className="text-xl font-semibold">1. Datos básicos</h2><p className="mt-1 text-sm text-muted-foreground">El proyecto se guarda oculto. Las unidades se cargan en el paso siguiente.</p></div>
           {pending && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">Falta confirmar el alta anterior. Reintentá la misma solicitud para recuperar el proyecto sin duplicarlo.</p>}
           <fieldset disabled={saving || !!pending} className="grid gap-5 sm:grid-cols-2">
-            {input("Nombre del proyecto *", "name")}
-            <label className="block text-sm font-medium">Tipo de proyecto *<select required className={fieldClass} value={form.project_type} onChange={(event) => change("project_type", event.target.value)}><option value="">Seleccionar tipo</option><option value="LAND_DEVELOPMENT">Loteo / urbanización</option><option value="BUILDING">Edificio</option><option value="COMMERCIAL">Locales / cocheras</option></select>{fieldErrors.project_type && <span role="alert">{fieldErrors.project_type.join(" ")}</span>}</label>
-            <label className="block text-sm font-medium" htmlFor="intake-city">Ciudad / localidad *<input id="intake-city" list="intake-cities" className={fieldClass} value={form.city} maxLength={160} onChange={(event) => change("city", event.target.value)} aria-invalid={!!fieldErrors.city} /><datalist id="intake-cities">{JUJUY_CITIES.map((city) => <option key={city} value={city} />)}</datalist>{fieldErrors.city && <span role="alert">{fieldErrors.city.join(" ")}</span>}</label>
-            {input("Provincia *", "province")}{input("Dirección", "address")}
-            <label className="block text-sm font-medium">Etapa del desarrollo<select className={fieldClass} value={form.status} onChange={(event) => change("status", event.target.value)}><option value="UNKNOWN">Sin confirmar</option><option value="PLANNING">En planificación</option><option value="PRE_SALE">Preventa</option><option value="UNDER_CONSTRUCTION">En construcción</option><option value="COMPLETED">Finalizado</option><option value="AVAILABLE">Disponible (inventario heredado)</option></select>{fieldErrors.status && <span role="alert">{fieldErrors.status.join(" ")}</span>}</label>
-            <div>{input("Avance de obra (%)", "progress", "number", 100)}<p className="mt-1 text-xs text-muted-foreground">Dejalo vacío si todavía no fue confirmado.</p></div>
-            <div>{input("Unidades totales declaradas", "total_units", "number", 4294967295)}<p className="mt-1 text-xs text-muted-foreground">Opcional. Este dato no crea unidades.</p></div>
+            <ProjectBasicsFields form={form} onChange={change} fieldErrors={fieldErrors} />
           </fieldset>
           <Button type="submit" disabled={saving || !storageKey}><Save className="mr-2 size-4" aria-hidden="true" />{saving ? "Guardando…" : pending ? "Reintentar alta" : projectId ? "Guardar datos" : "Guardar y continuar"}</Button>
         </form>}
