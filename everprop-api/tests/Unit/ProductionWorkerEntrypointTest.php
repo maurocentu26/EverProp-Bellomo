@@ -21,6 +21,8 @@ final class ProductionWorkerEntrypointTest extends TestCase
             'redis queue' => [['QUEUE_CONNECTION' => 'redis'], 'redis'],
             'explicit worker override' => [['QUEUE_CONNECTION' => 'redis', 'QUEUE_WORKER_CONNECTION' => 'database'], 'database'],
             'sync has no worker' => [['QUEUE_CONNECTION' => 'sync'], null],
+            // awake-dedication: requests run sync, Web Push goes to the database queue.
+            'sync requests with database worker' => [['QUEUE_CONNECTION' => 'sync', 'QUEUE_WORKER_CONNECTION' => 'database'], 'database'],
         ];
     }
 
