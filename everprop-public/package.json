@@ -10,6 +10,7 @@
     "test:mi-dia": "node --test tests/advisor-day-guide.test.mjs tests/commercial-queue.test.mjs tests/mi-day-conformity.test.mjs tests/lead-whatsapp-message.test.mjs",
     "test:projects": "node --test tests/projects-redesign.test.mjs tests/project-intake.test.mjs tests/lots-matrix-redesign.test.mjs tests/inventory-api.test.mjs",
     "test:leads": "node --test tests/leads-redesign.test.mjs tests/lead-search.test.mjs tests/leads-api.test.mjs",
+    "test:notification-tray": "node --test tests/notification-tray.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
