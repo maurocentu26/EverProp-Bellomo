@@ -86,7 +86,8 @@ final class AdminLeadController extends Controller
                     'users.public_id as assigned_user_id',
                     'users.display_name as assigned_user_name',
                 ])
-                ->orderBy('leads.id');
+                ->orderByDesc('leads.created_at')
+                ->orderByDesc('leads.id');
 
             // Advisor isolation: Advisors only see their assigned leads
             if ($user->role() === RoleCode::SALES_ADVISOR) {

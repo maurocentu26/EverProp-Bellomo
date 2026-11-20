@@ -22,7 +22,12 @@ function PopoverContent({
 }: PopoverPrimitive.Popup.Props & { align?: "start" | "center" | "end"; side?: "top" | "bottom" | "left" | "right"; sideOffset?: number }) {
   return (
     <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner side={side} align={align} sideOffset={sideOffset}>
+      <PopoverPrimitive.Positioner
+        className="isolate z-50 outline-none"
+        side={side}
+        align={align}
+        sideOffset={sideOffset}
+      >
         <PopoverPrimitive.Popup
           className={cn(
             "z-50 rounded-lg border border-border bg-popover text-popover-foreground shadow-md outline-none",
