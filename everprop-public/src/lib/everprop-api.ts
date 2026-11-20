@@ -993,6 +993,15 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
   return mapProperty(response.data);
 }
 
+/** EVP-171: edición de la ficha del proyecto (PUT existente de AdminProjectController). */
+export async function updateEverpropProject(publicId: string, payload: Record<string, unknown>) {
+  const response = await apiFetch<ApiEnvelope<ApiProject>>(`/api/v1/admin/projects/${encodeURIComponent(publicId)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  return mapProject(response.data);
+}
+
 export type GenerateLotsPayload = {
   projectId: number | string;
   sectorName: string; // Manzana

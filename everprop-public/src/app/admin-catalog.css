@@ -233,6 +233,7 @@ html[data-panel-text-size="grande"] :is(.mi-agenda,.collections-view,.collection
 .project-unit-state { display: inline-flex; flex: 1 1 130px; align-items: center; gap: 8px; font-weight: 700; }
 .project-unit-price { flex: 1 1 150px; color: var(--muted-foreground); }
 .projects-view .project-unit .inventory-secondary { flex: 0 1 auto; gap: 6px; padding-block: 0; white-space: nowrap; }
+.project-unit-actions { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .dark .projects-view .project-detail-status { background: #1d3657; color: #a9cdf8; }
 .dark .projects-view :is(.inventory-cta, .project-filters button[aria-pressed="true"]),
 .dark .projects-view :is(.inventory-cta, .project-filters button[aria-pressed="true"]):hover { background: var(--foreground); color: var(--background); }
@@ -243,6 +244,7 @@ html[data-panel-text-size="grande"] :is(.mi-agenda,.collections-view,.collection
 @media (width < 768px) {
   .projects-view :is(.project-row-side .inventory-cta, .project-unit .inventory-secondary, .project-units-more .inventory-secondary, .project-back) { min-height: 52px; }
   .projects-view .project-unit .inventory-secondary { flex: 1 1 100%; }
+  .projects-view .project-unit-actions { flex: 1 1 100%; }
   .projects-view .project-state-filters button { width: auto; }
   .projects-view .project-tabs button { flex: 1 1 auto; width: auto; padding-inline: 10px; }
   .projects-view > header > :is(button, a) { flex: 1 1 100%; width: 100%; }

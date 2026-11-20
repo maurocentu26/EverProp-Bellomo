@@ -10,8 +10,17 @@ export type IntakeBasics = { name: string; project_type: string; city: string; p
 export const emptyIntakeBasics: IntakeBasics = { name: "", project_type: "", city: "", province: "", address: "", status: "UNKNOWN", progress: "", total_units: "" };
 
 export function intakeBasics(project: IntakeProject): IntakeBasics {
-  return { name: project.name, project_type: project.project_type, city: project.city, province: project.province, address: project.address ?? "", status: project.status,
+  return { name: project.name ?? "", project_type: project.project_type, city: project.city ?? "", province: project.province ?? "", address: project.address ?? "", status: project.status,
     progress: project.progress == null ? "" : String(project.progress), total_units: project.total_units ? String(project.total_units) : "" };
+}
+
+/** EVP-171: estados que exponen las unidades disponibles del proyecto (ProjectStatus::publicValues en la API). */
+export const PUBLIC_PROJECT_STATUSES = ["PRE_SALE", "UNDER_CONSTRUCTION", "COMPLETED"];
+export const publishesProject = (from: string, to: string) => PUBLIC_PROJECT_STATUSES.includes(to) && !PUBLIC_PROJECT_STATUSES.includes(from);
+
+/** EVP-171: payload del PUT /admin/projects/{id} desde la ficha (datos básicos del ingreso más descripción). */
+export function projectEditPayload(form: IntakeBasics, description: string) {
+  return { ...intakePayload(form), description: description.trim() || null };
 }
 
 export function intakePayload(form: IntakeBasics) {
