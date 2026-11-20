@@ -1,8 +1,9 @@
 "use client";
 
+import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 import { useState } from "react";
-import { 
-  MessageCircle, 
+import {
+  MessageCircle,
   Eye,
   Phone,
   ClipboardCheck,
@@ -11,10 +12,10 @@ import {
 import { type Lead, type LeadFollowUp, type Property } from "@/data/admin-sample";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
-import { leadWhatsAppMessage } from "@/lib/lead-whatsapp-message";
 
 export const STAGE_OPTIONS: { id: Lead["stage"]; label: string; class: string }[] = [
   { id: "new", label: "Nuevo", class: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" },
@@ -36,7 +37,7 @@ type LeadActionsProps = {
   onFollowUp?: () => void;
 };
 
-function LeadActions({ lead, onView, onFollowUp, showLabels = false }: LeadActionsProps) {
+function LeadActions({ lead, onView, onFollowUp, showLabels = true }: LeadActionsProps) {
   const whatsappNumber = lead.phone?.replace(/\D/g, "");
 
   return (
@@ -107,7 +108,7 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
   const router = useRouter();
   const [updatingStageLeadId, setUpdatingStageLeadId] = useState<string | null>(null);
 
-  const getInitials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(n => n[0]).join("").toUpperCase();
+  const getInitials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join("").toUpperCase();
 
   const handleStageSelect = async (leadId: string, newStage: Lead["stage"]) => {
     if (updatingStageLeadId) return;
@@ -120,9 +121,9 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
   };
 
   return (
-    <div className="@container min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-sm">
+    <div className="leads-table @container min-w-0 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-sm">
       {/* Vista Mobile / Tablet */}
-      <div className="divide-y divide-slate-100 dark:divide-slate-800 @min-[80rem]:hidden">
+      <div className="divide-y divide-slate-100 dark:divide-slate-800 @min-[70rem]:hidden">
         {leads.map((lead) => {
           const property = properties.find((item) => item.id === lead.propertyIds[0]);
           const currentStage = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
@@ -144,7 +145,7 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1 basis-40">
-                  <p className="break-words text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{lead.name}</p>
+                  <Link href={`/admin/leads/${lead.id}`} className="break-words text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight hover:text-blue-600 dark:hover:text-blue-400 underline-offset-4 hover:underline focus-visible:underline">{lead.name}</Link>
                   <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     <span className="size-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
                     <span className="truncate">{lead.origin}</span>
@@ -192,9 +193,9 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
               {/* Row 3: Quick action buttons */}
               <div className="mt-2.5 flex items-center justify-end gap-1">
                 <LeadActions showLabels
-                  lead={lead} 
+                  lead={lead}
                   onView={() => router.push(`/admin/leads/${lead.id}`)}
-                  onFollowUp={() => onFollowUp?.(lead)} 
+                  onFollowUp={() => onFollowUp?.(lead)}
                 />
               </div>
             </article>
@@ -203,22 +204,22 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
       </div>
 
       {/* Vista Desktop (Tabla Pro) */}
-      <div className="hidden @min-[80rem]:block overflow-x-auto overflow-y-auto max-h-[70vh] rounded-2xl relative">
+      <div className="hidden @min-[70rem]:block overflow-x-auto overflow-y-auto max-h-[70vh] rounded-2xl relative">
         <table className="w-full table-fixed text-left border-collapse">
-          <colgroup><col style={{width:"25%"}}/><col style={{width:"17%"}}/><col style={{width:"16%"}}/><col style={{width:"11%"}}/><col style={{width:"17%"}}/><col style={{width:"14%"}}/></colgroup>
+          <colgroup><col style={{ width: "19%" }}/><col style={{ width: "16%" }}/><col style={{ width: "16%" }}/><col style={{ width: "9%" }}/><col style={{ width: "18%" }}/><col style={{ width: "22%" }}/></colgroup>
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95">
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Interesado</th>
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Cliente</th>
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Activo / Precio</th>
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Etapa comercial</th>
               <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Origen</th>
-              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Seguimiento</th>
+              <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Por qué ahora</th>
               <th className="px-4 py-4 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
             {leads.map((lead) => {
-              const props = properties.find(p => p.id === lead.propertyIds[0]);
+              const props = properties.find((p) => p.id === lead.propertyIds[0]);
               const currentStage = STAGE_OPTIONS.find((s) => s.id === lead.stage) || STAGE_OPTIONS[0];
 
               return (
@@ -239,12 +240,12 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col min-w-0">
-                        <span 
-                          onClick={() => router.push(`/admin/leads/${lead.id}`)}
-                          className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-tight hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
+                        <Link
+                          href={`/admin/leads/${lead.id}`}
+                          className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-tight hover:text-blue-600 dark:hover:text-blue-400 underline-offset-4 hover:underline focus-visible:underline transition-colors"
                         >
                           {lead.name}
-                        </span>
+                        </Link>
                         <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{lead.email || lead.phone || "Sin contacto"}</span>
                       </div>
                     </div>
@@ -305,10 +306,10 @@ export default function LeadTable({ properties = [], leads, followUps, onStageCh
 
                   {/* Columna: Acciones Rápidas */}
                   <td className="px-4 py-4 text-right">
-                    <LeadActions 
-                      lead={lead} 
+                    <LeadActions
+                      lead={lead}
                       onView={() => router.push(`/admin/leads/${lead.id}`)}
-                      onFollowUp={() => onFollowUp?.(lead)} 
+                      onFollowUp={() => onFollowUp?.(lead)}
                     />
                   </td>
                 </tr>
