@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\DB;
 use Minishlink\WebPush\VAPID;
 use Tests\TestCase;
 
@@ -69,7 +70,17 @@ final class ProductionEnvironmentTest extends TestCase
             ->expectsOutputToContain('OK Schema: project landing')
             ->expectsOutputToContain('OK Schema: project intakes')
             ->expectsOutputToContain('OK Schema: deleted leads closed')
+            ->expectsOutputToContain('OK Schema: lead interests')
             ->assertSuccessful();
+        // EVP-178: without its schema_versions row the forward (and its backfill) is not considered applied.
+        DB::beginTransaction();
+        try {
+            DB::table('schema_versions')->where('version', '2026-11-21.001')->delete();
+            $this->artisan('everprop:production-check --connections')
+                ->expectsOutputToContain('FAIL Schema: lead interests')->assertFailed();
+        } finally {
+            DB::rollBack();
+        }
         config(['webpush.public_key' => null, 'webpush.private_key' => null, 'webpush.subject' => null]);
         $this->artisan('everprop:production-check --webpush')->assertFailed();
         $keys = VAPID::createVapidKeys();

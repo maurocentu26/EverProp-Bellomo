@@ -14,6 +14,7 @@ use App\Domain\CRM\Http\Controllers\AdminLeadController;
 use App\Domain\CRM\Http\Controllers\AdminLeadFollowUpController;
 use App\Domain\CRM\Http\Controllers\AdminVisitController;
 use App\Domain\CRM\Http\Controllers\CommercialStatisticsController;
+use App\Domain\CRM\Http\Controllers\LeadInterestController;
 use App\Domain\CRM\Http\Controllers\PublicLeadController;
 use App\Domain\Identity\Http\Controllers\AdminNotificationController;
 use App\Domain\Identity\Http\Controllers\AdminUserController;
@@ -98,6 +99,7 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
 
         Route::get('commercial-statistics', CommercialStatisticsController::class)->middleware('throttle:30,1');
         Route::get('lead-advisors', [AdminLeadController::class, 'advisors']);
+        Route::get('lead-interest-suggestions', [LeadInterestController::class, 'suggestions'])->name('leads.interests.suggestions');
         Route::get('leads/profile-suggestions', [AdminLeadController::class, 'profileSuggestions']);
         Route::apiResource('leads', AdminLeadController::class);
         Route::get('/visits', [AdminVisitController::class, 'index']);
@@ -107,6 +109,9 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
         Route::post('/leads/{lead}/properties', [AdminLeadController::class, 'attachProperty'])->name('leads.properties.attach');
         Route::patch('/leads/{lead}/properties/{property}', [AdminLeadController::class, 'updateProperty'])->name('leads.properties.update');
         Route::delete('/leads/{lead}/properties/{property}', [AdminLeadController::class, 'detachProperty'])->name('leads.properties.detach');
+        Route::post('/leads/{lead}/interests', [LeadInterestController::class, 'store'])->name('leads.interests.store');
+        Route::patch('/leads/{lead}/interests/{interest}', [LeadInterestController::class, 'update'])->name('leads.interests.update');
+        Route::delete('/leads/{lead}/interests/{interest}', [LeadInterestController::class, 'destroy'])->name('leads.interests.destroy');
         Route::get('/follow-ups', [AdminLeadFollowUpController::class, 'indexAll'])->name('follow-ups.index-all');
         Route::get('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'index'])->name('leads.follow-ups.index');
         Route::post('/leads/{lead}/follow-ups', [AdminLeadFollowUpController::class, 'store'])->name('leads.follow-ups.store');
