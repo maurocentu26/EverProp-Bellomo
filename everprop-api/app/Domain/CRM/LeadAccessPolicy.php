@@ -29,6 +29,12 @@ final class LeadAccessPolicy
             && ($user->role() !== RoleCode::SALES_ADVISOR || (int) $lead->assigned_user_id === (int) $user->id);
     }
 
+    /** READ_ONLY never sees ID numbers, tax ids, income or guarantor contact data (EVP-177). */
+    public function viewSensitiveProfile(User $user): bool
+    {
+        return $user->role() !== RoleCode::READ_ONLY;
+    }
+
     public function update(User $user, int $tenantId, object $lead): bool
     {
         // ponytail: rol rotador tiene permiso provisorio de gestión comercial sobre el lead (EVP-21)

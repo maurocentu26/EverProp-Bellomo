@@ -120,6 +120,9 @@ final class ProductionCheck extends Command
                     && Schema::hasTable('project_intake_units');
                 // EVP-124 (forward 2026-11-14.001) is data-only: its schema_versions row is the only trace that it ran.
                 $checks['Schema: deleted leads closed'] = DB::table('schema_versions')->where('version', '2026-11-14.001')->exists();
+                // EVP-178: the table alone does not prove the lead_properties backfill ran; its schema_versions row does.
+                $checks['Schema: lead interests'] = Schema::hasColumns('lead_interests', ['participants_json', 'prototype_label', 'deleted_at'])
+                    && DB::table('schema_versions')->where('version', '2026-11-21.001')->exists();
             } catch (Throwable) {
                 $checks['Database and Redis connections'] = false;
             }

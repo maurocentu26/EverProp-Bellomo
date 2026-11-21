@@ -7,6 +7,7 @@ use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\Notifications\LeadAssignedNotification;
 use App\Domain\CRM\Services\ContactIdentityResolver;
 use App\Domain\CRM\Services\LeadAssignments;
+use App\Domain\CRM\Services\LeadInterests;
 use App\Domain\CRM\Support\PhoneNumber;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Inventory\Models\Property;
@@ -512,6 +513,7 @@ final class AdminLeadController extends Controller
                     'follow_up_updated_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
                     'property_ids' => $propertyIds,
                     'properties' => $propertiesList,
+                    'interests' => app(LeadInterests::class)->forLead($tenantId, (int) $lead->id, $canViewPrices, (new LeadAccessPolicy)->viewSensitiveProfile($user)),
                     'created_at' => $lead->created_at ? Carbon::parse($lead->created_at, 'UTC')->toISOString() : null,
                     'updated_at' => $lead->updated_at ? Carbon::parse($lead->updated_at, 'UTC')->toISOString() : null,
                 ],
