@@ -1088,8 +1088,9 @@ export type TodayVisits = {
   meta: { total: number; date: string; timezone: string };
 };
 
-export function loadEverpropTodayVisits(): Promise<TodayVisits> {
-  return apiFetch<TodayVisits>("/api/v1/admin/visits/today");
+export function loadEverpropTodayVisits(agentId?: string): Promise<TodayVisits> {
+  const query = agentId && agentId !== "all" ? `?agent_id=${encodeURIComponent(agentId)}` : "";
+  return apiFetch<TodayVisits>(`/api/v1/admin/visits/today${query}`);
 }
 
 export function loadEverpropVisits() {

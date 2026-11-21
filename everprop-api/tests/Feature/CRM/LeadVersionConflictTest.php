@@ -22,7 +22,7 @@ final class LeadVersionConflictTest extends TestCase
         DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'Nuevo', 'category' => 'OPEN', 'position' => 1]);
         $this->withHeaders(['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173']);
 
-        $lead = $this->actingAs($admin)->postJson('/api/v1/admin/leads', ['name' => 'Lead compartido', 'agent_id' => $advisor->public_id])
+        $lead = $this->actingAs($admin)->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0105', 'name' => 'Lead compartido', 'agent_id' => $advisor->public_id])
             ->assertCreated()->json('data.id');
         // Both load the lead: show and index return the same version.
         $loaded = $this->actingAs($advisor)->getJson('/api/v1/admin/leads/'.$lead)->assertOk()->json('data.version');

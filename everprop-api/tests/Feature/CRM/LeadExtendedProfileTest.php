@@ -63,10 +63,10 @@ final class LeadExtendedProfileTest extends TestCase
         $admin = $this->user($tenant, RoleCode::TENANT_ADMIN);
 
         // Lead without profile: show returns null.
-        $plain = $this->as($tenant, $admin)->postJson('/api/v1/admin/leads', ['name' => 'Sin perfil'])->assertCreated()->json('data.id');
+        $plain = $this->as($tenant, $admin)->postJson('/api/v1/admin/leads', ['phone' => '+5491155550000', 'name' => 'Sin perfil'])->assertCreated()->json('data.id');
         $this->getJson('/api/v1/admin/leads/'.$plain)->assertOk()->assertJsonPath('data.profile', null);
 
-        $lead = $this->postJson('/api/v1/admin/leads', ['name' => 'Con perfil', 'profile' => $this->fullProfile()])->assertCreated()->json('data.id');
+        $lead = $this->postJson('/api/v1/admin/leads', ['phone' => '+5491155550001', 'name' => 'Con perfil', 'profile' => $this->fullProfile()])->assertCreated()->json('data.id');
         $data = $this->getJson('/api/v1/admin/leads/'.$lead)->assertOk()->json('data');
         $this->assertSame(1, $data['profile']['version']);
         foreach ($this->fullProfile() as $block => $value) {
@@ -114,7 +114,7 @@ final class LeadExtendedProfileTest extends TestCase
     {
         $tenant = $this->tenant();
         $admin = $this->user($tenant, RoleCode::TENANT_ADMIN);
-        $lead = $this->as($tenant, $admin)->postJson('/api/v1/admin/leads', ['name' => 'Validar'])->assertCreated()->json('data.id');
+        $lead = $this->as($tenant, $admin)->postJson('/api/v1/admin/leads', ['phone' => '+5491155550002', 'name' => 'Validar'])->assertCreated()->json('data.id');
 
         foreach ([
             'profile.personal.birthDate' => ['personal' => ['birthDate' => '2020-02-31']],
@@ -126,7 +126,7 @@ final class LeadExtendedProfileTest extends TestCase
             'profile' => ['tenant_id' => 1],
         ] as $field => $profile) {
             $this->patchJson('/api/v1/admin/leads/'.$lead, ['profile' => $profile])->assertUnprocessable()->assertJsonValidationErrors($field);
-            $this->postJson('/api/v1/admin/leads', ['name' => 'X', 'profile' => $profile])->assertUnprocessable()->assertJsonValidationErrors($field);
+            $this->postJson('/api/v1/admin/leads', ['phone' => '+5491155550003', 'name' => 'X', 'profile' => $profile])->assertUnprocessable()->assertJsonValidationErrors($field);
         }
         $this->assertNull(DB::table('contacts')->where('id', DB::table('leads')->where('public_id', $lead)->value('contact_id'))->value('profile_json'));
     }
@@ -142,11 +142,11 @@ final class LeadExtendedProfileTest extends TestCase
         $readOnly = $this->user($a, RoleCode::READ_ONLY);
         $rotator = $this->user($a, RoleCode::ROTATOR);
 
-        $this->as($b, $adminB)->postJson('/api/v1/admin/leads', ['name' => 'B', 'profile' => [
+        $this->as($b, $adminB)->postJson('/api/v1/admin/leads', ['phone' => '+5491155550004', 'name' => 'B', 'profile' => [
             'personal' => ['documentNumber' => '11111111', 'taxCondition' => 'SecretoB'],
             'addresses' => [['neighborhood' => 'BarrioB', 'city' => 'CiudadB', 'province' => 'ProvinciaB']],
         ]])->assertCreated();
-        $leadA = $this->as($a, $adminA)->postJson('/api/v1/admin/leads', ['name' => 'A', 'agent_id' => $advisor->public_id, 'profile' => [
+        $leadA = $this->as($a, $adminA)->postJson('/api/v1/admin/leads', ['phone' => '+5491155550005', 'name' => 'A', 'agent_id' => $advisor->public_id, 'profile' => [
             'personal' => ['taxCondition' => 'Responsable Inscripto'],
             'addresses' => [['neighborhood' => 'Centro', 'city' => 'Salta', 'province' => 'Salta']],
         ]])->assertCreated()->json('data.id');
@@ -173,7 +173,7 @@ final class LeadExtendedProfileTest extends TestCase
         $tenant = $this->tenant();
         $admin = $this->user($tenant, RoleCode::TENANT_ADMIN);
         $readOnly = $this->user($tenant, RoleCode::READ_ONLY);
-        $lead = $this->as($tenant, $admin)->postJson('/api/v1/admin/leads', ['name' => 'Sensible', 'profile' => $this->fullProfile()])->assertCreated()->json('data.id');
+        $lead = $this->as($tenant, $admin)->postJson('/api/v1/admin/leads', ['phone' => '+5491155550006', 'name' => 'Sensible', 'profile' => $this->fullProfile()])->assertCreated()->json('data.id');
 
         $this->assertSame('30.123.456', $this->getJson('/api/v1/admin/leads/'.$lead)->json('data.profile.personal.documentNumber'));
         $profile = $this->as($tenant, $readOnly)->getJson('/api/v1/admin/leads/'.$lead)->assertOk()->json('data.profile');
@@ -196,8 +196,8 @@ final class LeadExtendedProfileTest extends TestCase
         $beto = $this->user($a, RoleCode::SALES_ADVISOR);
         $dni = ['personal' => ['documentNumber' => '33444555']];
 
-        $leadA = $this->as($a, $adminA)->postJson('/api/v1/admin/leads', ['name' => 'De Ana', 'agent_id' => $ana->public_id, 'profile' => $dni])->assertCreated()->json('data.id');
-        $leadB = $this->as($b, $adminB)->postJson('/api/v1/admin/leads', ['name' => 'De B', 'profile' => $dni])->assertCreated()->json('data.id');
+        $leadA = $this->as($a, $adminA)->postJson('/api/v1/admin/leads', ['phone' => '+5491155550007', 'name' => 'De Ana', 'agent_id' => $ana->public_id, 'profile' => $dni])->assertCreated()->json('data.id');
+        $leadB = $this->as($b, $adminB)->postJson('/api/v1/admin/leads', ['phone' => '+5491155550008', 'name' => 'De B', 'profile' => $dni])->assertCreated()->json('data.id');
         $ids = fn (): array => array_column((array) $this->getJson('/api/v1/admin/leads?document=33444555')->assertOk()->json('data'), 'id');
 
         $this->as($a, $adminA);
@@ -214,7 +214,7 @@ final class LeadExtendedProfileTest extends TestCase
     {
         $tenant = $this->tenant();
         $admin = $this->user($tenant, RoleCode::TENANT_ADMIN);
-        $lead = $this->as($tenant, $admin)->postJson('/api/v1/admin/leads', ['name' => 'Version', 'profile' => $this->fullProfile()])->assertCreated()->json('data.id');
+        $lead = $this->as($tenant, $admin)->postJson('/api/v1/admin/leads', ['phone' => '+5491155550009', 'name' => 'Version', 'profile' => $this->fullProfile()])->assertCreated()->json('data.id');
         $contactId = DB::table('leads')->where('public_id', $lead)->value('contact_id');
         $before = DB::table('contacts')->where('id', $contactId)->value('profile_json');
         $version = $this->getJson('/api/v1/admin/leads/'.$lead)->json('data.version');
