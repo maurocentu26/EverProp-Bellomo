@@ -98,6 +98,7 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
 
         Route::get('commercial-statistics', CommercialStatisticsController::class)->middleware('throttle:30,1');
         Route::get('lead-advisors', [AdminLeadController::class, 'advisors']);
+        Route::get('leads/profile-suggestions', [AdminLeadController::class, 'profileSuggestions']);
         Route::apiResource('leads', AdminLeadController::class);
         Route::get('/visits', [AdminVisitController::class, 'index']);
         Route::post('/visits', [AdminVisitController::class, 'store']);
