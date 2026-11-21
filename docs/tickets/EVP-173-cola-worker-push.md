@@ -37,6 +37,7 @@ El deploy automático del merge no cambia nada en la API: el web no usa la rama 
    - **Vercel no necesita nada:** el panel lee la clave pública desde `/api/v1/admin/push/config`.
 4. **Servicio de cola:** mismo repo, raíz `/everprop-api`, config `/everprop-api/railway-worker.json`, sin dominio público.
    - Variables: las de la API más `QUEUE_WORKER_CONNECTION=database`.
+   - **Aplicado el 2026-11-21:** Railway ya no acepta config-as-code en servicios nuevos, así que `EverProp-Worker` se configuró en la UI, con reinicio Always. Ver `everprop-api/docs/railway-backend.md` y EVP-182.
 5. **Chequeo:** `php artisan everprop:production-check --connections --webpush` en la API.
 6. **Prueba física:**
    - Un asesor activa los avisos desde el panel, en un celular real; en iPhone, desde la pantalla de inicio.

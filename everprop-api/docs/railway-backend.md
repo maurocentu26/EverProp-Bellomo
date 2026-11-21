@@ -10,39 +10,54 @@ Este proyecto ya dispone de API y MySQL. Para actualizarlo, conservar ambos serv
 
 #### Avisos push en `awake-dedication` (EVP-173)
 
-Con `QUEUE_CONNECTION=sync`, las peticiones no encolan nada, pero el push (`SendWebPush`) se encola en `WEBPUSH_QUEUE_CONNECTION=database` para no demorar la acción que lo dispara. Hace falta un servicio de cola desde el mismo repositorio y commit:
+Con `QUEUE_CONNECTION=sync`, las peticiones no encolan nada, pero el push (`SendWebPush`) se encola en `WEBPUSH_QUEUE_CONNECTION=database` para no demorar la acción que lo dispara. Lo consume el servicio `EverProp-Worker`, creado el 2026-11-21 (EVP-182). Se configura en la UI de Railway porque los servicios nuevos ya no aceptan config-as-code (ver más abajo):
 
-- Raíz `/everprop-api` y config `/everprop-api/railway-worker.json`.
-- Sin dominio público.
-- Las mismas variables que la API (MySQL, APP_KEY, sesiones, tenant), más `QUEUE_WORKER_CONNECTION=database`. La petición sigue en `sync`.
+| Ajuste | Valor |
+| --- | --- |
+| Source | Mismo repositorio, rama `main`, Root Directory `/everprop-api` |
+| Build | Dockerfile, detectado solo |
+| Custom Start Command | `sh /var/www/html/docker/production/entrypoint.sh worker` |
+| Restart Policy | **Always**. `queue:work --max-time=3600` termina con código 0 cada hora, así que On Failure no lo vuelve a levantar. |
+| Healthcheck y dominio | Ninguno. El worker no sirve HTTP. |
+| Variables | Las de la API como referencias (`APP_KEY=${{EverProp-Bellomo.APP_KEY}}`, etc.), más `QUEUE_WORKER_CONNECTION=database`. Así los secretos, incluida `WEBPUSH_PRIVATE_KEY`, viven solo en la API. Si se agrega una variable a la API, hay que agregar su referencia al worker. |
+
+El worker corre el mismo `production-check --connections` que la API al arrancar, por eso necesita todas sus variables y no solo las de MySQL. La petición sigue en `sync`.
 
 Orden:
 1. Aplicar el forward `2026-09-30.001_queue_tables.sql`, que crea `jobs` y `failed_jobs`, con la conexión de migraciones.
-2. Cargar en la API y en la cola `WEBPUSH_PUBLIC_KEY`, `WEBPUSH_PRIVATE_KEY`, `WEBPUSH_SUBJECT` y `WEBPUSH_QUEUE_CONNECTION=database`. Ver `web-push.md`.
-3. Crear el servicio de cola.
-4. Correr `php artisan everprop:production-check --connections --webpush` en la API.
+2. Cargar en la API `WEBPUSH_PUBLIC_KEY`, `WEBPUSH_PRIVATE_KEY`, `WEBPUSH_SUBJECT` y `WEBPUSH_QUEUE_CONNECTION=database`. Ver `web-push.md`.
+   - `WEBPUSH_SUBJECT` identifica al emisor ante los servicios de push y no envía correos. Puede ser la URL HTTPS de la API, que es la que se usa en `awake-dedication`.
+3. Crear el servicio de cola con la tabla de arriba y desplegarlo.
+4. Correr `php artisan everprop:production-check --connections --webpush` en la consola de la API.
+5. Comprobar en la consola del worker que corre `queue:work database` y que `php artisan queue:monitor database:default` y `php artisan queue:failed` den 0.
 
 Hasta que haya `WEBPUSH_PRIVATE_KEY` la API no encola push. Por eso la cola puede crearse antes, pero sin claves no tiene trabajo. El panel lee la clave pública desde `/api/v1/admin/push/config`, así que Vercel no necesita variables nuevas.
 
-El scheduler (`railway-scheduler.json`), que corre los recordatorios de cobranzas, queda fuera de este paso.
+En el plan Hobby, Railway no permite crear respaldos manuales de MySQL: solo restaurar los que ya existen. Antes de un forward destructivo hace falta otro respaldo, por ejemplo un `mysqldump` desde la consola de MySQL.
+
+El scheduler, que corre los recordatorios de cobranzas, queda fuera de este paso. Si se agrega, se configura como el worker, con el comando `sh /var/www/html/docker/production/entrypoint.sh scheduler` y una sola réplica.
 
 El frontend publicado es `https://ever-prop-bellomo.vercel.app`. Configurar ese origen exacto para CORS y su hostname para Sanctum. La raíz del frontend redirige a `/login`.
 
 ### Alternativa con Redis y procesos separados
 
-Crear/configurar tres servicios desde el mismo repositorio y commit, con raíz `/everprop-api` y estos archivos de configuración (el selector de Railway usa rutas desde la raíz del repositorio):
+Crear/configurar tres servicios desde el mismo repositorio y commit, con raíz `/everprop-api`.
 
-| Servicio | Archivo | Función |
-| --- | --- | --- |
-| API | `/everprop-api/railway.json` | HTTP sobre `$PORT`, readiness `/readyz` |
-| Cola | `/everprop-api/railway-worker.json` | Worker de la conexión `QUEUE_CONNECTION` (redis o database; override con `QUEUE_WORKER_CONNECTION`), sin dominio público. Consume las colas `webhooks,outbound,agent,default` en ese orden de prioridad (override con `QUEUE_WORKER_QUEUES`) |
-| Scheduler | `/everprop-api/railway-scheduler.json` | Scheduler continuo, una réplica, sin dominio público |
+**Config-as-code:** Railway la dio de baja. Desde el 2026-08-28 un servicio que nunca la usó no puede activarla, y desde el 2026-12-01 los archivos existentes dejan de aplicarse. Los archivos `railway*.json` quedan solo como referencia de la configuración. Lo que dicen hay que cargarlo a mano en la UI de cada servicio (Settings → Deploy).
 
-Con la IA encendida, agregar un segundo servicio de cola con el mismo archivo y `QUEUE_WORKER_QUEUES=webhooks,outbound`: así los webhooks y las respuestas no esperan a que termine un turno de IA (EVP-131).
+Al 2026-11-21, la API de `awake-dedication` no tiene ningún healthcheck cargado en la UI. Conviene agregar `/readyz` (120 s) para que Railway no pase tráfico a un despliegue que no esté listo.
+
+| Servicio | Referencia | Start Command | Restart | Healthcheck | Función |
+| --- | --- | --- | --- | --- | --- |
+| API | `railway.json` | Ninguno (usa el ENTRYPOINT) | On Failure, 10 reintentos | `/readyz`, 120 s | HTTP sobre `$PORT` |
+| Cola | `railway-worker.json` | `sh /var/www/html/docker/production/entrypoint.sh worker` | Always | Ninguno | Worker de la conexión `QUEUE_CONNECTION` (redis o database; override con `QUEUE_WORKER_CONNECTION`), sin dominio público. Consume las colas `webhooks,outbound,agent,default` en ese orden de prioridad (override con `QUEUE_WORKER_QUEUES`) |
+| Scheduler | `railway-scheduler.json` | `sh /var/www/html/docker/production/entrypoint.sh scheduler` | Always | Ninguno | Scheduler continuo, una réplica, sin dominio público |
+
+Con la IA encendida, agregar un segundo servicio de cola con la misma configuración y `QUEUE_WORKER_QUEUES=webhooks,outbound`: así los webhooks y las respuestas no esperan a que termine un turno de IA (EVP-131).
 
 Los servicios comparten MySQL, Redis, APP_KEY y el almacenamiento privado. El proceso de cola termina de forma controlada cada hora; la política `ALWAYS` lo reinicia. Mantener una sola réplica del scheduler. Usar MySQL y Redis por red privada. No publicar sus puertos.
 
-La API usa el ENTRYPOINT del Dockerfile. Quitar cualquier Start Command antiguo como `php artisan serve`. Los archivos de cola y scheduler incluyen su comando explícito porque Railway reemplaza el ENTRYPOINT al configurar Start Command.
+La API usa el ENTRYPOINT del Dockerfile. Quitar cualquier Start Command antiguo como `php artisan serve`. La cola y el scheduler llevan el comando completo porque Railway reemplaza el ENTRYPOINT al configurar Start Command.
 
 ## Variables
 
