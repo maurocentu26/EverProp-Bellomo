@@ -24,7 +24,7 @@ final class RotatorTest extends TestCase
         $foreign = User::factory()->create(['role_code' => RoleCode::SALES_ADVISOR]);
         DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'Nuevo', 'category' => 'OPEN', 'position' => 1]);
         $this->actingAs($admin)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
-        $lead = $this->postJson('/api/v1/admin/leads', ['name' => 'Lead para rotar'])->assertCreated()->json('data.id');
+        $lead = $this->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0106', 'name' => 'Lead para rotar'])->assertCreated()->json('data.id');
         $property = (string) Str::uuid();
         DB::table('properties')->insert([
             'tenant_id' => $tenant->id, 'public_id' => $property, 'title' => 'Casa de interés',
@@ -72,7 +72,7 @@ final class RotatorTest extends TestCase
 
         $this->actingAs($rotator)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id]);
         $lead = $this->postJson('/api/v1/admin/leads', [
-            'name' => 'Lead con inmueble por rotador', 'email' => 'lead@example.invalid', 'phone' => '+5493881234567',
+            'name' => 'Lead con inmueble por rotador', 'email' => 'lead@example.invalid', 'phone' => '+5493884123456',
             'source_channel' => 'WHATSAPP', 'priority' => 'HIGH', 'budget' => 120000, 'currency' => 'USD',
             'notes' => 'Busca vivienda céntrica', 'agent_id' => $advisor->public_id, 'property_id' => $property,
         ])->assertCreated()->json('data.id');
@@ -95,11 +95,11 @@ final class RotatorTest extends TestCase
             ->assertJsonPath('data.properties.0.price', 95000);
 
         foreach ([$paused, $foreign, $rotator] as $invalid) {
-            $this->postJson('/api/v1/admin/leads', ['name' => 'Inválido', 'agent_id' => $invalid->public_id])
+            $this->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0107', 'name' => 'Inválido', 'agent_id' => $invalid->public_id])
                 ->assertUnprocessable()->assertJsonValidationErrors('agent_id');
         }
         $this->withHeaders(['X-Everprop-Tenant' => $foreign->tenant->public_id])
-            ->postJson('/api/v1/admin/leads', ['name' => 'Otro tenant'])->assertNotFound();
+            ->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0108', 'name' => 'Otro tenant'])->assertNotFound();
     }
 
     public function test_rotator_catalog_is_read_only_tenant_scoped_and_respects_price_permissions(): void

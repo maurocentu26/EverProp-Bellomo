@@ -29,7 +29,7 @@ final class LeadAssignmentHistoryTest extends TestCase
         DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'Nuevo', 'category' => 'OPEN', 'position' => 1]);
         $this->actingAs($admin)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173']);
 
-        $public = $this->postJson('/api/v1/admin/leads', ['name' => 'Lead sin asesor'])->assertCreated()->json('data.id');
+        $public = $this->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0102', 'name' => 'Lead sin asesor'])->assertCreated()->json('data.id');
         $lead = fn () => DB::table('leads')->where('public_id', $public)->first();
         $history = fn () => DB::table('lead_assignments')->where('lead_id', $lead()->id)->orderBy('id')->get();
         $this->assertSame('UNASSIGNED', $lead()->assignment_method);
@@ -75,7 +75,7 @@ final class LeadAssignmentHistoryTest extends TestCase
         DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'Nuevo', 'category' => 'OPEN', 'position' => 1]);
         $this->actingAs($admin)->withHeaders(['X-Everprop-Tenant' => $tenant->public_id, 'Origin' => 'http://localhost:5173']);
 
-        $public = $this->postJson('/api/v1/admin/leads', ['name' => 'Lead con asesor', 'agent_id' => $ana->public_id])->assertCreated()->json('data.id');
+        $public = $this->postJson('/api/v1/admin/leads', ['phone' => '11 5555-0103', 'name' => 'Lead con asesor', 'agent_id' => $ana->public_id])->assertCreated()->json('data.id');
         $lead = DB::table('leads')->where('public_id', $public)->first();
         $this->assertSame('MANUAL', $lead->assignment_method);
         $this->assertNotNull($lead->first_assigned_at);
