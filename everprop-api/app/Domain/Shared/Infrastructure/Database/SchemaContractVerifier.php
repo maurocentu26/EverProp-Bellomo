@@ -36,6 +36,23 @@ final readonly class SchemaContractVerifier
             'SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = ?',
             [$schema],
         );
+        $inventoryKeys = $contract['inventory_foreign_keys'] ?? [];
+        $presentInventoryKeys = $inventoryKeys === [] ? 0 : $this->database->table('information_schema.referential_constraints')
+            ->where('constraint_schema', $schema)->whereIn('constraint_name', $inventoryKeys)->count();
+        $sourceTableExists = (int) $this->scalar(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = 'inventory_source_imports'",
+            [$schema],
+        ) > 0;
+        $sourceImported = $sourceTableExists && $this->database->table('inventory_source_imports')->exists();
+        // Empty installations may not have conditional FKs yet. Imported data requires both.
+        $expectedForeignKeys = $contract['foreign_keys'] + ($sourceImported ? count($inventoryKeys) : $presentInventoryKeys);
+        // EVP-183: framework tables that exist only when sessions/cache are stored in MySQL (awake-dedication).
+        $runtimeTables = array_keys(array_filter(
+            $contract['runtime_tables'] ?? [],
+            static fn (string $driverKey): bool => config($driverKey) === 'database',
+        ));
+        $expectedGlobals = array_merge($contract['global_tables'], $runtimeTables);
+        sort($expectedGlobals);
         $procedures = (int) $this->scalar(
             "SELECT COUNT(*) FROM information_schema.routines WHERE routine_schema = ? AND routine_type = 'PROCEDURE'",
             [$schema],
@@ -68,12 +85,13 @@ final readonly class SchemaContractVerifier
 
         return [
             'baseline_sha256' => $this->check($contract['baseline_sha256'], $hash),
-            'tables' => $this->check($contract['tables'], $tables),
+            'tables' => $this->check($contract['tables'] + count($runtimeTables), $tables),
             'tenant_tables' => $this->check($contract['tenant_tables'], $tenantTables),
-            'foreign_keys' => $this->check($contract['foreign_keys'], $foreignKeys),
+            'foreign_keys' => $this->check($expectedForeignKeys, $foreignKeys),
+            'inventory_foreign_keys' => $this->check($sourceImported ? count($inventoryKeys) : $presentInventoryKeys, $presentInventoryKeys),
             'procedures' => $this->check($contract['procedures'], $procedures),
             'views' => $this->check($contract['views'], $views),
-            'global_tables' => $this->check($contract['global_tables'], $globals),
+            'global_tables' => $this->check($expectedGlobals, $globals),
             'runtime_not_root' => $this->check(true, ! str_starts_with(strtolower($runtimeUser), 'root@')),
         ];
     }
