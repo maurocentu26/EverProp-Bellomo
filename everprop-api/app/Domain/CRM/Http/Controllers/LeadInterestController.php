@@ -113,7 +113,7 @@ final class LeadInterestController extends Controller
     private function find(int $tenantId, int $id, User $actor): array
     {
         $interest = $this->interests->one($tenantId, $id, $actor->role() === RoleCode::ROTATOR || $this->inventoryAccess->mayViewPriceFields($actor),
-            (new LeadAccessPolicy)->viewSensitiveProfile($actor));
+            (new LeadAccessPolicy)->viewSensitiveProfile($actor, $tenantId));
         abort_unless($interest !== null, 404);
 
         return $interest;

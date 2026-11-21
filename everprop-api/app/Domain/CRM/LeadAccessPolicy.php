@@ -29,10 +29,10 @@ final class LeadAccessPolicy
             && ($user->role() !== RoleCode::SALES_ADVISOR || (int) $lead->assigned_user_id === (int) $user->id);
     }
 
-    /** READ_ONLY never sees ID numbers, tax ids, income or guarantor contact data (EVP-177). */
-    public function viewSensitiveProfile(User $user): bool
+    /** EVP-177: DNI, CUIT, incomes and guarantor of the extended profile; hidden from READ_ONLY. */
+    public function viewSensitiveProfile(User $user, int $tenantId): bool
     {
-        return $user->role() !== RoleCode::READ_ONLY;
+        return $this->viewAny($user, $tenantId) && $user->role() !== RoleCode::READ_ONLY;
     }
 
     public function update(User $user, int $tenantId, object $lead): bool
