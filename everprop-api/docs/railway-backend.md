@@ -45,7 +45,7 @@ Crear/configurar tres servicios desde el mismo repositorio y commit, con raíz `
 
 **Config-as-code:** Railway la dio de baja. Desde el 2026-08-28 un servicio que nunca la usó no puede activarla, y desde el 2026-12-01 los archivos existentes dejan de aplicarse. Los archivos `railway*.json` quedan solo como referencia de la configuración. Lo que dicen hay que cargarlo a mano en la UI de cada servicio (Settings → Deploy).
 
-Al 2026-11-21, la API de `awake-dedication` no tiene ningún healthcheck cargado en la UI. Conviene agregar `/readyz` (120 s) para que Railway no pase tráfico a un despliegue que no esté listo.
+La API de `awake-dedication` tiene Healthcheck Path `/readyz` desde el 2026-11-21, con el timeout por defecto de 300 s. Railway lo consulta con `Host: healthcheck.railway.app`, así que ese hostname tiene que seguir en `TRUSTED_HOSTS`: si falta, la API responde 400 y el despliegue no pasa el healthcheck.
 
 | Servicio | Referencia | Start Command | Restart | Healthcheck | Función |
 | --- | --- | --- | --- | --- | --- |
