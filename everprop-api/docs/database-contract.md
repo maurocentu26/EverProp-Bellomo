@@ -11,6 +11,11 @@
 
 El baseline se copia byte a byte y nunca se modifica. `scripts/import-schema.ps1` verifica el hash antes de importar en las bases dedicadas. `php artisan everprop:schema:verify` compara hash, objetos y runtime sin usar root.
 
+`config/database-contract.php` cuenta el baseline más los forwards, con dos casos que dependen del despliegue (EVP-183):
+
+- **FKs de inventario:** `fk_properties_legacy_type` y `fk_properties_legacy_status` existen solo después de importar el Excel de inventario. Se exigen cuando `inventory_source_imports` tiene filas.
+- **Tablas de Laravel:** `cache` y `cache_locks` (con `CACHE_STORE=database`) y `sessions` (con `SESSION_DRIVER=database`) no vienen de los forwards. Se exigen solo cuando ese driver es `database`, como en `awake-dedication`.
+
 ## Evolución
 
 Los cambios viven en `database/schema/forward/`, son idempotentes y forward-only. La extensión `2026-08-07.001_add_users_password_hash.sql` agrega `users.password_hash` al usuario canónico; no crea una tabla de identidad paralela.

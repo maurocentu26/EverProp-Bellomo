@@ -14,4 +14,6 @@ return [
     // usage_budget_locks: one row per billing period to serialize the platform-wide cap (2026-09-29.002).
     // jobs/failed_jobs: database queue infrastructure (2026-09-30.001).
     'global_tables' => ['failed_jobs', 'jobs', 'notifications', 'schema_versions', 'tenants', 'usage_budget_locks'],
+    // EVP-183: Laravel tables required only when that driver is `database` (awake-dedication), not created by forwards.
+    'runtime_tables' => ['cache' => 'cache.default', 'cache_locks' => 'cache.default', 'sessions' => 'session.driver'],
 ];
