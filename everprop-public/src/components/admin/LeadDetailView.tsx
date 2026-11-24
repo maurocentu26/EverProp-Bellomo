@@ -14,6 +14,7 @@ import {
   Clock3,
   Edit3,
   ExternalLink,
+  IdCard,
   Layers3,
   Mail,
   MessageCircle,
@@ -90,6 +91,8 @@ import { LeadFollowUpTimeline } from "@/components/admin/LeadFollowUpTimeline";
 import { LeadStageUpdateModal } from "@/components/admin/LeadStageUpdateModal";
 import { FINAL_DELIVERY_ENABLED } from "@/lib/release-visibility";
 import { LeadFinancingAgreements } from "@/components/admin/LeadFinancingAgreements";
+import { LeadExtendedProfileSection } from "@/components/admin/LeadExtendedProfileSection";
+import { cleanProfile, mapApiProfile, validateProfile, type LeadExtendedProfile } from "@/lib/lead-extended-profile";
 
 const CATEGORY_LABELS: Record<LeadInterestCategory, string> = {
   loteo: "Loteos",
@@ -115,7 +118,7 @@ const STAGE_STYLES: Record<string, string> = {
 };
 
 type InterestEditorState = { mode: "new" } | { mode: "edit"; interest: LeadInterest } | null;
-type LeadDetailSection = "activity" | "interests" | "financing";
+type LeadDetailSection = "activity" | "client" | "interests" | "financing";
 
 function formatMoney(amount: number, currency?: string | null) {
   const value = amount.toLocaleString("es-AR");
@@ -142,6 +145,12 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
   const [interestToDelete, setInterestToDelete] = useState<LeadInterest | null>(null);
   const [leadToDelete, setLeadToDelete] = useState(false);
   const [stageUpdateModalOpen, setStageUpdateModalOpen] = useState(false);
+  // EVP-180: draft of the "Datos del cliente" tab; null = untouched, shows what the API returned.
+  const [profileDraft, setProfileDraft] = useState<LeadExtendedProfile | null>(null);
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
+  const [savingClientProfile, setSavingClientProfile] = useState(false);
+  // The API leaves DNI, CUIT, incomes and guarantor out for READ_ONLY and rejects its edits (403).
+  const readOnlyProfile = currentUser?.apiRole === "READ_ONLY";
 
   useEffect(() => {
     let active = true;
@@ -240,6 +249,43 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     updateLeadData(nextLead);
     setProfileEditorOpen(false);
     toast.success("Ficha del cliente actualizada");
+  }
+
+  async function handleSaveClientProfile() {
+    if (!lead || !profileDraft || savingClientProfile) return;
+    const errors = validateProfile(profileDraft);
+    setProfileErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast.error("Revisá los datos marcados antes de guardar.");
+      return;
+    }
+    const payload = cleanProfile(profileDraft);
+    if (isMockDataMode) {
+      updateLeadData({ ...lead, profile: payload as Record<string, unknown> });
+      setProfileDraft(null);
+      toast.success("Datos del cliente guardados");
+      return;
+    }
+    setSavingClientProfile(true);
+    try {
+      await updateEverpropLead(lead.id, { profile: payload, version: lead.version });
+      // Reload: the API is the source of truth for the merged profile and the new version.
+      const fresh = await loadEverpropLeadById(lead.id);
+      updateLeadData({ ...fresh, visits: lead.visits });
+      setProfileDraft(null);
+      toast.success("Datos del cliente guardados");
+    } catch (e: unknown) {
+      if (isLeadVersionConflict(e)) {
+        // EVP-134: keep the draft, take the other save's version so the next click is a deliberate overwrite.
+        const fresh = await loadEverpropLeadById(lead.id).catch(() => null);
+        if (fresh) setLead({ ...lead, version: fresh.version });
+        toast.warning("Otra persona modificó este lead mientras editabas. Tus datos siguen en el formulario: si guardás de nuevo, reemplazan los suyos.");
+      } else {
+        toast.error("No se pudieron guardar los datos del cliente: " + (e instanceof Error ? e.message : "Error desconocido"));
+      }
+    } finally {
+      setSavingClientProfile(false);
+    }
   }
 
   async function handleDeleteLead() {
@@ -563,6 +609,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
     badge?: number;
   }> = [
     { id: "activity", label: "Actividad", icon: Clock3, badge: leadFollowUpItems.length + activeVisitsCount },
+    { id: "client", label: "Datos del cliente", icon: IdCard },
     { id: "interests", label: "Intereses", icon: Building2, badge: interests.length },
     ...(showFinancing ? [{ id: "financing" as const, label: "Financiación", icon: Calculator }] : []),
   ];
@@ -691,7 +738,7 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
             className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl px-4 py-2 text-left text-xs font-bold text-slate-900 xl:hidden dark:text-slate-100"
           >
             <span>
-              Datos del cliente{generalPendingData.length > 0 ? ` · ${generalPendingData.length === 1 ? "falta 1" : `faltan ${generalPendingData.length}`}` : ""}
+              Gestión y contacto{generalPendingData.length > 0 ? ` · ${generalPendingData.length === 1 ? "falta 1" : `faltan ${generalPendingData.length}`}` : ""}
             </span>
             <ChevronDown className={cn("size-4 shrink-0 transition-transform", railOpen && "rotate-180")} aria-hidden="true" />
           </button>
@@ -897,6 +944,40 @@ export default function LeadDetailView({ leadId }: { leadId: string }) {
               </section>
             </div>
           )}
+
+      {activeSection === "client" && (
+        <section id="lead-panel-client" role="tabpanel" aria-labelledby="lead-tab-client" className="space-y-4">
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h2 className="text-lg font-bold tracking-tight text-slate-950 dark:text-slate-100">Datos del cliente</h2>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                Identidad, domicilios, datos laborales, garante y vivienda actual. Todos los campos son opcionales.
+              </p>
+            </div>
+            {!readOnlyProfile && (
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                {profileDraft && (
+                  <Button variant="outline" disabled={savingClientProfile} onClick={() => { setProfileDraft(null); setProfileErrors({}); }} className="min-h-11 text-xs font-semibold">
+                    Descartar cambios
+                  </Button>
+                )}
+                <Button disabled={!profileDraft || savingClientProfile} onClick={handleSaveClientProfile} className="min-h-11 bg-blue-600 px-4 text-xs font-bold text-white hover:bg-blue-700">
+                  {savingClientProfile ? "Guardando…" : "Guardar datos del cliente"}
+                </Button>
+              </div>
+            )}
+          </div>
+          <LeadExtendedProfileSection
+            idPrefix="lead-client"
+            value={profileDraft ?? mapApiProfile(lead.profile)}
+            onChange={setProfileDraft}
+            errors={profileErrors}
+            disabled={readOnlyProfile || savingClientProfile}
+            showSensitive={!readOnlyProfile}
+            createdAt={lead.createdAt}
+          />
+        </section>
+      )}
 
       {activeSection === "interests" && (
         <section

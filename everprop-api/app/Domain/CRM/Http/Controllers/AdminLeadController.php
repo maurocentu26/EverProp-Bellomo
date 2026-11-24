@@ -7,6 +7,7 @@ use App\Domain\CRM\LeadAccessPolicy;
 use App\Domain\CRM\Notifications\LeadAssignedNotification;
 use App\Domain\CRM\Services\ContactIdentityResolver;
 use App\Domain\CRM\Services\LeadAssignments;
+use App\Domain\CRM\Support\ContactExtendedProfile;
 use App\Domain\CRM\Support\PhoneNumber;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Inventory\Models\Property;
@@ -22,6 +23,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -44,6 +46,15 @@ final class AdminLeadController extends Controller
             ->orderBy('display_name')->get(['public_id as id', 'display_name as name']);
 
         return response()->json(['data' => $advisors]);
+    }
+
+    /** EVP-177: previous values of this tenant only, for autocomplete in the extended profile form. */
+    public function profileSuggestions(Request $request): JsonResponse
+    {
+        $tenantId = $this->tenantContext->id();
+        abort_unless($request->user() && (new LeadAccessPolicy)->viewAny($request->user(), $tenantId), 403);
+
+        return response()->json(['data' => ContactExtendedProfile::suggestions($tenantId)]);
     }
 
     public function index(Request $request): JsonResponse
@@ -100,6 +111,21 @@ final class AdminLeadController extends Controller
                     $resolvedAgentId = $this->resolveUserId($agentParam, $tenantId);
                     $query->where('leads.assigned_user_id', $resolvedAgentId ?? -1);
                 }
+            }
+            // EVP-177: exact DNI/CUIT search, digits only. ponytail: JSON scan within the tenant (no index); a generated
+            // indexed column needs a forward SQL and is left pending.
+            $document = ContactExtendedProfile::normalizeDocument((string) $request->query('document', ''));
+            if ($document !== '') {
+                // READ_ONLY cannot see DNI/CUIT, so it cannot search by them either (403); 30 searches/min per user.
+                abort_unless((new LeadAccessPolicy)->viewSensitiveProfile($user, $tenantId), 403);
+                $throttle = 'lead-document-search:'.$tenantId.':'.$user->id;
+                abort_if(RateLimiter::tooManyAttempts($throttle, 30), 429);
+                RateLimiter::hit($throttle, 60);
+                $query->where(function ($q) use ($document): void {
+                    foreach (['$.extended.personal.documentNumber', '$.extended.personal.taxId'] as $path) {
+                        $q->orWhereRaw("REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(contacts.profile_json, '$path')), '[^0-9]', '') = ?", [$document]);
+                    }
+                });
             }
 
             $page = $query->simplePaginate(200);
@@ -214,7 +240,7 @@ final class AdminLeadController extends Controller
                 'notes' => 'nullable|string|max:10000',
                 'agent_id' => 'nullable',
                 'property_id' => 'nullable|string',
-            ]);
+            ] + ContactExtendedProfile::rules());
 
             // ponytail: se eliminó restricción de etapa y property_id para ROTATOR por decisión comercial provisoria (EVP-21)
 
@@ -260,6 +286,9 @@ final class AdminLeadController extends Controller
                         return $this->existingLead($user, $tenantId, $existing);
                     }
                     $contactId = $contact['id'];
+                    if (! empty($validated['profile'])) {
+                        $this->saveProfile($tenantId, (int) $contactId, $validated['profile']);
+                    }
 
                     // 2. Resolve stage
                     $stage = DB::table('pipeline_stages')
@@ -427,6 +456,7 @@ final class AdminLeadController extends Controller
                     'contacts.display_name as contact_name',
                     'contacts.email as contact_email',
                     'contacts.phone_e164 as contact_phone',
+                    'contacts.profile_json as contact_profile_json',
                     'pipeline_stages.code as stage_code',
                     'pipeline_stages.name as stage_name',
                     'users.public_id as assigned_user_id',
@@ -506,6 +536,7 @@ final class AdminLeadController extends Controller
                     'currency' => $lead->currency_code ?: 'USD',
                     'notes' => $lead->notes,
                     'version' => (int) $lead->version,
+                    'profile' => ContactExtendedProfile::read($lead->contact_profile_json, (new LeadAccessPolicy)->viewSensitiveProfile($user, $tenantId)),
                     'agent_id' => $lead->assigned_user_id,
                     'agent_name' => $lead->assigned_user_name,
                     'last_touch_at' => $lead->last_touch_at ? Carbon::parse($lead->last_touch_at, 'UTC')->toISOString() : null,
@@ -543,7 +574,7 @@ final class AdminLeadController extends Controller
                     'priority' => 'nullable|string|in:LOW,NORMAL,HIGH,URGENT',
                     'agent_id' => 'nullable',
                     'version' => 'nullable|integer|min:1',
-                ]);
+                ] + ContactExtendedProfile::rules());
 
                 $lead = DB::table('leads')
                     ->where('tenant_id', $tenantId)
@@ -609,6 +640,9 @@ final class AdminLeadController extends Controller
                 if (! empty($contactUpdates) && $lead->contact_id) {
                     $contactUpdates['updated_at'] = Carbon::now('UTC');
                     DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $lead->contact_id)->update($contactUpdates);
+                }
+                if (! empty($validated['profile'])) {
+                    $this->saveProfile($tenantId, (int) $lead->contact_id, $validated['profile']);
                 }
 
                 if ($stage) {
@@ -1001,6 +1035,14 @@ final class AdminLeadController extends Controller
                 }
             })
             ->first();
+    }
+
+    /** @param array<string, mixed> $patch validated `profile` payload */
+    private function saveProfile(int $tenantId, int $contactId, array $patch): void
+    {
+        $contacts = DB::table('contacts')->where('tenant_id', $tenantId)->where('id', $contactId);
+        $current = (clone $contacts)->lockForUpdate()->value('profile_json');
+        $contacts->update(['profile_json' => ContactExtendedProfile::apply($current, $patch), 'updated_at' => Carbon::now('UTC')]);
     }
 
     private function normalizedPhone(?string $phone): ?string

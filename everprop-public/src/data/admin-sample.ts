@@ -168,6 +168,8 @@ export type Lead = {
   visits?: Visit[];
   agentId?: string;
   agentName?: string;
+  /** EVP-177/180: extended client profile as the API returns it (DNI/CUIT, domicilios, laborales, garante, vivienda actual). */
+  profile?: Record<string, unknown>;
 };
 
 export type PaymentAgreementModality = "FIXED" | "CAC" | "STEPPED";

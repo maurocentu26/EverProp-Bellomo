@@ -1,5 +1,6 @@
 import type { Project, Property, Visit, Lead, LeadFollowUp, LeadFollowUpType, LeadInterestCategory } from "@/data/admin-sample";
 import type { UserProfile, UserRole } from "@/data/auth-sample";
+import type { ExtendedProfilePayload, ProfileSuggestions } from "@/lib/lead-extended-profile";
 
 const CONFIGURED_API_URL =
   process.env.NEXT_PUBLIC_EVERPROP_API_URL ||
@@ -533,6 +534,8 @@ export type ApiLead = {
     status?: string | null;
     notes?: string | null;
   }>;
+  /** EVP-177: contacts.profile_json.extended; null when never filled. Turned into form state by mapApiProfile(). */
+  profile?: Record<string, unknown> | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -605,6 +608,7 @@ export function mapLead(apiLead: ApiLead): Lead {
     email: apiLead.email || undefined,
     notes: cleanText(apiLead.notes) || undefined,
     version: apiLead.version,
+    profile: apiLead.profile ?? undefined,
     interests,
     agentId: apiLead.agent_id ? String(apiLead.agent_id) : undefined,
     agentName: apiLead.agent_name || undefined,
@@ -655,6 +659,8 @@ export async function createEverpropLead(data: {
   propertyId?: string | null;
   /** EVP-135: one key per form, reused on retries, so a double submit never creates two leads. */
   idempotencyKey?: string;
+  /** EVP-180: payload already built by cleanProfile(); omitted when the form left it empty. */
+  profile?: ExtendedProfilePayload;
 }): Promise<Lead & { duplicate?: boolean }> {
   const response = await apiFetch<{ data: ApiLead; duplicate?: boolean }>("/api/v1/admin/leads", {
     method: "POST",
@@ -671,6 +677,7 @@ export async function createEverpropLead(data: {
       notes: data.notes || null,
       agent_id: data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null,
       property_id: data.propertyId || null,
+      ...(data.profile ? { profile: data.profile } : {}),
     }),
   });
 
@@ -690,6 +697,7 @@ export async function updateEverpropLead(
     notes?: string;
     agentId?: string | number | null;
     version?: number;
+    profile?: ExtendedProfilePayload;
   }
 ) {
   const payload: Record<string, any> = {};
@@ -704,6 +712,7 @@ export async function updateEverpropLead(
     payload.agent_id = data.agentId ? (typeof data.agentId === "number" ? data.agentId : String(data.agentId)) : null;
   }
   if (data.version !== undefined) payload.version = data.version;
+  if (data.profile !== undefined) payload.profile = data.profile;
 
   return apiFetch<{ status: string; version?: number }>(`/api/v1/admin/leads/${leadPublicId}`, {
     method: "PUT",
@@ -723,6 +732,11 @@ export async function deleteEverpropLead(leadPublicId: string) {
   return apiFetch<{ status: string }>(`/api/v1/admin/leads/${leadPublicId}`, {
     method: "DELETE",
   });
+}
+
+/** EVP-177: this tenant's previous barrios, localidades, provincias and condiciones IVA, for autocomplete. */
+export async function loadEverpropProfileSuggestions(): Promise<ProfileSuggestions> {
+  return (await apiFetch<{ data: ProfileSuggestions }>("/api/v1/admin/leads/profile-suggestions")).data;
 }
 
 export async function loadEverpropLeadById(leadPublicId: string): Promise<Lead> {

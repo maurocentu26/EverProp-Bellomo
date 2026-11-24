@@ -6,6 +6,9 @@ import ts from 'typescript';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const source = fs.readFileSync(new URL('../src/components/admin/NewLeadForm.tsx', import.meta.url), 'utf8');
+// EVP-180: the real profile helpers (pure, no runtime imports), so the optional "Datos del cliente" block is exercised too.
+const profileLib = { exports: {}, Date };
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('../src/lib/lead-extended-profile.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, profileLib);
 function formView({ fail = false, dirty = false } = {}) {
   const state = [], calls = [], errors = [];
   let cursor = 0, values = { name: 'Cliente ejemplo', phone: '3415550100', email: '', origin: 'WhatsApp', stage: 'new', priority: 'NORMAL', budget: '1200', currency: 'USD', notes: 'Consultar lote', agentId: 'a1' };
@@ -28,6 +31,7 @@ function formView({ fail = false, dirty = false } = {}) {
     '@/lib/utils': { cn: (...args) => args.filter(Boolean).join(' ') },
     '@/components/admin/LeadTable': { STAGE_LABELS: { new: { label: 'Nuevo' } } },
     '@/lib/lead-interests': { isProjectUnit: () => false },
+    '@/lib/lead-extended-profile': profileLib.exports,
     '@/lib/everprop-api': { createEverpropLead: async data => { calls.push(['save', data]); if (fail) throw Error('Sin conexión'); return { id: 'created' }; } },
   };
   const context = { exports: {}, console: { error: () => {} }, Date, crypto: { randomUUID: () => "new-lead" }, require: name => dependencies[name] || components };
