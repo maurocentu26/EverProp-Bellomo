@@ -12,7 +12,10 @@ namespace App\Domain\AgentRuntime\Coordinator;
  *   this turn the reply must say an advisor confirms it;
  * - commercial terms (installments, percentages, rates, financing periods) need the same pair in this
  *   turn's approved knowledge (EVP-113, see terms()). Property descriptions are not evidence: an advisor
- *   edits them without approval.
+ *   edits them without approval;
+ * - property facts (bedrooms, bathrooms, rooms, m², unit codes, availability, delivery dates, the tenant's place
+ *   names and amenities) need this turn's inventory tool results or approved knowledge (EVP-192, see
+ *   unsupportedFacts()). Here a returned description IS evidence: it is the listing itself, not a commercial promise.
  * Text is read after NFKC and without invisible characters, and a regex that fails is GUARD_ERROR (fails closed).
  */
 final class OutputGuard
@@ -31,6 +34,9 @@ final class OutputGuard
     private const LINK = '/(?:https?:\/\/|www\.)[^\s<>"\')\]]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|ar|io|app|ly|me|co|link|site|online|shop|store|xyz|info|top|click|page|biz)\b(?:\/[^\s<>"\')\]]*)?/iu';
 
     private const PAYMENT = '/\b(?:\d[ -]?){21}\d\b|\b[a-z][a-z0-9]+(?:\.[a-z][a-z0-9]+){2,}\b/iu';
+
+    /** EVP-192: scarcity and demand ("la última unidad", "quedan pocas"): no tool returns stock, so only a source backs it. */
+    private const SCARCITY = '/\b(?:[uú]ltim[oa]s?+\s++(?:\d++\s++)?+(?:unidad(?:es)?+|lotes?+|deptos?+|departamentos?+|casas?+|oportunidad(?:es)?+|disponibles?+|que\s++qued\p{L}++)|quedan?+\s++(?:muy\s++)?+poc[oa]s|poc[oa]s\s++(?:unidades|lotes|deptos|departamentos|casas|disponibles)|se\s++(?:est[aá]n?+\s++)?+vend(?:e|en|iendo)\s++(?:muy\s++)?+r[aá]pido|(?:alta|mucha)\s++demanda|[uú]nic[oa]\s++(?:unidad|lote|depto|departamento|casa)\s++(?:disponible|que\s++queda))\b/iu';
 
     private const CLAIMS = [
         '/(visita|cita|turno|recorrida)[^.!?\n]{0,40}(confirmad|agendad|reservad|coordinad|programad|fijad|pactad)/iu',
@@ -96,9 +102,18 @@ final class OutputGuard
      * @param  list<string>  $visitorMessages  server-scoped visitor text, never approved link evidence
      * @param  list<string>  $requested  visitor text that may back terms and amounts: only for the server-built
      *                                   contact summary, which repeats the visitor's own request (EVP-113)
+     * @param  list<array<string, mixed>>  $facts  properties returned by inventory tools this turn (EVP-192): code,
+     *                                             bedrooms, bathrooms, area_m2, city, province, neighborhood, project,
+     *                                             category, description; all of them are AVAILABLE
+     * @param  bool  $inventoryChecked  an inventory tool answered this turn (items, an empty list or NOT_FOUND)
+     * @param  list<string>  $locations  the tenant's own place names (server-scoped), so a location is recognized
+     * @param  list<string>  $notFound  unit codes an inventory tool reported missing this turn
+     * @param  list<string>  $serverTexts  other server texts whose numbers the model may repeat (business hours)
+     * @param  string|null  $factsText  the part of $text the fact checks read (the contact summary without the
+     *                                  visitor's own name, phone and email)
      * @return list<string> violation codes (empty = ok)
      */
-    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false, array $visitorMessages = [], array $requested = []): array
+    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false, array $visitorMessages = [], array $requested = [], array $facts = [], bool $inventoryChecked = false, array $locations = [], array $notFound = [], array $serverTexts = [], ?string $factsText = null): array
     {
         $text = $this->canonical($text, strict: true);
         $evidence = fn (string $item): string => mb_substr($this->canonical($item), 0, self::EVIDENCE_CHARS);
@@ -137,6 +152,9 @@ final class OutputGuard
         if ($this->unsupported(self::PAYMENT, $text, $knowledge)) {
             $violations[] = 'PAYMENT_DATA';
         }
+        if ($this->unsupported(self::SCARCITY, $text, $knowledge)) {
+            $violations[] = 'UNSUPPORTED_AVAILABILITY';
+        }
         if ($this->claimsConfirmation($text)) {
             $violations[] = 'CONFIRMATION_CLAIM';
         }
@@ -152,6 +170,8 @@ final class OutputGuard
             && $this->ok(preg_match('/asesor[^.!?\n]{0,60}confirm|confirm[^.!?\n]{0,60}asesor/iu', $text)) !== 1) {
             $violations[] = 'VISIT_NOT_MARKED_PENDING';
         }
+        array_push($violations, ...$this->unsupportedFacts($factsText === null ? $text : $this->canonical($factsText, strict: true), $facts,
+            $inventoryChecked, $notFound, $locations, [...$knowledge, ...$requested], $visitorMessages, [...array_column($prices, 'amount'), ...$serverTexts]));
         if ($this->broken) {
             $violations[] = 'GUARD_ERROR';
         }
@@ -314,6 +334,11 @@ final class OutputGuard
 
             return (string) $digit;
         }, str_replace(['٪', '﹪', '％'], '%', $this->visible($nfkc)))) ?? $nfkc;
+        // EVP-192 review: a mark left on a letter ("dormi̇torios" with U+0307) or a Latin letter outside Western
+        // European accented forms ("ı", small capitals, "ɑ") hides a word from the fact patterns: fail closed.
+        if ($strict && $this->ok(preg_match('/(?!\x{FE0F})\p{Mn}|(?![A-Za-z\x{00C0}-\x{00D6}\x{00D8}-\x{00F6}\x{00F8}-\x{00FF}])\p{Latin}/u', $nfkc)) === 1) {
+            $this->broken = true;
+        }
         if ($strict && $this->ok(preg_match_all('/\p{L}{2,}+/u', $nfkc, $words)) !== false) {
             foreach ($words[0] as $word) {
                 if (preg_match('/\p{Latin}/u', $word) === 1 && preg_match('/[^\p{Latin}]/u', $word) === 1) {
@@ -339,46 +364,47 @@ final class OutputGuard
     }
 
     /**
-     * EVP-113: commercial terms as normalized "number|kind" pairs. A lone "36" (an id, a unit code) never backs
-     * "36 cuotas", a term of another kind never backs it, and numbers are plain decimals ("10,50" -> "10.5").
-     * - cuotas: "36 cuotas", "36 cuotitas", "36 cómodas cuotas", "en 36 veces", "12 o 24 cuotas", "18 mensualidades",
-     *   "Cuotas: 48", "Cantidad de cuotas: 36", "12 cuotas sin interés o en 24";
-     * - descuento / anticipo / tasa: a percentage by its keyword ("30 % de descuento", "anticipo del 30 %",
-     *   "45 % TEA", "30 % off", "te bonificamos el 30 %"), or the keyword first ("Anticipo: 30", "Anticipo 30"),
-     *   "0 de anticipo"; "%" when it has none; tasa also "TNA 45", "3 % de interés"; zero: "sin interés(es)",
-     *   "tasa cero", "interés cero", "sin recargo" (0|tasa) and "sin anticipo/entrega/seña" (0|anticipo);
-     * - meses: "36 meses", "3 años" (= 36), "Plazo: 60", "saldo a 48", "financiamos 48", only in a sentence about
-     *   financing or payment or right after one, so "la obra se entrega en 6 meses" is not a term.
-     *
-     * ponytail: a lexical control; it cannot cover every paraphrase of a commercial promise. The safety net is the
-     * evaluation with the real model (Q01) before any prompt or model change; upgrade path: a reviewed list of
-     * phrasings from production traces.
+     * EVP-113: commercial terms as normalized "number|kind" pairs.
      *
      * @return list<string>
      */
     private function terms(string $text): array
     {
-        // A copy for reading only (never sent): Markdown/WhatsApp formatting, symbols and emoji split "**36** cuotas",
-        // "36 💳 cuotas" or "36-cuotas"; table rows become "Header: cell." so "| Cuotas |…| 36 |" reads "Cuotas: 36.".
-        // "Entrega 2027": a year after "entrega" is a date, never a down payment nor part of a list ("2027, 36 cuotas").
-        $text = $this->ok(preg_replace(['/[*_~`|\p{So}\p{Sk}]/u', '/(\d)\s*+-\s*+(?=\p{L})/u', '/\b(entregas?+\s++(?:(?:en|de|para)\s++)?+)(?:19|20)\d\d\b/iu'],
-            [' ', '$1 ', '$1 '], $this->tables($text))) ?? $text;
-        // "XXXVI cuotas", "Ⅻ cuotas" (NFKC: "XII"): Roman numerals before a financing noun are numbers.
-        $text = $this->ok(preg_replace_callback('/\b([IVXLC]{2,}+)(?=\s++(?:cuot|ctas?\b|mensualidades|pagos|meses|años|veces|%))/u',
-            fn (array $m): string => (string) $this->roman($m[1]), $text)) ?? $text;
-        // "por ciento" first: wordsToDigits would read "ciento" as 100.
-        $text = $this->wordsToDigits($this->ok(preg_replace('/\bpor\s*+ciento\b/iu', '%', $text)) ?? $text);
-        // "36 (treinta y seis) cuotas": the spelled copy goes; another number in parentheses stays, bare.
-        $text = $this->ok(preg_replace(['/(\d++(?:[.,]\d++)?+)\s*+\(\s*+\1\s*+\)/u', '/\(\s*+(\d++(?:[.,]\d++)?+)\s*+\)/u'], ['$1', ' $1 '], $text)) ?? $text;
+        return $this->termsAndOffsets($text)[0];
+    }
+
+    /**
+     * @return array{0: list<string>, 1: list<array{0: int, 1: int}>}
+     */
+    private function termsAndOffsets(string $text, bool $raw = false, bool $carryFinancing = false): array
+    {
+        if (! $raw) {
+            // A copy for reading only (never sent): Markdown/WhatsApp formatting, symbols and emoji split "**36** cuotas",
+            // "36 💳 cuotas" or "36-cuotas"; table rows become "Header: cell." so "| Cuotas |…| 36 |" reads "Cuotas: 36.".
+            // "Entrega 2027": a year after "entrega" is a date, never a down payment nor part of a list ("2027, 36 cuotas").
+            $text = $this->ok(preg_replace(['/[*_~`|\p{So}\p{Sk}]/u', '/(\d)\s*+-\s*+(?=\p{L})/u', '/\b(entregas?+\s++(?:(?:en|de|para)\s++)?+)(?:19|20)\d\d\b/iu'],
+                [' ', '$1 ', '$1 '], $this->tables($text))) ?? $text;
+            // "XXXVI cuotas", "Ⅻ cuotas" (NFKC: "XII"): Roman numerals before a financing noun are numbers.
+            $text = $this->ok(preg_replace_callback('/\b([IVXLC]{2,}+)(?=\s++(?:cuot|ctas?\b|mensualidades|pagos|meses|años|veces|%))/u',
+                fn (array $m): string => (string) $this->roman($m[1]), $text)) ?? $text;
+            // "por ciento" first: wordsToDigits would read "ciento" as 100.
+            $text = $this->wordsToDigits($this->ok(preg_replace('/\bpor\s*+ciento\b/iu', '%', $text)) ?? $text);
+            // "36 (treinta y seis) cuotas": the spelled copy goes; another number in parentheses stays, bare.
+            $text = $this->ok(preg_replace(['/(\d++(?:[.,]\d++)?+)\s*+\(\s*+\1\s*+\)/u', '/\(\s*+(\d++(?:[.,]\d++)?+)\s*+\)/u'], ['$1', ' $1 '], $text)) ?? $text;
+        }
         $n = self::NUMBERS;
         $found = [];
+        $spans = [];
         if ($this->ok(preg_match('/\bsin\s++(?:inter[eé]s(?:es)?+|recargos?+|costo\s++financiero)\b|\btasa\s++(?:de\s++)?+cero\b|\binter[eé]s(?:es)?+\s++cero\b|\b(?:no\s++tienen?+|libres?+\s++de)\s++inter[eé]s/iu', $text)) === 1) {
             $found[] = '0|tasa';
         }
         if ($this->ok(preg_match('/\bsin\s++(?:anticipo|entrega|se[ñn]a)\b|\bno\s++(?:hace\s++falta|requiere|lleva)\s++(?:un\s++|el\s++)?+anticipo\b/iu', $text)) === 1) {
             $found[] = '0|anticipo';
         }
-        $add = function (?string $numbers, string $kind, ?string $unit = null) use (&$found): void {
+        $add = function (?string $numbers, string $kind, ?string $unit = null, ?int $offset = null) use (&$found, &$spans): void {
+            if ($numbers !== null && $offset !== null) {
+                $spans[] = [$offset, strlen($numbers)];
+            }
             preg_match_all('/\d++(?:[.,]\d++)?+/', (string) $numbers, $digits);
             foreach ($digits[0] as $digit) {
                 $found[] = ((float) str_replace(',', '.', $digit) * ($unit !== null && stripos($unit, 'a') === 0 ? 12 : 1)).'|'.$kind;
@@ -386,20 +412,21 @@ final class OutputGuard
         };
 
         $cuotas = self::INSTALLMENTS;
-        foreach ($this->matches('/'.$n.self::FILLER.'\s*+'.$cuotas.'\b/iu', $text) as $m) {
-            $add($m[1][0], 'cuotas');
+        foreach ($this->matches('/'.$n.self::FILLER.'\s*+\p{Pd}?+\s*+'.$cuotas.'\b/iu', $text) as $m) {
+            $add($m[1][0], 'cuotas', offset: $m[1][1]);
         }
         foreach ($this->matches('/\ben\s++'.$n.'\s*+veces\b|(?<![\p{L}\p{N}])x\s*+(\d++)\b/iu', $text) as $m) {
-            $add($m[1][0] ?? $m[2][0], 'cuotas'); // "en 36 veces", "x36"
+            $cap = $m[1][0] !== null ? $m[1] : $m[2];
+            $add($cap[0], 'cuotas', offset: $cap[1]); // "en 36 veces", "x36"
         }
         foreach ($this->matches('/\b'.$cuotas.'\b(?:\s++(?:sin\s++inter[eé]s(?:es)?+|fijas?+|mensuales|iguales))?+\s*+(?::|\bde\b|\bhasta\b|,?+\s*+\bo\s++(?:en\s++|de\s++)?+|\by\s++(?:en|de)\s++)\s*+(?:hasta\s++)?+'.$n.self::NOT_A_COUNT.'/iu', $text) as $m) {
-            $add($m[1][0], 'cuotas');
+            $add($m[1][0], 'cuotas', offset: $m[1][1]);
         }
         foreach ($this->matches('/\b(anticipo|entrega|se[ñn]a|descuento|bonificaci[oó]n)\s*+(?::|\bdel?\b|\bhasta\b)?+\s*+(?:hasta\s++)?+(?:(?:el|un|una)\s++)?+'.$n.self::NOT_A_COUNT.'/iu', $text) as $m) {
-            $add($m[2][0], $this->percentKind((string) $m[1][0], ''));
+            $add($m[2][0], $this->percentKind((string) $m[1][0], ''), offset: $m[2][1]);
         }
         foreach ($this->matches('/'.$n.'\s*+(?:del?\s++)?+(?:anticipo|se[ñn]a)\b/iu', $text) as $m) {
-            $add($m[1][0], 'anticipo');
+            $add($m[1][0], 'anticipo', offset: $m[1][1]);
         }
         foreach ($this->matches('/'.$n.'\s*+%/u', $text) as $m) {
             // Bounded windows (whole characters): the keyword is next to the percentage, so no scan of the whole text.
@@ -409,55 +436,991 @@ final class OutputGuard
             // A percentage with no kind is a term only in a sentence about financing ("70 % de avance" is not).
             $sentence = last(preg_split('/[.!?;\n]/u', $before) ?: ['']).$m[0][0].(preg_split('/[.!?;\n]/u', $after) ?: [''])[0];
             if ($kind !== '%' || $this->ok(preg_match(self::FINANCING, $sentence)) !== 0) {
-                $add($m[1][0], $kind);
+                $add($m[1][0], $kind, offset: $m[1][1]);
             }
         }
         foreach ($this->matches('/\b'.self::RATE.'(?:\s++(?:anual|nominal|efectiva|mensual|fij[ao]|del?|es|un|una)\b)*+\s*+:?+\s*+(\d++(?:[.,]\d++)?+)/iu', $text) as $m) {
-            $add($m[1][0], 'tasa');
+            $add($m[1][0], 'tasa', offset: $m[1][1]);
         }
         foreach ($this->matches('/'.$n.'\s*+%?+\s*+(?:de\s++)?+'.self::RATE.'\b/iu', $text) as $m) {
-            $add($m[1][0], 'tasa');
+            $add($m[1][0], 'tasa', offset: $m[1][1]);
         }
 
         // Periods: a sentence about financing or payment, or the one right after it ("12 cuotas. Después, 60 meses más").
-        $sentences = $this->ok(preg_split('/(?<=[.!?;])\s+|\n+/u', $text)) ?: [];
-        $periods = [];
+        $sentences = $raw ? [$text] : ($this->ok(preg_split('/(?<=[.!?;])\s+|\n+/u', $text)) ?: []);
+        $periodsParts = [];
+        $periodOffsets = [];
+        $cursor = 0;
         foreach ($sentences as $i => $sentence) {
+            $pos = $raw ? 0 : (strpos($text, $sentence, $cursor) ?: $cursor);
+            $cursor = $pos + strlen($sentence);
             $financing = fn (int $j): bool => $this->ok(preg_match(self::FINANCING, $sentences[$j])) !== 0;
             // The previous sentence carries over, unless this one is about the works or handing over a unit.
-            if ($financing($i) || ($i > 0 && $financing($i - 1) && $this->ok(preg_match('/\bobra\b|\bse\s+entrega|\bposesi[oó]n\b/iu', $sentence)) === 0)) {
-                $periods[] = $sentence;
+            $carries = ($i > 0 && $financing($i - 1)) || ($raw && $carryFinancing);
+            if ($financing($i) || ($carries && $this->ok(preg_match('/\bobra\b|\bse\s+entrega|\bposesi[oó]n\b/iu', $sentence)) === 0)) {
+                $periodsParts[] = [$sentence, $pos];
             }
         }
-        $periods = implode("\n", $periods);
-        foreach ($this->matches('/'.$n.'\s*+(mes(?:es)?+|años?+)\b/iu', $periods) as $m) {
-            // "tiene 5 años", "antigüedad de 5 años" are an age, not a period.
-            if (stripos((string) $m[2][0], 'a') !== 0 || preg_match('/(?:\btiene|antig[uü]edad(?:\s+de)?)\s*+$/iu', mb_strcut(substr($periods, 0, $m[0][1]), max(0, $m[0][1] - 40))) !== 1) {
-                $add($m[1][0], 'meses', $m[2][0]);
+        foreach ($periodsParts as [$part, $baseOffset]) {
+            foreach ($this->matches('/'.$n.'\s*+(mes(?:es)?+|años?+)\b/iu', $part) as $m) {
+                // "tiene 5 años", "antigüedad de 5 años" are an age, not a period.
+                if (stripos((string) $m[2][0], 'a') !== 0 || preg_match('/(?:\btiene|antig[uü]edad(?:\s+de)?)\s*+$/iu', mb_strcut(substr($part, 0, $m[0][1]), max(0, $m[0][1] - 40))) !== 1) {
+                    $add($m[1][0], 'meses', $m[2][0], $baseOffset + $m[1][1]);
+                }
+            }
+            foreach ($this->matches('/'.$n.'\s*+veces\b/iu', $part) as $m) {
+                $add($m[1][0], 'cuotas', offset: $baseOffset + $m[1][1]); // "Pagalo 36 veces"
+            }
+            foreach ($this->matches('/\bplazo(?:\s++(?:m[aá]ximo|total))?+\s*+(?::|\bde\b|\bhasta\b)\s*+(?:hasta\s++)?+'.$n.'\s*+(mes(?:es)?+|años?+)?+/iu', $part) as $m) {
+                $add($m[1][0], 'meses', $m[2][0], $baseOffset + $m[1][1]);
+            }
+            // "saldo a 48", "resto en 48", "financiamos 48": a bare number after financing words is a period.
+            foreach ($this->matches('/\b(?:saldo|resto|financi\p{L}*+)\s++(?:(?:a|en|hasta)\s++)?+'.$n.self::NOT_A_COUNT.'(?!\s*+'.self::INSTALLMENTS.')/iu', $part) as $m) {
+                $add($m[1][0], 'meses', offset: $baseOffset + $m[1][1]);
             }
         }
-        foreach ($this->matches('/'.$n.'\s*+veces\b/iu', $periods) as $m) {
-            $add($m[1][0], 'cuotas'); // "Pagalo 36 veces"
+
+        return [array_values(array_unique($found)), $spans];
+    }
+
+    /*
+     * EVP-192: property facts. unsupportedFacts() and its helpers.
+     */
+
+    /**
+     * The only frames where the visitor's own words may come back without evidence (besides a "¿…?" question):
+     * "No encontré lotes en Yala", "No tengo confirmado si tiene pileta", "¿Buscás en Yala?" / "Busco opciones en Yala".
+     * A negation elsewhere in the sentence ("No te preocupes, tiene pileta") is not one of them.
+     */
+    private const ECHO_FRAME = '/\bno\s++(?:encontr\p{L}*+|hay(?!\s++(?:[\p{L}]++\s++){0,2}?(?:problema|drama|inconveniente|duda|apuro|cuidado)\b)|tengo|tenemos|figura\p{L}*+|cuento|contamos|aparece\p{L}*+|veo|dispongo|s[eé](?!\s++(?:[\p{L}]++\s++){0,1}?si\b)|lo\s++tengo|est[aá]\s++confirmad\p{L}*+)\b|\bsin\s++(?:datos?|informaci[oó]n|confirmar)\b|\b(?:busco|buscamos|busc[aá]s|busque(?:mos)?+|necesit[aá]s|prefer[ií]s)\b/iu';
+
+    /**
+     * A sentence about handing over or finishing a unit: there a month, a period or a relative date is a delivery date.
+     * "El 30 % de entrega" is a down payment (terms()), and "novedades de la obra" is not a date.
+     */
+    private const DELIVERY = '/\bse\s++entreg|\bentrega(?:mos|n)?+\s++(?:(?:es|ser[aá])\s++)?+(?:en|para|a\s++partir|prevista|estimada|inmediata|el|la|de\s++(?:la\s++)?+(?:obra|unidad|llaves|posesi)|(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b|(?:19|20)\d\d\b)|\bfecha\s++de\s++entrega|\bposesi[oó]n|\bobra\s++(?:se\s++)?+(?:termin|entreg|finaliz|estar|va\s++a\s++estar|estimad)|\bfin(?:al)?+\s++de\s++(?:la\s++)?+obra|\bfinaliz|\btermin(?:a|an|ar[aá]n?+|ad[oa]s?+|aci[oó]n|[oó])\b|\binaugur|\bllaves\b|\bestar[aá]\s++list[oa]|\blist[oa]s?+\s++(?:para|en\b)|\bva\s++a\s++estar\s++list|\bse\s++complet|\bculmin|\bmud(?:arte|arse|arnos|anza)\b|\bhabitar\b|\bocupar\b/iu';
+
+    private const MONTHS = 'enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre';
+
+    /** On folded text: "mar-27", "en el '27"-style months, quarters, seasons and relative dates ("el año que viene"). */
+    private const WHEN = '(?:'.self::MONTHS.')|(?:ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[-\/ .\']?+\d{2}\b|\'\d{2}\b|verano|otono|invierno|primavera|ano\s++que\s++viene|proximo\s++ano|fin(?:es|al)?+\s++de(?:l)?+\s++ano|principios\s++de|mediados\s++de|\bq[1-4]\b|(?:primer|segundo|tercer|cuarto|1er|2do|3er|4to|1°|2°|3°|4°)\s++(?:trimestre|semestre)';
+
+    /** Counts and surfaces after a number ("3 dormitorios", "3 amb", "120 m²" -> NFKC "m2", "300 mts", "2 hectáreas"). */
+    private const KINDS = [
+        'dorm' => 'dormitorios?+|dormis?+\b|dorms?+\b\.?+|habitaci(?:o|ó)n(?:es)?+|hab\b\.?+|cuartos?+|piezas?+|rec[aá]maras?+',
+        'bano' => 'ba[ñn]os?+\b|toilettes?+',
+        'amb' => 'ambientes?+|amb\b\.?+',
+        'm2' => 'm2\b|m\s*+\^\s*+2|mts?+\.?+\s*+2\b|metros?+\s++cuadrados|metros?+2\b|mts?+\b\.?+|metros\b(?!\s++(?:de|del|hasta|desde)\b)|hect[aá]reas?+|ha\b',
+    ];
+
+    /** The same kinds as a label before the number ("Dormitorios: 3", "Superficie (m2): 120", "Dormitorios → 3"). */
+    private const LABELS = [
+        'dorm' => 'dormitorios?+|dorm\.|habitaciones',
+        'bano' => 'ba[ñn]os?+',
+        'amb' => 'ambientes|amb\.',
+        'm2' => '(?:superficie|sup\.)(?:\s++(?:total|cubierta|semicubierta|construida|del\s++(?:lote|terreno)))?+(?:\s*+\(\s*+m2\s*+\))?+|m2|metros\s++cuadrados',
+    ];
+
+    /** A number after a unit noun that is a count, a surface, a period or a time, never a unit code. */
+    private const NOT_A_CODE = '(?!\s*+(?:dorm|ba[ñn]|amb|m2\b|metros|mts|habit|hab\b|pieza|cuarto|hect|ha\b|%|cuot|ctas|mes|años?\b|semana|d[ií]as?\b|plantas?\b|x\s*+\d|hs\b|horas?\b|usd|us\$|pesos|d[oó]lares|mil\b|k\b))';
+
+    private const CODE = '[a-z]{0,3}-?+\d[a-z0-9\-\/]{0,15}';
+
+    private const UNIT_NOUN = '(?:unidad(?:es)?+|deptos?+\.?+|departamentos?+|dptos?+\.?+|lotes?+|local(?:es)?+|cocheras?+|oficinas?+|casas?+|d[uú]plex|c[oó]digos?+|terrenos?+|parcelas?+|ph\b|galp[oó]n(?:es)?+|box(?:es)?+|torres?+|mz\.?+|manzanas?+)';
+
+    /** "ambos tienen 3 dormitorios" (or "las 2 unidades tienen..." after wordsToDigits) claims the value for every unit. */
+    private const EVERY = '/\b(?:ambos|ambas|los\s++dos|las\s++dos|todos|todas|cada\s++un[oa]|(?:los|las)\s++\d++(?:\s++(?:unidades|lotes|deptos?+|departamentos|dptos?+|casas))?+\s++(?:tienen|son|cuentan|est[aá]n|quedan|ofrecen|incluyen|miden|poseen|disponen|presentan|comparten))\b/iu';
+
+    /** Catalogue labels too generic to read as a place ("cerca del centro"). */
+    private const GENERIC_PLACES = ['centro', 'norte', 'sur', 'este', 'oeste', 'zona', 'otro', 'otros', 'otra', 'varios', 'general', 'sin dato', 'sin datos', 'sin localidad'];
+
+    /**
+     * Amenities and features on folded text (lower case, no accents), each group with its forms (diminutives and common
+     * synonyms included). A form of one group never backs another: "cochera" does not back "pileta".
+     * ponytail: a closed list; a feature outside it ("helipuerto") passes on the prompt alone. Upgrade path: grow the
+     * list from production traces and the tenant's own listing vocabulary.
+     */
+    private const AMENITIES = [
+        'pileta' => 'pilet(?:a|ita)s?+|piscinas?+|natatorios?+',
+        'spa' => 'saunas?+|spa|jacuzzis?+|hidromasajes?+',
+        'gimnasio' => 'gimnasios?+|gym|fitness',
+        'cochera' => 'cocher(?:a|ita)s?+|garages?+|garajes?+|estacionamientos?+|parking|lugar\s++para\s++(?:el|tu|un)\s++auto',
+        'quincho' => 'quinch(?:o|ito)s?+',
+        'sum' => 's\.?u\.?m\.?|salon\s++de\s++usos\s++multiples',
+        'parrilla' => 'parrill(?:a|ita)s?+|parrilleros?+|asadores?+|fogoneros?+|horno\s++de\s++barro',
+        'balcon' => 'balcon(?:es|cito)?+',
+        'terraza' => 'terraz(?:a|ita)s?+',
+        'patio' => 'patio(?:s|cito)?+|patiecito',
+        'jardin' => 'jardin(?:es|cito)?+',
+        'ascensor' => 'ascensor(?:es)?+',
+        'seguridad' => 'seguridad\s++(?:24|privada|perimetral|las\s++24)|vigilancia|porteria|portero|barrio\s++(?:cerrado|privado)|country|garita|camaras\s++de\s++seguridad',
+        'lavadero' => 'laundry|lavaderos?+',
+        'solarium' => 'solarium',
+        'cowork' => 'co-?working|cowork',
+        'aire' => 'aire\s++acondicionado|splits?+|a\/a',
+        'calefaccion' => 'calefaccion|losa\s++radiante|estufas?+|hogar\s++a\s++lena',
+        'amoblado' => 'amoblad[oa]s?+|amueblad[oa]s?+',
+        'baulera' => 'bauleras?+',
+        'vestidor' => 'vestidor(?:es)?+',
+        'juegos' => 'playroom|juegos\s++infantiles|plaza\s++de\s++juegos',
+        'canchas' => 'canchas?+|tenis|padel',
+        'clubhouse' => 'club\s*+house',
+        'servicios' => 'cloacas?+|asfalto|todos\s++los\s++servicios',
+        'gas' => 'gas\s++natural|\bgas\b|todos\s++los\s++servicios',
+        'agua' => 'agua\s++corriente|red\s++de\s++agua|(?<!vista\sal\s)\bagua\b|todos\s++los\s++servicios',
+        'luz' => 'luz\s++electrica|\bluz\b(?!\s++natural)|todos\s++los\s++servicios',
+        'legal' => 'escritura\s++(?:inmediata|lista|al\s++dia|en\s++mano|individual)|(?:con|tiene)\s++escritura|escriturad[oa]s?+|apto\s++(?:credito|profesional|mascotas)',
+    ];
+
+    /**
+     * EVP-192: property facts in the reply that this turn's evidence does not back, one code per kind.
+     *
+     * Evidence per unit: what the inventory tools returned THIS turn for that unit (structured fields first: a field
+     * that exists overrides any listing or source; then its own listing text, place and category) plus approved
+     * knowledge (and, in the contact summary, the visitor's request). A sentence about a unit reads only that unit's
+     * evidence; the unit carries over to the next lines until another one is named (lists, "Unidad 12B:\n- 3 dorm").
+     *
+     * - UNSUPPORTED_FACT: any number that is not in the evidence (a whitelist, so "Tiene 3." or "y el 12B, 3" fail too).
+     *   Counts and surfaces are typed (bedrooms, bathrooms, rooms, m²); a bare number takes the kind the sentence or
+     *   the visitor's last question is about. Amounts and commercial terms are left to money() and terms(), years and
+     *   delivery periods to the date check;
+     * - UNSUPPORTED_UNIT: a unit code nobody returned, named or wrote in a source;
+     * - UNSUPPORTED_AVAILABILITY: "disponible" for a unit not returned this turn; "vendida" for one not reported missing;
+     * - UNSUPPORTED_DATE, UNSUPPORTED_LOCATION, UNSUPPORTED_AMENITY: delivery dates, the tenant's places and the
+     *   amenities above, against the unit's evidence.
+     *
+     * The visitor's words back a fact only inside a "¿…?" question or an ECHO_FRAME. Questions are never availability
+     * claims.
+     * ponytail: lexical; qualitative claims ("muy luminoso"), places outside the tenant's catalogue and features outside
+     * AMENITIES pass on the prompt alone. The safety net is the evaluation with the real model (Q01) and starting with
+     * the copilot (go-live F2 5b).
+     *
+     * @param  list<array<string, mixed>>  $facts
+     * @param  list<string>  $notFound  unit codes an inventory tool reported missing this turn (lower case)
+     * @param  list<string>  $locations
+     * @param  list<string>  $evidence  canonical approved knowledge and requested text
+     * @param  list<string>  $visitorMessages
+     * @param  list<string>  $allowed  numbers the server put in front of the model (prices, business hours)
+     * @return list<string>
+     */
+    private function unsupportedFacts(string $text, array $facts, bool $inventoryChecked, array $notFound, array $locations, array $evidence, array $visitorMessages, array $allowed): array
+    {
+        $records = [];
+        foreach ($facts as $f) {
+            $listing = implode("\n", array_filter([$f['description'] ?? null, $f['city'] ?? null, $f['province'] ?? null, $f['neighborhood'] ?? null,
+                $f['project'] ?? null, ($f['category'] ?? null) === 'GARAGE' ? 'cochera' : null], fn (mixed $v): bool => is_string($v) && $v !== ''));
+            $code = mb_strtolower(trim((string) ($f['code'] ?? '')));
+            $records[] = [
+                'code' => $code,
+                'codeFold' => $this->fold($code),
+                'project' => trim($this->fold((string) ($f['project'] ?? ''))),
+                'available' => ! ($f['summary_only'] ?? false),
+                'fields' => array_map(fn (string $field): ?string => isset($f[$field]) && is_numeric($f[$field]) ? $this->numberValue((string) $f[$field]) : null,
+                    ['dorm' => 'bedrooms', 'bano' => 'bathrooms', 'm2' => 'area_m2']),
+                'listing' => mb_substr($this->canonical($listing), 0, self::EVIDENCE_CHARS),
+            ];
         }
-        foreach ($this->matches('/\bplazo(?:\s++(?:m[aá]ximo|total))?+\s*+(?::|\bde\b|\bhasta\b)\s*+(?:hasta\s++)?+'.$n.'\s*+(mes(?:es)?+|años?+)?+/iu', $periods) as $m) {
-            $add($m[1][0], 'meses', $m[2][0]);
+        $codes = array_values(array_unique(array_filter(array_column($records, 'code'))));
+        $available = array_values(array_unique(array_filter(array_map(fn (array $r): string => $r['available'] ? $r['code'] : '', $records))));
+        $availableCount = count(array_filter($records, fn (array $r): bool => $r['available']));
+        $notFound = array_values(array_unique(array_map(fn (string $c): string => mb_strtolower(trim($c)), $notFound)));
+        $knowledgeItems = array_values(array_filter(array_map(fn (string $e): string => mb_substr($e, 0, self::EVIDENCE_CHARS), $evidence),
+            fn (string $e): bool => $e !== ''));
+        $knowledgeItemsFold = array_map($this->fold(...), $knowledgeItems);
+        $visitor = mb_substr($this->canonical(implode("\n", $visitorMessages)), 0, self::EVIDENCE_CHARS);
+        $visitorRead = $this->factsReading($visitor);
+        $visitorFold = $this->fold($visitor);
+        $visitorTyped = $this->typedPairs($visitorRead);
+        $visitorNumbers = $this->numberTokens($visitorRead);
+        $visitorCodes = array_column($this->unitMentions($visitorRead), 0);
+        $lastVisitorRead = $this->factsReading($this->canonical((string) (end($visitorMessages) ?: '')));
+        $lastVisitorCodes = array_column($this->unitMentions($lastVisitorRead), 0);
+        foreach ([...$codes, ...$notFound] as $c) {
+            if ($this->hasWord($lastVisitorRead, $c)) {
+                $lastVisitorCodes[] = $c;
+            }
         }
-        // "saldo a 48", "resto en 48", "financiamos 48": a bare number after financing words is a period.
-        foreach ($this->matches('/\b(?:saldo|resto|financi\p{L}*+)\s++(?:(?:a|en|hasta)\s++)?+'.$n.self::NOT_A_COUNT.'(?!\s*+'.self::INSTALLMENTS.')/iu', $periods) as $m) {
-            $add($m[1][0], 'meses');
+        $lastVisitorCodes = array_values(array_unique($lastVisitorCodes));
+        $asked = $this->askedKindFromMessages(array_slice($visitorMessages, -3));
+        $base = [...$visitorNumbers, ...$this->numberTokens(implode("\n", $allowed)), (string) count($facts)];
+        $digitRuns = function (string $src): array {
+            $runs = [];
+            foreach ($this->matches('/(?<![\p{L}\p{N}])\d(?:[ \-.\/]?+\d)++(?![\p{L}\p{N}])/u', $src) as $m) {
+                $d = (string) preg_replace('/\D/', '', (string) $m[0][0]);
+                if (strlen($d) >= 8) {
+                    $runs[] = $d;
+                }
+            }
+
+            return $runs;
+        };
+        $baseDigitRuns = $digitRuns($visitor."\n".implode("\n", $allowed));
+        $places = array_values(array_diff(array_unique(array_filter(array_map(fn (string $l): string => trim($this->fold($l)), $locations),
+            fn (string $l): bool => mb_strlen($l) >= 4)), self::GENERIC_PLACES));
+
+        // Evidence for a set of units (null = every returned unit), computed once per set.
+        $cache = [];
+        $proof = function (?array $units) use (&$cache, $records, $knowledgeItems, $knowledgeItemsFold, $digitRuns): array {
+            $key = $units === null ? '*' : implode('|', $units);
+            if (! isset($cache[$key])) {
+                $mine = array_values(array_filter($records, fn (array $r): bool => $units === null || in_array($r['code'], $units, true)));
+                $scopedKnowledge = $units === null ? $knowledgeItems : array_values(array_filter($knowledgeItems, function (int $i) use ($mine, $knowledgeItemsFold): bool {
+                    $itemFold = $knowledgeItemsFold[$i];
+                    foreach ($mine as $r) {
+                        if ($this->hasWord($itemFold, $r['codeFold']) || ($r['project'] !== '' && $this->hasWord($itemFold, $r['project']))) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }, ARRAY_FILTER_USE_KEY));
+                $knowledge = implode("\n", $scopedKnowledge);
+                $raw = implode("\n", [$knowledge, ...array_column($mine, 'listing')]);
+                $read = $this->factsReading($raw);
+                $delivery = implode("\n", array_filter($this->ok(preg_split('/(?<=[.!?;])\s++|\n++/u', $raw)) ?: [],
+                    fn (string $s): bool => $this->ok(preg_match(self::DELIVERY, $s)) === 1));
+                $cache[$key] = [
+                    'records' => $mine, 'raw' => $raw, 'fold' => $this->fold($raw), 'numbers' => $this->numberTokens($read),
+                    'digitRuns' => $digitRuns($raw),
+                    'knowledgeTyped' => $this->typedPairs($this->factsReading($knowledge)),
+                    'listingTyped' => array_map(fn (array $r): array => $this->typedPairs($this->factsReading($r['listing'])), $mine),
+                    'codes' => array_column($this->unitMentions($read), 0),
+                    'delivery' => $delivery, 'deliveryFold' => $this->fold($delivery), 'periods' => $this->periods($this->factsReading($delivery)),
+                ];
+            }
+
+            return $cache[$key];
+        };
+
+        $found = [];
+        $current = [];
+        $financing = false; // the previous segment was about financing ("12 cuotas. Después, 60 meses más")
+        $prev = ['claims' => [], 'availability' => [], 'places' => [], 'amenities' => []];
+        $checkAvailability = function (array $availabilities, array $about) use (&$found, $available, $notFound, $availableCount, $inventoryChecked): void {
+            foreach ($availabilities as $availability) {
+                if (($availability === 'POSITIVE' && ($about !== []
+                        ? array_diff($about, $available) !== [] || array_intersect($about, $notFound) !== []
+                        : $availableCount === 0 || $notFound !== []))
+                    || ($availability === 'NEGATIVE' && ($about !== []
+                        ? array_diff($about, $notFound) !== [] || array_intersect($about, $available) !== []
+                        : $notFound === [] && ! ($inventoryChecked && $availableCount === 0)))) {
+                    $found['UNSUPPORTED_AVAILABILITY'] = true;
+                }
+            }
+        };
+        foreach ($this->segments($this->factsReading($text)) as $segment) {
+            $wasFinancing = $financing;
+            $financing = $this->ok(preg_match(self::FINANCING, $segment)) === 1;
+            $question = $this->ok(preg_match('/¿|\?\s*+$/u', $segment)) === 1;
+            $echoStart = null;
+            $echoEnd = null;
+            if ($question) {
+                $echoStart = 0;
+                $echoEnd = strlen($segment);
+            } else {
+                foreach ($this->matches(self::ECHO_FRAME, $segment) as $em) {
+                    $candidateStart = (int) $em[0][1];
+                    $beforeEcho = mb_strcut(substr($segment, 0, $candidateStart), max(0, $candidateStart - 48));
+                    if ($this->ok(preg_match('/\bsi\s++(?:[\p{L}]++\s++){0,4}$/iu', $beforeEcho)) === 1) {
+                        continue;
+                    }
+                    $echoStart = $candidateStart;
+                    $echoEnd = $this->ok(preg_match('/[,;:]|\b(?:pero|aunque|sino|porque|ya\s++que|as[ií]\s++que|por\s++eso|adem[aá]s)\b|\by\s++(?:adem[aá]s|tiene|queda|es|est[aá]|son|cuentan?|ofrecen?|salen?|cuestan?|valen?|(?:el|la|los|las)\s++(?:\d|unidad|lote|depto|departamento|casa))\b/iu', $segment, $endM, PREG_OFFSET_CAPTURE, $echoStart)) === 1
+                        ? (int) $endM[0][1] : strlen($segment);
+                    break;
+                }
+            }
+            $echoAt = static fn (int $pos): bool => $echoStart !== null && $pos >= $echoStart && $pos < $echoEnd;
+            $fold = $this->fold($segment);
+            $nonEchoFold = $echoStart === null ? $fold : $this->fold(substr($segment, 0, $echoStart).' '.substr($segment, $echoEnd));
+            $delivers = $this->ok(preg_match(self::DELIVERY, $segment)) === 1;
+            $mentions = $this->unitMentions($segment);
+            foreach ($codes as $code) {
+                $numeric = preg_match('/^\d++$/', $code) === 1;
+                foreach ($this->wordOffsets($segment, $code) as $offset) {
+                    if ($numeric) {
+                        $beforeCode = mb_strcut(substr($segment, 0, $offset), max(0, $offset - 32));
+                        $afterCode = mb_strcut($segment, $offset + strlen($code), 32);
+                        if ($this->ok(preg_match('/\b(?:'.self::UNIT_NOUN.'|la|el|las|los|del|al)\s++(?:(?:n(?:ro|[°ºo])\.?+|n[uú]mero|#)\s*+)?+$/iu', $beforeCode)) !== 1
+                            || $this->ok(preg_match('/^'.self::NOT_A_CODE.'/iu', $afterCode)) !== 1) {
+                            continue;
+                        }
+                    }
+                    $mentions[] = [$code, $offset, strlen($code)];
+                }
+            }
+            usort($mentions, fn (array $a, array $b): int => $a[1] <=> $b[1]);
+            $named = array_values(array_unique(array_column($mentions, 0)));
+            $unnamedOption = $this->ok(preg_match('/\b(?:otr[oa]\s++(?:opci[oó]n|alternativa|unidad|lote|depto|departamento|casa|propiedad)|(?:un|una)\s++segund[oa]\s++(?:opci[oó]n|alternativa|unidad|lote|depto|departamento|casa)|y\s++(?:un|una)\s++(?:opci[oó]n|alternativa|lote|depto|departamento|casa))\b/iu', $segment)) === 1;
+            if ($named !== []) {
+                $current = $named;
+            } elseif ($unnamedOption) {
+                $current = [];
+            }
+            $scope = $current === [] ? null : $current;
+            $every = $this->ok(preg_match(self::EVERY, $segment)) === 1;
+            $pluralVerb = $this->ok(preg_match('/\b(?:tienen|son|cuentan|est[aá]n|quedan|ofrecen|incluyen|miden|poseen|disponen|presentan|comparten)\b/iu', $segment)) === 1;
+
+            // Unit codes: returned, named by the visitor (repeating it invents no unit) or written in a source.
+            foreach ($named as $code) {
+                if (! in_array($code, $codes, true) && ! in_array($code, $visitorCodes, true) && ! in_array($code, $proof(null)['codes'], true)
+                    && ! (preg_match('/\p{L}/u', $code) === 1 && $this->hasWord($visitor, $code))) {
+                    $found['UNSUPPORTED_UNIT'] = true;
+                }
+            }
+
+            // Numbers: each one bound to the nearest unit named before it (else after it, else the carried unit),
+            // or all contiguous units before a plural verb ("El 12A tiene 1 baño, y el 12B y el 12C tienen 3 dormitorios").
+            $segClaims = $this->claims($segment, $delivers, $mentions, $asked, $question, $wasFinancing);
+            $segTypedClaims = [];
+            $claimedForUnit = [];
+            foreach ($segClaims as [$value, $kind, $offset, $when]) {
+                $before = array_values(array_filter($mentions, fn (array $m): bool => $m[1] < $offset));
+                $claimEvery = $every;
+                if (count($before) >= 2 && $pluralVerb) {
+                    $group = [end($before)];
+                    for ($idx = count($before) - 2; $idx >= 0; $idx--) {
+                        $leftAt = $before[$idx][1];
+                        $rightAt = $group[0][1];
+                        if (array_filter($segClaims, fn (array $c): bool => $c[2] > $leftAt && $c[2] < $rightAt) !== []) {
+                            break;
+                        }
+                        array_unshift($group, $before[$idx]);
+                    }
+                    if (count($group) >= 2) {
+                        $units = array_values(array_unique(array_column($group, 0)));
+                        $claimEvery = true;
+                    } else {
+                        $units = [end($before)[0]];
+                    }
+                } elseif ($before !== []) {
+                    $units = [end($before)[0]];
+                } elseif (count($mentions) >= 2 && $pluralVerb) {
+                    $units = $named;
+                    $claimEvery = true;
+                } elseif ($mentions !== []) {
+                    $units = [$mentions[0][0]];
+                } else {
+                    $units = $scope;
+                }
+                if ($units === null && count($records) > 1 && $kind !== null && $kind !== 'digits') {
+                    $claimEvery = true;
+                }
+                if ($kind !== null && $kind !== 'digits') {
+                    $segTypedClaims[] = [$value, $kind];
+                    foreach ($units ?? [] as $u) {
+                        $claimedForUnit[$u][$kind] = true;
+                    }
+                }
+                $unitProof = $proof($units);
+                $ok = match ($kind) {
+                    // A phone or an account number: the same digits inside a single run of the visitor, a source or the server.
+                    'digits' => array_any([...$baseDigitRuns, ...$unitProof['digitRuns']], fn (string $r): bool => str_contains($r, $value)),
+                    null => in_array($value, [...(($units === null || $when) ? $base : []), ...$unitProof['numbers'], ...$this->recordValues($unitProof['records'])], true),
+                    default => ($echoAt($offset) && in_array($value.'|'.$kind, $visitorTyped, true)) || $this->typedBacked($value, $kind, $unitProof, $claimEvery),
+                };
+                if (! $ok) {
+                    $found['UNSUPPORTED_FACT'] = true;
+                }
+            }
+
+            // Availability: never in a question. "disponible" needs every unit it is about returned this turn (with no
+            // unit: something returned and nothing reported missing); "vendida" needs that unit reported missing.
+            $availabilities = $question ? [] : $this->availability($segment, $named !== [] || $this->ok(preg_match('/\b'.self::UNIT_NOUN.'/iu', $segment)) === 1);
+            $about = $named !== [] ? $named : ($current !== [] ? $current : $lastVisitorCodes);
+            $checkAvailability($availabilities, $about);
+
+            $hasEllipsisWord = $this->ok(preg_match('/\b(?:tambi[eé]n|igual|lo\s++mismo|[ií]dem)\b/iu', $segment)) === 1;
+            $scopedUnits = $named !== [] ? $named : ($scope ?? ($every && count($records) > 1 ? $codes : []));
+            $unitProofs = ($every || $pluralVerb || $hasEllipsisWord) && count($scopedUnits) > 1
+                ? array_map(fn (string $u): array => $proof([$u]), $scopedUnits) : [$proof($scope)];
+            if ($hasEllipsisWord && count($named) > 1) {
+                foreach ($segTypedClaims as [$tv, $tk]) {
+                    foreach ($named as $u) {
+                        if (! isset($claimedForUnit[$u][$tk]) && ! $this->typedBacked($tv, $tk, $proof([$u]), false)) {
+                            $found['UNSUPPORTED_FACT'] = true;
+                        }
+                    }
+                }
+            }
+            foreach ($unitProofs as $dateProof) {
+                if ($this->unsupportedDates($segment, $fold, $delivers, $question, $dateProof, $visitor, $visitorRead, $visitorFold)) {
+                    $found['UNSUPPORTED_DATE'] = true;
+                }
+            }
+            $segPlaces = [];
+            foreach ($places as $place) {
+                if ($this->hasWord($fold, $place)) {
+                    $segPlaces[] = $place;
+                    if (array_any($unitProofs, fn (array $p): bool => ! $this->hasWord($p['fold'], $place))
+                        && ($this->hasWord($nonEchoFold, $place) || ! $this->hasWord($visitorFold, $place))) {
+                        $found['UNSUPPORTED_LOCATION'] = true;
+                    }
+                }
+            }
+            $segAmenities = [];
+            foreach (self::AMENITIES as $forms) {
+                $pattern = '/(?<![\p{L}\p{N}])(?:'.$forms.')(?![\p{L}\p{N}])/u';
+                if ($this->ok(preg_match($pattern, $fold)) === 1) {
+                    $segAmenities[] = $pattern;
+                    if (array_any($unitProofs, fn (array $p): bool => ! $this->affirmed($pattern, $p['fold']))
+                        && ($this->ok(preg_match($pattern, $nonEchoFold)) === 1 || $this->ok(preg_match($pattern, $visitorFold)) !== 1)) {
+                        $found['UNSUPPORTED_AMENITY'] = true;
+                    }
+                }
+            }
+
+            // A3: elliptical predicate ("El 12A tiene pileta y 3 dormitorios. El 12B también.") re-checks missing prior facts against $ellipsisTargets.
+            $ellipsisTargets = $named !== [] ? $named : ($scope ?? []);
+            if ($ellipsisTargets !== [] && $hasEllipsisWord) {
+                $unitProof = $proof($ellipsisTargets);
+                $segKinds = array_column($segTypedClaims, 1);
+                foreach ($prev['claims'] as [$pv, $pk]) {
+                    if (! in_array($pk, $segKinds, true) && ! $this->typedBacked($pv, $pk, $unitProof, count($ellipsisTargets) > 1)) {
+                        $found['UNSUPPORTED_FACT'] = true;
+                    }
+                }
+                if ($availabilities === [] && $prev['availability'] !== []) {
+                    $checkAvailability($prev['availability'], $ellipsisTargets);
+                }
+                foreach ($prev['places'] as $pp) {
+                    if (! in_array($pp, $segPlaces, true)
+                        && array_any(array_map(fn (string $u): array => $proof([$u]), $ellipsisTargets), fn (array $p): bool => ! $this->hasWord($p['fold'], $pp))) {
+                        $found['UNSUPPORTED_LOCATION'] = true;
+                    }
+                }
+                foreach ($prev['amenities'] as $pa) {
+                    if (! in_array($pa, $segAmenities, true)
+                        && array_any(array_map(fn (string $u): array => $proof([$u]), $ellipsisTargets), fn (array $p): bool => ! $this->affirmed($pa, $p['fold']))) {
+                        $found['UNSUPPORTED_AMENITY'] = true;
+                    }
+                }
+            }
+            if ($segTypedClaims !== [] || $availabilities !== [] || $segPlaces !== [] || $segAmenities !== []) {
+                $prev = ['claims' => $segTypedClaims, 'availability' => $availabilities, 'places' => $segPlaces, 'amenities' => $segAmenities];
+            }
+            if ($unnamedOption) {
+                $current = [];
+            }
+        }
+
+        return array_values(array_filter(['UNSUPPORTED_FACT', 'UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY', 'UNSUPPORTED_DATE',
+            'UNSUPPORTED_LOCATION', 'UNSUPPORTED_AMENITY'], fn (string $code): bool => isset($found[$code])));
+    }
+
+    /**
+     * Sentences, lines and "¿…?" questions as separate segments. Abbreviations and list numbers ("1. Lote 12A")
+     * do not end one ("Depto. 12C tiene…"). Trailing "? " clauses without "¿" split at the last comma.
+     *
+     * @return list<string>
+     */
+    private function segments(string $text): array
+    {
+        $parts = $this->ok(preg_split('/(?<!\bdepto\.)(?<!\bdpto\.)(?<!\bnro\.)(?<!\bsup\.)(?<!\bav\.)(?<!\bdorm\.)(?<!\bamb\.)(?<!\bmz\.)(?<!^\d\.)(?<!^\d\d\.)(?<!\n\d\.)(?<!\n\d\d\.)(?<=[.!?;])\s++|(?<=[!?])(?=[\p{L}\p{N}¡¿])|\n++|(?=¿)/iu', $text)) ?: [];
+        $out = [];
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            if (! str_contains($part, '¿') && str_ends_with($part, '?')) {
+                $splitPattern = '/(?:,\s++|\s++(?:pero|aunque)\s++|\s++(?:y|o)\s++(?=(?:te|quer[eé]s|prefer[ií]s|necesit[aá]s|busc[aá]s|coordin|agend|paso|llam|arm|segu)\b))(?=[^,]*\?\s*+$)/iu';
+                foreach ($this->ok(preg_split($splitPattern, $part)) ?: [$part] as $sub) {
+                    $sub = trim($sub);
+                    if ($sub !== '') {
+                        $out[] = $sub;
+                    }
+                }
+            } else {
+                $out[] = $part;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Every number of a reply segment as [value, kind|null, offset]. Long digit runs (phones, accounts) are one claim of
+     * kind "digits", compared by their digits. Skipped: amounts and commercial terms (money(), terms(), which already
+     * need the same pair in the evidence; a list counts: "12, 24 o 36 cuotas"), years, delivery periods and
+     * abbreviated months (unsupportedDates()), ordinals, and the digits of a unit code. A bare number in a list takes the
+     * kind of the next one ("2 o 3 dormitorios"); otherwise the kind said before it in the segment ("el 12A tiene 2
+     * dormitorios y el 12B, 3"), else the kind of the visitor's last question ("¿cuántos dormitorios?" -> "Tiene 3."),
+     * within plausible values.
+     *
+     * @param  list<array{0: string, 1: int, 2: int}>  $mentions
+     * @return list<array{0: string, 1: ?string, 2: int, 3: bool}>
+     */
+    private function claims(string $segment, bool $delivers, array $mentions, ?string $asked, bool $question, bool $financing = false): array
+    {
+        $claims = [];
+        $spans = [];
+        $kindsUnion = implode('|', self::KINDS);
+        foreach ($this->matches('/(?<![\p{L}\p{N}])\d(?:[ \-.\/]?+\d)++(?![\p{L}\p{N}])/u', $segment) as $m) {
+            $rawRun = (string) $m[0][0];
+            $runOffset = (int) $m[0][1];
+            $tailAfter = mb_strcut($segment, $runOffset + strlen($rawRun), 80);
+            if ($this->ok(preg_match('/[ \-.\/]\d++$/u', $rawRun, $tailM)) === 1
+                && $this->ok(preg_match('/^'.self::FILLER.'\s*+\p{Pd}?+\s*+(?:'.$kindsUnion.')/iu', $tailAfter)) === 1) {
+                $rawRun = substr($rawRun, 0, strlen($rawRun) - strlen($tailM[0]));
+            }
+            $digits = (string) preg_replace('/\D/', '', $rawRun);
+            if (strlen($digits) >= 8 && preg_match('/\d{1,3}(?:\.\d{3}){2,}/', $rawRun) !== 1) {
+                $claims[] = [$digits, 'digits', $runOffset, false, false];
+                $spans[] = [$runOffset, strlen($rawRun)];
+            }
+        }
+        $commercialSpans = [
+            ...array_map(fn (array $m): array => [$m[2], $m[3]], $this->moneyMatches($segment, alreadyDigits: true)),
+            ...$this->termsAndOffsets($segment, raw: true, carryFinancing: $financing)[1],
+        ];
+        foreach ($this->matches('/(?<![\p{L}\p{N}])\d++(?:[.,]\d++)*+/u', $segment) as $m) {
+            [$token, $offset] = [(string) $m[0][0], (int) $m[0][1]];
+            foreach ([...$spans, ...array_map(fn (array $u): array => [$u[1], $u[2]], $mentions)] as [$at, $length]) {
+                if ($offset >= $at && $offset < $at + $length) {
+                    continue 2; // part of a phone, an account or a unit code
+                }
+            }
+            // Whole characters only: a cut inside "ó" would make every /u pattern fail (GUARD_ERROR).
+            $before = mb_strcut(substr($segment, 0, $offset), max(0, $offset - 48));
+            $after = mb_strcut($segment, $offset + strlen($token), 160);
+            if ($offset === 0 && preg_match('/^\d{1,2}$/', $token) === 1 && $this->ok(preg_match('/^\.\s++\p{L}/u', $after)) === 1) {
+                continue; // numbered list item ("1. Lote 12A...")
+            }
+            if (in_array($token, ['2', '3', '4'], true) && $this->ok(preg_match('/^[dk](?![\p{L}\p{N}])/i', $after)) === 1) {
+                continue; // "2D", "3D", "4K"
+            }
+            if ($this->ok(preg_match('/^(?:er|ro|ra|do|da|to|ta|vo|va|mo|ma|no|na|°|º)\b/iu', $after)) === 1
+                || ($delivers && $this->ok(preg_match('/^\s*+(?:mes(?:es)?+|a[nñ]os?+|semanas?+|d[ií]as?+)\b/iu', $after)) === 1)
+                || ($delivers && strlen($token) === 2 && $this->ok(preg_match('/\b(?:ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[-\/.\']?+$|\'$/iu', $before)) === 1)) {
+                continue;
+            }
+            $kind = null;
+            foreach (self::KINDS as $k => $forms) {
+                if ($this->ok(preg_match('/^'.self::FILLER.'\s*+\p{Pd}?+\s*+(?:'.$forms.')/iu', $after)) === 1
+                    || $this->ok(preg_match('/(?:'.self::LABELS[$k].')\s*+(?::|→|=|\p{Pd})?+\s*+(?:de\s++)?+$/iu', $before)) === 1
+                    || $this->ok(preg_match('/^\s*+(?:'.self::LABELS[$k].')\s*+—/iu', $segment)) === 1) {
+                    $kind = $k;
+                    break;
+                }
+            }
+            // Years and "los 2 tienen..." / "las 2 unidades tienen..." skip only when no property kind was detected.
+            if ($kind === null && (($this->ok(preg_match('/^(?:19|20)\d\d$/', $token)) === 1
+                    && $this->ok(preg_match('/^\s*+(?:,|y|o|a|-)\s*+\d++\s*+(?:'.$kindsUnion.')/iu', $after)) !== 1)
+                || $this->ok(preg_match('/^\s*+[\/\-]\s*+(?:19|20)\d\d\b/', $after)) === 1
+                || ($this->ok(preg_match('/\b(?:los|las)\s++$/iu', $before)) === 1
+                    && $this->ok(preg_match('/^\s++(?:(?:unidades|lotes|deptos?+|departamentos|dptos?+|casas)\s++)?+(?:tienen|son|cuentan|est[aá]n|quedan|ofrecen|incluyen|miden|poseen|disponen|presentan|comparten)\b/iu', $after)) === 1))) {
+                continue;
+            }
+            // Amounts and commercial terms are skipped only when money() or terms() registered that exact offset.
+            if ($kind === null) {
+                foreach ($commercialSpans as [$at, $length]) {
+                    if ($offset >= $at && $offset < $at + $length) {
+                        continue 2;
+                    }
+                }
+            }
+            // A date or a time ("12 de marzo", "a las 10", "el jueves 15") never takes a property kind.
+            $when = $kind === null && ($this->ok(preg_match('/^\s*+(?:de\s++(?:'.self::MONTHS.')|hs\b|h\b|:\d|\/\d)/iu', $after)) === 1
+                || $this->ok(preg_match('/(?:\blas|\bel\s++d[ií]a|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s++$/iu', $before)) === 1);
+            $claims[] = [$this->numberValue($token), $kind, $offset, ! $when && $this->ok(preg_match('/^\s*+(?:,|y|o|a|-)\s*+\d/u', $after)) === 1, $when];
+        }
+        foreach (self::KINDS as $k => $forms) {
+            foreach ($this->matches('/\b(?:un|una|uno)'.self::FILLER.'\s++(?:'.$forms.')/iu', $segment) as $m) {
+                $claims[] = ['1', $k, (int) $m[0][1], false, false];
+            }
+        }
+        if ($this->ok(preg_match('/\bmonoamb(?:iente)?+s?+\b/iu', $segment, $mono, PREG_OFFSET_CAPTURE)) === 1) {
+            $claims[] = ['1', 'amb', (int) $mono[0][1], false, false];
+        }
+        usort($claims, fn (array $a, array $b): int => $a[2] <=> $b[2]);
+        $plausible = fn (string $value, string $kind): bool => $kind === 'm2' ? (float) $value < 100000 : (float) $value <= 20;
+        for ($i = count($claims) - 2; $i >= 0; $i--) {
+            if ($claims[$i][1] === null && $claims[$i][3] && $claims[$i + 1][1] !== null && $claims[$i + 1][1] !== 'digits') {
+                $claims[$i][1] = $claims[$i + 1][1];
+            }
+        }
+        $last = null;
+        foreach ($claims as $i => $claim) {
+            if ($claim[1] !== null) {
+                $last = $claim[1] === 'digits' ? $last : $claim[1];
+
+                continue;
+            }
+            $inherited = $last ?? ($question ? null : $asked);
+            if ($inherited !== null && ! $claim[4] && $plausible($claim[0], $inherited)) {
+                $claims[$i][1] = $inherited;
+            }
+        }
+
+        return array_map(fn (array $c): array => [$c[0], $c[1], $c[2], $c[4]], $claims);
+    }
+
+    /**
+     * A typed value backed by the units' evidence: a structured field that exists is the only truth for its unit;
+     * otherwise the unit's listing; sources only when no unit has the field. "ambos/todos": every returned unit.
+     *
+     * @param  array<string, mixed>  $proof
+     */
+    private function typedBacked(string $value, string $kind, array $proof, bool $every): bool
+    {
+        $pair = $value.'|'.$kind;
+        $records = array_values(array_filter($proof['records'], fn (array $r): bool => $r['available']));
+        $own = function (int $i, array $r) use ($proof, $kind, $pair, $value): ?bool {
+            $field = $r['fields'][$kind] ?? null;
+
+            return $field !== null ? $field === $value : (in_array($pair, $proof['listingTyped'][$i] ?? [], true) ? true : null);
+        };
+        if ($every) {
+            foreach ($proof['records'] as $i => $r) {
+                if ($r['available'] && $own($i, $r) !== true) {
+                    return false;
+                }
+            }
+
+            return $records !== [];
+        }
+        $hasField = false;
+        foreach ($proof['records'] as $i => $r) {
+            $hasField = $hasField || ($r['fields'][$kind] ?? null) !== null;
+            if ($own($i, $r) === true) {
+                return true;
+            }
+        }
+
+        return ! $hasField && in_array($pair, $proof['knowledgeTyped'], true);
+    }
+
+    /**
+     * Counts and surfaces of a text as "value|kind" (evidence, the visitor's words).
+     *
+     * @return list<string>
+     */
+    private function typedPairs(string $read): array
+    {
+        $pairs = [];
+        foreach ($this->segments($read) as $segment) {
+            foreach ($this->claims($segment, false, [], null, true) as [$value, $kind]) {
+                if ($kind !== null) {
+                    $pairs[] = $value.'|'.$kind;
+                }
+            }
+        }
+
+        return array_values(array_unique($pairs));
+    }
+
+    /**
+     * Every number of a text, as plain decimals.
+     *
+     * @return list<string>
+     */
+    private function numberTokens(string $text): array
+    {
+        preg_match_all('/\d++(?:[.,]\d++)*+/', $text, $m);
+
+        return array_values(array_unique(array_map($this->numberValue(...), $m[0])));
+    }
+
+    /**
+     * The returned units' own numbers: fields and the digits of their codes.
+     *
+     * @param  list<array<string, mixed>>  $records
+     * @return list<string>
+     */
+    private function recordValues(array $records): array
+    {
+        $values = [];
+        foreach ($records as $r) {
+            array_push($values, ...array_values(array_filter($r['fields'], fn (?string $v): bool => $v !== null)), ...$this->numberTokens((string) $r['code']));
+        }
+
+        return $values;
+    }
+
+    /**
+     * The kind the visitor asked about in their last 2-3 messages, returning the most recent unambiguous one.
+     *
+     * @param  list<string>  $messages
+     */
+    private function askedKindFromMessages(array $messages): ?string
+    {
+        foreach (array_reverse($messages) as $msg) {
+            $read = $this->factsReading($this->canonical($msg));
+            $kinds = $this->askedKinds($read);
+            if (count($kinds) === 1) {
+                return $kinds[0];
+            }
+            if (count($kinds) > 1) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return list<string> */
+    private function askedKinds(string $read): array
+    {
+        return array_keys(array_filter([
+            'dorm' => '/\b(?:dormitorios?|dorm|habitaci(?:o|ó)n(?:es)?|cuartos?|piezas?)\b/iu',
+            'bano' => '/\bba[ñn]os?\b/iu',
+            'amb' => '/\bambientes?\b/iu',
+            'm2' => '/\b(?:metros|m2|mts|superficie|mide|tama[ñn]o|hect[aá]reas?)\b/iu',
+        ], fn (string $p): bool => $this->ok(preg_match($p, $read)) === 1));
+    }
+
+    /** The pattern appears in the evidence without a negation right before it ("sin ascensor ni cochera" backs nothing). */
+    private function affirmed(string $pattern, string $fold): bool
+    {
+        foreach ($this->matches($pattern, $fold) as $m) {
+            if ($this->ok(preg_match('/\b(?:sin|no\s++(?:tiene|cuenta\s++con|hay|posee|incluye|trae|dispone\s++de|es|est[aá]))\s++(?:[\p{L}\p{N},]++\s++){0,8}?$/u', substr($fold, 0, (int) $m[0][1]))) !== 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Years anywhere ("en 2027", "03/2027"); in a delivery sentence also months, quarters, relative dates and periods,
+     * backed only by delivery sentences of the evidence (a promo "válida hasta diciembre" dates no delivery). The
+     * visitor's year backs a "¿…?" question, or a sentence about their visit that is not about a delivery.
+     *
+     * @param  array<string, mixed>  $evidence
+     */
+    private function unsupportedDates(string $segment, string $fold, bool $delivers, bool $question, array $evidence, string $visitor, string $visitorRead, string $visitorFold): bool
+    {
+        $visit = ! $delivers && $this->ok(preg_match('/\b(?:visita|cita|turno|recorrida)/iu', $segment)) === 1;
+        $years = $delivers ? $evidence['delivery'] : $evidence['raw'];
+        // Not a group of a longer number ("0170 0991 2000 0012", "351-2020" after a 3+ digit phone prefix).
+        foreach ($this->matches('/(?<![\p{N}.,])(?<!\d\s)(?<!\d{3}-)\b((?:19|20)\d{2})\b(?![.,]\d)(?!\s\d)(?!\s*+(?:m2\b|mts|metros|%|usd|us\$|pesos|d[oó]lares|cuot|ctas|mil\b))/iu', $segment) as $m) {
+            $year = (string) $m[1][0];
+            if ($this->ok(preg_match('/(?:usd|us\$|u\$s|\$|ars)\s*+$/iu', substr($segment, 0, (int) $m[1][1]))) === 1
+                || $this->ok(preg_match('/^\s*+(?:y|o|a|-)\s*+\d++\s*+(?:'.implode('|', self::KINDS).')/iu', substr($segment, (int) $m[1][1] + 4))) === 1) {
+                continue; // an amount or a range ending in a count/surface ("1950 o 2000 m2")
+            }
+            if (! $this->hasWord($years, $year) && ! (($question || $visit) && $this->hasWord($visitor, $year))) {
+                return true;
+            }
+        }
+        if (! $delivers) {
+            return false;
+        }
+        if ($this->ok(preg_match('/\b(?:posesion|entrega)(?:\s++es)?+\s++inmediata\b/u', $fold)) === 1
+            && ! str_contains($evidence['deliveryFold'], 'inmediata')
+            && ! ($question && str_contains($visitorFold, 'inmediata'))) {
+            return true;
+        }
+        foreach ($this->matches('/(?<![\p{L}\p{N}])('.self::WHEN.')(?![\p{L}\p{N}])/u', $fold) as $m) {
+            $when = trim((string) $m[1][0]);
+            if (! $this->hasWord($evidence['deliveryFold'], $when) && ! ($question && $this->hasWord($visitorFold, $when))) {
+                return true;
+            }
+        }
+        $backed = [...$evidence['periods'], ...($question ? $this->periods($visitorRead) : [])];
+
+        return array_diff($this->periods($segment), $backed) !== [];
+    }
+
+    /**
+     * Periods as "value|unit" in months, weeks or days: "24 meses", "2 años" (= 24 meses), "un año", "año y medio",
+     * "medio año", "8 semanas", "90 días".
+     *
+     * @return list<string>
+     */
+    private function periods(string $text): array
+    {
+        $found = [];
+        foreach ($this->matches('/'.self::NUMBERS.'\s*+(mes(?:es)?+|a[nñ]os?+|semanas?+|d[ií]as?+)\b/iu', $text) as $m) {
+            preg_match_all('/\d++(?:[.,]\d++)?+/', (string) $m[1][0], $digits);
+            $unit = mb_strtolower((string) $m[2][0]);
+            foreach ($digits[0] as $digit) {
+                $value = (float) $this->numberValue($digit);
+                $found[] = match (true) {
+                    str_starts_with($unit, 'a') => ($value * 12).'|meses',
+                    str_starts_with($unit, 'mes') => $value.'|meses',
+                    str_starts_with($unit, 'sem') => $value.'|semanas',
+                    default => $value.'|dias',
+                };
+            }
+        }
+        if ($this->ok(preg_match('/\b(?:(?:un|1)\s++)?+a[nñ]o\s++y\s++medio\b/iu', $text)) === 1) {
+            $found[] = '18|meses';
+        } elseif ($this->ok(preg_match('/\bun\s++a[nñ]o\b/iu', $text)) === 1) {
+            $found[] = '12|meses';
+        }
+        if ($this->ok(preg_match('/\bmedio\s++a[nñ]o\b/iu', $text)) === 1) {
+            $found[] = '6|meses';
         }
 
         return array_values(array_unique($found));
     }
 
-    /** Markdown tables: each data row also as "Header: cell." lines, so a column header reads next to its value. */
-    private function tables(string $text): string
+    /** "120", "120,5", "120.50" and "1.200" (thousands) as a plain decimal string. */
+    private function numberValue(string $number): string
+    {
+        if (preg_match('/^\d{1,3}(?:\.\d{3})++$/', $number) === 1) {
+            $number = str_replace('.', '', $number);
+        }
+
+        return (string) (float) str_replace(',', '.', $number);
+    }
+
+    /**
+     * Unit codes as [code in lower case, byte offset, length]: after a unit noun, with lists ("unidades 12A y 12C",
+     * "lote número 34"), after an article ("la 12A", "el 12-3-A", "el 12 sigue…"), or a bare upper-case code ("12B",
+     * "L-101", "12-3-A"). A count, surface, period or time after the number is not a code.
+     *
+     * @return list<array{0: string, 1: int, 2: int}>
+     */
+    private function unitMentions(string $segment): array
+    {
+        $found = [];
+        $add = function (string $code, int $offset) use (&$found): void {
+            $code = rtrim($code, '-/');
+            if (preg_match('/\d/', $code) === 1
+                && preg_match('/^(?:m2|mt2|3d|2d|4k|q[1-4]|t[1-4]|rn\d++|rp\d++|\d++(?:er|ro|ra|do|da|to|ta|vo|va|mo|ma|no|na|hs|h|am|pm|km|cm|mm|m))$/i', $code) !== 1) {
+                $found[] = [mb_strtolower($code), $offset, strlen($code)];
+            }
+        };
+        $list = '((?:\s*+(?:,|\by\b|\be\b|\bo\b)\s*+'.self::CODE.')*+)';
+        foreach ($this->matches('/\b'.self::UNIT_NOUN.'\s++(?:(?:n(?:ro|[°ºo])\.?+|n[uú]mero|#)\s*+)?+('.self::CODE.')'.self::NOT_A_CODE.$list.'/iu', $segment) as $m) {
+            $add((string) $m[1][0], (int) $m[1][1]);
+            // "Lote 12A, 85 m2": a listed number followed by a count or surface is a fact, not another code.
+            foreach ($this->matches('/'.self::CODE.'/iu', (string) $m[2][0]) as $n) {
+                $at = (int) $m[2][1] + (int) $n[0][1];
+                // "80.50 m2" / "80,50 m2": the decimal part belongs to the number, on either side of the separator.
+                if (preg_match('/\d[.,]$/', substr($segment, 0, $at)) === 1
+                    || $this->ok(preg_match('/^(?:[.,]\d++)?+'.self::NOT_A_CODE.'/iu', substr($segment, $at + strlen((string) $n[0][0])))) !== 1) {
+                    continue;
+                }
+                $add((string) $n[0][0], $at);
+            }
+        }
+        foreach ($this->matches('/\b(?:la|el|las|los|del|al)\s++(\d++[a-z]{1,2}\b|[a-z]{1,2}-?+\d++[a-z]?+\b|\d++(?:-[a-z0-9]++)++|\d{1,4}(?=\s++(?:est[aá]|sigue|tiene|queda|cuesta|sale|vale|ya)\b|,\s*+(?:la|el|las|los)\s++\d|\s++(?:y|e|o)\s++(?:la|el|las|los)\s++\d))'.self::NOT_A_CODE.'/iu', $segment) as $m) {
+            $add((string) $m[1][0], (int) $m[1][1]);
+        }
+        foreach ($this->matches('/(?<![\p{L}\p{N}\-])(\d{1,4}[A-Z]{1,2}|[A-Z]{1,2}-?\d{1,4}[A-Z]?|\d{1,4}-\d{1,4}-[A-Z0-9]{1,3})(?![\p{L}\p{N}])/u', $segment) as $m) {
+            if (preg_match('/^(?:M2|MT2|3D|2D|4K|Q[1-4]|T[1-4]|RN\d++|RP\d++|\d++(?:HS|H|AM|PM|KM|CM|MM|M|ER|RO|RA|DO|DA|TO|TA|VO|VA|MO|MA|NO|NA))$/', (string) $m[1][0]) !== 1) {
+                $add((string) $m[1][0], (int) $m[1][1]);
+            }
+        }
+        foreach ($this->matches('/(?<![\p{L}\p{N}\-])(\d{1,4}[a-z]{1,2})(?![\p{L}\p{N}])/u', $segment) as $m) {
+            $tok = (string) $m[1][0];
+            $off = (int) $m[1][1];
+            if (preg_match('/^(?:m2|mt2|3d|2d|4k|\d++(?:hs|h|am|pm|km|cm|mm|m|er|ro|ra|do|da|to|ta|vo|va|mo|ma|no|na))$/', $tok) === 1) {
+                continue;
+            }
+            $beforeTok = mb_strcut($segment, max(0, $off - 24), min($off, 24));
+            $afterTok = mb_strcut($segment, $off + strlen($tok), 24);
+            if ($this->ok(preg_match('/(?:[:,]|\b(?:y|e|o|recomiendo|opciones?))\s++$/iu', $beforeTok)) === 1
+                || $this->ok(preg_match('/^\s*+(?:,|\b(?:y|e|o)\b)\s*+\d{1,4}[a-z]{1,2}\b/u', $afterTok)) === 1) {
+                $add($tok, $off);
+            }
+        }
+        $unique = [];
+        foreach ($found as $mention) {
+            $unique[$mention[0].'@'.$mention[1]] = $mention;
+        }
+
+        return array_values($unique);
+    }
+
+    /**
+     * Byte offsets of $code as a whole token of $segment (case-insensitive).
+     *
+     * @return list<int>
+     */
+    private function wordOffsets(string $segment, string $code): array
+    {
+        return array_map(fn (array $m): int => (int) $m[0][1], $code === '' ? [] : $this->matches('/(?<![\p{L}\p{N}])'.preg_quote($code, '/').'(?![\p{L}\p{N}])/iu', $segment));
+    }
+
+    /**
+     * POSITIVE ("disponible", "a la venta", "todavía la tenemos", "se puede comprar", "no está vendido", "no se vendió"),
+     * NEGATIVE ("no está disponible", "vendida", "se vendió") or both when both appear in one segment.
+     *
+     * @return list<'POSITIVE'|'NEGATIVE'>
+     */
+    private function availability(string $segment, bool $aboutUnit): array
+    {
+        $found = [];
+        if ($this->ok(preg_match('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo)\s++(?:\p{L}++\s++){0,3}?(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bya\s++no\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|la|lo|las|los)\b/iu', $segment)) === 1) {
+            $found[] = 'NEGATIVE';
+        }
+        foreach ($this->matches('/\b(?:vendid[oa]s?+|ocupad[oa]s?+|alquilad[oa]s?+)\b|\b(?:ya\s++)?se\s++vendi[oó]\b/iu', $segment) as $m) {
+            $before = substr($segment, 0, (int) $m[0][1]);
+            $negatedParticiple = $this->ok(preg_match('/\b(?:no|ni|tampoco)\s++(?:(?:todav[ií]a|a[uú]n)\s++)?+(?:(?:est[aá]n?+|fue|fueron|ha\s++sido|han\s++sido|se\s++ha|qued[oó]|se\s++encuentra|sigue|siguen|figura\p{L}*+)\s++(?:(?:todav[ií]a|a[uú]n)\s++)?+)?+$/iu', $before)) === 1
+                || (str_contains(mb_strtolower((string) $m[0][0]), 'vendi') && $this->ok(preg_match('/\b(?:no|ni|tampoco)\s++(?:(?:todav[ií]a|a[uú]n)\s++)?+(?:se\s++ha\s++)?+$/iu', $before)) === 1);
+            $found[] = $negatedParticiple ? 'POSITIVE' : 'NEGATIVE';
+        }
+        foreach ($this->matches('/\bdisponibles?+\b|\bdisponibilidad\b|\ba\s++la\s++venta\b|\ben\s++venta\b|\b(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++libres?+\b|\b(?:todav[ií]a|a[uú]n)\s++(?:la|lo|las|los)\s++tenemos\b|\bse\s++(?:puede|pueden)\s++comprar\b|\bpod[eé]s\s++comprar(?:la|lo|las|los)?+\b|\bquedan?+\s++(?:\d++|unidades|lotes|departamentos|casas)\b|\bnadie\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\b(?:todav[ií]a|a[uú]n)\s++no\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\bes\s++tuy[oa]s?+\b|\b(?:lo|la|los|las)\s++pod[eé]s\s++(?:reservar|se[ñn]ar)\b/iu', $segment) as $m) {
+            $before = substr($segment, 0, (int) $m[0][1]);
+            $after = substr($segment, (int) $m[0][1] + strlen((string) $m[0][0]));
+            if ($this->ok(preg_match('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++)?+$/iu', $before)) === 1
+                || $this->ok(preg_match('/\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo)\s++(?:\p{L}++\s++){0,3}?$/iu', $before)) === 1
+                || $this->ok(preg_match('/(?:horarios?|turnos?|d[ií]as?|fechas?|asesor(?:es|as?)?+|informaci[oó]n|info|datos)\s++(?:\p{L}++\s++)?+$/iu', $before)) === 1
+                || $this->ok(preg_match('/(?:consult\p{L}*+|pregunt\p{L}*+|saber|ver|averigu\p{L}*+|confirm\p{L}*+|chequ\p{L}*+|revis\p{L}*+)\s++si\s++(?:\p{L}++\s++)?+$/iu', $before)) === 1
+                || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
+                    && $this->ok(preg_match('/(?:consult\p{L}*+|confirm\p{L}*+|verific\p{L}*+|chequ\p{L}*+|revis\p{L}*+|averigu\p{L}*+|ver)\s++(?:la\s++)?+$/iu', $before)) === 1)
+                || (! $aboutUnit && $this->ok(preg_match('/(?:estoy|estamos|quedo|quedamos|sigo|seguimos)\s++$/iu', $before)) === 1)
+                || (! $aboutUnit && $this->ok(preg_match('/^\s++para\s++(?:ayud|respond|lo\s+que|cualquier|charlar|hablar)/iu', $after)) === 1)) {
+                continue;
+            }
+
+            $found[] = 'POSITIVE';
+        }
+
+        return array_values(array_unique($found));
+    }
+
+    /**
+     * The copy the fact checks read: tables as "Row — Header: cell.", formatting and emoji gone, spelled numbers as
+     * digits, "1 mil metros" / "2 mil m^2" as 1000 / 2000, "3 (tres)" once.
+     */
+    private function factsReading(string $text): string
+    {
+        // "por ciento" and "m^2" first: wordsToDigits would read "ciento" as 100 and "^" blocks "mil m2".
+        $text = $this->wordsToDigits($this->ok(preg_replace(['/[*_~`|\p{So}\p{Sk}]/u', '/\bpor\s*+ciento\b/iu', '/\bm\s*+\^\s*+2\b/iu'], [' ', '%', 'm2'], $this->tables($text, true))) ?? $text);
+
+        return $this->ok(preg_replace_callback(['/(\d++(?:[.,]\d++)?+)\s++mil\b(?=\s++(?:metros|m2|mts|hect))/iu', '/(\d++)\s*+\(\s*+\1\s*+\)/u'],
+            fn (array $m): string => str_contains($m[0], '(') ? $m[1] : (string) ((float) $this->numberValue($m[1]) * 1000), $text)) ?? $text;
+    }
+
+    /** Lower case, compatibility forms and no accents ("Nueva Córdoba" -> "nueva cordoba", "Jardín" -> "jardin"). */
+    private function fold(string $text): string
+    {
+        $decomposed = \Normalizer::normalize(mb_strtolower($text), \Normalizer::FORM_KD);
+        if ($decomposed === false) {
+            $this->broken = true;
+
+            return mb_strtolower($text);
+        }
+
+        return $this->ok(preg_replace('/\p{Mn}++/u', '', $decomposed)) ?? $decomposed;
+    }
+
+    /** The literal $needle as a whole token of $haystack, case-insensitive ("12A" is not inside "112A" nor "12AB"). */
+    private function hasWord(string $haystack, string $needle): bool
+    {
+        return $needle !== '' && $this->ok(preg_match('/(?<![\p{L}\p{N}])'.preg_quote($needle, '/').'(?![\p{L}\p{N}])/iu', $haystack)) === 1;
+    }
+
+    /**
+     * Markdown tables: each data row also as "Header: cell." lines, so a column header reads next to its value. With
+     * $rowLabels (EVP-192) the table is replaced by "Row — Header: cell." lines, so every value keeps its unit
+     * ("12B — Dormitorios: 3.").
+     */
+    private function tables(string $text, bool $rowLabels = false): string
     {
         $rows = [];
+        $plain = [];
         $header = null;
         foreach (explode("\n", $text) as $line) {
             if (substr_count($line, '|') < 2) {
                 $header = null;
+                $plain[] = $line;
 
                 continue;
             }
@@ -471,8 +1434,15 @@ final class OutputGuard
                 continue;
             }
             foreach ($cells as $i => $cell) {
-                $rows[] = ($header[$i] ?? '').': '.$cell.'.';
+                if (! $rowLabels) {
+                    $rows[] = ($header[$i] ?? '').': '.$cell.'.';
+                } elseif ($i > 0) {
+                    $rows[] = $cells[0].' — '.($header[$i] ?? '').': '.$cell.'.';
+                }
             }
+        }
+        if ($rowLabels) {
+            return implode("\n", [...$plain, ...$rows]);
         }
 
         return $rows === [] ? $text : $text."\n".implode("\n", $rows);
@@ -606,14 +1576,25 @@ final class OutputGuard
      */
     public function money(string $text): array
     {
-        $text = $this->wordsToDigits($text);
+        return array_map(fn (array $m): array => [$m[0], $m[1]], $this->moneyMatches($text));
+    }
+
+    /**
+     * @return list<array{0: string, 1: ?string, 2: int, 3: int}> [amount, currency, offset, length]
+     */
+    private function moneyMatches(string $text, bool $alreadyDigits = false): array
+    {
+        if (! $alreadyDigits) {
+            $text = $this->ok(preg_replace('/[*_~`|\p{So}\p{Sk}]/u', ' ', $text)) ?? $text;
+            $text = $this->wordsToDigits($text);
+        }
         $number = '(\d[\d.,]*)';
         $found = [];
         $patterns = [
-            ['/(?:'.self::USD.')\s?'.$number.self::SCALE.'/iu', 'USD'],
-            ['/'.$number.self::SCALE.'\s?(?:de\s+)?(?:'.self::USD.')/iu', 'USD'],
-            ['/(?:'.self::ARS.')\s?'.$number.self::SCALE.'/iu', 'ARS'],
-            ['/'.$number.self::SCALE.'\s?(?:de\s+)?(?:'.self::ARS.')/iu', 'ARS'],
+            ['/(?:'.self::USD.')[ \t]*'.$number.self::SCALE.'/iu', 'USD'],
+            ['/'.$number.self::SCALE.'[ \t]*(?:de[ \t]+)?(?:'.self::USD.')/iu', 'USD'],
+            ['/(?:'.self::ARS.')[ \t]*'.$number.self::SCALE.'/iu', 'ARS'],
+            ['/'.$number.self::SCALE.'[ \t]*(?:de[ \t]+)?(?:'.self::ARS.')/iu', 'ARS'],
         ];
         $consumed = [];
         foreach ($patterns as [$pattern, $currency]) {
@@ -623,12 +1604,14 @@ final class OutputGuard
                     continue;
                 }
                 $consumed[$offset] = true;
-                $found[] = [$this->normalize((string) $m[1][0], $m[2][0] ?? null), $currency];
+                $len = ($m[2][0] ?? '') !== '' ? ((int) $m[2][1] + strlen((string) $m[2][0]) - $offset) : strlen((string) $m[1][0]);
+                $found[] = [$this->normalize((string) $m[1][0], $m[2][0] ?? null), $currency, $offset, $len];
             }
         }
-        foreach ($this->matches('/(?:sale|cuesta|vale|precio|valor)[^.!?\n]{0,30}?'.$number.'\s*(mil(?:lones|l[oó]n)?|k)\b/iu', $text) as $m) {
+        foreach ($this->matches('/(?:sale|cuesta|vale|precio|valor)[^.!?\n]{0,30}?'.$number.'[ \t]*(mil(?:lones|l[oó]n)?|k)\b/iu', $text) as $m) {
             if (! isset($consumed[$m[1][1]])) {
-                $found[] = [$this->normalize((string) $m[1][0], (string) $m[2][0]), null];
+                $len = (int) $m[2][1] + strlen((string) $m[2][0]) - (int) $m[1][1];
+                $found[] = [$this->normalize((string) $m[1][0], (string) $m[2][0]), null, $m[1][1], $len];
             }
         }
 
@@ -656,6 +1639,7 @@ final class OutputGuard
      */
     public function wordsToDigits(string $text): string
     {
+        $text = $this->ok(preg_replace('/(?<=[\d.,])[ \t]{2,}(?=(?:mil|mill[oó]n|millones)\b)/iu', ' ', $text)) ?? $text;
         $word = '(?:'.implode('|', array_keys(self::WORDS)).'|mil|mill[oó]n|millones|medio)';
         // "y" joins only tens+units ("ochenta y cinco") or a scale + "medio" ("un millón y medio"),
         // so a range ("entre dos y tres") is not summed.

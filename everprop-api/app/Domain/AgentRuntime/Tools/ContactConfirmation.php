@@ -165,6 +165,19 @@ final class ContactConfirmation
         return ($pending['run_id'] ?? null) === $context->runId && ! isset($pending['message_id']) ? $pending['summary'] : null;
     }
 
+    /**
+     * EVP-192: the property the pending summary names. Its code and title are server data shown in the summary, so
+     * they back the summary even when the property came from an earlier turn.
+     */
+    public function pendingPropertyId(ToolContext $context): ?string
+    {
+        $session = $this->session($context)->first(['state_json']);
+        $pending = (json_decode((string) $session?->state_json, true) ?: [])[self::KEY] ?? null;
+        $id = $pending['arguments']['property_id'] ?? null;
+
+        return ($pending['run_id'] ?? null) === $context->runId && is_string($id) ? $id : null;
+    }
+
     /** @param array<string, mixed> $reply */
     public function bind(ToolContext $context, string $text, array $reply): void
     {

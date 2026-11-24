@@ -134,7 +134,7 @@ final class CopilotTest extends TestCase
     {
         $f = $this->inControl();
         $g = $this->inControl();
-        $this->llm([ScriptedLlm::text('Hola, sí, el L-101 sigue disponible.'), ScriptedLlm::text('Hola, sí, el L-101 sigue disponible.')]);
+        $this->llm([ScriptedLlm::text('Hola, te ayudo con el L-101.'), ScriptedLlm::text('Hola, te ayudo con el L-101.')]);
         $mine = $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk()->json('data.suggestion_id');
         $theirs = $this->suggest($g['advisor'], $g['tenant'], $g['conversation'])->assertOk()->json('data.suggestion_id');
         $reply = fn (string $text, string $suggestion, string $key) => $this->actingAs($f['advisor'])->withHeaders($this->tenantHeaders($f['tenant']))
@@ -175,7 +175,7 @@ final class CopilotTest extends TestCase
     public function test_drafts_are_capped_per_customer_message(): void
     {
         $f = $this->inControl();
-        $this->llm(array_fill(0, 3, ScriptedLlm::text('Hola, sí, está disponible.')));
+        $this->llm(array_fill(0, 3, ScriptedLlm::text('Hola, ¿en qué te ayudo?')));
         foreach (range(1, 3) as $_) {
             $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk();
         }
@@ -242,7 +242,7 @@ final class CopilotTest extends TestCase
     public function test_a_stuck_draft_never_hands_the_conversation_off(): void
     {
         $f = $this->inControl();
-        $this->llm([ScriptedLlm::text('Hola, sí, está disponible.')]);
+        $this->llm([ScriptedLlm::text('Hola, ¿en qué te ayudo?')]);
         $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk();
         DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->update(['status' => 'STARTED', 'started_at' => now()->subMinutes(10)]);
 
