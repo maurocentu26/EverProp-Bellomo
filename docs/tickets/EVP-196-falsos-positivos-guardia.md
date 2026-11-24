@@ -1,6 +1,6 @@
 # EVP-196: falsos positivos de `OutputGuard` medidos en la Etapa 2
 
-Rama `ticket/EVP-196-falsos-positivos-guardia` (desde `develop` `0d24671`) · commits: pendientes, sin autorización todavía · fecha 2026-11-24 · autor: Claude Code (agente) con Mauro Centurión.
+Rama `ticket/EVP-196-falsos-positivos-guardia` (desde `develop` `0d24671`) · commits `ac3172b` + informe · fecha 2026-11-24 · autor: Claude Code (agente) con Mauro Centurión.
 
 Jira: `EVP-196` En curso. El flujo de EVP no tiene un estado "En revisión", así que al abrir el PR queda En curso con el enlace en un comentario.
 
@@ -103,6 +103,6 @@ Cada ejemplo de cada pasada es una regresión en `stageTwo()`. No hubo cambios e
 ## 5. Pendientes y riesgos
 
 - **Repetir la Etapa 2** sobre los 24 casos con la versión final cuando se recupere la cuota de Gemini, y anotar la cifra. EVP-197 trata la cuota.
-- **Commit, push y PR a `develop`:** necesitan tu autorización.
+- **PR a `develop`:** abierto para revisión humana, sin merge.
 - **Cambios ajenos en el mismo checkout:** hay modificaciones en `everprop-public` (`ProjectWebEditor.tsx`, `admin-design.css`, `AGENTS.md` y un test) que no son de este ticket. No entran en este commit.
 - **Riesgo:** la guardia sigue siendo léxica. La red de seguridad es la evaluación con el modelo real y el copiloto con revisión humana (go-live F2 5b).
