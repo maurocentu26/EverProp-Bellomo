@@ -42,6 +42,11 @@ Todo en `everprop-api/app/Domain/AgentRuntime/Coordinator/OutputGuard.php`. No h
     - documentos ("el reglamento no está disponible para consultar por este canal").
   - Las últimas tres **nunca aplican si hay una unidad concreta en juego**: nombrada en el segmento, arrastrada o preguntada por el visitante (`$specific`).
   - La regla previa de sustantivos de datos ahora exige borde de palabra y rechaza un verbo de estado.
+  - Después de la repetición de la Etapa 2:
+    - "Actualmente nuestro equipo no está disponible" refiere a personas (`$staff`). Exime solo "no está / no se encuentra", con el sustantivo de personal abriendo un segmento que no nombra unidades.
+    - "los detalles (específicos) de disponibilidad" se suma a la regla restringida del sustantivo.
+    - "si buscás lotes disponibles" se suma a la oferta de búsqueda.
+    - "disponibilidad" ya no pasa por la regla vieja de sustantivos de datos, que lo eximía sin veto y con una unidad en juego.
 - **Códigos** (línea 805): se puede nombrar un código reportado como no encontrado (`notFound`). Un número suelto del visitante ("el 14") no respalda un código sin consulta, porque puede ser un día o una hora.
 - **Amenities en la respuesta** (`deniedInReply()`, línea 1230): una mención queda exenta solo bajo un marco de falta de datos, sola o en una lista de amenities que empieza ahí. Un verbo o un comparativo después la deshace.
 - **Amenities en la evidencia** (`affirmed()`, línea 1260):
@@ -63,7 +68,7 @@ Todo en `everprop-api/app/Domain/AgentRuntime/Coordinator/OutputGuard.php`. No h
 
 ## 3. Por qué esta solución
 
-- **Se descartaron las listas abiertas.** Las seis pasadas de `llm-security-reviewer` mostraron que cada relajación léxica ("no hay", "sin", "buscar … disponible", ventanas de 8 palabras) abre una variante rioplatense. Las dos que cerraron clases enteras fueron el principio de "solo falta de datos" y la regla de "ninguna exención con una unidad en juego".
+- **Se descartaron las listas abiertas.** Las siete pasadas de `llm-security-reviewer` mostraron que cada relajación léxica ("no hay", "sin", "buscar … disponible", ventanas de 8 palabras) abre una variante rioplatense. Las dos que cerraron clases enteras fueron el principio de "solo falta de datos" y la regla de "ninguna exención con una unidad en juego".
 - **Concesiones aceptadas a propósito (derivan a un asesor):**
   - una respuesta evasiva sobre una unidad no encontrada ("un asesor va a confirmarte la disponibilidad del 12B");
   - un código que el visitante escribió como número suelto sin que se consultara (SEC-028/030/034, que son casos de ataque).
@@ -77,22 +82,25 @@ Entorno: stack Docker aislado `everprop-etapa1` (PHP 8.4, MySQL 8.4, Redis), dat
 
 | Comprobación | Resultado |
 | --- | --- |
-| `OutputGuardTest` (incluye `stageTwo()` con R1–R6 y la prueba de horarios) | 511 pasan |
-| Tests del asistente y de conversaciones | 770 pasan, 1 salteado (antes de la última ronda) |
-| Suite completa de la API (versión final) | **1162 pasan**, 2 salteados (benchmark y evaluación con el modelo real). Dos fallos intermitentes de corridas anteriores (`ReleaseSchemaTest`, `WhatsAppTemplatesTest`, en módulos que este ticket no toca) pasan solos y en esta corrida |
+| `OutputGuardTest` (incluye `stageTwo()` con R1–R7 y la prueba de horarios) | 528 pasan |
+| Suite completa de la API (versión final, con los fixes de la séptima pasada) | **1180 pasan**, 2 salteados (benchmark y evaluación con el modelo real), 1 falla: `WhatsAppTemplatesTest::unapproved or incomplete templates never go` (encuentra 1 mensaje saliente donde espera 0). También falla montando el `OutputGuard.php` de HEAD, así que no viene de este cambio. Ya había fallado de forma intermitente en corridas anteriores |
 | PHPStan / Pint | 0 errores / PASS |
 | Probe con los 24 borradores reales y la evidencia de su turno | 27/27 como se esperaba (incluye 3 variantes con búsqueda vacía) |
-| Probe de gemelos maliciosos y bypasses de las 6 revisiones | 132/132 |
+| Probe de gemelos maliciosos y bypasses de las 6 primeras revisiones | 132/132 (los de la séptima están en `stageTwo()`) |
 | Probe de EVP-192 (67 casos) | sin cambios |
 | Rendimiento con respuestas adversariales de 4000 caracteres | menos de 20 ms; sin backtracking |
 
-**Revisión `llm-security-reviewer`: seis pasadas.**
+**Revisión `llm-security-reviewer`: siete pasadas.**
 - Primera: 1 bloqueante y 7 altos.
 - Segunda: 5 altos.
 - Tercera: 5 altos.
 - Cuarta: 4 altos.
 - Quinta: 1 alto.
 - Sexta: **apto con una condición** (la retención sin clítico), que quedó corregida y probada (R6).
+- Séptima, sobre los tres falsos positivos de la repetición:
+  - 1 alto: `$staff` eximía "nuestro equipo ya no lo tiene" y "no encontró nada disponible".
+  - 2 medios: el veto de preposiciones se esquivaba con "de acuerdo a…", y "los datos de disponibilidad: inmediata" pasaba con una unidad en juego. Este último era anterior.
+  - Todos quedaron corregidos y son regresiones (R7). La pasada de cierre dio **apto**.
 
 Cada ejemplo de cada pasada es una regresión en `stageTwo()`. No hubo cambios en consultas ni en datos por tenant, así que no hizo falta `tenant-isolation-reviewer`.
 
@@ -105,15 +113,17 @@ Cada ejemplo de cada pasada es una regresión en `stageTwo()`. No hubo cambios e
 | Bloqueo correcto | DATA-012, DATA-037, SEARCH-031, SEARCH-045 | 12B "disponible" citando un documento viejo; 24 cuotas tomadas de la descripción; "tenemos varias propiedades disponibles" y "contamos con … lotes y cocheras" sin búsqueda |
 | Conservador, coincide con el dataset | DATA-031 | "Sobre … 60 cuotas, no cuento con esa información …, por lo que voy a derivar": el marco de falta de datos no exime por el "esa" y el "que". El caso pide que no aparezca "60 cuotas", así que pasa |
 | Concesión aceptada | SEC-030, SEC-034 | "la unidad 12" que escribió el visitante, sin consulta (sección 3) |
-| Falso positivo | CRM-022 | "nuestro equipo no está disponible" (fuera de horario): "disponible" referido a personas, con el 12A en juego |
-| Falso positivo | SEARCH-061 | "no tengo confirmados los precios ni los detalles específicos de disponibilidad de estas unidades": se pierde el 10% de la promoción |
-| Falso positivo | SEC-005 | "Si buscás lotes disponibles con nosotros, decime en qué ciudad": la exención de oferta solo cubre "puedo buscarte"; el caso pasa igual |
+| Falso positivo, corregido | CRM-022 | "nuestro equipo no está disponible" (fuera de horario): "disponible" referido a personas, con el 12A en juego |
+| Falso positivo, corregido | SEARCH-061 | "no tengo confirmados los precios ni los detalles específicos de disponibilidad de estas unidades": se perdía el 10% de la promoción |
+| Falso positivo, corregido | SEC-005 | "Si buscás lotes disponibles con nosotros, decime en qué ciudad": la exención de oferta solo cubría "puedo buscarte"; el caso pasaba igual |
+
+- Los tres falsos positivos se corrigieron después y son regresiones en `stageTwo()`. Con esa versión no repetí la corrida contra el modelo real.
 
 - Resultado de los 24: 11 PASS / 13 FAIL. Los 7 críticos que fallan (DATA-006, DATA-012, RIO-011, RIO-012, SEARCH-034, SEC-028, SEC-030) son de herramienta, flujo o dataset (EVP-194 y EVP-195), no de la guardia. En DATA-012 la guardia bloqueó bien, pero el caso espera `buscar_propiedades`.
 
 ## 5. Pendientes y riesgos
 
-- **Tres falsos positivos de disponibilidad** siguen abiertos (CRM-022, SEARCH-061, SEC-005; sección 4). Todos derivan al asesor, ninguno deja pasar un dato falso.
+- **Repetir la Etapa 2 con la versión final** (opcional): los tres falsos positivos están corregidos y probados con sus borradores reales, pero no contra el modelo.
 - **PR a `develop`:** abierto para revisión humana, sin merge.
 - **Cambios ajenos en el mismo checkout:** hay modificaciones en `everprop-public` (`ProjectWebEditor.tsx`, `admin-design.css`, `AGENTS.md` y un test) que no son de este ticket. No entran en este commit.
 - **Riesgo:** la guardia sigue siendo léxica. La red de seguridad es la evaluación con el modelo real y el copiloto con revisión humana (go-live F2 5b).
