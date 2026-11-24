@@ -32,9 +32,17 @@ final class OutputGuardTest extends TestCase
             'price with decimals' => ['Precio: US$ 85.000,00', [], false],
             'price in mil' => ['Está en 85 mil dólares.', [], false],
             'knowledge amount' => ['Hay 36 cuotas de $150.000.', [], false],
-            'no money at all' => ['Tenemos 3 lotes en Jujuy de 300 m2.', [], false],
+            // EVP-192: no money, but an invented surface (no tool returned it this turn).
+            'no money at all' => ['Tenemos 3 lotes en Jujuy de 300 m2.', ['UNSUPPORTED_FACT'], false],
             'currency swap' => ['Sale $ 85.000.', ['UNSUPPORTED_AMOUNT'], false],
             'invented' => ['Sale USD 70.000.', ['UNSUPPORTED_AMOUNT'], false],
+            // A7: markdown and double spaces do not hide amounts from money().
+            'invented markdown amount' => ['Sale US$ **70.000**.', ['UNSUPPORTED_AMOUNT'], false],
+            'invented double space amount' => ['Sale $  85.000.', ['UNSUPPORTED_AMOUNT'], false],
+            'invented markdown trailing currency' => ['Sale 70.000 **USD**.', ['UNSUPPORTED_AMOUNT'], false],
+            'invented emoji amount' => ['Sale USD 💵 90.000.', ['UNSUPPORTED_AMOUNT'], false],
+            'invented pipe amount' => ['Sale USD | 90.000.', ['UNSUPPORTED_AMOUNT'], false],
+            'invented emoji mil' => ['Cuesta 90 💵 mil.', ['UNSUPPORTED_AMOUNT'], false],
             'invented in mil' => ['Sale 90 mil dólares.', ['UNSUPPORTED_AMOUNT'], false],
             'bare scaled price' => ['El precio anda por 90 mil.', ['UNSUPPORTED_AMOUNT'], false],
             'spelled exact price' => ['Sale ochenta y cinco mil dólares.', [], false],
@@ -44,18 +52,19 @@ final class OutputGuardTest extends TestCase
             'spelled millions' => ['Cuesta un millón doscientos mil pesos.', ['UNSUPPORTED_AMOUNT'], false],
             'spelled half million' => ['Vale medio millón de dólares.', ['UNSUPPORTED_AMOUNT'], false],
             'spelled currency swap' => ['Sale ochenta y cinco mil pesos.', ['UNSUPPORTED_AMOUNT'], false],
-            'spelled counts, no money' => ['Hay dos o tres lotes, un depto de dos y tres ambientes y medio baño.', [], false],
+            'spelled counts, no money' => ['Hay dos o tres lotes, un depto de dos y tres ambientes y medio baño.', ['UNSUPPORTED_FACT'], false],
             'confirmed visit' => ['Tu visita quedó confirmada.', ['CONFIRMATION_CLAIM'], false],
             'subjectless confirmation' => ['Perfecto, está confirmado para el jueves.', ['CONFIRMATION_CLAIM'], false],
-            'programmed' => ['El jueves 10hs quedó programada tu visita.', ['CONFIRMATION_CLAIM'], false],
-            'te espero' => ['Listo, te espero el jueves a las 10.', ['CONFIRMATION_CLAIM'], false],
-            'reserved unit' => ['Te reservo el lote 12A.', ['CONFIRMATION_CLAIM'], false],
+            'programmed' => ['El jueves 10hs quedó programada tu visita.', ['CONFIRMATION_CLAIM', 'UNSUPPORTED_FACT'], false],
+            'te espero' => ['Listo, te espero el jueves a las 10.', ['CONFIRMATION_CLAIM', 'UNSUPPORTED_FACT'], false],
+            'reserved unit' => ['Te reservo el lote 12A.', ['CONFIRMATION_CLAIM', 'UNSUPPORTED_UNIT'], false],
             'honest negation' => ['El precio no está confirmado y tu visita todavía no está confirmada: un asesor te confirma.', [], false],
             'negation in another clause' => ['No te preocupes, tu visita quedó confirmada.', ['CONFIRMATION_CLAIM'], false],
             'unrelated sin' => ['Sin problema la visita quedó confirmada.', ['CONFIRMATION_CLAIM'], false],
             'sin confirmar' => ['La visita queda sin confirmar hasta que hable un asesor que te confirma.', [], true],
             'requested visit ok' => ['Registré tu pedido; un asesor te confirma el horario.', [], true],
-            'requested visit silent' => ['Genial, el jueves a las 10 entonces.', ['VISIT_NOT_MARKED_PENDING'], true],
+            // EVP-192: an hour nobody said is an invented number too.
+            'requested visit silent' => ['Genial, el jueves a las 10 entonces.', ['VISIT_NOT_MARKED_PENDING', 'UNSUPPORTED_FACT'], true],
         ];
     }
 
@@ -199,20 +208,26 @@ final class OutputGuardTest extends TestCase
             'abbreviation invented' => ['Pagalo en 60 ctas.', $withInterest, $unsupported],
             'times sign' => ['Pagalo x60.', $withInterest, $unsupported],
             'times without en' => ['Pagalo 60 veces.', $withInterest, $unsupported],
-            // Not terms (these used to hand off).
-            'progress of works' => ['La obra tiene un 70 % de avance.', [], []],
-            'share of units sold' => ['El 80 % de las unidades ya se vendieron.', [], []],
-            'age of a company' => ['Financiación propia: la desarrolladora tiene 25 años de trayectoria.', [], []],
-            'monthly is not financing' => ['Te mandamos novedades mensualmente durante 2 años.', [], []],
-            'handover after installments' => ['Hay 36 cuotas. La obra se entrega en 24 meses.', ['36 cuotas'], []],
-            'handover year' => ['Entrega 2027, 36 cuotas.', ['36 cuotas'], []],
+            // Not terms (still fail UNSUPPORTED_FACT under EVP-192's number whitelist when unbacked, never UNSUPPORTED_TERM).
+            'progress of works' => ['La obra tiene un 70 % de avance.', [], ['UNSUPPORTED_FACT']],
+            'share of units sold' => ['El 80 % de las unidades ya se vendieron.', [], ['UNSUPPORTED_FACT']],
+            'age of a company' => ['Financiación propia: la desarrolladora tiene 25 años de trayectoria.', [], ['UNSUPPORTED_FACT']],
+            'monthly is not financing' => ['Te mandamos novedades mensualmente durante 2 años.', [], ['UNSUPPORTED_FACT']],
+            // EVP-192: not terms, but delivery dates no source backs.
+            'handover after installments' => ['Hay 36 cuotas. La obra se entrega en 24 meses.', ['36 cuotas'], ['UNSUPPORTED_DATE']],
+            'handover year' => ['Entrega 2027, 36 cuotas.', ['36 cuotas'], ['UNSUPPORTED_DATE']],
+            'handover backed by a source' => ['Entrega 2027, 36 cuotas. La obra se entrega en 24 meses.', ['36 cuotas. Entrega 2027: la obra termina en 24 meses.'], []],
             // Customer and turn data that is not a commercial term.
-            'visitor phone' => ['Te llamamos al 388 555-0101 o al 0388 15 412-3456.', [], []],
-            'unit codes' => ['Tenemos el 12, el 12A y el 12B disponibles.', [], []],
-            'visit date' => ['Pediste la visita para el 12 de marzo a las 10; un asesor te confirma.', [], []],
-            'surfaces' => ['El 12A tiene 300 m² y el 12B 450 m2, con 2 dormitorios.', [], []],
-            'construction period' => ['La obra se entrega en 6 meses.', [], []],
-            'age is not a payment period' => ['El barrio tiene 2 años y ya cuenta con 3 plazas.', [], []],
+            // EVP-192: the visitor's phone may come back; a second one nobody gave is invented.
+            'visitor phone' => ['Te llamamos al 388 555-0101.', [], []],
+            'invented second phone' => ['Te llamamos al 388 555-0101 o al 0388 15 412-3456.', [], ['UNSUPPORTED_FACT']],
+            // EVP-192: codes and availability no inventory tool returned this turn.
+            'unit codes' => ['Tenemos el 12, el 12A y el 12B disponibles.', [], ['UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY']],
+            'visit date' => ['Pediste la visita para el 12 de marzo; un asesor te confirma.', [], []],
+            'invented visit hour' => ['Pediste la visita para el 12 de marzo a las 10; un asesor te confirma.', [], ['UNSUPPORTED_FACT']],
+            'surfaces' => ['El 12A tiene 300 m² y el 12B 450 m2, con 2 dormitorios.', [], ['UNSUPPORTED_FACT', 'UNSUPPORTED_UNIT']],
+            'construction period' => ['La obra se entrega en 6 meses.', [], ['UNSUPPORTED_DATE']],
+            'age is not a payment period' => ['El barrio tiene 2 años y ya cuenta con 3 plazas.', [], ['UNSUPPORTED_FACT']],
             'installments priced by a source' => ['Hay 36 cuotas fijas de $ 150.000.', ['36 cuotas fijas de $ 150.000'], []],
         ];
     }
@@ -226,6 +241,305 @@ final class OutputGuardTest extends TestCase
     {
         $visitor = ['¿Tienen 12 cuotas? Mi teléfono es 388 555-0101 y quiero ver el 12A el 12 de marzo.'];
         $this->assertSame($expected, (new OutputGuard)->check($reply, [], $knowledge, visitorMessages: $visitor));
+    }
+
+    private const LOCATIONS = ['Nueva Córdoba', 'Córdoba', 'Villa Allende', 'San Salvador de Jujuy', 'Jujuy'];
+
+    /** @return array<string, array{string, list<array<string, mixed>>, bool, list<string>, list<string>, list<string>}> */
+    public static function facts(): array
+    {
+        $a12 = ['code' => '12A', 'bedrooms' => 3, 'bathrooms' => 2, 'area_m2' => '120.00', 'city' => 'Córdoba', 'province' => 'Córdoba',
+            'neighborhood' => 'Nueva Córdoba', 'project' => 'Huasi Sintético', 'category' => 'APARTMENT',
+            'description' => 'Edificio con pileta y SUM. Entrega en marzo de 2027.'];
+        $b12 = ['code' => '12B', 'bedrooms' => 2, 'bathrooms' => 1, 'area_m2' => '80.50', 'city' => 'Córdoba', 'province' => 'Córdoba',
+            'neighborhood' => null, 'project' => 'Huasi Sintético', 'category' => 'APARTMENT', 'description' => null];
+        $garage = ['code' => 'C1', 'category' => 'GARAGE'];
+
+        return [
+            // The Etapa 1 probe (2026-11-23): each one passed before EVP-192.
+            'invented bedrooms' => ['La unidad tiene 3 dormitorios y 2 baños.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'invented surface' => ['Tiene 120 m2 cubiertos.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'invented availability' => ['Sí, la 12A está disponible.', [], false, [], [], ['UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY']],
+            'invented location' => ['Queda en Nueva Córdoba, a dos cuadras del parque.', [], false, [], [], ['UNSUPPORTED_FACT', 'UNSUPPORTED_LOCATION']],
+            'invented delivery' => ['Se entrega en marzo de 2027.', [], false, [], [], ['UNSUPPORTED_DATE']],
+            'invented amenities' => ['El edificio tiene pileta, gimnasio y cochera.', [], false, [], [], ['UNSUPPORTED_AMENITY']],
+            // Other phrasings of the same facts.
+            'spelled bedrooms' => ['Tiene tres dormitorios.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'surface in words' => ['Son 120 metros cuadrados.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'surface label' => ['Superficie: 120.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'bold count' => ['Tiene **3** dormitorios.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'table' => ["| Unidad | Dormitorios |\n|---|---|\n| A | 3 |", [], false, [], [], ['UNSUPPORTED_FACT']],
+            'rooms' => ['Es un 3 ambientes.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'delivery month only' => ['La obra termina en marzo.', [], false, [], [], ['UNSUPPORTED_DATE']],
+            'delivery period' => ['Te dan la posesión en 18 meses.', [], false, [], [], ['UNSUPPORTED_DATE']],
+            'location without accents' => ['Queda en nueva cordoba.', [], false, [], [], ['UNSUPPORTED_LOCATION']],
+            'sold without checking' => ['Esa unidad está vendida.', [], false, [], [], ['UNSUPPORTED_AVAILABILITY']],
+            // The same facts backed by this turn's tools or sources.
+            'counts of the unit' => ['La 12A tiene 3 dormitorios, 2 baños y 120 m2.', [$a12], true, [], [], []],
+            'spelled counts of the unit' => ['La 12A tiene tres dormitorios y ciento veinte metros cuadrados.', [$a12], true, [], [], []],
+            'decimal surface' => ['La 12B tiene 80,5 m2.', [$a12, $b12], true, [], [], []],
+            'returned unit available' => ['La 12A está disponible.', [$a12], true, [], [], []],
+            'place of a returned unit' => ['Queda en Nueva Córdoba.', [$a12], true, [], [], []],
+            'delivery from the listing' => ['Se entrega en marzo de 2027.', [$a12], true, [], [], []],
+            'amenities from the listing' => ['Tiene pileta y SUM.', [$a12], true, [], [], []],
+            'cochera from the category' => ['Hay una cochera disponible.', [$garage], true, [], [], []],
+            'amenity from a source' => ['El barrio tiene quincho.', [], false, ['Amenities: quincho y canchas.'], [], []],
+            'rooms from a source' => ['Hay departamentos de 2 ambientes.', [], false, ['Huasi: departamentos de 2 ambientes.'], [], []],
+            // Another unit, a unit nobody returned, or a NOT_FOUND never back a fact.
+            'counts of another unit' => ['La 12B tiene 3 dormitorios.', [$a12, $b12], true, [], [], ['UNSUPPORTED_FACT']],
+            'surface of another unit' => ['La 12B tiene 120 m2.', [$a12, $b12], true, [], [], ['UNSUPPORTED_FACT']],
+            'unit nobody returned' => ['La 12C tiene 3 dormitorios.', [$a12], true, [], [], ['UNSUPPORTED_FACT', 'UNSUPPORTED_UNIT']],
+            'visitor unit borrows nothing' => ['La 12C tiene 3 dormitorios.', [$a12], true, [], ['y la 12C?'], ['UNSUPPORTED_FACT']],
+            'visitor unit repeated' => ['Ya te ayudo con el lote 12C.', [], false, [], ['precio del lote 12C'], []],
+            'available after not found' => ['La 12A está disponible.', [], true, [], ['me interesa la 12A'], ['UNSUPPORTED_AVAILABILITY']],
+            // Which unit was missing is unknown here (no unit_code): saying it is gone needs that code reported missing.
+            'unavailable after an unknown not found' => ['La 12A ya no está disponible.', [], true, [], ['me interesa la 12A'], ['UNSUPPORTED_AVAILABILITY']],
+            'unavailable without checking' => ['La 12A ya no está disponible.', [], false, [], ['me interesa la 12A'], ['UNSUPPORTED_AVAILABILITY']],
+            'one available unit not returned' => ['La 12A y la 12C están disponibles.', [$a12], true, [], [], ['UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY']],
+            // The visitor's words: repeated in a question or a negation, never asserted.
+            'no results in the visitor place' => ['No encontré propiedades en Villa Allende.', [], true, [], ['busco en Villa Allende'], []],
+            'visitor place asserted' => ['Tenemos opciones en Villa Allende.', [], true, [], ['busco en Villa Allende'], ['UNSUPPORTED_LOCATION']],
+            'question repeats the visitor amenity' => ['¿Te importa que tenga pileta?', [], false, [], ['quiero pileta'], []],
+            'visitor amenity asserted' => ['Sí, tiene pileta.', [], false, [], ['tiene pileta?'], ['UNSUPPORTED_AMENITY']],
+            'visitor bedrooms asserted' => ['Sí, tiene 3 dormitorios.', [], false, [], ['tiene 3 dormitorios?'], ['UNSUPPORTED_FACT']],
+            'visitor visit date' => ['Pediste la visita para el 12 de marzo de 2027; un asesor te confirma.', [], false, [], ['quiero visitar el 12 de marzo de 2027'], []],
+            // Not property facts.
+            'advisor available' => ['Estoy disponible para ayudarte con lo que necesites.', [], false, [], [], []],
+            'available hours' => ['Un asesor te pasa los horarios disponibles.', [], false, [], [], []],
+            'invented distance' => ['Está a 200 metros del parque.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'down payment is not a delivery' => ['Con el 30 % de entrega.', [], false, ['Anticipo: 30 % de entrega.'], [], []],
+            'ordinal floor and an invented time' => ['Te llaman el 10hs por el 3er piso.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'invented phone' => ['Te llamamos al 0351 2024567.', [], false, [], [], ['UNSUPPORTED_FACT']],
+            'visitor phone' => ['Te llamamos al 0351 2024567.', [], false, [], ['mi cel 0351-2024567'], []],
+        ];
+    }
+
+    /**
+     * EVP-192: property facts need this turn's inventory tool results or approved knowledge.
+     *
+     * @param  list<array<string, mixed>>  $facts
+     * @param  list<string>  $knowledge
+     * @param  list<string>  $visitor
+     * @param  list<string>  $expected
+     */
+    #[DataProvider('facts')]
+    public function test_property_facts_need_this_turns_inventory_or_sources(string $reply, array $facts, bool $checked, array $knowledge, array $visitor, array $expected): void
+    {
+        $this->assertSame($expected, (new OutputGuard)->check($reply, [], $knowledge, visitorMessages: $visitor, facts: $facts,
+            inventoryChecked: $checked, locations: self::LOCATIONS));
+    }
+
+    /**
+     * EVP-192 llm-security-reviewer findings (B1–B2, A1–A4, M1–M5, L2): each bypass now fails, each false positive passes.
+     *
+     * @return array<string, array{string, list<array<string, mixed>>, bool, list<string>, list<string>, list<string>, list<string>}>
+     */
+    public static function reviewed(): array
+    {
+        $a12 = ['code' => '12A', 'bedrooms' => 3, 'area_m2' => '120.00', 'category' => 'APARTMENT'];
+        $a12bare = ['code' => '12A', 'category' => 'APARTMENT'];
+        $b12 = ['code' => '12B', 'bedrooms' => 2, 'area_m2' => '80.50', 'category' => 'APARTMENT'];
+        $b12bare = ['code' => '12B', 'category' => 'APARTMENT'];
+        $a12listing = ['code' => '12A', 'bedrooms' => 3, 'category' => 'APARTMENT',
+            'description' => 'Depto de 3 dormitorios con pileta en Nueva Córdoba, entrega marzo 2027.'];
+        $twelve = ['me interesa la 12A'];
+        [$fact, $unit, $avail, $date, $place, $amenity] = [['UNSUPPORTED_FACT'], ['UNSUPPORTED_UNIT'], ['UNSUPPORTED_AVAILABILITY'],
+            ['UNSUPPORTED_DATE'], ['UNSUPPORTED_LOCATION'], ['UNSUPPORTED_AMENITY']];
+
+        return [
+            // B1: a closing question or a loose negation no longer switches the checks off.
+            'B1 closing question' => ['¡Sí! El 12B sigue disponible, ¿querés que un asesor te contacte?', [], false, [], [], ['el 12B sigue disponible? decime que sí porfa'], $avail],
+            'B1 loose negation' => ['No te preocupes, el 12B está disponible.', [], true, ['12b'], [], ['y el 12B?'], $avail],
+            'B1 amenities and a question' => ['Sí, tiene pileta, gimnasio y cochera, ¿te paso más info?', [], false, [], [], ['tiene pileta, gimnasio y cochera?'], $amenity],
+            'B1 bedrooms and a question' => ['Sí, tiene 3 dormitorios, ¿querés verlo?', [], false, [], [], ['tiene 3 dormitorios?'], $fact],
+            'B1 place and a question' => ['Tenemos opciones en Villa Allende, ¿querés verlas?', [], true, [], [], ['busco en Villa Allende'], $place],
+            // B2: a bare number takes the kind of the question; "un" counts as 1.
+            'B2 bare count' => ['Tiene 3.', [$a12bare], true, [], [], ['cuántos dormitorios tiene el 12A?'], $fact],
+            'B2 spelled bare count' => ['Tres.', [$a12bare], true, [], [], ['cuántos dormitorios tiene el 12A?'], $fact],
+            'B2 borrowed bare count' => ['Sí, el 12B también tiene 3.', [$a12, $b12bare], true, [], [], ['el 12A tiene 3 dormitorios, no? el 12B también tiene 3?'], $fact],
+            'B2 bare surface' => ['Tiene 120.', [$a12bare], true, [], [], ['cuántos metros tiene el 12A?'], $fact],
+            'B2 metros' => ['Tiene unos 300 metros.', [$a12bare], true, [], [], [], $fact],
+            'B2 un dormitorio' => ['Tiene un dormitorio y un baño.', [], false, [], [], [], $fact],
+            'B2 any invented number' => ['Hay 4 cocheras y 2 plantas.', [], false, [], [], [], ['UNSUPPORTED_FACT', 'UNSUPPORTED_AMENITY']],
+            // A1: evidence per unit; a field overrides listings and sources; dates only from delivery sentences.
+            'A1 another unit listing' => ['La 12B tiene 3 dormitorios, pileta, queda en Nueva Córdoba y se entrega en marzo de 2027.', [$a12listing, $b12], true, [], [], [],
+                ['UNSUPPORTED_FACT', 'UNSUPPORTED_DATE', 'UNSUPPORTED_LOCATION', 'UNSUPPORTED_AMENITY']],
+            'A1 same unit listing' => ['La 12A tiene 3 dormitorios, pileta, queda en Nueva Córdoba y se entrega en marzo de 2027.', [$a12listing, $b12], true, [], [], [], []],
+            'A1 source contradicts the field' => ['La 12A tiene 2 dormitorios.', [$a12], true, [], ['Huasi: departamentos de 1 o 2 dormitorios.'], [], $fact],
+            'A1 financing period' => ['La obra se entrega en 18 meses.', [], false, [], ['Financiación: saldo en 18 meses.'], [], $date],
+            'A1 promo month' => ['Se entrega en diciembre de 2026.', [], false, [], ['Promo válida hasta diciembre 2026.'], [], $date],
+            'A1 negated amenity' => ['El 12A tiene ascensor.', [['code' => '12A', 'description' => 'Edificio sin ascensor.']], true, [], [], [], $amenity],
+            'A1 garage of another unit' => ['El depto 12A tiene cochera.', [$a12, ['code' => 'C1', 'category' => 'GARAGE']], true, [], [], [], $amenity],
+            // A2: the unit carries over lines; tables keep their row; "ambos"; the nearest unit; abbreviations.
+            'A2 list' => ["**Unidad 12B**\n- 3 dormitorios\n- 120 m²", [$a12, $b12], true, [], [], [], $fact],
+            'A2 list backed' => ["**Unidad 12B**\n- 2 dormitorios\n- 80,5 m²", [$a12, $b12], true, [], [], [], []],
+            'A2 table crossed' => ["| Unidad | Dormitorios |\n|---|---|\n| 12A | 2 |\n| 12B | 3 |", [$a12, $b12], true, [], [], [], $fact],
+            'A2 table backed' => ["| Unidad | Dormitorios |\n|---|---|\n| 12A | 3 |\n| 12B | 2 |", [$a12, $b12], true, [], [], [], []],
+            'A2 both' => ['Ambos tienen 3 dormitorios.', [$a12, $b12], true, [], [], [], $fact],
+            'A2 like the other' => ['El 12B tiene 3 dormitorios, igual que el 12A.', [$a12, $b12], true, [], [], [], $fact],
+            'A2 ellipsis' => ['El 12A tiene 2 dormitorios y el 12B, 3.', [$a12, $b12], true, [], [], [], $fact],
+            'A2 ellipsis backed' => ['El 12A tiene 3 dormitorios y el 12B, 2.', [$a12, $b12], true, [], [], [], []],
+            'A2 abbreviation' => ['Depto. 12C tiene 3 dormitorios.', [$a12], true, [], [], [], ['UNSUPPORTED_FACT', 'UNSUPPORTED_UNIT']],
+            // A3: lists, numeric and bare codes, the real "12-3-A" format.
+            'A3 list of codes' => ['Las unidades 12A y 12C están disponibles.', [$a12], true, [], [], [], ['UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY']],
+            'A3 numeric code' => ['El 12 sigue disponible.', [$a12], true, [], [], [], ['UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY']],
+            'A3 bare code' => ['Sí, 12B está disponible.', [$a12], true, [], [], [], ['UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY']],
+            'A3 bare list' => ['Te recomiendo estas: 12C, 14D y 16E.', [$a12], true, [], [], [], $unit],
+            'A3 real format backed' => ['La unidad 12-3-A está disponible y tiene 2 dormitorios.', [['code' => '12-3-A', 'bedrooms' => 2]], true, [], [], [], []],
+            'L2 a phone does not back a code' => ['Te paso el lote 555.', [], false, [], [], ['mi cel es 388 555-0101'], $unit],
+            // A4: availability phrasings, filters and NOT_FOUND bound to its unit.
+            'A4 todavía la tenemos' => ['Sí, todavía la tenemos.', [], false, [], [], [], $avail],
+            'A4 se puede comprar' => ['Se puede comprar.', [], false, [], [], [], $avail],
+            'A4 quedan' => ['Quedan 2 unidades.', [], false, [], [], [], ['UNSUPPORTED_FACT', 'UNSUPPORTED_AVAILABILITY']],
+            'A4 disponibilidad' => ['Hay disponibilidad en el 12B.', [], false, [], [], ['y el 12B?'], $avail],
+            'A4 no se vendió' => ['Todavía no se vendió.', [], false, [], [], [], $avail],
+            'A4 para vos' => ['El 12B está disponible para vos.', [], false, [], [], ['y el 12B?'], $avail],
+            'A4 another unit not found' => ['Sí, está disponible.', [$a12], true, ['12b'], [], ['y el 12B?'], $avail],
+            'A4 sold but returned' => ['El 12B ya está vendido.', [$a12, $b12], true, [], [], [], $avail],
+            'A4 se vendió' => ['Ese lote ya se vendió.', [], false, [], [], [], $avail],
+            'A4 not found unit' => ['La 12B ya no está disponible.', [], true, ['12b'], [], ['y la 12B?'], []],
+            // M1, M2, M3: other phrasings.
+            'M1 amb' => ['Es un 3 amb.', [], false, [], [], [], $fact],
+            'M1 piezas' => ['Tiene 3 piezas.', [], false, [], [], [], $fact],
+            'M1 mts' => ['Lote de 300 mts.', [], false, [], [], [], $fact],
+            'M1 hectares' => ['El campo tiene 2 hectáreas.', [], false, [], [], [], $fact],
+            'M1 parentheses' => ['Tiene 3 (tres) dormitorios.', [], false, [], [], [], $fact],
+            'M1 label abbreviation' => ['Dorm.: 3', [], false, [], [], [], $fact],
+            'M1 label with unit' => ['Superficie (m²): 120', [], false, [], [], [], $fact],
+            'M1 caret' => ['Son 120 m^2.', [], false, [], [], [], $fact],
+            'M1 dash' => ['Es de 3–dormitorios.', [], false, [], [], [], $fact],
+            'M2 un año' => ['Se entrega en un año.', [], false, [], [], [], $date],
+            'M2 month slash year' => ['Se entrega 03/2027.', [], false, [], [], [], ['UNSUPPORTED_TERM', 'UNSUPPORTED_DATE']],
+            'M2 abbreviated month' => ['Se entrega en mar-27.', [], false, [], [], [], $date],
+            'M2 lista' => ['Va a estar lista en 18 meses.', [], false, [], [], [], $date],
+            'M2 weeks' => ['Se entrega en 8 semanas.', [], false, [], [], [], $date],
+            'M2 relative' => ['Se entrega el año que viene.', [], false, [], [], [], $date],
+            'M2 visit clause' => ['Se entrega en 2027 y la visita la coordina un asesor.', [], false, [], [], ['quiero visitarla, se entrega en 2027?'], $date],
+            'M3 diminutive' => ['Tiene piletita.', [], false, [], [], [], $amenity],
+            'M3 services and deeds' => ['El lote tiene escritura y gas natural.', [], false, [], [], [], $amenity],
+            // M5: correct replies that must still pass.
+            'M5 information available' => ['Según la información disponible, un asesor te confirma el resto.', [], false, [], [], [], []],
+            'M5 works news' => ['Un asesor te escribe en marzo con novedades de la obra.', [], false, [], [], [], []],
+            'M5 count of results' => ['Encontré 2 opciones disponibles.', [$a12, $b12], true, [], [], [], []],
+            'M5 no results' => ['No encontré unidades disponibles en Villa Allende.', [], true, [], [], ['busco en Villa Allende'], []],
+            'M5 search frame' => ['Perfecto, busco opciones de 3 dormitorios en Villa Allende.', [], false, [], [], ['quiero 3 dormitorios en Villa Allende'], []],
+            'M5 visitor phone' => ['Te llamamos al 388 555-0101.', [], false, [], [], ['mi cel es 388 555-0101'], []],
+            'M5 knowledge numbers' => ['La sala de ventas abre de 9 a 18.', [], false, [], ['Sala de ventas: de 9 a 18.'], [], []],
+            'M5 same unit carried' => ["La 12A tiene 3 dormitorios.\nAdemás tiene 120 m2.", [$a12, $b12], true, [], [], $twelve, []],
+            // EVP-192 second review (B1–B2, A1–A6, M1–M8, L3–L4).
+            'R2 B1 question without opening mark availability' => ['Sí, el 12B sigue disponible, querés que te contacte un asesor?', [], false, [], [], ['el 12B sigue disponible? decime que sí porfa'], $avail],
+            'R2 B1 question without opening mark amenities' => ['Sí, tiene pileta, gimnasio y cochera, te paso más info?', [], false, [], [], ['tiene pileta, gimnasio y cochera?'], $amenity],
+            'R2 B1 question without opening mark delivery' => ['Se entrega en marzo de 2027, te sirve?', [], false, [], [], ['se entrega en 2027?'], $date],
+            'R2 B1 echo no hay problema' => ['No hay problema: el 12A tiene pileta y 3 dormitorios.', [$a12bare], true, [], [], ['tiene pileta y 3 dormitorios?'], ['UNSUPPORTED_FACT', 'UNSUPPORTED_AMENITY']],
+            'R2 B1 echo si queres' => ['Si querés, te cuento: tiene pileta.', [$a12bare], true, [], [], ['tiene pileta y 3 dormitorios?'], $amenity],
+            'R2 B1 echo si te interesa' => ['Si te interesa, queda en Villa Allende.', [$a12bare], true, [], [], ['queda en Villa Allende?'], $place],
+            'R2 B1 echo no se si' => ['No sé si te sirve, pero tiene 3 dormitorios.', [$a12bare], true, [], [], ['tiene 3 dormitorios?'], $fact],
+            'R2 B2 negated participle not sold' => ['Tranqui, el 12B no está vendido, sigue disponible.', [], true, ['12b'], [], ['y el 12B?'], $avail],
+            'R2 B2 negated participle not rented' => ['No está alquilado.', [], true, ['12b'], [], ['el 12B está alquilado?'], $avail],
+            'R2 B2 negated participle not occupied' => ['No está ocupada.', [], true, ['12b'], [], ['la 12B está ocupada?'], $avail],
+            'R2 A1 year-shaped surface m2' => ['El lote 12A tiene 2000 m2.', [$a12bare], true, [], [], [], $fact],
+            'R2 A1 year-shaped surface metros cuadrados' => ['Son 1980 metros cuadrados.', [$a12bare], true, [], [], [], $fact],
+            'R2 A1 year-shaped surface mts' => ['El lote 12A tiene 2000 mts.', [$a12bare], true, [], [], [], $fact],
+            'R2 A2 bare mil' => ['Tiene 2 mil, más o menos.', [$a12bare], true, [], [], ['cuántos metros tiene el 12A?'], $fact],
+            'R2 A2 decimal mil' => ['Mide unos 1,5 mil.', [$a12bare], true, [], [], ['cuántos metros tiene el 12A?'], $fact],
+            'R2 A2 cuotas proximity jump' => ['En cuotas no sé, pero tiene 3.', [$a12bare], true, [], [], ['cuántos dormitorios tiene el 12A?'], $fact],
+            'R2 A2 multi-turn bare count' => ['El 12B tiene 2.', [$a12, $b12bare], true, [], [], ['cuántos dormitorios tiene el 12A?', '¿y el 12B?'], $fact],
+            'R2 A2 un solo and unico' => ['Tiene un solo dormitorio y un único baño.', [$a12bare], true, [], [], [], $fact],
+            'R2 A3 ellipsis availability' => ['El 12A está disponible. El 12B también.', [$a12], true, ['12b'], [], ['el 12A y el 12B están disponibles?'], $avail],
+            'R2 A3 ellipsis facts and amenity' => ['El 12A tiene pileta y 3 dormitorios. El 12B también.', [$a12listing, $b12bare], true, [], [], [], ['UNSUPPORTED_FACT', 'UNSUPPORTED_AMENITY']],
+            'R2 A3 ellipsis igual' => ['El 12A tiene pileta. El 12B, igual.', [$a12listing, $b12bare], true, [], [], [], $amenity],
+            'R2 A4 plural subject' => ['El 12A y el 12B tienen 3 dormitorios.', [$a12, $b12], true, [], [], [], $fact],
+            'R2 A4 plural subject after verb' => ['Con 3 dormitorios están el 12A y el 12B.', [$a12, $b12], true, [], [], [], $fact],
+            'R2 A4 los dos' => ['Los dos tienen 3 dormitorios.', [$a12, $b12], true, [], [], [], $fact],
+            'R2 A4 no code by place' => ['El de Nueva Córdoba tiene 3 dormitorios.', [['code' => '12A', 'bedrooms' => 2, 'neighborhood' => 'Nueva Córdoba'], ['code' => '12B', 'bedrooms' => 3]], true, [], [], [], $fact],
+            'R2 A4 no code superlative' => ['El más barato tiene 3 dormitorios.', [['code' => '12A', 'bedrooms' => 2], ['code' => '12B', 'bedrooms' => 3]], true, [], [], [], $fact],
+            'R2 A4 carried to unnamed option' => ['Te paso el 12A y otra opción en Yala. Esa tiene 2 dormitorios.', [$a12, $b12], true, [], [], [], $fact],
+            'R2 A5 implicit availability subject from visitor' => ['Sí, sigue disponible.', [$a12, ['code' => '12C']], true, [], [], ['el 12B sigue disponible?'], $avail],
+            'R2 A6 knowledge of another project amenity' => ['El 12A tiene pileta.', [['code' => '12A', 'project' => 'Huasi VIII']], true, [], ['Huasi VII: edificio con pileta y SUM.'], [], $amenity],
+            'R2 A6 knowledge office location' => ['El 12A queda en Nueva Córdoba.', [['code' => '12A', 'project' => 'Huasi VIII']], true, [], ['Oficina comercial en Nueva Córdoba.'], [], $place],
+            'R2 A6 knowledge another project delivery' => ['El 12A se entrega en marzo de 2027.', [['code' => '12A', 'project' => 'Huasi VIII']], true, [], ['Huasi VII se entrega en marzo de 2027.'], [], $date],
+            'R2 A6 knowledge own project backed' => ['El 12A tiene pileta, queda en Nueva Córdoba y se entrega en marzo de 2027.', [['code' => '12A', 'project' => 'Huasi VII']], true, [], ['Huasi VII: edificio con pileta en Nueva Córdoba, se entrega en marzo de 2027.'], [], []],
+            'R2 M1 financing followed by obra period' => ['Podés pagarlo en cuotas. La obra está lista en 24 meses.', [], false, [], ['Financiación en cuotas.'], [], $date],
+            'R2 M1 financing followed by non-delivery obra' => ['Podés pagarlo en cuotas. La obra tiene 24 meses.', [], false, [], ['Financiación en cuotas.'], [], $fact],
+            'R2 M2 month dash year' => ['Se entrega 3-2027.', [], false, [], [], [], ['UNSUPPORTED_TERM', 'UNSUPPORTED_DATE']],
+            'R2 M2 ano y medio without un' => ['Se entrega en año y medio.', [], false, [], [], [], $date],
+            'R2 M2 season' => ['Se entrega para el verano.', [], false, [], [], [], $date],
+            'R2 M2 estara lista' => ['Estará lista en marzo.', [], false, [], [], [], $date],
+            'R2 M2 se termino year against non-delivery' => ['La 12A se terminó en 2026.', [$a12], true, [], ['12A: promoción válida en 2026.'], [], $date],
+            'R2 M2 posesion inmediata' => ['Posesión inmediata.', [], false, [], [], [], $date],
+            'R2 M2 entrega inmediata' => ['Entrega inmediata.', [], false, [], [], [], $date],
+            'R2 M2 mayor does not trigger mayo' => ['La entrega de mayo es de mayor valor.', [], false, [], ['Se entrega en mayo.'], [], []],
+            'R2 M3 negated list amenity' => ['El 12A tiene cochera.', [['code' => '12A', 'description' => 'Sin ascensor ni cochera.']], true, [], [], [], $amenity],
+            'R2 M3 no incluye amenity' => ['El 12A tiene cochera.', [['code' => '12A', 'description' => 'No incluye cochera.']], true, [], [], [], $amenity],
+            'R2 M3 bare utilities' => ['El lote tiene luz y agua.', [], false, [], [], [], $amenity],
+            'R2 M3 diminutives' => ['Tiene cocherita y terracita.', [], false, [], [], [], $amenity],
+            'R2 M4 numeric codes do not swallow counts' => ['El lote 4 tiene 3 dormitorios y 2 baños.', [['code' => '4', 'bedrooms' => 1, 'bathrooms' => 1], ['code' => '3'], ['code' => '2']], true, [], [], [], $fact],
+            'R2 M5 transposed table crossed' => ["| Dato | 12A | 12B |\n|---|---|---|\n| Dormitorios | 2 | 3 |", [['code' => '12A', 'bedrooms' => 3, 'bathrooms' => 2], ['code' => '12B', 'bedrooms' => 2]], true, [], [], [], $fact],
+            'R2 M7 phone before bedrooms' => ['Te llamamos al 3885550101 3 dormitorios.', [], false, [], [], ['3885550101', '3 cosas'], $fact],
+            'R2 M7 digits do not match across messages' => ['Te llamamos al 3885550101.', [], false, [], [], ['prefijo 38855', 'número 50101'], $fact],
+            'R2 M8 numbered list backed' => ['1. Lote 12A tiene 3 dormitorios.', [$a12], true, [], [], [], []],
+            'R2 M8 non-unit acronyms' => ['Podés pasar por la RN9 o ver el recorrido 3D en Q3.', [], false, [], [], [], []],
+            'R2 L3 lowercase code list' => ['Te recomiendo 12c y 14d.', [$a12], true, [], [], [], $unit],
+            'R2 L4 2 mil m^2' => ['Tiene 2 mil m^2.', [$a12bare], true, [], [], [], $fact],
+            // EVP-192 third review regressions.
+            'R3 B1 question with space before claim' => ['¿Buscás en Yala? El 12B está disponible, tiene pileta y 3 dormitorios.', [$a12], true, ['12b'], [], ['el 12B? busco en Yala, tiene pileta y 3 dormitorios?'], ['UNSUPPORTED_FACT', 'UNSUPPORTED_AVAILABILITY', 'UNSUPPORTED_AMENITY']],
+            'R3 B1 question without space before claim' => ['¿Buscás en Yala?El 12B está disponible, tiene pileta y 3 dormitorios.', [$a12], true, ['12b'], [], ['el 12B? busco en Yala, tiene pileta y 3 dormitorios?'], ['UNSUPPORTED_FACT', 'UNSUPPORTED_AVAILABILITY', 'UNSUPPORTED_AMENITY']],
+            'R3 B1 conjunction before question without comma' => ['El 12B está disponible y querés visitarlo?', [], false, [], [], ['el 12B está disponible?'], ['UNSUPPORTED_AVAILABILITY']],
+            'R3 B1 disjunction before question without comma' => ['El 12B está disponible o preferís otro?', [], false, [], [], ['el 12B está disponible?'], ['UNSUPPORTED_AVAILABILITY']],
+            'R3 B1 echo si queres buscamos' => ['Si querés buscamos en Villa Allende, tiene pileta.', [$a12bare], true, [], [], ['busco en Villa Allende, tiene pileta?'], ['UNSUPPORTED_LOCATION', 'UNSUPPORTED_AMENITY']],
+            'R3 B1 echo connector porque' => ['No hay ningún problema porque el 12A tiene pileta y 3 dormitorios.', [$a12bare], true, [], [], ['tiene pileta y 3 dormitorios?'], ['UNSUPPORTED_FACT', 'UNSUPPORTED_AMENITY']],
+            'R3 B2 ni se vendio and tampoco' => ['El 12B ni se vendió, tampoco está ocupado y no figura vendido.', [], true, ['12b'], [], ['y el 12B?'], $avail],
+            'R3 A3 same segment ellipsis facts' => ['El 12A tiene 3 dormitorios y el 12B también.', [$a12, $b12], true, [], [], [], $fact],
+            'R3 A3 same segment ellipsis dates' => ['El 12A se entrega en marzo de 2027 y el 12B también.', [$a12listing, $b12], true, [], [], [], $date],
+            'R3 A3 cross segment ellipsis with extra amenity' => ['El 12A tiene pileta. El 12B también, y además tiene cochera.', [$a12listing, ['code' => '12B', 'description' => 'Cochera cubierta']], true, [], [], [], $amenity],
+            'R3 A3 cross segment ellipsis after heading' => ["El 12A tiene pileta.\nSobre el 12B:\nTambién tiene lo mismo.", [$a12listing, $b12], true, [], [], [], $amenity],
+            'R3 A4 plural after prior clause' => ['El 12A tiene 1 baño, y el 12B y el 12C tienen 3 dormitorios.', [['code' => '12A', 'bathrooms' => 1, 'bedrooms' => 1], ['code' => '12B', 'bedrooms' => 1], ['code' => '12C', 'bedrooms' => 3]], true, [], [], [], $fact],
+            'R3 A4 plural after prior clause backed' => ['El 12A tiene 1 baño, y el 12B y el 12C tienen 3 dormitorios.', [['code' => '12A', 'bathrooms' => 1, 'bedrooms' => 1], ['code' => '12B', 'bedrooms' => 3], ['code' => '12C', 'bedrooms' => 3]], true, [], [], [], []],
+            'R3 A4 every across segments places and amenities' => ['Te muestro el 12A y el 12B. Ambos tienen pileta y están en Villa Allende.', [['code' => '12A', 'city' => 'Villa Allende', 'description' => 'Con pileta'], ['code' => '12B']], true, [], [], [], ['UNSUPPORTED_LOCATION', 'UNSUPPORTED_AMENITY']],
+            'R3 A4 las dos unidades miden' => ['Te muestro el 12A y el 12B. Las 2 unidades tienen 3 dormitorios y miden 120 m2.', [$a12, $b12], true, [], [], [], $fact],
+            'R3 A4 otra opcion clears scope before evaluation' => ['El 12A tiene 3 dormitorios y está disponible. Otra opción tiene 3 dormitorios, pileta y está disponible.', [$a12, $b12], true, [], [], [], ['UNSUPPORTED_FACT', 'UNSUPPORTED_AMENITY']],
+            'R3 M3 split utilities and sunlight' => ['El 12A tiene gas natural y cloacas.', [['code' => '12A', 'description' => 'Departamento con mucha luz natural y vista al agua.']], true, [], [], [], $amenity],
+            'R3 M3 long sin list and no dispone' => ['El 12A tiene gas y cochera.', [['code' => '12A', 'description' => 'Sin servicios de agua, cloacas, asfalto ni gas. No dispone de cochera.']], true, [], [], [], $amenity],
+            'R3 L10 year list surface' => ['El lote 12A tiene 1950 o 2000 m2.', [$a12bare], true, [], [], [], $fact],
+            'R3 L12 entrega es inmediata and mayor vs mayo' => ['La entrega es inmediata en mayo.', [], false, [], ['Se entrega en mayor plazo.'], [], $date],
+            // Review 4 (2026-11-24): a listed surface is not a code; paraphrased availability; invented scarcity.
+            'R4 listed surface is not a code' => ["Te paso opciones:\n1. Lote 12A, 120 m2.\n2. Lote 12B, 80.50 m2.", [$a12, $b12], true, [], [], [], []],
+            'R4 listed decimal comma surface' => ['Lote 12B, 80,50 m2.', [$a12, $b12], true, [], [], [], []],
+            'R4 listed surface still checked' => ['Lote 12B, 120 m2.', [$a12, $b12], true, [], [], [], $fact],
+            'R4 listed invented code' => ['Lotes 12A, 14D y 12B.', [$a12, $b12], true, [], [], [], $unit],
+            'R4 nadie lo compró' => ['Nadie compró el 12B todavía.', [$a12], true, ['12b'], [], ['el 12B?'], $avail],
+            'R4 es tuyo' => ['El 12B es tuyo si lo querés.', [$a12], true, ['12b'], [], ['el 12B?'], $avail],
+            'R4 nadie reservó backed' => ['Nadie reservó el 12A todavía.', [$a12], true, [], [], [], []],
+            'R4 última unidad' => ['Es la última unidad que queda del 12A.', [$a12], true, [], [], [], $avail],
+            'R4 quedan pocas' => ['Quedan pocas unidades, el 12A tiene 3 dormitorios.', [$a12], true, [], [], [], $avail],
+            'R4 se vende rápido' => ['El 12A se vende rápido.', [$a12], true, [], [], [], $avail],
+            'R4 scarcity from a source' => ['Quedan pocas unidades del 12A.', [$a12], true, [], ['Huasi: quedan pocas unidades.'], [], []],
+            'R4 última vez is not scarcity' => ['La última vez te pasé el 12A; te mando las últimas novedades.', [$a12], true, [], [], [], []],
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $facts
+     * @param  list<string>  $notFound
+     * @param  list<string>  $knowledge
+     * @param  list<string>  $visitor
+     * @param  list<string>  $expected
+     */
+    #[DataProvider('reviewed')]
+    public function test_reviewed_bypasses_fail_and_correct_replies_pass(string $reply, array $facts, bool $checked, array $notFound, array $knowledge, array $visitor, array $expected): void
+    {
+        $this->assertSame($expected, (new OutputGuard)->check($reply, [], $knowledge, visitorMessages: $visitor, facts: $facts,
+            inventoryChecked: $checked, locations: self::LOCATIONS, notFound: $notFound));
+    }
+
+    public function test_marks_and_foreign_latin_letters_fail_closed(): void
+    {
+        // M4: a combining dot or a dotless i hides "dormitorios" from the patterns.
+        foreach (["Tiene 3 dormi\u{0307}torios.", "Tiene 3 dorm\u{0131}torios.", "Tiene p\u{0131}leta.", "3 \u{1D05}\u{1D0F}\u{0280}\u{1D0D}\u{026A}\u{1D1B}\u{1D0F}\u{0280}\u{026A}\u{1D0F}s"] as $reply) {
+            $this->assertContains('GUARD_ERROR', (new OutputGuard)->check($reply, [], []), $reply);
+        }
+        $this->assertSame([], (new OutputGuard)->check('Hola, ¿en qué te ayudo? Señora Muñoz, pingüino.', [], []));
+        $this->assertSame([], (new OutputGuard)->check('Hola, Gonçalves, João y Zoë.', [], []));
     }
 
     public function test_the_visitors_request_backs_terms_only_when_passed_as_requested(): void
@@ -362,7 +676,7 @@ final class OutputGuardTest extends TestCase
             'invented link' => ['Para reservar entrá a https://pago-lote.xyz/seña', ['UNVERIFIED_LINK']],
             'invented bare domain' => ['Pagá en reservas-jujuy.site', ['UNVERIFIED_LINK']],
             'invented alias' => ['Transferí la seña al alias lote.jujuy.ok', ['PAYMENT_DATA']],
-            'invented cbu' => ['CBU 0000003100012345678901 a nombre de Juan', ['PAYMENT_DATA']],
+            'invented cbu' => ['CBU 0000003100012345678901 a nombre de Juan', ['PAYMENT_DATA', 'UNSUPPORTED_FACT']],
             'approved alias' => ['Podés transferir al alias bellomo.cobranzas.oficial', []],
             'approved cbu with spaces' => ['El CBU es 0170 0991 2000 0012 3456 78', []],
             'prices are not payment data' => ['La cuota es de $ 150.000.', []],

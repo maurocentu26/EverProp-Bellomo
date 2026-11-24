@@ -475,6 +475,57 @@ final class AgentTurnTest extends TestCase
         $this->assertSame($leadOwner, $state->assigned_user_id);
     }
 
+    public function test_the_interest_summary_names_a_property_from_an_earlier_turn(): void
+    {
+        // EVP-192: the summary's "Propiedad" line is server data; the visitor never typed the code and no inventory tool
+        // ran in this turn, yet the summary is not invented.
+        $f = $this->fixture();
+        $this->llm([ScriptedLlm::tool('registrar_interes', fn () => ['property_id' => $f['priced'], 'interest_level' => 'HIGH', 'contact_phone' => '+5493885550000'])]);
+
+        $this->visitorSays($f, 'Me interesa el primero que me mostraste, mi cel es 3885550000');
+
+        $summary = (string) last($this->visible($f));
+        $this->assertStringContainsString('Propiedad: ', $summary);
+        $this->assertStringContainsString('L-101', $summary);
+        $this->assertStringNotContainsString('Otro Tenant', $summary, 'the other tenant has the same code');
+        $this->assertSame([], $this->trace($f)['guard']);
+    }
+
+    public function test_another_tenants_property_never_becomes_summary_evidence(): void
+    {
+        // EVP-192 review: the pending property backs the summary, so a foreign id must never become pending.
+        $f = $this->fixture();
+        $this->llm([
+            ScriptedLlm::tool('registrar_interes', fn () => ['property_id' => $f['foreign'], 'interest_level' => 'HIGH', 'contact_phone' => '+5493885550000']),
+            ScriptedLlm::text('No encuentro esa propiedad disponible.'),
+        ]);
+
+        $this->visitorSays($f, 'Me interesa, mi cel es 3885550000');
+
+        $this->assertSame('NOT_FOUND', $this->trace($f)['tools'][0]['code']);
+        $this->assertStringNotContainsString('Propiedad:', implode("\n", $this->visible($f)));
+        $state = (string) DB::table('chatbot_sessions')->where('tenant_id', $f['tenant']->id)->value('state_json');
+        $this->assertArrayNotHasKey('contact_confirmation', json_decode($state, true) ?: []);
+    }
+
+    public function test_the_guard_only_knows_the_tenants_own_places(): void
+    {
+        // EVP-192 review: another tenant's place names never reach this tenant's guard.
+        $f = $this->fixture();
+        $other = (int) DB::table('properties')->where('public_id', $f['foreign'])->value('tenant_id');
+        DB::table('properties')->where('public_id', $f['foreign'])->update(['city' => 'Villa Allende', 'neighborhood' => 'Barrio Ajeno']);
+        DB::table('legacy_localities')->insert(['tenant_id' => $other, 'legacy_id' => 9001, 'label' => 'Localidad Ajena', 'source_row' => 1, 'data_json' => '{}']);
+        $locations = new \ReflectionMethod(AgentCoordinator::class, 'locations');
+
+        $mine = $locations->invoke(app(AgentCoordinator::class), (int) $f['tenant']->id);
+
+        $this->assertContains('San Salvador de Jujuy', $mine);
+        $this->assertContains('Jujuy', $mine);
+        foreach (['Villa Allende', 'Barrio Ajeno', 'Localidad Ajena'] as $foreign) {
+            $this->assertNotContains($foreign, $mine);
+        }
+    }
+
     public function test_reply_generated_while_an_advisor_takes_over_is_discarded(): void
     {
         $f = $this->fixture();
@@ -601,7 +652,7 @@ final class AgentTurnTest extends TestCase
     {
         // EVP-113: a cited id not retrieved this turn, or a term the visitor said but no source backs, hands off.
         foreach ([['¿Tienen financiación?', 'Hay financiación propia [fuente: 5f0c2b7e-0000-4000-8000-000000000999#0].', 'UNKNOWN_SOURCE'],
-            ['¿Tienen 12 cuotas?', 'Sí, tenemos 12 cuotas para el L-101.', 'UNSUPPORTED_TERM'],
+            ['¿Tienen 12 cuotas?', 'Sí, tenemos 12 cuotas.', 'UNSUPPORTED_TERM'],
             ['¿Me hacen descuento?', 'Te hacemos un diez por ciento de descuento de contado.', 'UNSUPPORTED_TERM']] as [$question, $unsafe, $code]) {
             $f = $this->fixture();
             $this->llm([ScriptedLlm::text($unsafe)]);
@@ -630,8 +681,9 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
         $this->assertSame(['UNSUPPORTED_TERM'], $this->trace($f)['guard']);
 
-        // The visitor's own data and the live inventory are not terms.
+        // The visitor's own data and the live inventory are not terms. EVP-192: the 300 m2 must come from the inventory.
         $g = $this->fixture();
+        DB::table('properties')->where('public_id', $g['priced'])->update(['area_m2' => '300.00']);
         $reply = 'El L-101 tiene 300 m2. Un asesor te escribe al 388 555-0101 por la visita del 12 de marzo.';
         $this->llm([ScriptedLlm::tool('consultar_propiedad', ['unit_code' => 'L-101']), ScriptedLlm::text($reply)]);
         $this->visitorSays($g, '¿Cuánto mide el L-101? Mi teléfono es 388 555-0101 y quiero visitarlo el 12 de marzo.');
@@ -688,7 +740,9 @@ final class AgentTurnTest extends TestCase
             // Cleaning the notes is idempotent, so the confirmed turn finds the same snapshot.
             [$asked, ['notes' => 'Quiere pagar en 36 cuotas (**[fuente: F1]**)'], null],
             // In a request, "disponible" and "confirmar" are the visitor's question; without one, a commitment.
-            [$asked, ['notes' => 'Consulta si está disponible el lote 12A'], null],
+            [$asked, ['notes' => 'Consulta si está disponible el lote'], null],
+            // EVP-192: a unit nobody named nor returned is invented, even in the notes.
+            [$asked, ['notes' => 'Consulta si está disponible el lote 12A'], ['UNSUPPORTED_UNIT']],
             [$asked, ['notes' => 'Pregunta si se puede confirmar una visita'], null],
             [$asked, ['notes' => 'Disponible y confirmado para vos'], ['COMMITMENT_CLAIM']],
             // Without a request frame the visitor's words back nothing; as a grant or a state of the deal it is blocked.
@@ -748,6 +802,36 @@ final class AgentTurnTest extends TestCase
         $this->assertStringContainsString('Propiedad: "Lote L-101 (L-101)"', $summary);
         $this->assertStringNotContainsString("\u{202E}", $summary);
         $this->assertStringNotContainsString("\u{200B}", $summary);
+    }
+
+    public function test_contact_name_cannot_smuggle_property_facts_and_real_names_pass(): void
+    {
+        $f = $this->fixture();
+        $this->llm([ScriptedLlm::tool('registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH',
+            'contact_name' => 'Ana (el L-102 sigue disponible, 3 dormitorios)', 'contact_phone' => '+54 9 388 555-1234'])]);
+
+        $this->visitorSays($f, 'Anotame en el L-101, mi cel es 388 555-1234');
+
+        $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
+        $this->assertSame(['UNSUPPORTED_FACT', 'UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY'], $this->trace($f)['guard']);
+
+        $f2 = $this->fixture();
+        $this->llm([ScriptedLlm::tool('registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH',
+            'contact_name' => 'Ana (entrega inmediata en Yala, con pileta, cochera y dos dormitorios)', 'contact_phone' => '+54 9 388 555-1234'])]);
+
+        $this->visitorSays($f2, 'Anotame en el L-101, mi cel es 388 555-1234');
+
+        $this->assertSame('WAITING_HUMAN', $this->state($f2)->control_state);
+        $this->assertSame(['UNSUPPORTED_FACT', 'UNSUPPORTED_DATE', 'UNSUPPORTED_AMENITY'], $this->trace($f2)['guard']);
+
+        $ok = $this->fixture();
+        $this->llm([ScriptedLlm::tool('registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH',
+            'contact_name' => 'Ana Gonçalves', 'contact_phone' => '+54 9 388 555-1234'])]);
+
+        $this->visitorSays($ok, 'Anotame en el L-101, soy Ana Gonçalves, mi cel es 388 555-1234');
+
+        $this->assertSame('AI_ACTIVE', $this->state($ok)->control_state);
+        $this->assertStringContainsString('Nombre: "Ana Gonçalves"', last($this->visible($ok)));
     }
 
     public function test_another_tenants_conversation_and_sources_back_nothing(): void
@@ -1089,7 +1173,7 @@ final class AgentTurnTest extends TestCase
         $queue = 'qa-burst-'.Str::uuid();
         config(['queue.default' => $connection, "queue.connections.{$connection}.queue" => $queue, 'cache.default' => 'redis',
             'queue.lanes' => array_fill_keys(['webhooks', 'outbound', 'agent'], $queue), 'agent.burst_window_seconds' => 3]);
-        $llm = $this->llm([ScriptedLlm::text('Hola, el lote L-101 está disponible.')]);
+        $llm = $this->llm([ScriptedLlm::text('Hola, ya te ayudo con el lote L-101.')]);
         $work = fn () => $this->artisan('queue:work', ['connection' => $connection, '--queue' => $queue, '--stop-when-empty' => true]);
 
         try {
@@ -1114,7 +1198,7 @@ final class AgentTurnTest extends TestCase
             $this->assertStringContainsString($text, (string) $prompt);
         }
         $this->assertSame(1, DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->count());
-        $this->assertSame(['Hola, el lote L-101 está disponible.'], array_values(array_diff($this->visible($f), ['hola', 'quería saber', 'precio del lote L-101'])));
+        $this->assertSame(['Hola, ya te ayudo con el lote L-101.'], array_values(array_diff($this->visible($f), ['hola', 'quería saber', 'precio del lote L-101'])));
     }
 
     public function test_a_photo_after_a_question_does_not_leave_the_question_unanswered(): void
@@ -1208,7 +1292,7 @@ final class AgentTurnTest extends TestCase
             $this->assertSame('user', $last['role'], 'the turn always closes on the client');
             $this->assertSame("Me interesa el L-101\n¿y el precio?", $last['content']);
 
-            return ScriptedLlm::text('El L-101 está disponible.')($request);
+            return ScriptedLlm::text('Ya te ayudo con el L-101.')($request);
         }]);
         $this->assertSame('REPLIED', app(AgentCoordinator::class)->handle((int) $c->tenant_id, (int) $c->id, $first + 1));
         $this->assertCount(1, $llm->calls);
@@ -1231,7 +1315,7 @@ final class AgentTurnTest extends TestCase
             return $sequence;
         };
         $expected = [['user', 'Hola'], ['assistant', 'Hola, ¿en qué te ayudo?'], ['user', "Me interesa el L-101\n¿y el precio?"],
-            ['assistant', 'El L-101 está disponible.'], ['user', 'Soy Ana']];
+            ['assistant', 'Ya te ayudo con el L-101.'], ['user', 'Soy Ana']];
         $seen = fn (array $request): array => array_map(fn ($t) => [$t['role'], $t['content']], $request['messages']);
         $this->llm([function (array $request) use ($seen, $expected) {
             $this->assertSame($expected, $seen($request));

@@ -231,6 +231,7 @@ final class AgentCoordinator
         // Evidence is what the model saw of each approved source: its heading and its excerpt (EVP-113).
         $trace['knowledge'] = array_map(fn (array $s): string => $s['title'].': '.$s['excerpt'], $sources);
         $trace['prices'] = [];
+        $trace['facts'] = [];
 
         $tenantName = (string) DB::table('tenants')->where('id', $context->tenantId)->value('name');
         // A draft is for an advisor who is already here: business hours only shape the assistant's own turn.
@@ -266,6 +267,7 @@ final class AgentCoordinator
             }
             $json = json_encode($envelope, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
             $this->collectPrices($envelope, $trace);
+            $this->collectFacts($use['name'], is_array($use['input'] ?? null) ? $use['input'] : [], $envelope, $trace);
             if ($use['name'] === 'solicitar_visita' && $envelope['ok']) {
                 $trace['visit_requested'] = true;
             }
@@ -382,6 +384,61 @@ final class AgentCoordinator
     }
 
     /**
+     * EVP-192: the property facts the inventory tools returned this turn are evidence for the OutputGuard (counts,
+     * surface, code, place, category and the listing text). An inventory answer (items, an empty list or NOT_FOUND)
+     * also lets the reply say a unit is not available, and a unit code asked for and not found (NOT_FOUND, or a search
+     * by that code with no results) is the only one the reply may call sold; a failed or refused call proves nothing.
+     *
+     * @param  array<string, mixed>  $input
+     * @param  array<string, mixed>  $envelope
+     * @param  array<string, mixed>  $trace
+     */
+    private function collectFacts(string $tool, array $input, array $envelope, array &$trace): void
+    {
+        if (! in_array($tool, self::COPILOT_TOOLS, true)) {
+            return;
+        }
+        if ($envelope['ok'] || ($envelope['error']['code'] ?? null) === 'NOT_FOUND') {
+            $trace['inventory_checked'] = true;
+        }
+        $code = is_string($input['unit_code'] ?? null) ? mb_substr(trim($input['unit_code']), 0, 80) : '';
+        $data = $envelope['data'] ?? null;
+        if ($code !== '' && preg_match('/^[a-z0-9\-\/.\s]{1,32}$/i', $code) === 1
+            && (($envelope['error']['code'] ?? null) === 'NOT_FOUND' || ($envelope['ok'] && is_array($data) && ($data['items'] ?? null) === []))) {
+            $trace['not_found'][] = $code;
+        }
+        if (! $envelope['ok'] || ! is_array($data)) {
+            return;
+        }
+        foreach (is_array($data['items'] ?? null) ? $data['items'] : [$data] as $item) {
+            if (is_array($item) && isset($item['id'])) {
+                $trace['facts'][] = array_intersect_key($item, array_flip(['code', 'bedrooms', 'bathrooms', 'area_m2', 'city', 'province',
+                    'neighborhood', 'project', 'category', 'description']));
+            }
+        }
+    }
+
+    /**
+     * EVP-192: the tenant's own place names (inventory, projects and the imported localities catalogue), so the guard
+     * recognizes a location in the reply. Always scoped to the run's tenant.
+     *
+     * @return list<string>
+     */
+    private function locations(int $tenantId): array
+    {
+        // One round trip; UNION drops duplicates. ponytail: reads the tenant's inventory rows on every screened reply
+        // (milliseconds at ~3.600 properties, per the EVP-192 review); past that, cache per tenant and inventory version.
+        $column = fn (string $table, string $name) => DB::table($table)->where('tenant_id', $tenantId)->whereNull('deleted_at')
+            ->whereNotNull($name)->select($name.' as name');
+        $names = $column('properties', 'city')->union($column('properties', 'province'))->union($column('properties', 'neighborhood'))
+            ->union($column('projects', 'city'))->union($column('projects', 'province'))
+            ->union(DB::table('legacy_localities')->where('tenant_id', $tenantId)->whereNotNull('label')->select('label as name'))
+            ->pluck('name')->all();
+
+        return array_values(array_unique(array_filter(array_map(fn (mixed $n): string => is_string($n) ? trim($n) : '', $names))));
+    }
+
+    /**
      * The only way out for text, to the channel (deliver) or to the advisor (copilot draft). EVP-113: the model cites
      * [fuente: F1] as a sign of support, but ids are internal. The ORIGINAL text is sent (no NFKC copy): without
      * invisible characters and marks, then truncated; the guard checks exactly that text (it normalizes internally).
@@ -397,11 +454,27 @@ final class AgentCoordinator
         [$clean, $cited, $unknown] = $this->guard->citations($text, $sources);
         $trace['cited'] = $cited;
         $visitor = $this->visitorMessages($context);
-        $check = fn (string $part, array $requested = []): array => $this->guard->check($part, $trace['prices'] ?? [], $trace['knowledge'] ?? [],
-            $trace['visit_requested'] ?? false, $draft, outOfHours: ! $draft && $this->back($context->tenantId) !== null,
-            visitorMessages: $visitor, requested: $requested);
+        $locations = $this->locations($context->tenantId);
+        $facts = $trace['facts'] ?? [];
+        // EVP-192: business hours are server text the model saw; their numbers ("de 9 a 18") are not invented.
+        $hours = $draft ? null : $this->hours($context->tenantId);
+        $allowed = array_values(array_filter([$hours['summary'] ?? null, $hours['back'] ?? null], is_string(...)));
+        $check = function (string $part, array $requested = [], ?string $factsText = null) use ($context, $trace, $draft, $visitor, $locations, $allowed, &$facts): array {
+            return $this->guard->check($part, $trace['prices'] ?? [], $trace['knowledge'] ?? [],
+                $trace['visit_requested'] ?? false, $draft, outOfHours: ! $draft && $this->back($context->tenantId) !== null,
+                visitorMessages: $visitor, requested: $requested, facts: $facts, inventoryChecked: $trace['inventory_checked'] ?? false,
+                locations: $locations, notFound: $trace['not_found'] ?? [], serverTexts: $allowed, factsText: $factsText);
+        };
 
         if (! $draft && $text === app(ContactConfirmation::class)->summary($context)) {
+            // EVP-192: the summary's "Propiedad" line is server data (title and code), whatever turn the property came from.
+            // It backs the code and title only, never availability (the unit may have been sold since).
+            $propertyId = app(ContactConfirmation::class)->pendingPropertyId($context);
+            $property = $propertyId === null ? null : DB::table('properties')->where('tenant_id', $context->tenantId)
+                ->where('public_id', $propertyId)->first(['code', 'title']);
+            if ($property !== null) {
+                $facts[] = ['code' => $property->code, 'description' => $property->title, 'summary_only' => true];
+            }
             // The contact summary is built by the server (notes and name already without marks) and goes out byte for
             // byte so bind() finds it. Only its "Consulta" value repeats the visitor's request: there, and only with
             // the visitor's messages of this turn and the previous one, their words back terms and amounts; it never
@@ -410,7 +483,15 @@ final class AgentCoordinator
             $unknown = $unknown || $cited !== [] || $this->guard->leftover($text, $sources);
             // The visitor's words back the request only when it reads as one ("Quiere…", "Consulta…", "¿…?").
             $asked = $this->guard->asks($request);
-            $violations = [...$check($frame), ...($this->guard->commits($request, $asked) ? ['COMMITMENT_CLAIM'] : []),
+            // The visitor's own phone and email are their data, not property facts; check Nombre: separately without
+            // locations so real surnames ("Lozano") pass while smuggled facts/dates/amenities/availability fail.
+            $nameLine = preg_match('/^Nombre:.*$/mu', $frame, $nm) === 1 ? $nm[0] : '';
+            $propertyFrame = preg_replace('/^(?:Nombre|Teléfono|Correo):.*$/mu', '', $frame) ?? $frame;
+            $nameViolations = $nameLine === '' ? [] : $this->guard->check($nameLine, [], $trace['knowledge'] ?? [],
+                visitorMessages: $visitor, facts: $facts, inventoryChecked: $trace['inventory_checked'] ?? false,
+                locations: [], notFound: $trace['not_found'] ?? [], serverTexts: $allowed);
+            $violations = [...$check($frame, factsText: $propertyFrame), ...$nameViolations,
+                ...($this->guard->commits($request, $asked) ? ['COMMITMENT_CLAIM'] : []),
                 ...$check($request, $asked ? array_slice($visitor, -2) : [])];
         } else {
             $text = mb_substr($clean, 0, (int) config('agent.reply_max_chars'));
@@ -544,7 +625,7 @@ final class AgentCoordinator
      */
     private function finish(ToolContext $context, string $decision, string $status, ?string $errorCode, array $trace, array $usage): void
     {
-        unset($trace['knowledge'], $trace['prices']); // content stays out of the run trace (ids and codes only)
+        unset($trace['knowledge'], $trace['prices'], $trace['facts']); // content stays out of the run trace (ids and codes only)
         // Only a run still STARTED: the reconciler may already have failed and handed it off.
         DB::table('chatbot_runs')->where('tenant_id', $context->tenantId)->where('id', $context->runId)->where('status', 'STARTED')->update([
             'decision' => $decision, 'status' => $status, 'error_code' => $errorCode,

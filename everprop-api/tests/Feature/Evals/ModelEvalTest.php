@@ -66,10 +66,13 @@ final class ModelEvalTest extends TestCase
         $good = $this->play($case);
         $this->assertSame('PASS', $good['result'], implode('; ', $good['failures']));
 
-        $this->app->instance(LlmClient::class, new ScriptedLlm([$search, ScriptedLlm::text('Tengo el 12A y también el 12B.')]));
-        $leak = $this->play($case);
+        // EVP-192: a leaked code ("12B") is now stopped by the OutputGuard (UNSUPPORTED_UNIT) before the runner sees it.
+        // The runner must still catch what the guard cannot know is wrong: a word the case forbids.
+        $leaky = ['expected' => ['must_not_include' => [...$case['expected']['must_not_include'], 'reservado']] + $case['expected']] + $case;
+        $this->app->instance(LlmClient::class, new ScriptedLlm([$search, ScriptedLlm::text('Tengo el 12A; hay otro reservado.')]));
+        $leak = $this->play($leaky);
         $this->assertSame('FAIL', $leak['result']);
-        $this->assertContains('must_not_include: 12B', $leak['failures']);
+        $this->assertContains('must_not_include: reservado', $leak['failures']);
 
         // WhatsApp supplies the phone, but registration still requires the customer's next explicit confirmation.
         $whatsapp = ['channel' => 'whatsapp', 'turns' => [['role' => 'user', 'text' => 'anotame en el 12A']],
@@ -381,6 +384,9 @@ final class ModelEvalTest extends TestCase
                 'operation' => $p['operation'] ?? 'SALE', 'category' => $p['category'] ?? 'LOT', 'status' => $p['status'] ?? 'AVAILABLE',
                 'price' => $p['price']['amount'] ?? null, 'currency_code' => $p['price']['currency'] ?? null,
                 'city' => $p['city'] ?? 'San Salvador de Jujuy', 'province' => 'Jujuy', 'description' => $p['description'] ?? null,
+                // EVP-192: facts the guard checks against the live inventory.
+                'neighborhood' => $p['neighborhood'] ?? null, 'bedrooms' => $p['bedrooms'] ?? null, 'bathrooms' => $p['bathrooms'] ?? null,
+                'area_m2' => $p['area_m2'] ?? null,
             ]);
         };
 
