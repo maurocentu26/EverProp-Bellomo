@@ -42,6 +42,8 @@ Son dos cherry-picks con `-x` sobre `main`. Los commits conservan su autor origi
 - `everprop-api/routes/api.php`: se conservan las dos rutas, `/commercial-statistics` (de `main`) y `leads/profile-suggestions` (EVP-177).
 - `AdminLeadController::store`: en `main`, EVP-176 ya resuelve o crea el contacto antes de este punto. Se conserva `$contactId = $contact['id'];` de `main` y solo se agrega el guardado del perfil. Es lo mismo que quedó en `develop` después de integrar EVP-176.
 - `everprop-public/tests/qa-ux-ui-regression.test.mjs`: no existe en `main`, así que se omitió el ajuste que EVP-180 le hacía.
+- `LeadExtendedProfileTest`: en `main`, EVP-176 hace obligatorio `phone` en el alta. En `develop`, el test se adaptó en el merge de EVP-176 (`11397a5`), pero el cherry-pick trajo la versión original de EVP-177, y el CI del PR dio 6 fallos por 422 "The phone field is required". Se tomó la versión de `develop`, que solo agrega `phone` a cada alta.
+- Hotfix EVP-199 (`web-token/jwt-library` 4.2.8) integrado desde `main` (`060bc25`) para destrabar `composer audit` en el CI.
 
 **Esquema:** no hay scripts forward. `contacts.profile_json` ya existe en el baseline. EVP-178 (`lead_interests`, con forward) no está incluido.
 
