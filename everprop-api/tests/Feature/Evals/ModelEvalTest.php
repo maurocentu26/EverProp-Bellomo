@@ -66,6 +66,18 @@ final class ModelEvalTest extends TestCase
         $good = $this->play($case);
         $this->assertSame('PASS', $good['result'], implode('; ', $good['failures']));
 
+        $eitherRead = ['expected' => ['tools_any' => ['buscar_propiedades', 'consultar_propiedad']]
+            + array_diff_key($case['expected'], ['tools' => true])] + $case;
+        $this->app->instance(LlmClient::class, new ScriptedLlm([
+            ScriptedLlm::tool('consultar_propiedad', ['unit_code' => '12A']),
+            ScriptedLlm::text('El 12A está disponible a USD 91.000.'),
+        ]));
+        $this->assertSame('PASS', $this->play($eitherRead)['result']);
+        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('El 12A está disponible.')]));
+        $this->assertContains('tools_any: expected one of [buscar_propiedades, consultar_propiedad] got []', $this->play($eitherRead)['failures']);
+        $this->assertFalse($this->containsExpected($this->normalized('Vamos a comunicarse'), 'ARS'));
+        $this->assertTrue($this->containsExpected($this->normalized('Precio en ARS'), 'ARS'));
+
         // EVP-192: a leaked code ("12B") is now stopped by the OutputGuard (UNSUPPORTED_UNIT) before the runner sees it.
         // The runner must still catch what the guard cannot know is wrong: a word the case forbids.
         $leaky = ['expected' => ['must_not_include' => [...$case['expected']['must_not_include'], 'reservado']] + $case['expected']] + $case;
@@ -268,12 +280,12 @@ final class ModelEvalTest extends TestCase
         $failures = $unchecked = [];
 
         foreach ($expected['must_include'] ?? [] as $text) {
-            if (! str_contains($said, $this->normalized($text))) {
+            if (! $this->containsExpected($said, $text)) {
                 $failures[] = "must_include: {$text}";
             }
         }
         foreach ($expected['must_not_include'] ?? [] as $text) {
-            if (str_contains($said, $this->normalized($text))) {
+            if ($this->containsExpected($said, $text)) {
                 $failures[] = "must_not_include: {$text}";
             }
         }
@@ -292,6 +304,9 @@ final class ModelEvalTest extends TestCase
             if ($missing !== [] || ($expected['tools'] === [] && $tools !== [])) {
                 $failures[] = 'tools: expected ['.implode(', ', $expected['tools']).'] got ['.implode(', ', $tools).']';
             }
+        }
+        if (isset($expected['tools_any']) && array_intersect($expected['tools_any'], $tools) === []) {
+            $failures[] = 'tools_any: expected one of ['.implode(', ', $expected['tools_any']).'] got ['.implode(', ', $tools).']';
         }
         $counts = fn (string $table): int => DB::table($table)->where('tenant_id', $t)->count();
         if ($expected['persisted'] === 'none') {
@@ -420,5 +435,16 @@ final class ModelEvalTest extends TestCase
     private function normalized(string $text): string
     {
         return mb_strtolower((string) preg_replace('/(?<=\d)[.,](?=\d{3}(?!\d))/', '', $text));
+    }
+
+    private function containsExpected(string $said, string $text): bool
+    {
+        $needle = $this->normalized($text);
+        // Short words/codes must match as tokens: ARS is not inside "comunicarse".
+        if (preg_match('/^[\p{L}\p{N}]{1,3}$/u', $needle)) {
+            return preg_match('/(?<![\p{L}\p{N}])'.preg_quote($needle, '/').'(?![\p{L}\p{N}])/u', $said) === 1;
+        }
+
+        return str_contains($said, $needle);
     }
 }
