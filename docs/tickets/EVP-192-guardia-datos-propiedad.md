@@ -1,6 +1,6 @@
 # EVP-192 — Guardia determinista de datos de propiedad en `OutputGuard`
 
-Rama `ticket/EVP-192-guardia-datos-propiedad` (desde `develop` `9d46f63`, cambios locales sin commitear) · fecha 2026-11-23 · autor: equipo de desarrollo y revisión con agente IA.
+Rama `ticket/EVP-192-guardia-datos-propiedad` (desde `develop` `9d46f63`) · commits `77d3bd9` + informe · fecha 2026-11-24 · autor: equipo de desarrollo y revisión con agente IA.
 
 > [!NOTE]
 > **Jira (`TICKETS.md` §0):** `EVP-192` verificado *En curso* el 2026-11-24; pasa a *En revisión* al abrir el PR.
