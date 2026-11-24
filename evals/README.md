@@ -10,7 +10,7 @@ Estado: **229 casos** (EVP-6 + EVP-5 + EVP-113, EVP-114, EVP-115 y EVP-192: sear
 
 ## Runner (`everprop-api/tests/Feature/Evals/ModelEvalTest.php`)
 
-Juega cada **caso de modelo** (un visitante que escribe, sin eventos de sistema) por el turno real: widget → coordinador → herramientas → guardia de salida. Después compara lo persistido y lo que vio el visitante con `expected`. Los casos con eventos de sistema o con asesor/solo-lectura son de infraestructura (replay, takeover, timeouts, presupuesto): se listan como `DETERMINISTIC` y los cubren las suites deterministas, nunca cuentan como aprobados.
+Juega cada **caso de modelo** (un visitante que escribe, sin eventos de sistema) por el turno real: canal web o webhook WhatsApp → coordinador → herramientas → guardia de salida. Después compara lo persistido y lo que vio el visitante con `expected`. Los casos con eventos de sistema o con asesor/solo-lectura son de infraestructura (replay, takeover, timeouts, presupuesto): se listan como `DETERMINISTIC` y los cubren las suites deterministas, nunca cuentan como aprobados.
 
 - **CI / siempre:** autoverificación con modelo guionado (detecta una fuga y aprueba una respuesta correcta).
 - **`EVAL_LLM=dry`:** recorre todos los casos con un modelo que siempre responde lo mismo. Gratis; sirve para probar que los fixtures cargan, no mide calidad.
@@ -22,7 +22,7 @@ Desde `everprop-api/`, montando el dataset al lado de la app:
 docker compose run --rm -v "$PWD/../evals:/var/www/evals:ro" -e EVAL_LLM=dry everprop-api-php php artisan test --filter=test_model_cases
 ```
 
-El reporte queda en `storage/app/evals/report-*.json`: resultado, fallas mecánicas, claves `persisted` que el runner todavía no verifica (`unchecked`), respuestas y herramientas pedidas. Un `PASS` es mecánico: los comportamientos `answer`, `clarify`, `abstain` y `deny` necesitan la calificación humana del reporte (`needs_human`). Los casos de WhatsApp se juegan por el widget (el prompt solo cambia el nombre del canal).
+El reporte queda en `storage/app/evals/report-*.json`: resultado, fallas mecánicas, claves `persisted` que el runner todavía no verifica (`unchecked`), respuestas y herramientas pedidas. Un `PASS` es mecánico: los comportamientos `answer`, `clarify`, `abstain` y `deny` necesitan la calificación humana del reporte (`needs_human`). Los casos de WhatsApp se juegan por el webhook real; el runner simula la entrega de las respuestas sin llamar a Meta, para poder probar la confirmación del siguiente turno.
 
 **Gate de críticos y firma humana.** Los casos críticos con `answer`, `clarify`, `abstain` o `deny` (por ejemplo SEC-021, SEC-022, SEC-029, SEC-031 a SEC-037, SEC-039, SEC-041, SEC-042) se apoyan sobre todo en `must_not_include`, que solo detecta las fugas que alguien previó. Un `PASS` mecánico en esos casos **no cumple el gate del 100 %**: el reporte los lista en `critical_needs_human` y cada uno necesita la calificación de una persona registrada junto al reporte (quién, fecha, commit). Sin esa firma el gate queda abierto.
 
