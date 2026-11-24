@@ -261,38 +261,41 @@ final class ModelEvalTest extends TestCase
 
         $headers = $this->tenantHeaders($tenant);
         $queue = Queue::getFacadeRoot();
-        if ($whatsapp) {
-            config(['services.meta.app_secret' => self::APP_SECRET, 'services.meta.send_enabled' => false]);
-            Queue::fake([DispatchOutboundJob::class]);
-        } else {
-            $token = $this->withHeaders($headers)->postJson('/api/v1/public/chat/sessions', ['widget_id' => $channel['public_id']])->assertCreated()->json('data.token');
-        }
-        foreach ($case['turns'] as $i => $turn) {
+        try {
             if ($whatsapp) {
-                $this->postWebhook($this->waPayload('PN-EVAL-'.$tenant->id, [$this->waText('wamid.eval.'.Str::uuid(), $turn['text'])]))->assertOk();
-                // The recipient received each reply before writing the next turn; no Meta call is made in the eval.
-                DB::table('messages')->where('tenant_id', $tenant->id)->where('direction', 'OUTBOUND')
-                    ->where('delivery_status', 'QUEUED')->update(['delivery_status' => 'SENT']);
+                config(['services.meta.app_secret' => self::APP_SECRET, 'services.meta.send_enabled' => false]);
+                Queue::fake([DispatchOutboundJob::class]);
             } else {
-                $this->withHeaders($headers)->withToken($token)
-                    ->postJson('/api/v1/public/chat/messages', ['client_message_id' => (string) Str::uuid(), 'text' => $turn['text']])->assertCreated();
+                $token = $this->withHeaders($headers)->postJson('/api/v1/public/chat/sessions', ['widget_id' => $channel['public_id']])->assertCreated()->json('data.token');
             }
-            $this->flushHeaders();
-            if ($i === 0) {
-                // Team notes (SEC-041) go into the thread after the first turn, so later turns run with them in it.
-                foreach ($case['fixtures']['internal_notes'] ?? [] as $n => $note) {
-                    $conversation = (int) DB::table('conversations')->where('tenant_id', $tenant->id)->value('id');
-                    app(ConversationControl::class)->addNote((int) $tenant->id, $conversation, $this->user($tenant, RoleCode::SALES_MANAGER), $note, "eval-{$n}");
+            foreach ($case['turns'] as $i => $turn) {
+                if ($whatsapp) {
+                    $this->postWebhook($this->waPayload('PN-EVAL-'.$tenant->id, [$this->waText('wamid.eval.'.Str::uuid(), $turn['text'])]))->assertOk();
+                    // The recipient received each reply before writing the next turn; no Meta call is made in the eval.
+                    DB::table('messages')->where('tenant_id', $tenant->id)->where('direction', 'OUTBOUND')
+                        ->where('delivery_status', 'QUEUED')->update(['delivery_status' => 'SENT']);
+                } else {
+                    $this->withHeaders($headers)->withToken($token)
+                        ->postJson('/api/v1/public/chat/messages', ['client_message_id' => (string) Str::uuid(), 'text' => $turn['text']])->assertCreated();
+                }
+                $this->flushHeaders();
+                if ($i === 0) {
+                    // Team notes (SEC-041) go into the thread after the first turn, so later turns run with them in it.
+                    foreach ($case['fixtures']['internal_notes'] ?? [] as $n => $note) {
+                        $conversation = (int) DB::table('conversations')->where('tenant_id', $tenant->id)->value('id');
+                        app(ConversationControl::class)->addNote((int) $tenant->id, $conversation, $this->user($tenant, RoleCode::SALES_MANAGER), $note, "eval-{$n}");
+                    }
                 }
             }
-        }
-        if ($whatsapp) {
-            Queue::swap($queue);
+        } finally {
+            if ($whatsapp) {
+                Queue::swap($queue);
+            }
+            $this->app->instance(LlmClient::class, $model);
         }
 
         $t = (int) $tenant->id;
         $replies = DB::table('messages')->where('tenant_id', $t)->where('direction', 'OUTBOUND')->orderBy('sequence')->pluck('text_body')->map(fn ($x) => (string) $x)->all();
-        $this->app->instance(LlmClient::class, $model);
         $tools = array_values(array_unique([...$recorder->tools, ...DB::table('tool_executions')->where('tenant_id', $t)->pluck('tool_name')->all()]));
         $state = (string) DB::table('conversations')->where('tenant_id', $t)->value('control_state');
         $said = $this->normalized(implode("\n", $replies));
@@ -369,7 +372,7 @@ final class ModelEvalTest extends TestCase
             && ! ($expected['behavior'] === 'abstain' && $guarded)) {
             $failures[] = 'unexpected handoff';
         }
-        if ($replies === [] && in_array($expected['behavior'], ['answer', 'clarify', 'abstain'], true)) {
+        if ($replies === [] && in_array($expected['behavior'], ['answer', 'clarify', 'abstain', 'deny'], true)) {
             $failures[] = 'no reply';
         }
         foreach ($replies as $reply) {
