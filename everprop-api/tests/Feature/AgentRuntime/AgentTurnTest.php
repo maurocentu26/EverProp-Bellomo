@@ -308,6 +308,7 @@ final class AgentTurnTest extends TestCase
             $wrong = $gateway->execute($bare, $tool, ['unit_code' => '12A']);
             $this->assertSame('VALIDATION_ERROR', $wrong['error']['code']);
             $this->assertStringNotContainsString('91000', json_encode($wrong));
+            $this->assertSame('VALIDATION_ERROR', $gateway->execute($bare, $tool, ['unit_code' => '12 A'])['error']['code']);
         }
         $this->assertSame(['12'], array_column($gateway->execute($bare, 'buscar_propiedades', [])['data']['items'], 'code'));
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($bare, 'consultar_propiedad', ['property_id' => $ids['12A']])['error']['code']);
@@ -318,6 +319,7 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($exact, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
         $spaced = $ask('Y el 12 A cuánto sale?');
         $this->assertSame('12A', $gateway->execute($spaced, 'consultar_propiedad', ['unit_code' => '12A'])['data']['code']);
+        $this->assertSame('12A', $gateway->execute($spaced, 'consultar_propiedad', ['unit_code' => '12 A'])['data']['code']);
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($spaced, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
         $this->assertSame(['12A'], array_column($gateway->execute($spaced, 'buscar_propiedades', [])['data']['items'], 'code'));
         $negated = $ask('No el 12A, el 12 a secas.');
@@ -346,6 +348,17 @@ final class AgentTurnTest extends TestCase
         $ambiguous = $ask('Y el 12 a?');
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguous, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguous, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguous, 'buscar_propiedades', ['unit_code' => '12 A'])['error']['code']);
+        $ambiguousSearch = $ask('info del lote 12 a');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguousSearch, 'buscar_propiedades', ['unit_code' => '12 A'])['error']['code']);
+        $letterB = $ask('Y el 12 b?');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($letterB, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($letterB, 'buscar_propiedades', [])['error']['code']);
+        foreach (['¿El 12 a cuánto está?', '¿El 12 a qué precio?', '¿El 12 a la tarde?', '¿El 12 a la venta?', '¿El 12 o el 12A?', '¿El 12 o alguno parecido?'] as $ordinary) {
+            $ordinaryContext = $ask($ordinary);
+            $this->assertTrue($gateway->execute($ordinaryContext, 'buscar_propiedades', [])['ok'], $ordinary);
+            $this->assertSame('12', $gateway->execute($ordinaryContext, 'consultar_propiedad', ['unit_code' => '12'])['data']['code'], $ordinary);
+        }
         $bis = $ask('Y el 12 bis?');
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($bis, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($bis, 'buscar_propiedades', [])['error']['code']);

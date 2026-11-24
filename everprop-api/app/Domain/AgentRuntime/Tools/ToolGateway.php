@@ -55,6 +55,9 @@ final class ToolGateway
         /** @var array<string, mixed> $arguments */
         try {
             $arguments = $this->scopeNamedSearch($context, $name, $arguments);
+            if (isset($arguments['unit_code'])) {
+                $arguments['unit_code'] = preg_replace('/(?<=\d)\s+(?=[A-Z]$)/u', '', trim($arguments['unit_code']));
+            }
             $this->rejectChangedUnitCode($context, $arguments);
             if (array_intersect_key($tool->schema()['properties'], PublicInventory::PROPERTY_REF) === PublicInventory::PROPERTY_REF) {
                 $arguments = $this->propertyReference($context, $arguments);
@@ -97,7 +100,7 @@ final class ToolGateway
         if (preg_match('/(?<![\p{L}\p{N}])\d+[\p{L}]?\s+y\s+\d+[\p{L}]?(?![\p{L}\p{N}])/iu', $message)) {
             return $arguments; // A request naming two units must not be narrowed to one.
         }
-        if (preg_match('/\b(?:el|la|lote|unidad|depto|departamento|terreno)\s+\d+\s+(?:(?![yxq]\b)[a-z](?![\p{L}\p{N}])(?!\s+(?:secas|las|\d))\b|bis\b)/u', $message)) {
+        if (preg_match('/\b(?:el|la|lote|unidad|depto|departamento|terreno)\s+\d+\s+(?:[a-z](?=\s*(?:[?!.;,]|$))|bis\b)/u', $message)) {
             throw new ToolError('VALIDATION_ERROR', 'Aclarás si la letra forma parte del código antes de consultar otra unidad.');
         }
         $explicit = preg_replace('/(?<![\p{L}\p{N}])((?:[\p{L}]+-)?\d+)\s+([A-Z])(?![\p{L}\p{N}])(?!\s+secas)/u', '$1$2', $message);
@@ -141,7 +144,7 @@ final class ToolGateway
             || preg_match('/(?<![\p{L}\p{N}])'.preg_quote($asked, '/').'(?:[?.!,]\s*|\s+)no\b/iu', $message)) {
             throw new ToolError('VALIDATION_ERROR', 'El código indicado no coincide con el que escribió el visitante. Pedí aclaración antes de informar datos de otra unidad.');
         }
-        if (! isset($match[2]) && preg_match('/(?<![\p{L}\p{N}])'.$base.'\s+(?:bis\b|a\b(?!\s+(?:secas\b|las\b|\d)))/u', (string) $message)) {
+        if (! isset($match[2]) && preg_match('/(?<![\p{L}\p{N}])'.$base.'\s+(?:bis\b|[a-z](?=\s*(?:[?!.;,]|$)))/u', (string) $message)) {
             throw new ToolError('VALIDATION_ERROR', 'Aclarás el código de unidad antes de informar datos.');
         }
         if (! isset($match[2]) && preg_match('/(?<![\p{L}\p{N}])'.$base.'\s+[A-Z](?![\p{L}\p{N}])(?!\s+secas)/u', (string) $message)) {

@@ -12,6 +12,7 @@ Evitar que una consulta por la unidad 12 se responda con datos de 12A o 12B. Cas
 - Una búsqueda general con una sola unidad mencionada se restringe al código indicado. Se reconocen «a secas», «sin letra», «solo», código con letra mayúscula separada, «doce» y correcciones explícitas. Si el código no existe, devuelve resultados vacíos; no sustituye por una unidad parecida.
 - El prompt exige distinguir 12, 12A y 12B. Se añadieron RIO-023 a RIO-026 y se ajustó SEARCH-011, cuyo «12 a» era ambiguo. SEARCH-038 ahora trata «doce» como la unidad 12, igual que RIO-024.
 - `AgentTurnTest` cubre código y UUID, búsqueda sin filtro, negaciones, código inexistente, sufijo separado, «bis», números de un dígito, expresiones habituales («2 amb.», «7 de Colinas», «12 y 12A», «12 a las 10») y aislamiento de otro tenant.
+- Tras la revisión de Mauro, `ToolGateway` normaliza «12 A» antes de validarlo y resolverlo en ambas herramientas. La aclaración por letra separada se limita al final de la cláusula, de modo que «12 a cuánto», «12 a la tarde» y «12 o el 12A» no se bloquean; «12 b?» se trata igual que «12 a?».
 
 ## 3. Criterio técnico
 
@@ -20,7 +21,7 @@ La identidad de la unidad se comprueba antes de devolver hechos al modelo. La b�
 ## 4. Verificación
 
 - Dataset: `node evals/validate.mjs` → 233 casos válidos.
-- PHP 8.4/MySQL 8.4/Redis aislados en Docker: suite `AgentRuntime` → 96 pruebas, 1036 comprobaciones y un benchmark omitido; la regresión específica cubre también códigos de cinco cifras.
+- PHP 8.4/MySQL 8.4/Redis aislados en Docker: suite `AgentRuntime` tras la corrección → 96 pruebas, 1055 comprobaciones y un benchmark omitido.
 - Pint y PHPStan sin errores sobre el diff final. SHA-256 del baseline SQL intacto: `4c8b170bc6f8b6827e9b85e756acb2254ccf392b0ff4c11459c775366bae472d`.
 - Revisión independiente de seguridad y tenants detectó y motivó controles para UUID, búsqueda general, negación y código largo; volvió a revisar esos recorridos sin hallar un escape concreto restante. El aislamiento de tenant no mostró una fuga.
 

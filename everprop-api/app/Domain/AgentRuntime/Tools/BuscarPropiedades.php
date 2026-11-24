@@ -51,7 +51,7 @@ final class BuscarPropiedades implements AgentTool
             ->when(isset($arguments['category']), fn ($q) => $q->where('p.category', $arguments['category']))
             ->when(isset($arguments['city']), fn ($q) => $q->where('p.city', 'like', '%'.addcslashes(trim($arguments['city']), '%_\\').'%'))
             ->when(isset($arguments['project_id']), fn ($q) => $q->where('pr.public_id', $arguments['project_id']))
-            ->when(isset($arguments['unit_code']), fn ($q) => $q->where('p.code', preg_replace('/(?<=\d)\s+(?=[A-Z]$)/u', '', trim($arguments['unit_code']))))
+            ->when(isset($arguments['unit_code']), fn ($q) => $q->where('p.code', trim($arguments['unit_code'])))
             // Budget: same currency only, priced units only. No FX conversion is ever implied.
             ->when(isset($arguments['budget']), fn ($q) => $q->where('p.currency_code', $arguments['budget']['currency'])
                 ->whereNotNull('p.price')->where('p.price', '<=', $arguments['budget']['amount']));
