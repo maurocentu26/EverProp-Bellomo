@@ -75,8 +75,8 @@ test('EVP-104: la ficha del cliente tiene gestion visible, tres pestanas y moned
   const leadDetail = read('../src/components/admin/LeadDetailView.tsx');
   const css = read('../src/app/admin-design.css');
 
-  // Tres pestanas operables con flechas; Resumen y Ficha ya no son pestanas.
-  assert.match(leadDetail, /type LeadDetailSection = "activity" \| "interests" \| "financing"/);
+  // Pestanas operables con flechas; Resumen y Ficha ya no son pestanas. EVP-180 suma "Datos del cliente".
+  assert.match(leadDetail, /type LeadDetailSection = "activity" \| "client" \| "interests" \| "financing"/);
   assert.match(leadDetail, /role="tablist"/);
   assert.match(leadDetail, /ArrowRight:[\s\S]*ArrowLeft:[\s\S]*Home:[\s\S]*End:/);
   assert.match(leadDetail, /tabIndex=\{isActive \? 0 : -1\}/);
