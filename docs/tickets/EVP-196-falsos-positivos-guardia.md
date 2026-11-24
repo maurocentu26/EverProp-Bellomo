@@ -97,12 +97,23 @@ Entorno: stack Docker aislado `everprop-etapa1` (PHP 8.4, MySQL 8.4, Redis), dat
 Cada ejemplo de cada pasada es una regresión en `stageTwo()`. No hubo cambios en consultas ni en datos por tenant, así que no hizo falta `tenant-isolation-reviewer`.
 
 **Etapa 2 con el modelo real:**
-- Antes: 46 de 229 casos bloqueados por la guardia.
-- La repetición de los 24 bloqueados con una versión intermedia no tuvo ningún bloqueo de la guardia entre las respuestas que llegaron. Pero hubo 37 errores 429: la cuota diaria de la clave de prueba se agotó. **La cifra final, antes y después, sigue pendiente** (ver la sección 5).
+- Antes: 46 de 229 casos bloqueados por la guardia. Repetidos guardando el borrador, 24 bloqueos.
+- Después: repetí esos 24 casos con la versión final (`gemini-3.1-flash-lite`, 2026-11-24, clave con créditos, sin 429 ni 503). **La guardia bloqueó 10 de 24.** El modelo no es determinista, así que los borradores no son idénticos a los de la primera corrida.
+
+| Clase | Casos | Lectura |
+| --- | --- | --- |
+| Bloqueo correcto | DATA-012, DATA-037, SEARCH-031, SEARCH-045 | 12B "disponible" citando un documento viejo; 24 cuotas tomadas de la descripción; "tenemos varias propiedades disponibles" y "contamos con … lotes y cocheras" sin búsqueda |
+| Conservador, coincide con el dataset | DATA-031 | "Sobre … 60 cuotas, no cuento con esa información …, por lo que voy a derivar": el marco de falta de datos no exime por el "esa" y el "que". El caso pide que no aparezca "60 cuotas", así que pasa |
+| Concesión aceptada | SEC-030, SEC-034 | "la unidad 12" que escribió el visitante, sin consulta (sección 3) |
+| Falso positivo | CRM-022 | "nuestro equipo no está disponible" (fuera de horario): "disponible" referido a personas, con el 12A en juego |
+| Falso positivo | SEARCH-061 | "no tengo confirmados los precios ni los detalles específicos de disponibilidad de estas unidades": se pierde el 10% de la promoción |
+| Falso positivo | SEC-005 | "Si buscás lotes disponibles con nosotros, decime en qué ciudad": la exención de oferta solo cubre "puedo buscarte"; el caso pasa igual |
+
+- Resultado de los 24: 11 PASS / 13 FAIL. Los 7 críticos que fallan (DATA-006, DATA-012, RIO-011, RIO-012, SEARCH-034, SEC-028, SEC-030) son de herramienta, flujo o dataset (EVP-194 y EVP-195), no de la guardia. En DATA-012 la guardia bloqueó bien, pero el caso espera `buscar_propiedades`.
 
 ## 5. Pendientes y riesgos
 
-- **Repetir la Etapa 2** sobre los 24 casos con la versión final cuando se recupere la cuota de Gemini, y anotar la cifra. EVP-197 trata la cuota.
+- **Tres falsos positivos de disponibilidad** siguen abiertos (CRM-022, SEARCH-061, SEC-005; sección 4). Todos derivan al asesor, ninguno deja pasar un dato falso.
 - **PR a `develop`:** abierto para revisión humana, sin merge.
 - **Cambios ajenos en el mismo checkout:** hay modificaciones en `everprop-public` (`ProjectWebEditor.tsx`, `admin-design.css`, `AGENTS.md` y un test) que no son de este ticket. No entran en este commit.
 - **Riesgo:** la guardia sigue siendo léxica. La red de seguridad es la evaluación con el modelo real y el copiloto con revisión humana (go-live F2 5b).
