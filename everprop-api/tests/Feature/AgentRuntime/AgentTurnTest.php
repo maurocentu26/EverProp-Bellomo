@@ -345,9 +345,34 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($foreignRequest, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
         $ambiguous = $ask('Y el 12 a?');
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguous, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguous, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $bis = $ask('Y el 12 bis?');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($bis, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($bis, 'buscar_propiedades', [])['error']['code']);
         $spoken = $ask('Y el doce cuánto sale?');
         $this->assertSame('VALIDATION_ERROR', $gateway->execute($spoken, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
         $this->assertSame(['12'], array_column($gateway->execute($spoken, 'buscar_propiedades', [])['data']['items'], 'code'));
+        $both = $ask('¿Cuánto salen el 12 y el 12A?');
+        $this->assertSame('12', $gateway->execute($both, 'consultar_propiedad', ['unit_code' => '12'])['data']['code']);
+        $this->assertSame('12A', $gateway->execute($both, 'consultar_propiedad', ['unit_code' => '12A'])['data']['code']);
+        $bothBare = $ask('¿Cuánto salen 12 y 12A?');
+        $this->assertTrue($gateway->execute($bothBare, 'buscar_propiedades', [])['ok']);
+        $shorthand = $ask('¿El 12 x favor?');
+        $this->assertSame('12', $gateway->execute($shorthand, 'consultar_propiedad', ['unit_code' => '12'])['data']['code']);
+        $budget = $ask('Busco depto 2 amb. cerca del centro, x favor');
+        $this->assertTrue($gateway->execute($budget, 'buscar_propiedades', ['category' => 'APARTMENT', 'operation' => 'SALE'])['ok']);
+        $range = $ask('¿Puedo visitar el 12 a las 10?');
+        $this->assertSame('12', $gateway->execute($range, 'consultar_propiedad', ['unit_code' => '12'])['data']['code']);
+        $spacedSearch = $ask('¿Cuánto vale el lote 12 A?');
+        $this->assertSame(['12A'], array_column($gateway->execute($spacedSearch, 'buscar_propiedades', ['unit_code' => '12 A'])['data']['items'], 'code'));
+        $projectNumber = $ask('¿Tenés el 7 de Colinas?');
+        $this->assertTrue($gateway->execute($projectNumber, 'buscar_propiedades', ['category' => 'LOT'])['ok']);
+        $seven = (string) Str::uuid();
+        DB::table('properties')->insert(['tenant_id' => $context->tenantId, 'public_id' => $seven, 'code' => '7A',
+            'title' => 'Lote 7A', 'operation' => 'SALE', 'category' => 'LOT', 'status' => 'AVAILABLE',
+            'price' => '86000.00', 'currency_code' => 'USD', 'city' => 'Jujuy', 'province' => 'Jujuy']);
+        $bareSeven = $ask('¿Cuánto sale el 7 a secas?');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($bareSeven, 'consultar_propiedad', ['unit_code' => '7A'])['error']['code']);
     }
 
     public function test_interest_by_unit_code_requires_the_next_explicit_confirmation(): void

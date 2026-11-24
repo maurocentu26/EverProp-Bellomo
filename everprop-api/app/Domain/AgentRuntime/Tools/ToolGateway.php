@@ -94,11 +94,14 @@ final class ToolGateway
         if ($message === null) {
             return $arguments;
         }
-        if (preg_match('/(?<![\p{L}\p{N}])\d+\s+[a-z](?![\p{L}\p{N}])(?!\s+secas)/u', $message)) {
+        if (preg_match('/(?<![\p{L}\p{N}])\d+[\p{L}]?\s+y\s+\d+[\p{L}]?(?![\p{L}\p{N}])/iu', $message)) {
+            return $arguments; // A request naming two units must not be narrowed to one.
+        }
+        if (preg_match('/\b(?:el|la|lote|unidad|depto|departamento|terreno)\s+\d+\s+(?:(?![yxq]\b)[a-z](?![\p{L}\p{N}])(?!\s+(?:secas|las|\d))\b|bis\b)/u', $message)) {
             throw new ToolError('VALIDATION_ERROR', 'Aclarás si la letra forma parte del código antes de consultar otra unidad.');
         }
         $explicit = preg_replace('/(?<![\p{L}\p{N}])((?:[\p{L}]+-)?\d+)\s+([A-Z])(?![\p{L}\p{N}])(?!\s+secas)/u', '$1$2', $message);
-        preg_match_all('/\b(?:el|la|del|lote|unidad|depto|departamento|terreno)\s+((?:[\p{L}]+-)?\d+[\p{L}]?)(?![\p{L}\p{N}])/iu', $explicit, $matches);
+        preg_match_all('/\b(?:el|la|del|lote|unidad|depto|departamento|terreno)\s+((?:[\p{L}]+-)?\d+[\p{L}]?)(?![\p{L}\p{N}])(?!\s+(?:amb\b|ambientes?\b|dormitorios?\b|bis\b|de\s+[\p{L}]))/iu', $explicit, $matches);
         preg_match_all('/(?<![\p{L}\p{N}])((?:[\p{L}]+-)?\d+[\p{L}]?)(?=\s+(?:a\s+secas|sin\s+letra|solo)\b)/iu', $explicit, $bare);
         preg_match_all('/(?<![\p{L}\p{N}])((?:[\p{L}]+-)?\d+[\p{L}]?)(?:[?.!,]\s*|\s+)no\b/iu', $explicit, $negatedAfter);
         preg_match_all('/\bno\s+(?:el\s+|la\s+)?((?:[\p{L}]+-)?\d+[\p{L}]?)(?![\p{L}\p{N}])/iu', $explicit, $negatedBefore);
@@ -126,7 +129,7 @@ final class ToolGateway
         $asked = isset($arguments['unit_code']) ? trim((string) $arguments['unit_code'])
             : (string) (DB::table('properties')->where('tenant_id', $context->tenantId)
                 ->where('public_id', $arguments['property_id'])->value('code') ?? '');
-        if (! preg_match('/^(.+\d)([\p{L}])?$/u', $asked, $match)) {
+        if (! preg_match('/^((?:[\p{L}]+-)?\d+)([\p{L}])?$/u', $asked, $match)) {
             return;
         }
         $message = $this->visitorMessage($context);
@@ -138,7 +141,10 @@ final class ToolGateway
             || preg_match('/(?<![\p{L}\p{N}])'.preg_quote($asked, '/').'(?:[?.!,]\s*|\s+)no\b/iu', $message)) {
             throw new ToolError('VALIDATION_ERROR', 'El código indicado no coincide con el que escribió el visitante. Pedí aclaración antes de informar datos de otra unidad.');
         }
-        if (! isset($match[2]) && preg_match('/(?<![\p{L}\p{N}])'.$base.'\s+[\p{L}](?![\p{L}\p{N}])(?!\s+secas)/u', (string) $message)) {
+        if (! isset($match[2]) && preg_match('/(?<![\p{L}\p{N}])'.$base.'\s+(?:bis\b|a\b(?!\s+(?:secas\b|las\b|\d)))/u', (string) $message)) {
+            throw new ToolError('VALIDATION_ERROR', 'Aclarás el código de unidad antes de informar datos.');
+        }
+        if (! isset($match[2]) && preg_match('/(?<![\p{L}\p{N}])'.$base.'\s+[A-Z](?![\p{L}\p{N}])(?!\s+secas)/u', (string) $message)) {
             throw new ToolError('VALIDATION_ERROR', 'El código indicado no coincide con el que escribió el visitante. Pedí aclaración antes de informar datos de otra unidad.');
         }
         if (preg_match('/(?<![\p{L}\p{N}])'.preg_quote($asked, '/').'(?![\p{L}\p{N}])/iu', (string) $message)) {
