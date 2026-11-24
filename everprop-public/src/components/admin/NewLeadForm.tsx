@@ -14,7 +14,9 @@ import {
   Building2,
   Car,
   Check,
+  ChevronDown,
   Home,
+  IdCard,
   Lock,
   Mail,
   MapPin,
@@ -58,6 +60,8 @@ import {
   updateEverpropLead,
 } from "@/lib/everprop-api";
 import { createLeadInterest, isProjectUnit } from "@/lib/lead-interests";
+import { cleanProfile, mapApiProfile, profileHasData, validateProfile, type LeadExtendedProfile } from "@/lib/lead-extended-profile";
+import { LeadExtendedProfileSection } from "@/components/admin/LeadExtendedProfileSection";
 import { createNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
@@ -153,6 +157,11 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
   const idempotencyKey = useRef(typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
   const versionAfterConflict = useRef<number | undefined>(undefined);
   const [resetPending, setResetPending] = useState(false);
+  // EVP-180: optional extended profile; null = untouched (edit keeps what the API has and doesn't resend it).
+  const [profileDraft, setProfileDraft] = useState<LeadExtendedProfile | null>(null);
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileValue = profileDraft ?? mapApiProfile(activeLead?.profile);
 
   const { advisors: advisorList, error: advisorsError } = useLeadAdvisors(!isAdvisor);
 
@@ -251,7 +260,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       agentId: isAdvisor ? user?.id : "",
     },
   });
-  const hasDraft = form.formState.isDirty || Boolean(selectedCategory || selectedProjectId || selectedAsset || assetSearchQuery.trim());
+  const hasDraft = form.formState.isDirty || Boolean(selectedCategory || selectedProjectId || selectedAsset || assetSearchQuery.trim() || profileDraft);
 
   useEffect(() => {
     if (activeLead) {
@@ -456,6 +465,8 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
     setSelectedProjectId("");
     setSelectedAsset(null);
     setAssetSearchQuery("");
+    setProfileDraft(null);
+    setProfileErrors({});
     form.reset({
       name: "",
       origin: "WhatsApp",
@@ -524,6 +535,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
         unitIds: selectedAsset && selectedAssetIsUnit ? [selectedAsset.id] : activeLead.unitIds,
         interestCategory: targetCategory ?? activeLead.interestCategory,
         interests: updatedInterests,
+        ...(profileDraft ? { profile: cleanProfile(profileDraft) as Record<string, unknown> } : {}),
         lastActivity: new Date().toISOString(),
       };
 
@@ -545,6 +557,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
             ...(updatedLead.stage !== activeLead.stage ? { stage: stageApiMap[updatedLead.stage] || "NEW" } : {}),
             notes: updatedLead.notes,
             ...(!isAdvisor && updatedLead.agentId !== activeLead.agentId ? { agentId: updatedLead.agentId || null } : {}),
+            ...(profileDraft ? { profile: cleanProfile(profileDraft) } : {}),
             version: versionAfterConflict.current ?? activeLead.version,
           });
           if (selectedAsset?.id) {
@@ -596,6 +609,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
       notes: data.notes?.trim() || undefined,
       interests: firstInterest ? [firstInterest] : [],
       agentId: assignedAgentId,
+      ...(profileDraft && profileHasData(profileDraft) ? { profile: cleanProfile(profileDraft) as Record<string, unknown> } : {}),
     };
 
     if (!isMockDataMode) {
@@ -621,6 +635,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           agentId: nextLead.agentId,
           propertyId: selectedAsset?.id || null,
           idempotencyKey: idempotencyKey.current,
+          ...(profileDraft && profileHasData(profileDraft) ? { profile: cleanProfile(profileDraft) } : {}),
         });
         nextLead.id = created.id;
         if (created.duplicate) {
@@ -711,7 +726,16 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
           </div>
         </div>
 
-        <form id="new-lead-page-form" onSubmit={form.handleSubmit(data => setReview(data), onFormError)}>
+        <form id="new-lead-page-form" onSubmit={form.handleSubmit(data => {
+          const errors = profileDraft ? validateProfile(profileDraft) : {};
+          setProfileErrors(errors);
+          if (Object.keys(errors).length > 0) {
+            setProfileOpen(true);
+            toast.error("Revisá los datos del cliente marcados.");
+            return;
+          }
+          setReview(data);
+        }, onFormError)}>
           <aside className="leads-focus lead-form-help"><h2>Antes de guardar</h2><p>Revisá los datos y el asesor responsable. En el siguiente paso vas a confirmar la ficha completa.</p></aside>
           <CardContent className="p-3 sm:p-6 space-y-6">
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
@@ -1088,6 +1112,41 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
                 </Field>
               </section>
             </div>
+
+            {/* EVP-180: perfil extendido, cerrado por defecto para no frenar el alta rápida */}
+            <details
+              open={profileOpen}
+              onToggle={(event) => setProfileOpen(event.currentTarget.open)}
+              className="group rounded-2xl border border-slate-200 bg-slate-50/70 shadow-sm dark:border-slate-800 dark:bg-slate-900/50"
+            >
+              <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-2 rounded-2xl p-3 sm:px-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                <span className="flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300">
+                    <IdCard size={16} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold text-slate-900 dark:text-slate-100">Datos del cliente</span>
+                    <span className="block text-[11px] text-slate-500 dark:text-slate-400">DNI y CUIT, domicilios, datos laborales, garante y vivienda actual</span>
+                  </span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="whitespace-nowrap rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">Opcional</span>
+                  <ChevronDown size={16} className="shrink-0 text-slate-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+                </span>
+              </summary>
+              {profileOpen && (
+                <div className="border-t border-slate-200 p-3 sm:p-5 dark:border-slate-800">
+                  <LeadExtendedProfileSection
+                    idPrefix="lead-form-client"
+                    value={profileValue}
+                    onChange={setProfileDraft}
+                    errors={profileErrors}
+                    disabled={isSubmitting}
+                    createdAt={isEditing ? activeLead?.createdAt : undefined}
+                  />
+                </div>
+              )}
+            </details>
           </CardContent>
 
           <CardFooter className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/60">
@@ -1148,6 +1207,7 @@ export function NewLeadForm({ companyId = "c1", leadId, initialLead, isEditing =
               Proyecto: allProjects.find(project => project.id === (selectedAsset?.projectId || selectedProjectId))?.name || "Sin informar",
               Activo: selectedAsset ? `${selectedAsset.title} · Unidad ${selectedAsset.unitNumber || "sin informar"} · ${selectedAsset.currency} ${selectedAsset.price.toLocaleString("es-AR")}` : "Sin activo nuevo seleccionado",
               Notas: review.notes || "Sin notas",
+              "Datos del cliente": profileDraft ? (profileHasData(profileDraft) ? "Se guardan los datos cargados" : "Se vacían") : (isEditing && profileHasData(profileValue) ? "Sin cambios" : "Sin cargar"),
             }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
           </dl>}
           <DialogFooter>
