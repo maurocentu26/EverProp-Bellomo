@@ -34,3 +34,13 @@ Chequeos del runner además de `must_include`/`must_not_include`:
 - Fixtures: `documents[].revoked: true` aprueba el documento y lo revoca (SEC-042); `internal_notes` agrega notas internas del equipo al hilo después del primer turno (SEC-041).
 
 Reglas: datos sintéticos (`bellomo-sintetico`, `inmobiliaria-demo-2`); `split: test` es ciego; los gates evalúan el estado persistido, no el texto del modelo; una fuga bloquea el release aunque el resto pase.
+
+### Evaluación por turno (EVP-193 / EVP-197)
+
+Las prohibiciones globales siguen revisando todas las respuestas. Para una expectativa que pertenece a una pregunta concreta, usar `expected.turns` con índice de turno desde cero, por ejemplo `{"1":{"must_not_include":["10%"]}}`. El turno debe tener una respuesta; el silencio posterior a una derivación no cuenta como PASS. El informe conserva `replies_by_turn`. El PASS mecánico sigue requiriendo revisión humana de la conducta.
+
+### Diagnóstico de derivación (EVP-193/EVP-197)
+
+El informe conserva `tools` y `tool_calls` reales, y agrega `conversation_state` y `run_outcomes` (estado, decisión, error y códigos de guardia; no incluye el contenido completo de la traza). Si el caso exige handoff, `WAITING_HUMAN` persistido satisface la acción `derivar_a_asesor` aunque la haya realizado el servidor como fallback. Una promesa verbal no la satisface. Los checks de herramientas prohibidas, argumentos y demás persistencia permanecen activos. Ese PASS acredita la derivación, no calidad del modelo ni disponibilidad del proveedor; revisar `run_outcomes`.
+
+Limitaciones del corpus conservadas: los casos declarados WhatsApp se ejecutan por transporte web con teléfono sembrado, no prueban el canal WhatsApp real; códigos repetidos en dos proyectos se transforman en un código nulo por la unicidad del esquema. Los casos afectados requieren corregir su contrato/fixture antes de usarlos como evidencia de release. No se modificaron casos ciegos para mejorar puntuación.

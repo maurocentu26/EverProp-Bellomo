@@ -75,6 +75,38 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('AI_ACTIVE', $this->state($f)->control_state);
     }
 
+    public function test_links_use_only_the_current_tenants_exact_server_host_mapping(): void
+    {
+        $a = $this->fixture();
+        $b = $this->fixture();
+        config(['tenancy.hosts' => ['tenant-a.example' => $a['tenant']->slug, 'tenant-b.example' => $b['tenant']->public_id,
+            'Tenant-b.example' => $a['tenant']->slug]]);
+        $this->llm([ScriptedLlm::text('https://tenant-a.example/contacto')]);
+        $this->visitorSays($a, '¿Cuál es el sitio?');
+        $this->assertContains('https://tenant-a.example/contacto', $this->visible($a));
+        $this->llm([ScriptedLlm::text('https://tenant-b.example/contacto')]);
+        $this->visitorSays($a, '¿Otro sitio?');
+        $this->assertNotContains('https://tenant-b.example/contacto', $this->visible($a));
+        $this->assertNotSame('AI_ACTIVE', $this->state($a)->control_state);
+        $this->llm([ScriptedLlm::text('https://tenant-b.example/contacto')]);
+        $this->visitorSays($b, '¿Cuál es el sitio?');
+        $this->assertContains('https://tenant-b.example/contacto', $this->visible($b));
+    }
+
+    public function test_a_host_selector_matching_two_active_tenants_never_authorizes_a_link(): void
+    {
+        foreach ([false, true] as $uppercase) {
+            $a = $this->fixture();
+            $b = $this->fixture();
+            $selector = $uppercase ? strtoupper($b['tenant']->public_id) : $b['tenant']->public_id;
+            $a['tenant']->update(['slug' => $selector]);
+            config(['tenancy.hosts' => ['ambiguous.example' => $selector]]);
+            $this->llm([ScriptedLlm::text('https://ambiguous.example/contacto')]);
+            $this->visitorSays($a, '¿Cuál es el sitio?');
+            $this->assertNotContains('https://ambiguous.example/contacto', $this->visible($a));
+        }
+    }
+
     public function test_internal_notes_never_reach_the_model_nor_trigger_a_turn(): void
     {
         $f = $this->fixture();
@@ -1211,6 +1243,8 @@ final class AgentTurnTest extends TestCase
                 $chunks[] = ['tenant_id' => $t, 'document_id' => $docId, 'document_version' => 1, 'ordinal' => $o, 'heading' => "Documento $d — sección $o",
                     'body' => implode(' ', $words).'.'];
             }
+            DB::table('knowledge_documents')->where('tenant_id', $t)->where('id', $docId)
+                ->update(['body' => implode("\n\n", array_column($chunks, 'body'))]);
             DB::table('knowledge_chunks')->insert($chunks);
         }
         $this->assertSame(2000, DB::table('knowledge_chunks')->where('tenant_id', $t)->count());

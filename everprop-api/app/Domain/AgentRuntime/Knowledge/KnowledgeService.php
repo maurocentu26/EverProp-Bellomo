@@ -48,6 +48,9 @@ final class KnowledgeService
             if ($doc === null || $doc->status === 'REVOKED') {
                 return false;
             }
+            if (KnowledgeSafety::hasInstructions($doc->title) || KnowledgeSafety::hasInstructions($doc->body)) {
+                throw ValidationException::withMessages(['document' => 'El documento contiene instrucciones dirigidas al asistente. Revisalo y creá una versión con hechos verificables antes de aprobarlo.']);
+            }
             $chunks = $this->chunks((string) $doc->body);
             $max = (int) config('agent.knowledge_max_chunks');
             $approved = DB::table('knowledge_chunks as c')
@@ -123,7 +126,26 @@ final class KnowledgeService
             ->where('d.status', 'APPROVED')->whereNull('d.revoked_at')->whereIn('d.audience', $audiences)
             ->where(fn ($q) => $q->whereNull('d.valid_until')->orWhere('d.valid_until', '>', now()))
             ->orderBy('c.id')->limit($max)
-            ->get(['d.public_id', 'c.ordinal', 'c.heading', 'c.body', 'd.valid_until'])->all();
+            ->get(['d.public_id', 'd.version', 'c.ordinal', 'c.heading', 'c.body', 'd.valid_until'])->all();
+        // Existing approvals also need screening: chunk boundaries cannot reset an instruction's scope.
+        $documents = [];
+        // Read each body once, not once per chunk; recheck access and version after this second read.
+        foreach (DB::table('knowledge_documents')->where('tenant_id', $tenantId)
+            ->whereIn('public_id', array_unique(array_column($rows, 'public_id')))
+            ->where('status', 'APPROVED')->whereNull('revoked_at')->whereIn('audience', $audiences)
+            ->where(fn ($q) => $q->whereNull('valid_until')->orWhere('valid_until', '>', now()))
+            ->get(['public_id', 'version', 'body', 'title']) as $document) {
+            $documents[$document->public_id.'#'.$document->version] = KnowledgeSafety::hasInstructions($document->title)
+                ? '' : KnowledgeSafety::evidence($document->body);
+        }
+        $rows = array_values(array_filter($rows, function ($r) use ($documents): bool {
+            $safe = $documents[$r->public_id.'#'.$r->version] ?? '';
+            $r->body = KnowledgeSafety::evidence($r->body);
+
+            return $r->body !== '' && (str_contains($safe, $r->body)
+                || str_contains((string) preg_replace('/\s+/u', ' ', $safe), (string) preg_replace('/\s+/u', ' ', $r->body)))
+                && ! KnowledgeSafety::hasInstructions($r->heading);
+        }));
         if (count($rows) >= $max) {
             Log::warning('knowledge.search.cap_reached', ['tenant_id' => $tenantId, 'cap' => $max]);
         }
