@@ -46,7 +46,7 @@ final class OutputGuardTest extends TestCase
         $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check($text, [], [], facts: [['code' => '12B']], inventoryChecked: true));
         $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('La unidad 12B figura como disponible.', [], [], inventoryChecked: true, notFound: ['12B']));
         $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('No se puede comprar la unidad 12A.', [], [], visitorMessages: ['Consulto por la unidad 12A']));
-        foreach (['no figura disponible', 'no figuran disponibles'] as $negative) {
+        foreach (['no figura disponible', 'no figuran disponibles', 'no figura como disponible', 'no figuran como disponibles'] as $negative) {
             $reply = 'La unidad 12B '.$negative.'.';
             $this->assertNotContains('UNSUPPORTED_AVAILABILITY', $guard->check($reply, [], [], inventoryChecked: true, notFound: ['12B']));
             $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check($reply, [], [], facts: [['code' => '12B']], inventoryChecked: true));
