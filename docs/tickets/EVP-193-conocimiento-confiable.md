@@ -1,5 +1,11 @@
 # EVP-193 — Conocimiento confiable y enlaces del tenant
 
+## Actualización 25/11 — base actual y guardia
+
+La rama incorpora develop bbb47f1 con EVP-194. L198 permanece separado por solapamiento. En la evaluación integrada de 233 casos hubo 136 PASS, 68 FAIL (51 críticos) y 29 DETERMINISTIC; RIO-003 y RIO-023..026 pasaron. No hay aprobación de release.
+
+El diagnóstico de respuestas sintéticas previas a la guardia reprodujo dos errores: el número del código C-8 antes de «de $15.200.000» se interpretaba como importe, y «figura como no disponible» se consideraba positivo. Se corrigieron y se conservaron negativos contra precios cruzados y disponibilidades contradictorias. Una variante adversarial encontrada en revisión motivó limitar la exención a disponible/disponibles. 542 pruebas de guardia, 645 aserciones, Pint y PHPStan dirigido aprobados. Revisión llm-security final sin nuevos hallazgos. Nueva corrida integrada completa pendiente de terminar; el resultado anterior no se presenta como medición del ajuste final.
+
 ## Estado 25/11/2026 — integración local en curso
 
 ABIERTO. El usuario autorizó publicar las ramas de trabajo en GitHub, sin cerrar tickets. Se prueba el conjunto EVP-193 + EVP-197 + EVP-L198 sobre develop 348d5c0, conservando EVP-196 y el lock actualizado de EVP-199. Las corridas anteriores por separado son históricas.

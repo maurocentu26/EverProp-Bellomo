@@ -13,6 +13,27 @@ final class OutputGuardTest extends TestCase
 
     private const KNOWLEDGE = ['Financiación: 36 cuotas fijas de $ 150.000 durante la promoción.'];
 
+    public function test_peso_prefix_and_suffix_preserve_each_unit_price(): void
+    {
+        $guard = new OutputGuard;
+        $prices = [['amount' => '14500000', 'currency' => 'ARS'], ['amount' => '15200000', 'currency' => 'ARS']];
+        $facts = [['code' => 'C-7', 'price' => $prices[0]], ['code' => 'C-8', 'price' => $prices[1]]];
+        $this->assertNotContains('UNSUPPORTED_AMOUNT', $guard->check(
+            'El lote C-7 tiene un precio de $14.500.000 ARS y el lote C-8 de $15.200.000 ARS.', $prices, [], facts: $facts));
+        $this->assertContains('UNSUPPORTED_AMOUNT', $guard->check(
+            'El lote C-7 tiene un precio de $15.200.000 ARS y el lote C-8 de $14.500.000 ARS.', $prices, [], facts: $facts));
+    }
+
+    public function test_explicit_no_disponible_is_a_negative_availability_claim(): void
+    {
+        $guard = new OutputGuard;
+        $text = 'La unidad 12B figura como no disponible en este momento.';
+        $this->assertNotContains('UNSUPPORTED_AVAILABILITY', $guard->check($text, [], [], inventoryChecked: true, notFound: ['12B']));
+        $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check($text, [], [], facts: [['code' => '12B']], inventoryChecked: true));
+        $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('La unidad 12B figura como disponible.', [], [], inventoryChecked: true, notFound: ['12B']));
+        $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('No se puede comprar la unidad 12A.', [], [], visitorMessages: ['Consulto por la unidad 12A']));
+    }
+
     public function test_unconfirmed_information_is_not_a_confirmed_visit(): void
     {
         $guard = new OutputGuard;
