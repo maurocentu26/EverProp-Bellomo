@@ -17,10 +17,10 @@ Rama `ticket/EVP-203-lot-unit-management` · 2026-11-25 · Álvaro Ruggeri / Cod
 - Pruebas focalizadas de adaptador, proyecto, matriz y ficha: 28/28 pasan. Incluyen contrato de precio/moneda nulos, medidas/servicios, estado no comercializado, ruta de borrado y visibilidad de acciones.
 - `node --test tests/*.test.mjs`: 231/235 pasan, cuatro fallos. En `develop` limpio esos mismos cuatro casos fallan (228/232); son un gate previo y requieren clasificación con el equipo antes de considerar verde el suite global.
 
-## Pendiente antes de PR listo para merge
+## QA integrada posterior
 
-- QA en navegador contra la API y MySQL de prueba: alta individual, edición, estado, borrado, confirmación, 403/409 y contadores; recorrer roles con y sin permiso.
-- Revisar la interacción de selección de la matriz en pantalla pequeña y con teclado.
-- Releer comentarios nuevos de Mauro en Jira y en el PR antes del cierre. Al iniciar EVP-203 no había comentarios.
+- En navegador, con API real y MySQL 8.4 aislado, se creó un lote individual desde el proyecto, se editaron medidas/servicios, se vaciaron precio y moneda, se cambió a «No comercializado» y se eliminó desde la matriz. El contador del proyecto se corrigió para mostrar cero al eliminar la última unidad.
+- La integración con EVP-205 detectó un identificador `2-undefined` para un departamento sin número de unidad; se corrigió la construcción del identificador antes de subir la rama.
+- Pendiente de verificación: 403/409 en navegador, roles sin permisos, matriz en móvil y teclado. Los cuatro fallos globales preexistentes siguen clasificados como gate previo. Los comentarios de Jira EVP-203 eran cero al crear la PR.
 
-No se fusionó ni desplegó esta rama.
+PR: https://github.com/maurocentu26/EverProp-Bellomo/pull/184. No se fusionó ni desplegó esta rama.
