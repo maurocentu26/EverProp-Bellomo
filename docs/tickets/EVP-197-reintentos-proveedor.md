@@ -1,4 +1,15 @@
 # EVP-197 — Reintentos seguros y capacidad del proveedor IA
+## Estado para revisión — 25/11/2026
+
+**ABIERTO / NO APTO PARA RELEASE.** Rama subida y PR en borrador. Integra develop e1a6162; evaluación conjunta EVP-193 4d415c8 + EVP-197 0c48ac5, sin EVP-L198. CI del código aprobado en ambas ramas.
+
+- Regresión: 658 tests, 656 aprobados, 2 omitidos, 2292 aserciones.
+- Gemini real, corpus completo233: 137 PASS, 67 FAIL (49 críticos), 29 DETERMINISTIC. 370HTTP200; sin errores de transporte en la corrida final. 94 PASS críticos pendientes de revisión humana.
+- [Informe integrado, correcciones, evidencia y matriz de 67 fallos](evidencias/integracion-20261125.md).
+- Se distingue fallo funcional, contrato del evaluador, conflicto con guardia y salida incorrecta bloqueada. No afirmar ausencia de errores ni cerrar el ticket.
+- El usuario autorizó incluir IA/Conversations en la futura entrega develop → main. La política de release todavía necesita adecuación y configuración del destino. No hubo merge ni cambios en producción.
+
+## Historial previo (las métricas siguientes corresponden a sus versiones)
 
 ## Estado 25/11/2026 — integración local en curso
 
