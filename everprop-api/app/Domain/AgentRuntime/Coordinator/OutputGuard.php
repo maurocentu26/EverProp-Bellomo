@@ -2,6 +2,8 @@
 
 namespace App\Domain\AgentRuntime\Coordinator;
 
+use App\Domain\AgentRuntime\Knowledge\KnowledgeSafety;
+
 /**
  * Deterministic checks on the model's final text before it can be queued (ADR D09, evals
  * "no inventar precio" / "no confirmar visita"). The model is not trusted to follow the prompt:
@@ -27,11 +29,11 @@ final class OutputGuard
     private const SCALE = '(?:\s*(mil(?:lones|l[oó]n)?|k|M)\b)?';
 
     /**
-     * Links and payment data can only repeat what an approved source of the tenant says: a customer (or a
-     * poisoned document) asking the model to "send this alias / pay at this link" must never reach anyone.
+     * Links require an exact tenant host from server configuration; payment data needs approved evidence.
+     * Neither visitor input nor poisoned knowledge can authorize an external destination.
      * URL: scheme, www. or a bare domain on a common TLD. Payment: CBU/CVU (22 digits) or an alias (word.word.word).
      */
-    private const LINK = '/(?:https?:\/\/|www\.)[^\s<>"\')\]]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|ar|io|app|ly|me|co|link|site|online|shop|store|xyz|info|top|click|page|biz)\b(?:\/[^\s<>"\')\]]*)?/iu';
+    private const LINK = '/(?:https?:\/\/|www\.)[^\s<>"\')\]]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|ar|io|app|ly|me|co|link|site|online|shop|store|xyz|info|top|click|page|biz)\b(?:[:\/?#][^\s<>"\')\]]*)?/iu';
 
     private const PAYMENT = '/\b(?:\d[ -]?){21}\d\b|\b[a-z][a-z0-9]+(?:\.[a-z][a-z0-9]+){2,}\b/iu';
 
@@ -126,13 +128,14 @@ final class OutputGuard
      * @param  list<string>  $serverTexts  other server texts whose numbers the model may repeat (business hours)
      * @param  string|null  $factsText  the part of $text the fact checks read (the contact summary without the
      *                                  visitor's own name, phone and email)
+     * @param  list<string>  $allowedHosts  exact tenant domains from server configuration, never RAG or visitor input
      * @return list<string> violation codes (empty = ok)
      */
-    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false, array $visitorMessages = [], array $requested = [], array $facts = [], bool $inventoryChecked = false, array $locations = [], array $notFound = [], array $serverTexts = [], ?string $factsText = null): array
+    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false, array $visitorMessages = [], array $requested = [], array $facts = [], bool $inventoryChecked = false, array $locations = [], array $notFound = [], array $serverTexts = [], ?string $factsText = null, array $allowedHosts = []): array
     {
         $text = $this->canonical($text, strict: true);
         $evidence = fn (string $item): string => mb_substr($this->canonical($item), 0, self::EVIDENCE_CHARS);
-        $knowledge = array_map($evidence, $knowledge);
+        $knowledge = array_map(fn (string $item): string => $evidence(KnowledgeSafety::evidence($item)), $knowledge);
         $requested = array_map($evidence, $requested);
         $allowed = [];
         foreach ($prices as $price) {
@@ -162,7 +165,7 @@ final class OutputGuard
             ...$this->negatedEchoTerms($text, $visitorMessages)]) !== []) {
             $violations[] = 'UNSUPPORTED_TERM';
         }
-        if ($this->unsupported(self::LINK, $this->withoutVisitorEmails($text, $visitorMessages), $knowledge)) {
+        if ($this->unverifiedLinks($this->withoutVisitorEmails($text, $visitorMessages), $allowedHosts)) {
             $violations[] = 'UNVERIFIED_LINK';
         }
         if ($this->unsupported(self::PAYMENT, $text, $knowledge)) {
@@ -187,13 +190,31 @@ final class OutputGuard
             $violations[] = 'VISIT_NOT_MARKED_PENDING';
         }
         array_push($violations, ...$this->unsupportedFacts($factsText === null ? $text : $this->canonical($factsText, strict: true), $facts,
-            $inventoryChecked, $notFound, $locations, [...$knowledge, ...$requested], $visitorMessages, [...array_column($prices, 'amount'), ...$serverTexts]));
+            $inventoryChecked, $notFound, $locations, [...$knowledge, ...$requested], $visitorMessages, [...array_column($prices, 'amount'), ...$serverTexts], $requested !== []));
         if ($this->broken) {
             $violations[] = 'GUARD_ERROR';
         }
         $this->broken = false;
 
         return array_values(array_unique($violations));
+    }
+
+    /** @param list<string> $allowedHosts Exact hosts resolved by the server for this tenant. */
+    private function unverifiedLinks(string $text, array $allowedHosts): bool
+    {
+        $this->ok(preg_match_all(self::LINK, $text, $matches));
+        foreach ($matches[0] as $link) {
+            $link = rtrim($link, '.,;:!?');
+            $url = parse_url(str_contains($link, '://') ? $link : 'https://'.$link);
+            if ($url === false || ! in_array(strtolower($url['host'] ?? ''), $allowedHosts, true)
+                || ($url['scheme'] ?? '') !== 'https' || isset($url['user']) || isset($url['pass'])
+                || isset($url['port']) || isset($url['query']) || isset($url['fragment'])
+                || preg_match('/[%{}\\\\]|collect/i', $link) !== 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -644,7 +665,7 @@ final class OutputGuard
      * @param  list<string>  $allowed  numbers the server put in front of the model (prices, business hours)
      * @return list<string>
      */
-    private function unsupportedFacts(string $text, array $facts, bool $inventoryChecked, array $notFound, array $locations, array $evidence, array $visitorMessages, array $allowed): array
+    private function unsupportedFacts(string $text, array $facts, bool $inventoryChecked, array $notFound, array $locations, array $evidence, array $visitorMessages, array $allowed, bool $requestedAmounts = false): array
     {
         $records = [];
         foreach ($facts as $f) {
@@ -654,6 +675,7 @@ final class OutputGuard
             $records[] = [
                 'code' => $code,
                 'codeFold' => $this->fold($code),
+                'price' => $f['price'] ?? null,
                 'project' => trim($this->fold((string) ($f['project'] ?? ''))),
                 'available' => ! ($f['summary_only'] ?? false),
                 'fields' => array_map(fn (string $field): ?string => isset($f[$field]) && is_numeric($f[$field]) ? $this->numberValue((string) $f[$field]) : null,
@@ -802,9 +824,41 @@ final class OutputGuard
             $every = $this->ok(preg_match(self::EVERY, $segment)) === 1;
             $pluralVerb = $this->ok(preg_match('/\b(?:tienen|son|cuentan|est[aá]n|quedan|ofrecen|incluyen|miden|poseen|disponen|presentan|comparten)\b/iu', $segment)) === 1;
 
-            // Unit codes: returned, reported missing ("la unidad 14 no se encuentra disponible"), named by the visitor
-            // (repeating it invents no unit) or written in a source. A bare number the visitor wrote ("el 14") may be a
-            // day or a time, so it backs a code only once a tool checked it.
+            // A price belongs to a unit, not to another listing or a brochure with the same number.
+            if (! $requestedAmounts) {
+                $segmentMoney = $this->moneyMatches($segment, true);
+                usort($segmentMoney, fn (array $a, array $b): int => $a[2] <=> $b[2]);
+                $respectively = count($named) === count($segmentMoney) && count($named) > 1
+                    && $this->ok(preg_match('/\brespectivamente\b/iu', $segment)) === 1;
+                $previousMoneyOffset = -1;
+                foreach ($segmentMoney as $moneyIndex => [$amount, $currency, $offset]) {
+                    $beforeMoney = substr($segment, 0, $offset);
+                    if ($this->ok(preg_match('/\b'.self::INSTALLMENTS.self::FILLER.'\s++(?:de\s++)?+(?:(?:'.self::USD.'|'.self::ARS.')\s*+)?+$/iu', $beforeMoney)) === 1) {
+                        continue; // Installment amounts still require approved knowledge in check().
+                    }
+                    $beforeUnits = array_values(array_filter($mentions, fn (array $m): bool => $m[1] < $offset));
+
+                    $priceGroup = array_values(array_filter($beforeUnits, fn (array $m): bool => $m[1] > $previousMoneyOffset));
+                    $priceUnits = $beforeUnits !== [] ? [end($beforeUnits)[0]] : ($named ?: ($current ?: ($lastVisitorCodes ?: $notFound)));
+                    if ($respectively) {
+                        $priceUnits = [$named[$moneyIndex]];
+                    } elseif (count($priceGroup) > 1 && ($every || $pluralVerb || $this->ok(preg_match('/\b(?:cuestan|valen|salen)\b/iu', $segment)) === 1)) {
+                        $priceUnits = array_values(array_unique(array_column($priceGroup, 0)));
+                    }
+                    $previousMoneyOffset = $offset;
+                    foreach ($priceUnits as $unit) {
+                        $backed = array_any($records, fn (array $r): bool => $r['code'] === $unit && is_array($r['price'])
+                            && isset($r['price']['amount'], $r['price']['currency'])
+                            && $this->normalize((string) $r['price']['amount'], null) === $amount
+                            && ($currency === null || $r['price']['currency'] === $currency));
+                        if (! $backed) {
+                            $found['UNSUPPORTED_AMOUNT'] = true;
+                        }
+                    }
+                }
+            }
+
+            // Unit codes: returned, named by the visitor (repeating it invents no unit) or written in a source.
             foreach ($named as $code) {
                 if (! in_array($code, $codes, true) && ! in_array($code, $notFound, true) && ! in_array($code, $visitorCodes, true)
                     && ! in_array($code, $proof(null)['codes'], true)
@@ -857,10 +911,17 @@ final class OutputGuard
                     }
                 }
                 $unitProof = $proof($units);
+                // A catalogue count describes the named set, not a numeric attribute of its first unit.
+                $catalogueCount = $inventoryChecked && $named !== [] && ! $every && $offset < $mentions[0][1]
+                    && $this->ok(preg_match('/\b(?:por|cada)\s++(?:(?:cada|una?|el|la)\s++)?+(?:'.self::UNIT_NOUN.'|opci[oó]n)\b/iu', $segment)) === 0
+                    && $value === (string) count($named)
+                    && array_diff($named, $available) === []
+                    && $this->ok(preg_match('/\b(?:tenemos|hay|encontramos|encontr[eé])\s++(?:disponibles\s++)?+$/iu', substr($segment, 0, $offset))) === 1
+                    && $this->ok(preg_match('/^\d++\s++(?:lotes|unidades|opciones)\b/iu', substr($segment, $offset))) === 1;
                 $ok = match ($kind) {
                     // A phone or an account number: the same digits inside a single run of the visitor, a source or the server.
                     'digits' => array_any([...$baseDigitRuns, ...$unitProof['digitRuns']], fn (string $r): bool => str_contains($r, $value)),
-                    null => in_array($value, [...(($units === null || $when) ? $base : []), ...$unitProof['numbers'], ...$this->recordValues($unitProof['records'])], true),
+                    null => $catalogueCount || in_array($value, [...(($units === null || $when) ? $base : []), ...$unitProof['numbers'], ...$this->recordValues($unitProof['records'])], true),
                     default => ($echoAt($offset) && in_array($value.'|'.$kind, $visitorTyped, true)) || $this->typedBacked($value, $kind, $unitProof, $claimEvery),
                 };
                 if (! $ok) {
@@ -950,7 +1011,7 @@ final class OutputGuard
             }
         }
 
-        return array_values(array_filter(['UNSUPPORTED_FACT', 'UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY', 'UNSUPPORTED_DATE',
+        return array_values(array_filter(['UNSUPPORTED_AMOUNT', 'UNSUPPORTED_FACT', 'UNSUPPORTED_UNIT', 'UNSUPPORTED_AVAILABILITY', 'UNSUPPORTED_DATE',
             'UNSUPPORTED_LOCATION', 'UNSUPPORTED_AMENITY'], fn (string $code): bool => isset($found[$code])));
     }
 
@@ -1439,6 +1500,9 @@ final class OutputGuard
     private function availability(string $segment, bool $aboutUnit, bool $specific = false): array
     {
         $found = [];
+        if ($this->ok(preg_match('/\bno\s++(?:cuento|contamos)\s++con\s++disponibilidad\b/iu', $segment)) === 1) {
+            $found[] = 'NEGATIVE';
+        }
         // EVP-196: "el reglamento no está disponible para consultar por este canal": a document or the channel, never a
         // unit ("el 12B está disponible para ver el sábado" names one, so it stays a claim).
         $meta = fn (string $before, string $after): bool => ! $aboutUnit && ! $specific
@@ -1448,7 +1512,7 @@ final class OutputGuard
         // segment that names no unit. Anything before it ("según nuestro equipo…", "de acuerdo a…") reports on a unit.
         $staff = fn (string $before): bool => ! $aboutUnit
             && $this->ok(preg_match('/^\s*+(?:(?:actualmente|lamentablemente|hoy|ahora|por\s++ahora|en\s++este\s++momento),?+\s++)?+(?:nuestr[oa]s?+|el|la|los|las|mi|mis)\s++(?:equipo|asesor(?:es|as?)?+|personal)\s++(?:(?:de|comercial)\s++(?:\p{L}++\s++)?+)?+(?:no\s++)?+(?:(?:est[aá]n?+|se\s++encuentra\p{L}*+)\s++)?+$/iu', $before)) === 1;
-        foreach ($this->matches('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo|cont[aá]mos\s++con|cuento\s++con|dispon(?:emos|go)\s++de)\s++(?:\p{L}++\s++){0,3}?(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bya\s++no\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|la|lo|las|los)\b/iu', $segment) as $m) {
+        foreach ($this->matches('/\bno\s++disponibles?+\b|\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|figuran?+(?:\s++como)?+|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo|cont[aá]mos\s++con|cuento\s++con|dispon(?:emos|go)\s++de)\s++(?:\p{L}++\s++){0,3}?(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bya\s++no\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|la|lo|las|los)\b/iu', $segment) as $m) {
             $before = substr($segment, 0, (int) $m[0][1]);
             // Only "no está disponible" can be about people: "nuestro equipo ya no lo tiene" denies a unit.
             $aboutStaff = $staff($before) && preg_match('/^no\s++(?:est[aá]n?+|se\s++encuentra)\b/iu', (string) $m[0][0]) === 1;
@@ -1466,7 +1530,9 @@ final class OutputGuard
             $before = substr($segment, 0, (int) $m[0][1]);
             $after = substr($segment, (int) $m[0][1] + strlen((string) $m[0][0]));
             if ($staff($before)
-                || $this->ok(preg_match('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++)?+$/iu', $before)) === 1
+                || ($this->ok(preg_match('/^disponibles?+$/iu', (string) $m[0][0])) === 1
+                    && $this->ok(preg_match('/\bno\s++$/iu', $before)) === 1)
+                || $this->ok(preg_match('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|figuran?+(?:\s++como)?+|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++)?+$/iu', $before)) === 1
                 || $this->ok(preg_match('/\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo|cont[aá]mos\s++con|cuento\s++con|dispon(?:emos|go)\s++de)\s++(?:\p{L}++\s++){0,3}?$/iu', $before)) === 1
                 // "horarios disponibles", "asesores disponibles"; a state verb makes it a claim ("según los datos sigue
                 // disponible"), and a suffix is no noun ("candidatos"). "los datos de disponibilidad" goes through the
@@ -1488,6 +1554,9 @@ final class OutputGuard
                         && $this->ok(preg_match('/\b(?:(?:ni|dentro\s++de|sobre(?:\s++\p{L}++){0,3}?|consultar(?:te|le)?+|consulto|verificar(?:te|le)?+|verifico|chequear(?:te|le)?+|chequeo|revisar(?:te|le)?+|reviso|confirmar(?:te|le)?+)\s++(?:la|nuestra|su)|(?:detalles?|datos|informaci[oó]n|info)\s++(?:(?!(?:de|sobre)\b)\p{L}++\s++)?+(?:de|sobre)(?:\s++la)?+)\s++$/iu', $before)) === 1
                         && $this->ok(preg_match('/^[^.!?\n;]{0,40}?(?::|\b(?:es|est[aá]|sigue|contin[uú]a|se\s++mantiene|vigente|inmediata|total|confirmad\p{L}*+|garantizad\p{L}*+|asegurad\p{L}*+)\b)/iu', $after)) !== 1)
                     || $meta($before, $after)))
+                || $this->ok(preg_match('/^\s++(?:la\s++)?+financiaci[oó]n\b/iu', $after)) === 1
+                || ($this->ok(preg_match('/^disponibles?+$/iu', (string) $m[0][0])) === 1
+                    && $this->ok(preg_match('/\bfinanciaci[oó]n\s++$/iu', $before)) === 1)
                 || (! $aboutUnit && $this->ok(preg_match('/(?:estoy|estamos|quedo|quedamos|sigo|seguimos)\s++$/iu', $before)) === 1)
                 || (! $aboutUnit && $this->ok(preg_match('/^\s++para\s++(?:ayud|respond|lo\s+que|cualquier|charlar|hablar)/iu', $after)) === 1)) {
                 continue;
@@ -1683,6 +1752,10 @@ final class OutputGuard
                     return true;
                 }
                 $before = substr($text, 0, $offset + $stem[0][1]);
+                if ($this->ok(preg_match('/^confirmado\b/iu', substr($text, $offset + $stem[0][1]))) === 1
+                    && $this->ok(preg_match('/\bno[ \t]++(?:tengo|tenemos)[ \t]++(?:el[ \t]++)?dato[ \t]++$/iu', $before)) === 1) {
+                    continue;
+                }
                 if ($this->ok(preg_match('/\b(no|sin)\s+((est[aá]|qued[oó]|queda|fue|es|se)\s+)?$/iu', $before)) !== 1) {
                     return true;
                 }
@@ -1716,9 +1789,9 @@ final class OutputGuard
         $found = [];
         $patterns = [
             ['/(?:'.self::USD.')[ \t]*'.$number.self::SCALE.'/iu', 'USD'],
-            ['/'.$number.self::SCALE.'[ \t]*(?:de[ \t]+)?(?:'.self::USD.')/iu', 'USD'],
+            ['/'.$number.self::SCALE.'[ \t]*(?:de[ \t]+)?(?:'.self::USD.')(?![\p{L}\p{N}]|[ \t]*\d)/iu', 'USD'],
             ['/(?:'.self::ARS.')[ \t]*'.$number.self::SCALE.'/iu', 'ARS'],
-            ['/'.$number.self::SCALE.'[ \t]*(?:de[ \t]+)?(?:'.self::ARS.')/iu', 'ARS'],
+            ['/'.$number.self::SCALE.'[ \t]*(?:de[ \t]+)?(?:'.self::ARS.')(?![\p{L}\p{N}]|[ \t]*\d)/iu', 'ARS'],
         ];
         $consumed = [];
         foreach ($patterns as [$pattern, $currency]) {

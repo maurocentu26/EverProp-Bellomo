@@ -414,7 +414,7 @@ final class AgentCoordinator
         foreach (is_array($data['items'] ?? null) ? $data['items'] : [$data] as $item) {
             if (is_array($item) && isset($item['id'])) {
                 $trace['facts'][] = array_intersect_key($item, array_flip(['code', 'bedrooms', 'bathrooms', 'area_m2', 'city', 'province',
-                    'neighborhood', 'project', 'category', 'description']));
+                    'neighborhood', 'project', 'category', 'description', 'price']));
             }
         }
     }
@@ -460,11 +460,23 @@ final class AgentCoordinator
         // EVP-192: business hours are server text the model saw; their numbers ("de 9 a 18") are not invented.
         $hours = $draft ? null : $this->hours($context->tenantId);
         $allowed = array_values(array_filter([$hours['summary'] ?? null, $hours['back'] ?? null], is_string(...)));
-        $check = function (string $part, array $requested = [], ?string $factsText = null) use ($context, $trace, $draft, $visitor, $locations, $allowed, &$facts): array {
+        $tenant = DB::table('tenants')->where('id', $context->tenantId)->where('status', 'ACTIVE')->first(['slug', 'public_id']);
+        $selectors = $tenant === null ? [] : [$tenant->slug, $tenant->public_id];
+        // Tenant registry check: a slug may collide with another tenant's public id. Ambiguous hosts fail closed.
+        $conflicts = DB::table('tenants')->where('id', '!=', $context->tenantId)->where('status', 'ACTIVE')
+            ->where(fn ($q) => $q->whereIn('slug', $selectors)->orWhereIn('public_id', $selectors))->get(['slug', 'public_id']);
+        if ($conflicts->isNotEmpty()) {
+            $selectors = []; // SQL collation decides collisions; PHP string comparison must not undo that decision.
+        }
+        $hosts = $tenant === null ? [] : array_keys(array_filter((array) config('tenancy.hosts', []),
+            fn ($selector): bool => is_string($selector) && in_array($selector, $selectors, true)));
+        // Match the resolver's lowercase lookup exactly: an uppercase duplicate must not authorize another tenant.
+        $hosts = array_values(array_filter($hosts, fn ($host): bool => is_string($host) && $host === strtolower($host)));
+        $check = function (string $part, array $requested = [], ?string $factsText = null) use ($context, $trace, $draft, $visitor, $locations, $allowed, $hosts, &$facts): array {
             return $this->guard->check($part, $trace['prices'] ?? [], $trace['knowledge'] ?? [],
                 $trace['visit_requested'] ?? false, $draft, outOfHours: ! $draft && $this->back($context->tenantId) !== null,
                 visitorMessages: $visitor, requested: $requested, facts: $facts, inventoryChecked: $trace['inventory_checked'] ?? false,
-                locations: $locations, notFound: $trace['not_found'] ?? [], serverTexts: $allowed, factsText: $factsText);
+                locations: $locations, notFound: $trace['not_found'] ?? [], serverTexts: $allowed, factsText: $factsText, allowedHosts: $hosts);
         };
 
         if (! $draft && $text === app(ContactConfirmation::class)->summary($context)) {
@@ -490,7 +502,7 @@ final class AgentCoordinator
             $propertyFrame = preg_replace('/^(?:Nombre|Teléfono|Correo):.*$/mu', '', $frame) ?? $frame;
             $nameViolations = $nameLine === '' ? [] : $this->guard->check($nameLine, [], $trace['knowledge'] ?? [],
                 visitorMessages: $visitor, facts: $facts, inventoryChecked: $trace['inventory_checked'] ?? false,
-                locations: [], notFound: $trace['not_found'] ?? [], serverTexts: $allowed);
+                locations: [], notFound: $trace['not_found'] ?? [], serverTexts: $allowed, allowedHosts: $hosts);
             $violations = [...$check($frame, factsText: $propertyFrame), ...$nameViolations,
                 ...($this->guard->commits($request, $asked) ? ['COMMITMENT_CLAIM'] : []),
                 ...$check($request, $asked ? array_slice($visitor, -2) : [])];
