@@ -46,6 +46,12 @@ final class OutputGuardTest extends TestCase
         $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check($text, [], [], facts: [['code' => '12B']], inventoryChecked: true));
         $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('La unidad 12B figura como disponible.', [], [], inventoryChecked: true, notFound: ['12B']));
         $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('No se puede comprar la unidad 12A.', [], [], visitorMessages: ['Consulto por la unidad 12A']));
+        foreach (['no figura disponible', 'no figuran disponibles'] as $negative) {
+            $reply = 'La unidad 12B '.$negative.'.';
+            $this->assertNotContains('UNSUPPORTED_AVAILABILITY', $guard->check($reply, [], [], inventoryChecked: true, notFound: ['12B']));
+            $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check($reply, [], [], facts: [['code' => '12B']], inventoryChecked: true));
+        }
+        $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('La unidad 12B figura disponible.', [], [], inventoryChecked: true, notFound: ['12B']));
     }
 
     public function test_unconfirmed_information_is_not_a_confirmed_visit(): void
@@ -129,6 +135,9 @@ final class OutputGuardTest extends TestCase
         $guard = new OutputGuard;
         $knowledge = ['Financiación Huasi: anticipo del 30% y saldo en 36 cuotas fijas en pesos.'];
         $this->assertSame([], $guard->check('Tenemos disponible la financiación de Huasi con un anticipo del 30% y el saldo en 36 cuotas fijas en pesos.', [], $knowledge));
+        $this->assertSame([], $guard->check('Tenemos financiación disponible: anticipo del 30% y saldo en 36 cuotas fijas en pesos.', [], $knowledge));
+        $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('Hay financiación disponible y el 3B está disponible.', [], $knowledge,
+            visitorMessages: ['consulto por 3B'], inventoryChecked: true, notFound: ['3B']));
         $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check('El 3B está disponible con financiación del 30% y 36 cuotas.', [], $knowledge,
             visitorMessages: ['consulto por 3B'], inventoryChecked: true, notFound: ['3B']));
     }
