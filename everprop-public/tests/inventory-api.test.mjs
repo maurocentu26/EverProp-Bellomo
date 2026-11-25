@@ -87,3 +87,27 @@ test('Inventory adapter preserves exact codes, null currency and missing prices 
  assert.equal(mappedProject.reservedUnitsCount,0);
  assert.equal(mappedProject.soldUnitsCount,91);
 });
+
+test('residential details preserve rooms separately from bedrooms and map feature values',async()=>{
+ const api=client(()=>({data:[{...property,category:'APARTMENT',rooms:3,bedrooms:2,bathrooms:1,covered_area_m2:'62.5',uncovered_area_m2:'8',floor:4,orientation:'NORTE',disposition:'FRENTE',parking_spaces:1,expenses:'25000',expenses_currency_code:'ARS',features:[{id:7,feature_group:'AMENITY',feature_code:'BALCON',label:'Balcón',value:true,is_filterable:true,sort_order:0}]}]}));
+ const [unit]=await api.loadEverpropPropertiesPage(1);
+ assert.equal(unit.rooms,3);assert.equal(unit.bedrooms,2);assert.equal(unit.coveredAreaM2,62.5);
+ assert.equal(unit.uncoveredAreaM2,8);assert.equal(unit.floor,4);assert.equal(unit.parkingSpaces,1);
+ assert.equal(unit.expenses,25000);assert.equal(unit.expensesCurrency,'ARS');
+ assert.equal(unit.features[0].value,true);assert.equal(unit.features[0].label,'Balcón');
+});
+
+test('residential update sends expenses and currency as a pair and feature CRUD uses property endpoint',async()=>{
+ const requests=[];
+ const api=client((url,init)=>{requests.push({url,method:init.method,body:init.body?JSON.parse(init.body):null});return {data:property};});
+ await api.updateEverpropProperty('property-a',{version:8,rooms:3,bedrooms:2,expenses:25000,expensesCurrency:'ARS'});
+ assert.equal(requests[0].body.rooms,3);assert.equal(requests[0].body.bedrooms,2);
+ assert.equal(requests[0].body.expenses,25000);assert.equal(requests[0].body.expenses_currency_code,'ARS');
+ await api.createEverpropPropertyFeature('property-a',{group:'AMENITY',code:'BALCON',label:'Balcón',value:true});
+ await api.updateEverpropPropertyFeature('property-a',7,{label:'Balcón privado',value:'8 m²'});
+ await api.deleteEverpropPropertyFeature('property-a',7);
+ assert.match(requests[1].url,/properties\/property-a\/features$/);assert.equal(requests[1].method,'POST');
+ assert.equal(requests[1].body.feature_group,'AMENITY');assert.equal(requests[1].body.feature_value,true);
+ assert.match(requests[2].url,/properties\/property-a\/features\/7$/);assert.equal(requests[2].method,'PATCH');
+ assert.equal(requests[2].body.feature_value,'8 m²');assert.equal(requests[3].method,'DELETE');
+});

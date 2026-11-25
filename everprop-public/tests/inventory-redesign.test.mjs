@@ -74,11 +74,12 @@ test('EVP-73 editing reviews all fields, preserves null currency and writes only
   const jsxTree = (type, props) => ({type,props});
   const components = new Proxy({}, {get: (_, key) => key});
   const context = {exports:{}, require(name) {
-    if(name === 'react') return {useState(initial) {const index=cursor++; if(!(index in states)) states[index]=initial; return [states[index], value=>{states[index]=value;}];},useRef(initial) {const index=cursor++; return states[index] ??= {current:initial};}};
+    if(name === 'react') return {useState(initial) {const index=cursor++; if(!(index in states)) states[index]=typeof initial==='function'?initial():initial; return [states[index], value=>{states[index]=value;}];},useRef(initial) {const index=cursor++; return states[index] ??= {current:initial};},useEffect(){}};
     if(name === 'react/jsx-runtime') return {jsx:jsxTree,jsxs:jsxTree};
     if(name === '@/lib/inventory-labels') return labels.exports;
     if(name === '@/lib/data-mode') return {isMockDataMode:false};
     if(name === '@/lib/everprop-api') return {async updateEverpropProperty(id,payload) {writes++; saved=payload; return {id,...payload};}};
+    if(name === './property-form/PropertyFeaturesEditor') return {default:'PropertyFeaturesEditor',draftFromFeature:feature=>feature,validateFeatureDrafts:features=>features};
     if(name === '@/data/admin-sample') return {JUJUY_CITIES:[]};
     if(name === 'sonner') return {toast:{success(){},error(message){throw Error(message);}}};
     return components;
@@ -94,7 +95,7 @@ test('EVP-73 editing reviews all fields, preserves null currency and writes only
   tree=render();
   const review=nodes(tree).find(n=>n.props?.['aria-label']==='Confirmación completa');
   assert.ok(review);
-  for(const value of ['Unidad 12A','38.500','Moneda sin confirmar','Reservado','Superficie (m²)','Descripción']) assert.ok(text(review).includes(value),value);
+  for(const value of ['Unidad 12A','38.500','Moneda sin confirmar','Reservado','Superficie total (m²)','Descripción']) assert.ok(text(review).includes(value),value);
   nodes(review).find(n=>n.type==='Button').props.onClick();
   tree=render(); assert.equal(nodes(tree).find(n=>n.type==='fieldset').props.hidden,false);
   await nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});

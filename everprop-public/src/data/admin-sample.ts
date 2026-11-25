@@ -124,7 +124,17 @@ export type Property = {
   neighborhood: string;
   bedrooms: number;
   bathrooms: number;
+  rooms?: number | null;
   area_m2?: number;
+  coveredAreaM2?: number | null;
+  uncoveredAreaM2?: number | null;
+  floor?: string | null;
+  orientation?: string | null;
+  disposition?: string | null;
+  parkingSpaces?: number | null;
+  expenses?: number | null;
+  expensesCurrency?: "USD" | "ARS" | null;
+  features?: PropertyFeature[];
   mainImage?: string;
   description?: string;
   visits?: Visit[];
@@ -139,6 +149,17 @@ export type Property = {
   isCovered?: boolean;
   commercialFeatures?: { showcaseLength?: number; hasBathroom?: boolean; mezzanine?: boolean; dualAccess?: boolean; land?: { frente_m?: number; fondo_m?: number; ochava_m2?: number; padron?: string; curb?: boolean; gravel?: boolean; lighting?: boolean; spaceType?: string } };
   legacyData?: Record<string, any>;
+};
+
+export type PropertyFeature = {
+  id: number;
+  group: "SERVICE" | "AMENITY" | "STRUCTURAL" | "OTHER" | "COMMERCIAL";
+  code: string;
+  label: string;
+  value: unknown;
+  unitCode?: string | null;
+  isFilterable: boolean;
+  sortOrder: number;
 };
 
 export type Lead = {

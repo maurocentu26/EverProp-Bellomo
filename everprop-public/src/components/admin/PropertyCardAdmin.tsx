@@ -129,9 +129,15 @@ export default function PropertyCardAdmin({ property }: Props) {
           </div>
 
           {/* Mini Ficha Técnica */}
-          <div className="grid grid-cols-3 gap-2 py-3 border-t border-slate-50">
+          <div className="grid grid-cols-2 gap-2 py-3 border-t border-slate-50 sm:grid-cols-4">
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Amb.</span>
+              <div className="flex items-center gap-1 text-slate-700 font-bold text-xs">
+                {property.rooms ?? "—"}
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Dorm.</span>
               <div className="flex items-center gap-1 text-slate-700 font-bold text-xs">
                 <BedDouble className="h-3 w-3 text-slate-400" /> {property.bedrooms}
               </div>
@@ -145,7 +151,7 @@ export default function PropertyCardAdmin({ property }: Props) {
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Sup.</span>
               <div className="flex items-center gap-1 text-slate-700 font-bold text-xs">
-                <Ruler className="h-3 w-3 text-slate-400" /> {property.area_m2}m²
+                <Ruler className="h-3 w-3 text-slate-400" /> {property.area_m2 != null ? `${property.area_m2} m²` : "—"}
               </div>
             </div>
           </div>
