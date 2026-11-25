@@ -31,7 +31,8 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.jsonl'))) {
     if (!P.expected.properties.behavior.enum.includes(e.behavior)) errors.push(`${at} expected.behavior inválido`);
     if (!('persisted' in e)) errors.push(`${at} falta expected.persisted`);
     else if (e.persisted !== 'none' && (typeof e.persisted !== 'object' || e.persisted === null || Array.isArray(e.persisted))) errors.push(`${at} expected.persisted debe ser "none" u objeto`);
-    for (const t of [...(e.tools ?? []), ...(e.tools_forbidden ?? [])]) if (!TOOLS.includes(t)) errors.push(`${at} herramienta fuera de la allowlist: ${t}`);
+    if ('tools_any' in e && (!Array.isArray(e.tools_any) || !e.tools_any.length)) errors.push(`${at} expected.tools_any debe tener opciones`);
+    for (const t of [...(e.tools ?? []), ...(Array.isArray(e.tools_any) ? e.tools_any : []), ...(e.tools_forbidden ?? [])]) if (!TOOLS.includes(t)) errors.push(`${at} herramienta fuera de la allowlist: ${t}`);
     for (const k of Object.keys(e)) if (!(k in P.expected.properties)) errors.push(`${at} expected.${k} no permitido`);
     if ('turns' in e) {
       if (!e.turns || typeof e.turns !== 'object' || Array.isArray(e.turns) || !Object.keys(e.turns).length) errors.push(at + ' expected.turns debe ser objeto no vacío');
