@@ -129,7 +129,7 @@ export default function ProjectDetailView() {
     </div>
   );
 
-  const summary = projectUnitSummary(project, properties);
+  const summary = projectUnitSummary(project, properties, true);
   const offeredStates = AVAILABLE_UNIT_STATES.filter(state => summary.counts[state] > 0);
   const defaultFilter: UnitFilter = offeredStates.length > 1 ? "offered" : offeredStates[0] ?? "all";
   const unitFilter = pickedFilter ?? defaultFilter;

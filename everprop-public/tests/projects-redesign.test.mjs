@@ -69,6 +69,7 @@ test('EVP-109 unit summary never hides units: leasing stays available and the re
   assert.equal(availableUnitsLabel(projectUnitSummary({...project,propertiesCount:17,availableUnitsCount:17,availableRentUnitsCount:17})),'en alquiler');
   const sum=projectUnitSummary(project,Array.from({length:150},()=>properties[0]));
   assert.deepEqual([sum.total,sum.available,sum.counts.sale],[150,150,150]);
+  assert.equal(projectUnitSummary({...project,propertiesCount:1,availableUnitsCount:1},[],true).total,0);
 });
 
 const nodes=t=>!t||typeof t!=='object'?[]:Array.isArray(t)?t.flatMap(nodes):[t,...nodes(t.props?.children)];

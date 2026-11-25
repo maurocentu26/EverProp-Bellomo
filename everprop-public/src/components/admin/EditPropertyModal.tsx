@@ -323,7 +323,15 @@ export function EditPropertyModal({
               />
             </Field>
           </fieldset>
-          {reviewing && <section aria-label="Confirmación completa"><h2>Revisar cambios</h2><dl className="inventory-review">{Object.entries(formData).map(([key, value]) => <div key={key}><dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie (m²)",frente_m:"Frente (m)",fondo_m:"Fondo (m)",ochava_m2:"Ochava (m²)",padron:"Padrón",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt><dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a consultar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd></div>)}</dl>{formData.propertyType === "Lote" && <p className="my-3 text-sm">Servicios: {Object.entries(services || {}).filter(([, enabled]) => enabled).map(([name]) => name).join(", ") || "Sin informar"}</p>}<Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button></section>}
+          {reviewing && <section aria-label="Confirmación completa">
+            <h2>Revisar cambios</h2>
+            <dl className="inventory-review">{Object.entries(formData).filter(([key]) => key !== "currency" || Boolean(formData.price || formData.currency)).map(([key, value]) => <div key={key}>
+              <dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie (m²)",frente_m:"Frente (m)",fondo_m:"Fondo (m)",ochava_m2:"Ochava (m²)",padron:"Padrón",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt>
+              <dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a confirmar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd>
+            </div>)}</dl>
+            {formData.propertyType === "Lote" && <p className="my-3 text-sm">Servicios: {Object.entries(services || {}).filter(([, enabled]) => enabled).map(([name]) => ({water:"Agua",electricity:"Luz",gas:"Gas",sewage:"Cloacas",internet:"Internet"} as Record<string,string>)[name] || name).join(", ") || "Sin informar"}</p>}
+            <Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button>
+          </section>}
 
           {error && <div ref={errorRef} tabIndex={-1} role="alert" aria-live="assertive" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-200">{error}</div>}
           <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">

@@ -59,10 +59,10 @@ export function compareUnits(a: Pick<Property, 'unitNumber' | 'title' | 'sectorN
 export type ProjectUnitSummary = { total: number; available: number; counts: Record<UnitState, number> };
 
 // Loaded units win over the API counters; whatever the counters do not explain stays visible as unknown.
-export function projectUnitSummary(project: Project, units: Pick<Property, 'status' | 'operation'>[] = []): ProjectUnitSummary {
+export function projectUnitSummary(project: Project, units: Pick<Property, 'status' | 'operation'>[] = [], unitsLoaded = false): ProjectUnitSummary {
   const counts = Object.fromEntries(UNIT_STATES.map(state => [state, 0])) as Record<UnitState, number>;
   let total = units.length;
-  if (units.length) {
+  if (units.length || unitsLoaded) {
     units.forEach(unit => { counts[unitState(unit)] += 1; });
   } else {
     counts.sale = project.availableSaleUnitsCount ?? 0;
