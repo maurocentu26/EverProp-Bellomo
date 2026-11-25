@@ -40,7 +40,22 @@ final class OutputGuard
 
     private const CLAIMS = [
         '/(visita|cita|turno|recorrida)[^.!?\n]{0,40}(confirmad|agendad|reservad|coordinad|programad|fijad|pactad)/iu',
-        '/(\bno\s+)?(confirm|agend|reserv|program|fij|pact)(o|amos|é|ada|ado)\b[^.!?\n]{0,40}(visita|cita|turno|recorrida|unidad|propiedad|lote|departamento|casa)/iu',
+        '/(\bno\s+)?(agend|reserv|program|fij|pact)(o|amos|é|ada|ado)\b[^.!?\n]{0,40}(visita|cita|turno|recorrida|unidad|propiedad|lote|departamento|casa|\b(?:el|la)\s+\d)/iu',
+        // "Te separo el 12A", "Separamos el 12A para vos", "Apartamos el lote 12A": a first-person hold with the unit as
+        // its immediate object (never "guardé tu interés en el lote", a registration, nor "se guardan las propiedades").
+        '/\b(?:(?:te|se)\s+)?(separ|apart|guard|bloque)(?:o|amos|é|e|ar[eé]|aremos)\s+(?:(?:el|la|los|las|ese|esa|este|esta)\s+)?(?:unidad|propiedad|lote|depto|departamento|casa|terreno|\d)/iu',
+        // "Ya lo tenés reservado", "Tenés el 12A reservado hasta el viernes".
+        '/\b(?:ten[eé]s|tenemos)\s+(?:\S+\s+){0,2}?(reservad|separad|apartad|guardad|bloquead)[oa]s?\b/iu',
+        // EVP-196: "te confirmo que el 12A está disponible" or "información confirmada sobre los lotes" reports a fact
+        // (checked by the fact guard); confirming commits only to a visit, a reservation or a purchase.
+        '/(\bno\s+)?(confirm)(o|amos|é|ad[oa]s?)\b[^.!?\n]{0,40}(visita|cita|turno|recorrida|reserva|compra|se[ñn]a|operaci[oó]n|boleto)/iu',
+        // "Te confirmo el lote 12A", "Confirmado el depto 12A": the unit as direct object (no "que") is a commitment.
+        '/(\bno\s+)?(confirm)(o|amos|é|ad[oa]s?)\s+(?:(?:el|la|los|las|tu|su|ese|esa|este|esta|nuestro|nuestra)\s+)?(?:unidad|propiedad|lote|depto|departamento|casa|terreno|\d)/iu',
+        // "¡Confirmado!": an exclamation is a commitment, whatever follows.
+        '/(\bno\s+)?(confirm)(ad[oa]s?)\s*!/iu',
+        // Holding a unit for the visitor: "te lo apartamos", "te lo dejo reservado", "quedó separado para vos", "ya
+        // quedó a tu nombre", "ya es tuyo". A description ("la cocina está separada del living") holds nothing.
+        '/\b((?:te|se)\s+l[oa]s?\s+(?:separ|apart|bloque|guard|reserv)\p{L}*|(?:te|se)\s+l[oa]s?\s+dej\p{L}*\s+(?:separad|apartad|bloquead|reservad)[oa]s?|(?:qued[oó]|queda)\s+(?:apartad|bloquead|reservad)[oa]s?|est[aá]\s+reservad[oa]s?\s+(?:para\s+(?:vos|usted|ti)|a\s+tu\s+nombre)|(?:separad|apartad|bloquead)[oa]s?\s+(?:para\s+(?:vos|usted|ti)|a\s+tu\s+nombre)|(?:qued[oó]|queda|est[aá]|lo\s+pongo|lo\s+dejo|lo\s+dejamos)\s+a\s+tu\s+nombre|(?:te|se)?\s*l[oa]s?\s+(?:tengo|tenemos|dejo|dejamos)\s+(?:separad|apartad|reservad|guardad|bloquead)[oa]s?|\bl[oa]s?\s+(?:separ|apart|reserv|bloque|guard)\p{L}*\s+para\s+(?:vos|usted|ti)|(?:qued[oó]|queda)\s+para\s+(?:vos|usted|ti)|ya\s+es\s+tuy[oa]s?|(?:lote|unidad|depto|departamento|casa|terreno|propiedad|\d+[a-z]{0,2})\s+(?:ya\s+)?es\s+tuy[oa]s?)\b/iu',
         '/(\bno\s+)?\b(est[aá]|qued[oó]|queda)\s+(todo\s+)?(confirmad|agendad|programad|reservad|fijad|pactad)/iu',
         '/\b(te\s+espero|te\s+esperamos|nos\s+vemos)\b/iu',
     ];
@@ -143,7 +158,8 @@ final class OutputGuard
                 break;
             }
         }
-        if ($this->unsupportedTerms($text, [...$knowledge, ...$requested])) {
+        if (array_diff($this->terms($text), [...array_merge(...array_map($this->terms(...), [...$knowledge, ...$requested])),
+            ...$this->negatedEchoTerms($text, $visitorMessages)]) !== []) {
             $violations[] = 'UNSUPPORTED_TERM';
         }
         if ($this->unsupported(self::LINK, $this->withoutVisitorEmails($text, $visitorMessages), $knowledge)) {
@@ -177,7 +193,7 @@ final class OutputGuard
         }
         $this->broken = false;
 
-        return $violations;
+        return array_values(array_unique($violations));
     }
 
     /**
@@ -351,16 +367,41 @@ final class OutputGuard
     }
 
     /**
-     * Some term of the reply is not in the evidence as the same (number, kind) pair.
+     * EVP-196: the visitor's own terms that the reply only denies or lacks ("no tengo información confirmada respecto
+     * a una financiación en 60 cuotas" after "¿se puede en 60 cuotas?"). The clause runs from the negation to the
+     * next punctuation, contrast, exception or conjunction ("no ofrecemos financiación salvo en 60 cuotas" denies
+     * nothing about the 60), and every term in it must be the visitor's. Terms are still read on the whole reply, so
+     * a denied clause never hides the financing context of the next sentence.
      *
-     * @param  list<string>  $evidence
+     * @param  list<string>  $visitorMessages
+     * @return list<string>
      */
-    private function unsupportedTerms(string $text, array $evidence): bool
+    private function negatedEchoTerms(string $text, array $visitorMessages): array
     {
-        $backed = array_merge(...array_map($this->terms(...), $evidence));
+        $asked = array_merge(...array_map(fn (string $m): array => $this->terms($this->canonical($m)), $visitorMessages));
+        $denied = [];
+        $rest = $text; // the reply without the denied clauses
+        // Only a lack of data ("no tengo información…", "no puedo confirmarte…"); "no ofrecemos 60 cuotas" is itself a claim.
+        foreach ($asked === [] ? [] : $this->matches('/\bno\s++(?:(?:tengo|tenemos|cuento\s++con|contamos\s++con|dispongo\s++de|disponemos\s++de)\s++(?:informaci[oó]n|info|datos?+|el\s++dato|confirmaci[oó]n)|(?:te\s++)?+puedo\s++confirmar(?:te|le)?+)(?:[^.!?\n,;:](?!\b(?:pero|aunque|sino|igual|mientras|salvo|excepto|menos|m[aá]s|hasta|solo|s[oó]lo|[uú]nicamente|y|e|porque|ya)\b))*+[^.!?\n,;:]?/iu', $text) as $m) {
+            $clause = (string) $m[0][0];
+            $terms = $this->terms($clause);
+            // Not a lack of data when it excludes ("no te puedo confirmar otra opción que las 60 cuotas") or the reply
+            // goes on to grant it anywhere ("…en dólares. En pesos, sí", "…, solo en pesos").
+            $then = substr($text, (int) $m[0][1] + strlen($clause));
+            if ($terms !== [] && array_diff($terms, $asked) === []
+                // The clause is the whole sentence ("…60 cuotas para el 12B, para el 14 está ok" is not).
+                && $this->ok(preg_match('/^\s*+(?:[.!?\n]|$)/u', $then)) === 1
+                && $this->ok(preg_match('/\bque\b|\bno\b.*\bno\b|\b(?:otr[oa]s?|salvo|excepto|aparte|fuera|distint\p{L}*|diferente\p{L}*|m[aá]s\s++all[aá])\b/isu', $clause)) !== 1
+                // Nothing after it grants the terms: "en pesos, sí", "en pesos se puede", "pero sí en 36", "solo en
+                // pesos". A conditional "si querés" or "pero un asesor te ayuda" grants nothing.
+                && $this->ok(preg_match('/\bs[íi](?=\s*+(?:[,.!;]|$))|\bsí\b|\bse\s++puede\b|\best[aá]\s++(?:ok|bien)\b|\b(?:en|para)\s++(?:pesos|d[oó]lares)\b|\b(?:pero|sino|solo|s[oó]lo|[uú]nicamente|en\s++cambio)\b(?=[^.!?\n]{0,30}?(?:\bs[íi]\b|\d|cuot|financ|plan|anticipo|pesos|d[oó]lares|usd|ars))/iu', $then)) !== 1) {
+                array_push($denied, ...$terms);
+                $rest = substr_replace($rest, str_repeat(' ', strlen($clause)), (int) $m[0][1], strlen($clause));
+            }
+        }
 
-        // A percentage with no recognizable kind ("%") needs the same number also without a kind in the evidence.
-        return array_diff($this->terms($text), $backed) !== [];
+        // Exempt by occurrence, not by value: the same term affirmed elsewhere ("El plan vigente es en 60 cuotas") stays.
+        return array_values(array_diff($denied, $this->terms($rest)));
     }
 
     /**
@@ -492,7 +533,7 @@ final class OutputGuard
      * "No encontré lotes en Yala", "No tengo confirmado si tiene pileta", "¿Buscás en Yala?" / "Busco opciones en Yala".
      * A negation elsewhere in the sentence ("No te preocupes, tiene pileta") is not one of them.
      */
-    private const ECHO_FRAME = '/\bno\s++(?:encontr\p{L}*+|hay(?!\s++(?:[\p{L}]++\s++){0,2}?(?:problema|drama|inconveniente|duda|apuro|cuidado)\b)|tengo|tenemos|figura\p{L}*+|cuento|contamos|aparece\p{L}*+|veo|dispongo|s[eé](?!\s++(?:[\p{L}]++\s++){0,1}?si\b)|lo\s++tengo|est[aá]\s++confirmad\p{L}*+)\b|\bsin\s++(?:datos?|informaci[oó]n|confirmar)\b|\b(?:busco|buscamos|busc[aá]s|busque(?:mos)?+|necesit[aá]s|prefer[ií]s)\b/iu';
+    private const ECHO_FRAME = '/\bno\s++(?:encontr\p{L}*+|hay(?!\s++(?:[\p{L}]++\s++){0,2}?(?:problema|drama|inconveniente|duda|apuro|cuidado)\b)|(?:tengo|tenemos)(?!\s++(?:[\p{L}]++\s++){0,2}?(?:dudas?|problema|drama|inconveniente|apuro)\b)|figura\p{L}*+|cuento|contamos|aparece\p{L}*+|veo|dispongo|s[eé](?!\s++(?:[\p{L}]++\s++){0,1}?si\b)|lo\s++tengo|est[aá]\s++confirmad\p{L}*+)\b|\bsin\s++(?:datos?|informaci[oó]n|confirmar)\b|\b(?:busco|buscamos|busc[aá]s|busque(?:mos)?+|necesit[aá]s|prefer[ií]s)\b/iu';
 
     /**
      * A sentence about handing over or finishing a unit: there a month, a period or a relative date is a delivery date.
@@ -761,9 +802,12 @@ final class OutputGuard
             $every = $this->ok(preg_match(self::EVERY, $segment)) === 1;
             $pluralVerb = $this->ok(preg_match('/\b(?:tienen|son|cuentan|est[aá]n|quedan|ofrecen|incluyen|miden|poseen|disponen|presentan|comparten)\b/iu', $segment)) === 1;
 
-            // Unit codes: returned, named by the visitor (repeating it invents no unit) or written in a source.
+            // Unit codes: returned, reported missing ("la unidad 14 no se encuentra disponible"), named by the visitor
+            // (repeating it invents no unit) or written in a source. A bare number the visitor wrote ("el 14") may be a
+            // day or a time, so it backs a code only once a tool checked it.
             foreach ($named as $code) {
-                if (! in_array($code, $codes, true) && ! in_array($code, $visitorCodes, true) && ! in_array($code, $proof(null)['codes'], true)
+                if (! in_array($code, $codes, true) && ! in_array($code, $notFound, true) && ! in_array($code, $visitorCodes, true)
+                    && ! in_array($code, $proof(null)['codes'], true)
                     && ! (preg_match('/\p{L}/u', $code) === 1 && $this->hasWord($visitor, $code))) {
                     $found['UNSUPPORTED_UNIT'] = true;
                 }
@@ -826,7 +870,8 @@ final class OutputGuard
 
             // Availability: never in a question. "disponible" needs every unit it is about returned this turn (with no
             // unit: something returned and nothing reported missing); "vendida" needs that unit reported missing.
-            $availabilities = $question ? [] : $this->availability($segment, $named !== [] || $this->ok(preg_match('/\b'.self::UNIT_NOUN.'/iu', $segment)) === 1);
+            $availabilities = $question ? [] : $this->availability($segment, $named !== [] || $this->ok(preg_match('/\b'.self::UNIT_NOUN.'/iu', $segment)) === 1,
+                $named !== [] || $current !== [] || $lastVisitorCodes !== []);
             $about = $named !== [] ? $named : ($current !== [] ? $current : $lastVisitorCodes);
             $checkAvailability($availabilities, $about);
 
@@ -861,7 +906,8 @@ final class OutputGuard
             $segAmenities = [];
             foreach (self::AMENITIES as $forms) {
                 $pattern = '/(?<![\p{L}\p{N}])(?:'.$forms.')(?![\p{L}\p{N}])/u';
-                if ($this->ok(preg_match($pattern, $fold)) === 1) {
+                // EVP-196: only what the reply affirms ("no figuran datos sobre pileta" claims no pool).
+                if ($this->ok(preg_match($pattern, $fold)) === 1 && ! $this->deniedInReply($pattern, $fold)) {
                     $segAmenities[] = $pattern;
                     if (array_any($unitProofs, fn (array $p): bool => ! $this->affirmed($pattern, $p['fold']))
                         && ($this->ok(preg_match($pattern, $nonEchoFold)) === 1 || $this->ok(preg_match($pattern, $visitorFold)) !== 1)) {
@@ -1020,6 +1066,10 @@ final class OutputGuard
                     }
                 }
             }
+            // EVP-196: the minutes of a time ("9:00", "18.30 hs") belong to the hour, checked as a time.
+            if ($kind === null && preg_match('/^[0-5]\d$/', (string) $token) === 1 && $this->ok(preg_match('/(?<![\d:])\d{1,2}:$/', $before)) === 1) {
+                continue;
+            }
             // A date or a time ("12 de marzo", "a las 10", "el jueves 15") never takes a property kind.
             $when = $kind === null && ($this->ok(preg_match('/^\s*+(?:de\s++(?:'.self::MONTHS.')|hs\b|h\b|:\d|\/\d)/iu', $after)) === 1
                 || $this->ok(preg_match('/(?:\blas|\bel\s++d[ií]a|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\s++$/iu', $before)) === 1);
@@ -1170,11 +1220,53 @@ final class OutputGuard
         ], fn (string $p): bool => $this->ok(preg_match($p, $read)) === 1));
     }
 
-    /** The pattern appears in the evidence without a negation right before it ("sin ascensor ni cochera" backs nothing). */
+    /**
+     * EVP-196: every mention in the reply sits right under a statement that the data is missing, alone or in a list
+     * of amenities that starts there: "no figuran confirmados los datos sobre pileta, gimnasio ni cochera", "no sé si
+     * el 12A tiene pileta", "no puedo confirmarte si tiene cochera". A denial ("sin pileta", "no tiene cochera") is a
+     * claim about the property and still needs evidence; anything else in between ("no sé si viste que tiene
+     * pileta") leaves the mention affirmed.
+     */
+    private function deniedInReply(string $pattern, string $fold): bool
+    {
+        $has = '(?:tiene|tienen|cuenta\s++con|cuentan\s++con|hay|incluye|incluyen|posee|dispone\s++de|trae)';
+        $whether = 'si\s++(?:(?!que\b)[\p{L}\p{N}]++\s++){0,2}?'.$has;
+        // Only a lack of data exempts a mention: "no tiene cochera" or "sin pileta" is itself a claim about the property.
+        $frame = '\b(?:no\s++(?:figuran?+|tengo|tenemos|cuento\s++con|contamos\s++con)\s++(?:(?:confirmad[oa]s?+|los|las|el|la|datos?+|informacion|info|detalles)\s++){0,4}?(?:sobre|de|acerca\s++de)(?:\s++'.$whether.')?+'
+            .'|no\s++(?:te\s++)?+(?:se|puedo\s++confirmar(?:te|le)?+)\s++'.$whether.')';
+        $article = '(?:(?:el|la|los|las|un|una)\s++)?+';
+        // Every earlier item of the list is itself an amenity ("sin duda, la pileta…" is no list).
+        $item = '(?>'.implode('|', self::AMENITIES).')';
+        $denial = '/'.$frame.'\s++'.$article.'(?>'.$item.'\s*+(?:,|\by\b|\bni\b|\bo\b)\s*+'.$article.'){0,6}$/u';
+        $mentions = $this->matches($pattern, $fold);
+        foreach ($mentions as $m) {
+            $after = substr($fold, (int) $m[0][1] + strlen((string) $m[0][0]), 30);
+            // A comparison praises it ("…pileta más linda"); a verb starts a new claim ("no tengo detalles sobre el quincho
+            // y la pileta es climatizada").
+            if ($this->ok(preg_match($denial, substr($fold, 0, (int) $m[0][1]))) !== 1
+                || $this->ok(preg_match('/^\s*+(?:m[aá]s|como|que|mejor|igual|tan|es|son|esta|estan|tiene|tienen|cuenta|cuentan|viene|vienen|queda|quedan|incluye|incluyen)\b/u', $after)) === 1) {
+                return false;
+            }
+        }
+
+        return $mentions !== [];
+    }
+
+    /**
+     * The pattern appears without a negation right before it: "sin ascensor ni cochera" or "no figuran datos sobre
+     * pileta, gimnasio ni cochera" affirm nothing. An affirmative verb or a contrast in between ends the negation
+     * ("no hay dudas, tiene pileta", "no tiene cochera pero sí pileta"); "no sé si tiene pileta" stays negated.
+     */
     private function affirmed(string $pattern, string $fold): bool
     {
         foreach ($this->matches($pattern, $fold) as $m) {
-            if ($this->ok(preg_match('/\b(?:sin|no\s++(?:tiene|cuenta\s++con|hay|posee|incluye|trae|dispone\s++de|es|est[aá]))\s++(?:[\p{L}\p{N},]++\s++){0,8}?$/u', substr($fold, 0, (int) $m[0][1]))) !== 1) {
+            $before = substr($fold, 0, (int) $m[0][1]);
+            // The nearest negation decides ("no tiene cochera y no hay pileta" denies the pool too).
+            $negated = $this->ok(preg_match('/\b(?:sin|(?:tampoco|ni)(?:\s++(?:tiene|tienen|cuenta\s++con|cuentan\s++con|hay|posee|incluye|trae|dispone\s++de))?+|no\s++(?:tiene|tienen|cuenta\s++con|cuentan\s++con|hay|posee|incluye|trae|dispone\s++de|es|est[aá]|figuran?+|tengo|tenemos|cuento\s++con|contamos\s++con|puedo\s++confirmar|s[eé]))\s++((?:(?!(?:no|sin|tampoco|ni)\b)[\p{L}\p{N},]++\s++){0,8}?)$/u', $before, $neg));
+            $between = $negated === 1 ? $neg[1] : '';
+            $doubt = $this->ok(preg_match('/^si\s[^,]*+$/u', $between)) === 1; // "no sé si tiene pileta"
+            if ($negated !== 1 || $this->ok(preg_match('/\b(?:pero|sino|aunque)\b/u', $between)) === 1
+                || (! $doubt && $this->ok(preg_match('/\b(?:tiene|tienen|incluye|incluyen|posee|poseen|cuenta|cuentan|dispone|disponen|trae|traen|hay)\b/u', $between)) === 1)) {
                 return true;
             }
         }
@@ -1341,13 +1433,28 @@ final class OutputGuard
      * POSITIVE ("disponible", "a la venta", "todavía la tenemos", "se puede comprar", "no está vendido", "no se vendió"),
      * NEGATIVE ("no está disponible", "vendida", "se vendió") or both when both appear in one segment.
      *
+     * @param  bool  $specific  a unit code is named in the segment or in the visitor's last message
      * @return list<'POSITIVE'|'NEGATIVE'>
      */
-    private function availability(string $segment, bool $aboutUnit): array
+    private function availability(string $segment, bool $aboutUnit, bool $specific = false): array
     {
         $found = [];
-        if ($this->ok(preg_match('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo)\s++(?:\p{L}++\s++){0,3}?(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bya\s++no\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|la|lo|las|los)\b/iu', $segment)) === 1) {
-            $found[] = 'NEGATIVE';
+        // EVP-196: "el reglamento no está disponible para consultar por este canal": a document or the channel, never a
+        // unit ("el 12B está disponible para ver el sábado" names one, so it stays a claim).
+        $meta = fn (string $before, string $after): bool => ! $aboutUnit && ! $specific
+            && $this->ok(preg_match('/\b(?:reglamentos?|documentos?|informaci[oó]n|archivos?|planos?|folletos?|brochures?|gu[ií]as?|cat[aá]logos?|contratos?|formularios?)\b/iu', $before)) === 1
+            && $this->ok(preg_match('/^\s++(?:para\s++(?:consultar|descargar|leer|compartir)\b|(?:\p{L}++\s++){0,3}?(?:a\s++trav[eé]s\s++de|por)\s++este\s++(?:canal|medio|chat)\b)/iu', $after)) === 1;
+        // EVP-196: "Actualmente nuestro equipo no está disponible" (out of hours) is about people: the staff noun opens a
+        // segment that names no unit. Anything before it ("según nuestro equipo…", "de acuerdo a…") reports on a unit.
+        $staff = fn (string $before): bool => ! $aboutUnit
+            && $this->ok(preg_match('/^\s*+(?:(?:actualmente|lamentablemente|hoy|ahora|por\s++ahora|en\s++este\s++momento),?+\s++)?+(?:nuestr[oa]s?+|el|la|los|las|mi|mis)\s++(?:equipo|asesor(?:es|as?)?+|personal)\s++(?:(?:de|comercial)\s++(?:\p{L}++\s++)?+)?+(?:no\s++)?+(?:(?:est[aá]n?+|se\s++encuentra\p{L}*+)\s++)?+$/iu', $before)) === 1;
+        foreach ($this->matches('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo|cont[aá]mos\s++con|cuento\s++con|dispon(?:emos|go)\s++de)\s++(?:\p{L}++\s++){0,3}?(?:disponibles?+|libres?+|a\s++la\s++venta|en\s++venta)\b|\bya\s++no\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|la|lo|las|los)\b/iu', $segment) as $m) {
+            $before = substr($segment, 0, (int) $m[0][1]);
+            // Only "no está disponible" can be about people: "nuestro equipo ya no lo tiene" denies a unit.
+            $aboutStaff = $staff($before) && preg_match('/^no\s++(?:est[aá]n?+|se\s++encuentra)\b/iu', (string) $m[0][0]) === 1;
+            if (! $aboutStaff && ! $meta($before, substr($segment, (int) $m[0][1] + strlen((string) $m[0][0])))) {
+                $found[] = 'NEGATIVE';
+            }
         }
         foreach ($this->matches('/\b(?:vendid[oa]s?+|ocupad[oa]s?+|alquilad[oa]s?+)\b|\b(?:ya\s++)?se\s++vendi[oó]\b/iu', $segment) as $m) {
             $before = substr($segment, 0, (int) $m[0][1]);
@@ -1355,15 +1462,32 @@ final class OutputGuard
                 || (str_contains(mb_strtolower((string) $m[0][0]), 'vendi') && $this->ok(preg_match('/\b(?:no|ni|tampoco)\s++(?:(?:todav[ií]a|a[uú]n)\s++)?+(?:se\s++ha\s++)?+$/iu', $before)) === 1);
             $found[] = $negatedParticiple ? 'POSITIVE' : 'NEGATIVE';
         }
-        foreach ($this->matches('/\bdisponibles?+\b|\bdisponibilidad\b|\ba\s++la\s++venta\b|\ben\s++venta\b|\b(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++libres?+\b|\b(?:todav[ií]a|a[uú]n)\s++(?:la|lo|las|los)\s++tenemos\b|\bse\s++(?:puede|pueden)\s++comprar\b|\bpod[eé]s\s++comprar(?:la|lo|las|los)?+\b|\bquedan?+\s++(?:\d++|unidades|lotes|departamentos|casas)\b|\bnadie\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\b(?:todav[ií]a|a[uú]n)\s++no\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\bes\s++tuy[oa]s?+\b|\b(?:lo|la|los|las)\s++pod[eé]s\s++(?:reservar|se[ñn]ar)\b/iu', $segment) as $m) {
+        foreach ($this->matches('/\bdisponibles?+\b|\bdisponibilidad\b|\ba\s++la\s++venta\b|\ben\s++venta\b|\b(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++libres?+\b|\b(?:todav[ií]a|a[uú]n)\s++(?:la|lo|las|los)\s++tenemos\b|\bse\s++(?:puede|pueden)\s++comprar\b|\bpod[eé]s\s++comprar(?:la|lo|las|los)?+\b|\bquedan?+\s++(?:\d++|unidades|lotes|departamentos|casas)\b|\bnadie\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\b(?:todav[ií]a|a[uú]n)\s++no\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\b(?:ya|lote|unidad|depto|departamento|casa|terreno|propiedad|\d++[a-z]{0,2})\s++(?:ya\s++)?+es\s++tuy[oa]s?+\b|\b(?:lo|la|los|las)\s++pod[eé]s\s++(?:reservar|se[ñn]ar)\b/iu', $segment) as $m) {
             $before = substr($segment, 0, (int) $m[0][1]);
             $after = substr($segment, (int) $m[0][1] + strlen((string) $m[0][0]));
-            if ($this->ok(preg_match('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++)?+$/iu', $before)) === 1
-                || $this->ok(preg_match('/\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo)\s++(?:\p{L}++\s++){0,3}?$/iu', $before)) === 1
-                || $this->ok(preg_match('/(?:horarios?|turnos?|d[ií]as?|fechas?|asesor(?:es|as?)?+|informaci[oó]n|info|datos)\s++(?:\p{L}++\s++)?+$/iu', $before)) === 1
+            if ($staff($before)
+                || $this->ok(preg_match('/\bno\s++(?:est[aá]n?+|sigue|siguen|queda|quedan|hay|tenemos|se\s++encuentra)\s++(?:m[aá]s\s++)?+(?:(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++)?+$/iu', $before)) === 1
+                || $this->ok(preg_match('/\bno\s++(?:encontr\p{L}*+|encuentr\p{L}*+|hay|tenemos|quedan|veo|tengo|cont[aá]mos\s++con|cuento\s++con|dispon(?:emos|go)\s++de)\s++(?:\p{L}++\s++){0,3}?$/iu', $before)) === 1
+                // "horarios disponibles", "asesores disponibles"; a state verb makes it a claim ("según los datos sigue
+                // disponible"), and a suffix is no noun ("candidatos"). "los datos de disponibilidad" goes through the
+                // restricted noun rule below instead.
+                || (! str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad') && $this->ok(preg_match('/\b(?:horarios?|turnos?|d[ií]as?|fechas?|asesor(?:es|as?)?+|informaci[oó]n|info|datos)\s++(?:(?!(?:est[aá]n?+|sigue|siguen|queda|quedan|contin\p{L}*+|figura\p{L}*+|aparece\p{L}*+|permanece\p{L}*+|es|son)\b)\p{L}++\s++)?+$/iu', $before)) === 1)
+                // EVP-196: a noun phrase about data ("la información que tengo disponible sobre la unidad 12A", "los
+                // detalles oficiales disponibles en nuestro sistema") states nothing about a unit, whatever it names.
+                || ($this->ok(preg_match('/\b(?:informaci[oó]n|info|datos|detalles?)\s++(?:(?:que\s++(?:tengo|tenemos)|oficiales|actuales)\s++)?+$/iu', $before)) === 1
+                    && $this->ok(preg_match('/^\s++(?:sobre|de|del|acerca|en\s++(?:el|nuestro)\s++sistema)\b/iu', $after)) === 1)
                 || $this->ok(preg_match('/(?:consult\p{L}*+|pregunt\p{L}*+|saber|ver|averigu\p{L}*+|confirm\p{L}*+|chequ\p{L}*+|revis\p{L}*+)\s++si\s++(?:\p{L}++\s++)?+$/iu', $before)) === 1
-                || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
-                    && $this->ok(preg_match('/(?:consult\p{L}*+|confirm\p{L}*+|verific\p{L}*+|chequ\p{L}*+|revis\p{L}*+|averigu\p{L}*+|ver)\s++(?:la\s++)?+$/iu', $before)) === 1)
+                // EVP-196: the exemptions below never apply while a specific unit is at stake (named here or asked
+                // about by the visitor): "puedo mostrarte las unidades disponibles, entre ellas el 12B" stays a claim.
+                || (! $specific && (
+                    // An offer to search ("puedo buscarte lotes disponibles", "si buscás lotes disponibles, decime…").
+                    $this->ok(preg_match('/\b(?:buscar(?:te|le|les)?+|si\s++busc(?:[aá]s|an)|mostrar(?:te|le|les)?+|encontrar(?:te|le|les)?+)\s++(?:(?:otras?|m[aá]s|las|los|unas?|unos|algunas?|algunos|nuevas?)\s++)?+(?:opciones|propiedades|unidades|lotes|casas|departamentos|deptos|terrenos|alternativas)\s++$/iu', $before)) === 1
+                    // The noun as what someone checks or lacks ("sobre el precio ni la disponibilidad", "dentro de
+                    // nuestra disponibilidad"), never a statement ("disponibilidad inmediata", "…: sigue en pie").
+                    || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
+                        && $this->ok(preg_match('/\b(?:(?:ni|dentro\s++de|sobre(?:\s++\p{L}++){0,3}?|consultar(?:te|le)?+|consulto|verificar(?:te|le)?+|verifico|chequear(?:te|le)?+|chequeo|revisar(?:te|le)?+|reviso|confirmar(?:te|le)?+)\s++(?:la|nuestra|su)|(?:detalles?|datos|informaci[oó]n|info)\s++(?:(?!(?:de|sobre)\b)\p{L}++\s++)?+(?:de|sobre)(?:\s++la)?+)\s++$/iu', $before)) === 1
+                        && $this->ok(preg_match('/^[^.!?\n;]{0,40}?(?::|\b(?:es|est[aá]|sigue|contin[uú]a|se\s++mantiene|vigente|inmediata|total|confirmad\p{L}*+|garantizad\p{L}*+|asegurad\p{L}*+)\b)/iu', $after)) !== 1)
+                    || $meta($before, $after)))
                 || (! $aboutUnit && $this->ok(preg_match('/(?:estoy|estamos|quedo|quedamos|sigo|seguimos)\s++$/iu', $before)) === 1)
                 || (! $aboutUnit && $this->ok(preg_match('/^\s++para\s++(?:ayud|respond|lo\s+que|cualquier|charlar|hablar)/iu', $after)) === 1)) {
                 continue;
