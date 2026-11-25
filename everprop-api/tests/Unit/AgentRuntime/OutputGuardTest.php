@@ -64,6 +64,19 @@ final class OutputGuardTest extends TestCase
         $this->assertContains('UNSUPPORTED_AMOUNT', $guard->check(
             'El 12A cuesta USD 91000 y el 12B cuesta USD 85000, ambas unidades están disponibles.', $prices, [], facts: $facts));
     }
+
+    public function test_installment_amount_does_not_break_a_shared_unit_price_group(): void
+    {
+        $guard = new OutputGuard;
+        $prices = [['amount' => '85000', 'currency' => 'USD'], ['amount' => '91000', 'currency' => 'USD']];
+        $facts = [['code' => '12A', 'price' => $prices[0]], ['code' => '12B', 'price' => $prices[1]]];
+        $text = 'El 12A y el 12B tienen 36 cuotas de ARS1000 y cuestan USD91000 cada uno.';
+        $knowledge = ['Financiación: 36 cuotas de ARS1000.'];
+        $this->assertContains('UNSUPPORTED_AMOUNT', $guard->check($text, $prices, $knowledge, facts: $facts));
+        $facts[0]['price'] = $prices[1];
+        $this->assertNotContains('UNSUPPORTED_AMOUNT', $guard->check($text, $prices, $knowledge, facts: $facts));
+    }
+
     public function test_prices_are_scoped_to_units_even_when_sources_repeat_the_amount(): void
     {
         $guard = new OutputGuard;

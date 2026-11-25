@@ -4,9 +4,9 @@
 
 ABIERTO. El usuario autorizó publicar las ramas de trabajo en GitHub, sin cerrar tickets. Se prueba el conjunto EVP-193 + EVP-197 + EVP-L198 sobre develop 348d5c0, conservando EVP-196 y el lock actualizado de EVP-199. Las corridas anteriores por separado son históricas.
 
-Correcciones adicionales de EVP-193: ordenar los importes por posición antes de asociar «respectivamente» (evita intercambio de moneda/unidad) y separar los sujetos de precios consecutivos aunque exista un verbo plural posterior. Ambas regresiones fallaron antes de corregir y pasaron después. Se ajustó el fixture de horarios heredado de EVP-196 para aportar el precio por unidad que el contrato actual exige; no se relajó la guardia.
+Correcciones adicionales de EVP-193: ordenar los importes por posición antes de asociar «respectivamente» (evita intercambio de moneda/unidad) y separar los sujetos de precios consecutivos aunque exista un verbo plural posterior. Las regresiones fallaron antes de corregir y pasaron después. La revisión independiente encontró además un importe de cuota que interrumpía la asociación de un precio compartido; se corrigió usando el último precio procesado y se añadió su regresión. Se ajustó el fixture de horarios heredado de EVP-196 para aportar el precio por unidad que el contrato actual exige; no se relajó la guardia.
 
-Revalidación integrada inicial: 623 tests, 621 aprobados y 2 omitidos. Pendiente registrar la corrida completa de 229 casos con las dependencias exactas del lock.
+Revalidación integrada con dependencias exactas del lock: 680 tests, 678 aprobados, 2 omitidos y 2257 aserciones. Revisión llm-security del ajuste final aceptada. La corrida completa de 229 casos está en ejecución; no equivale a aprobación. Se corrigió la separación de métodos que falló en Pint del CI inicial.
 
 Decisión del usuario 25/11: la futura entrega develop → main incluirá IA/Conversations. Eso cambia el alcance de producto anterior, pero no autoriza afirmar release aprobada ni desactivar controles. La adecuación de política/CI y la integración remota todavía no se realizaron.
 

@@ -830,13 +830,14 @@ final class OutputGuard
                 usort($segmentMoney, fn (array $a, array $b): int => $a[2] <=> $b[2]);
                 $respectively = count($named) === count($segmentMoney) && count($named) > 1
                     && $this->ok(preg_match('/\brespectivamente\b/iu', $segment)) === 1;
+                $previousMoneyOffset = -1;
                 foreach ($segmentMoney as $moneyIndex => [$amount, $currency, $offset]) {
                     $beforeMoney = substr($segment, 0, $offset);
                     if ($this->ok(preg_match('/\b'.self::INSTALLMENTS.self::FILLER.'\s++(?:de\s++)?+(?:(?:'.self::USD.'|'.self::ARS.')\s*+)?+$/iu', $beforeMoney)) === 1) {
                         continue; // Installment amounts still require approved knowledge in check().
                     }
                     $beforeUnits = array_values(array_filter($mentions, fn (array $m): bool => $m[1] < $offset));
-                    $previousMoneyOffset = $segmentMoney[$moneyIndex - 1][2] ?? -1;
+
                     $priceGroup = array_values(array_filter($beforeUnits, fn (array $m): bool => $m[1] > $previousMoneyOffset));
                     $priceUnits = $beforeUnits !== [] ? [end($beforeUnits)[0]] : ($named ?: ($current ?: ($lastVisitorCodes ?: $notFound)));
                     if ($respectively) {
@@ -844,6 +845,7 @@ final class OutputGuard
                     } elseif (count($priceGroup) > 1 && ($every || $pluralVerb || $this->ok(preg_match('/\b(?:cuestan|valen|salen)\b/iu', $segment)) === 1)) {
                         $priceUnits = array_values(array_unique(array_column($priceGroup, 0)));
                     }
+                    $previousMoneyOffset = $offset;
                     foreach ($priceUnits as $unit) {
                         $backed = array_any($records, fn (array $r): bool => $r['code'] === $unit && is_array($r['price'])
                             && isset($r['price']['amount'], $r['price']['currency'])
