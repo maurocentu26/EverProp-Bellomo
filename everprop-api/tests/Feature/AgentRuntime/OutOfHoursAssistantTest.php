@@ -99,7 +99,7 @@ final class OutOfHoursAssistantTest extends TestCase
         $this->assertStringContainsString('Horario de atención del equipo: lunes a viernes de 9:00 a 18:00.', $system);
         $this->assertStringContainsString('FUERA de horario', $system);
         $this->assertStringContainsString('vuelven '.self::BACK, $system);
-        $this->assertStringContainsString('pedilo antes de derivar', $system, 'on the web chat it asks for a phone or email first');
+        $this->assertStringContainsString('sin exigir datos de contacto', $system, 'the handoff works without a phone or email');
         $this->assertSame('AI_ACTIVE', DB::table('conversations')->where('tenant_id', $chat['tenant']->id)->value('control_state'), 'it keeps helping');
     }
 
