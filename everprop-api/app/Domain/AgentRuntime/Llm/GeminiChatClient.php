@@ -165,7 +165,7 @@ final class GeminiChatClient implements LlmClient
                 ->withOptions(['allow_redirects' => false])
                 ->post("https://generativelanguage.googleapis.com/v1beta/models/{$this->modelName}:generateContent", $payload);
         } catch (ConnectionException) {
-            throw new LlmFailure('TIMEOUT', retryable: true, billable: true);
+            throw new LlmFailure('TIMEOUT', retryable: false, billable: true);
         }
 
         if (! $response->successful()) {
@@ -186,8 +186,12 @@ final class GeminiChatClient implements LlmClient
             throw LlmFailure::rateLimited($response->header('Retry-After'));
         }
 
+        if ($response->status() === 503 && $response->json('error.status') === 'UNAVAILABLE') {
+            throw LlmFailure::unavailable($response->header('Retry-After'));
+        }
+
         if ($response->serverError()) {
-            throw new LlmFailure('PROVIDER_ERROR', retryable: true, billable: true);
+            throw new LlmFailure('PROVIDER_ERROR', retryable: false, billable: true);
         }
 
         if (! $response->successful()) {

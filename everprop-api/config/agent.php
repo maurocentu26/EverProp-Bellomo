@@ -9,7 +9,7 @@ return [
     // Per-turn limits (ADR D13/D14).
     'max_llm_calls' => 2,
     'max_retries' => 1,
-    // EVP-115: wait before that retry (429/529, timeout, 5xx). Retry-After wins over the base; never longer than the max.
+    // Retry only explicit non-billable rejections; UNKNOWN never retries. Retry-After plus jitter fits the max.
     'retry_base_wait_ms' => (int) env('AGENT_RETRY_BASE_WAIT_MS', 1000),
     'retry_jitter_ms' => (int) env('AGENT_RETRY_JITTER_MS', 1000),
     'retry_max_wait_seconds' => (int) env('AGENT_RETRY_MAX_WAIT_SECONDS', 10),
