@@ -425,7 +425,18 @@ export function EditPropertyModal({
               />
             </Field>
           </fieldset>
-          {reviewing && <section aria-label="Confirmación completa"><h2>Revisar cambios</h2><dl className="inventory-review">{Object.entries(formData).map(([key, value]) => <div key={key}><dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie total (m²)",rooms:"Ambientes",bedrooms:"Dormitorios",bathrooms:"Baños",coveredAreaM2:"Superficie cubierta (m²)",uncoveredAreaM2:"Superficie descubierta (m²)",floor:"Piso",orientation:"Orientación",disposition:"Disposición",parkingSpaces:"Cocheras",expenses:"Expensas",expensesCurrency:"Moneda de expensas",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt><dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a consultar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd></div>)}</dl><p className="my-3 text-sm font-medium">Características: {features.length}</p><Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button></section>}
+          {reviewing && <section aria-label="Confirmación completa">
+            <h2>Revisar cambios</h2>
+            <dl className="inventory-review">{Object.entries(formData).filter(([key]) =>
+              (formData.propertyType === "Casa" || formData.propertyType === "Departamento") ||
+              !["rooms", "bedrooms", "bathrooms", "coveredAreaM2", "uncoveredAreaM2", "floor", "orientation", "disposition", "parkingSpaces", "expenses", "expensesCurrency"].includes(key)
+            ).map(([key, value]) => <div key={key}>
+              <dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie total (m²)",rooms:"Ambientes",bedrooms:"Dormitorios",bathrooms:"Baños",coveredAreaM2:"Superficie cubierta (m²)",uncoveredAreaM2:"Superficie descubierta (m²)",floor:"Piso",orientation:"Orientación",disposition:"Disposición",parkingSpaces:"Cocheras",expenses:"Expensas",expensesCurrency:"Moneda de expensas",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt>
+              <dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a consultar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd>
+            </div>)}</dl>
+            {(formData.propertyType === "Casa" || formData.propertyType === "Departamento") && <p className="my-3 text-sm font-medium">Características: {features.length}</p>}
+            <Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button>
+          </section>}
 
           {error && <div ref={errorRef} tabIndex={-1} role="alert" aria-live="assertive" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-200">{error}</div>}
           <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
