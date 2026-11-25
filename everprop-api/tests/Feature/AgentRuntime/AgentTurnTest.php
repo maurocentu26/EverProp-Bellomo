@@ -314,6 +314,112 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('NOT_FOUND', $gateway->execute($context, 'consultar_propiedad', ['unit_code' => 'L-101'])['error']['code'], 'still never shown once sold');
     }
 
+    public function test_a_bare_unit_code_cannot_be_changed_to_a_suffixed_unit_by_a_tool_call(): void
+    {
+        $f = $this->fixture();
+        $context = $this->context($f);
+        $ids = [];
+        foreach (['12' => '85000.00', '12A' => '91000.00'] as $code => $price) {
+            $ids[$code] = (string) Str::uuid();
+            DB::table('properties')->insert(['tenant_id' => $context->tenantId, 'public_id' => $ids[$code], 'code' => $code,
+                'title' => 'Lote '.$code, 'operation' => 'SALE', 'category' => 'LOT', 'status' => 'AVAILABLE',
+                'price' => $price, 'currency_code' => 'USD', 'city' => 'Jujuy', 'province' => 'Jujuy']);
+        }
+        $ask = function (string $text) use ($context): ToolContext {
+            $sequence = (int) DB::table('messages')->where('tenant_id', $context->tenantId)->where('conversation_id', $context->conversationId)->max('sequence') + 1;
+            DB::table('messages')->insert(['tenant_id' => $context->tenantId, 'conversation_id' => $context->conversationId,
+                'channel_account_id' => $context->channelAccountId, 'sequence' => $sequence, 'direction' => 'INBOUND',
+                'sender_type' => 'CONTACT', 'message_type' => 'TEXT', 'text_body' => $text, 'occurred_at' => now()]);
+
+            return new ToolContext($context->tenantId, $context->conversationId, $context->contactId, $context->channelAccountId,
+                $context->channelType, $context->runId, $context->epoch, $sequence, $context->traceId);
+        };
+        $gateway = app(ToolGateway::class);
+        $bare = $ask('Y el 12 a secas cuánto sale en verdes?');
+        foreach (['buscar_propiedades', 'consultar_propiedad'] as $tool) {
+            $wrong = $gateway->execute($bare, $tool, ['unit_code' => '12A']);
+            $this->assertSame('VALIDATION_ERROR', $wrong['error']['code']);
+            $this->assertStringNotContainsString('91000', json_encode($wrong));
+            $this->assertSame('VALIDATION_ERROR', $gateway->execute($bare, $tool, ['unit_code' => '12 A'])['error']['code']);
+        }
+        $this->assertSame(['12'], array_column($gateway->execute($bare, 'buscar_propiedades', [])['data']['items'], 'code'));
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($bare, 'consultar_propiedad', ['property_id' => $ids['12A']])['error']['code']);
+        $this->assertSame('12', $gateway->execute($bare, 'consultar_propiedad', ['property_id' => $ids['12']])['data']['code']);
+        $this->assertSame('12', $gateway->execute($bare, 'consultar_propiedad', ['unit_code' => '12'])['data']['code']);
+        $exact = $ask('Y el 12A cuánto sale?');
+        $this->assertSame('12A', $gateway->execute($exact, 'consultar_propiedad', ['unit_code' => '12A'])['data']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($exact, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $spaced = $ask('Y el 12 A cuánto sale?');
+        $this->assertSame('12A', $gateway->execute($spaced, 'consultar_propiedad', ['unit_code' => '12A'])['data']['code']);
+        $this->assertSame('12A', $gateway->execute($spaced, 'consultar_propiedad', ['unit_code' => '12 A'])['data']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($spaced, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $this->assertSame(['12A'], array_column($gateway->execute($spaced, 'buscar_propiedades', [])['data']['items'], 'code'));
+        $negated = $ask('No el 12A, el 12 a secas.');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($negated, 'consultar_propiedad', ['property_id' => $ids['12A']])['error']['code']);
+        $this->assertSame(['12'], array_column($gateway->execute($negated, 'buscar_propiedades', [])['data']['items'], 'code'));
+        $negatedAfter = $ask('El 12A no, el 12.');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($negatedAfter, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
+        $this->assertSame(['12'], array_column($gateway->execute($negatedAfter, 'buscar_propiedades', [])['data']['items'], 'code'));
+        $corrected = $ask('¿El 12A? No, el 12.');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($corrected, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
+        $this->assertSame(['12'], array_column($gateway->execute($corrected, 'buscar_propiedades', [])['data']['items'], 'code'));
+        $noArticle = $ask('¿12 a secas cuánto sale?');
+        $this->assertSame(['12'], array_column($gateway->execute($noArticle, 'buscar_propiedades', [])['data']['items'], 'code'));
+        $missing = $ask('Y el 99 a secas?');
+        $this->assertSame([], $gateway->execute($missing, 'buscar_propiedades', [])['data']['items']);
+        $longCode = $ask('Y el 12345 a secas?');
+        $this->assertSame([], $gateway->execute($longCode, 'buscar_propiedades', [])['data']['items']);
+        $foreign = Tenant::factory()->create();
+        $this->tenants[] = (int) $foreign->id;
+        DB::table('properties')->insert(['tenant_id' => $foreign->id, 'public_id' => (string) Str::uuid(), 'code' => '12B',
+            'title' => 'Lote ajeno', 'operation' => 'SALE', 'category' => 'LOT', 'status' => 'AVAILABLE',
+            'price' => '93000.00', 'currency_code' => 'USD', 'city' => 'Salta', 'province' => 'Salta']);
+        $foreignRequest = $ask('Y el 12B?');
+        $this->assertSame('NOT_FOUND', $gateway->execute($foreignRequest, 'consultar_propiedad', ['unit_code' => '12B'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($foreignRequest, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
+        $ambiguous = $ask('Y el 12 a?');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguous, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguous, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguous, 'buscar_propiedades', ['unit_code' => '12 A'])['error']['code']);
+        $ambiguousSearch = $ask('info del lote 12 a');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($ambiguousSearch, 'buscar_propiedades', ['unit_code' => '12 A'])['error']['code']);
+        $letterB = $ask('Y el 12 b?');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($letterB, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($letterB, 'buscar_propiedades', [])['error']['code']);
+        foreach (['¿El 12 a cuánto está?', '¿El 12 a qué precio?', '¿El 12 a la tarde?', '¿El 12 a la venta?', '¿El 12 o el 12A?', '¿El 12 o alguno parecido?'] as $ordinary) {
+            $ordinaryContext = $ask($ordinary);
+            $this->assertTrue($gateway->execute($ordinaryContext, 'buscar_propiedades', [])['ok'], $ordinary);
+            $this->assertSame('12', $gateway->execute($ordinaryContext, 'consultar_propiedad', ['unit_code' => '12'])['data']['code'], $ordinary);
+        }
+        $bis = $ask('Y el 12 bis?');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($bis, 'consultar_propiedad', ['unit_code' => '12'])['error']['code']);
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($bis, 'buscar_propiedades', [])['error']['code']);
+        $spoken = $ask('Y el doce cuánto sale?');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($spoken, 'consultar_propiedad', ['unit_code' => '12A'])['error']['code']);
+        $this->assertSame(['12'], array_column($gateway->execute($spoken, 'buscar_propiedades', [])['data']['items'], 'code'));
+        $both = $ask('¿Cuánto salen el 12 y el 12A?');
+        $this->assertSame('12', $gateway->execute($both, 'consultar_propiedad', ['unit_code' => '12'])['data']['code']);
+        $this->assertSame('12A', $gateway->execute($both, 'consultar_propiedad', ['unit_code' => '12A'])['data']['code']);
+        $bothBare = $ask('¿Cuánto salen 12 y 12A?');
+        $this->assertTrue($gateway->execute($bothBare, 'buscar_propiedades', [])['ok']);
+        $shorthand = $ask('¿El 12 x favor?');
+        $this->assertSame('12', $gateway->execute($shorthand, 'consultar_propiedad', ['unit_code' => '12'])['data']['code']);
+        $budget = $ask('Busco depto 2 amb. cerca del centro, x favor');
+        $this->assertTrue($gateway->execute($budget, 'buscar_propiedades', ['category' => 'APARTMENT', 'operation' => 'SALE'])['ok']);
+        $range = $ask('¿Puedo visitar el 12 a las 10?');
+        $this->assertSame('12', $gateway->execute($range, 'consultar_propiedad', ['unit_code' => '12'])['data']['code']);
+        $spacedSearch = $ask('¿Cuánto vale el lote 12 A?');
+        $this->assertSame(['12A'], array_column($gateway->execute($spacedSearch, 'buscar_propiedades', ['unit_code' => '12 A'])['data']['items'], 'code'));
+        $projectNumber = $ask('¿Tenés el 7 de Colinas?');
+        $this->assertTrue($gateway->execute($projectNumber, 'buscar_propiedades', ['category' => 'LOT'])['ok']);
+        $seven = (string) Str::uuid();
+        DB::table('properties')->insert(['tenant_id' => $context->tenantId, 'public_id' => $seven, 'code' => '7A',
+            'title' => 'Lote 7A', 'operation' => 'SALE', 'category' => 'LOT', 'status' => 'AVAILABLE',
+            'price' => '86000.00', 'currency_code' => 'USD', 'city' => 'Jujuy', 'province' => 'Jujuy']);
+        $bareSeven = $ask('¿Cuánto sale el 7 a secas?');
+        $this->assertSame('VALIDATION_ERROR', $gateway->execute($bareSeven, 'consultar_propiedad', ['unit_code' => '7A'])['error']['code']);
+    }
+
     public function test_interest_by_unit_code_requires_the_next_explicit_confirmation(): void
     {
         $f = $this->fixture();
