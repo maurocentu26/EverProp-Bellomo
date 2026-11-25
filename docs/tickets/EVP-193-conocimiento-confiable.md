@@ -1,4 +1,11 @@
 # EVP-193 — Conocimiento confiable y enlaces del tenant
+## Última validación integrada — 25/11/2026
+
+**ABIERTO / NO APTO PARA RELEASE.** Regresión local: 663 aprobadas, 2 omitidas, 2344 aserciones. Gemini real completo: 137 PASS / 67 FAIL (49 críticos) / 29 DETERMINISTIC; 362 HTTP 200. 91 PASS críticos requieren revisión humana. Modelo gemini-3.5-flash-lite; corpus original de 233 casos, sin cambiar umbrales. Se evaluaron juntos develop 71a8528, incremento EVP-193 e191e0e y EVP-L200 146c485. No se modificó producción ni se cerraron tickets.
+
+[Detalle integrado, evidencia, límites y los 67 checks fallidos](https://github.com/maurocentu26/EverProp-Bellomo/blob/ticket/EVP-L200-derivacion-persistida/docs/tickets/EVP-L200-derivacion-persistida.md). Reporte local completo: report-20261125-211911.json, SHA256 A9342E0908A04E38508135092AC09B472D96E52BD201D94DFC5A740FF6FF8F53. La unidad 12 se consultó correctamente en RIO-003; persisten fallos reales y conflictos de evaluación descritos en el informe. No hay evidencia suficiente para certificar ausencia de errores.
+
+Las secciones siguientes son historia de sus versiones y corridas; este resultado prevalece.
 ## Continuación de correcciones — 25/11/2026
 
 El PR #175 fue integrado externamente en develop 9b7259e mientras seguía la evaluación. Eso no constituye aprobación del sistema completo. Este incremento e191e0e se entrega por otro PR y mantiene el ticket abierto.
@@ -10,7 +17,7 @@ El PR #175 fue integrado externamente en develop 9b7259e mientras seguía la eva
 - El intento anterior con PROVIDER_DISABLED carecía de la clave en el comando local: se registra como ejecución inválida, no como 204 errores nuevos. La regresión inicialmente cargó QUEUE_CONNECTION=redis desde el entorno; se repitió correctamente con sync y sin workers ni envíos.
 - Derivación posterior a consulta: usuario autorizó EVP-L200 aparte. Evaluación conjunta posterior en curso; no mezclar el resultado intermedio con ese código.
 - Artefactos completos conservados localmente en storage/app/evals del worktree de integración; no se reintroducen los dumps eliminados del repositorio por el equipo.
-## Estado para revisión — 25/11/2026
+## Estado histórico previo a la integración externa — 25/11/2026
 
 **ABIERTO / NO APTO PARA RELEASE.** Rama subida y PR en borrador. Integra develop e1a6162; evaluación conjunta EVP-193 4d415c8 + EVP-197 0c48ac5, sin EVP-L198. CI del código aprobado en ambas ramas.
 
