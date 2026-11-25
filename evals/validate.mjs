@@ -33,6 +33,16 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith('.jsonl'))) {
     else if (e.persisted !== 'none' && (typeof e.persisted !== 'object' || e.persisted === null || Array.isArray(e.persisted))) errors.push(`${at} expected.persisted debe ser "none" u objeto`);
     for (const t of [...(e.tools ?? []), ...(e.tools_forbidden ?? [])]) if (!TOOLS.includes(t)) errors.push(`${at} herramienta fuera de la allowlist: ${t}`);
     for (const k of Object.keys(e)) if (!(k in P.expected.properties)) errors.push(`${at} expected.${k} no permitido`);
+    if ('turns' in e) {
+      if (!e.turns || typeof e.turns !== 'object' || Array.isArray(e.turns) || !Object.keys(e.turns).length) errors.push(at + ' expected.turns debe ser objeto no vacío');
+      else for (const [index, checks] of Object.entries(e.turns)) {
+        if (!/^(0|[1-9][0-9]*)$/.test(index) || !Array.isArray(c.turns) || Number(index) >= c.turns.length) errors.push(at + ' índice de turno inválido: ' + index);
+        if (!checks || typeof checks !== 'object' || Array.isArray(checks)) errors.push(at + ' comprobaciones de turno inválidas');
+        else for (const [rule, texts] of Object.entries(checks)) {
+          if (!['must_include', 'must_not_include'].includes(rule) || !Array.isArray(texts) || texts.some(t => typeof t !== 'string')) errors.push(at + ' regla de turno inválida: ' + rule);
+        }
+      }
+    }
     if (typeof c.critical !== 'boolean') errors.push(`${at} critical debe ser boolean`);
     count[c.segment] = (count[c.segment] ?? 0) + 1;
     if (c.split in splits) splits[c.split]++;

@@ -23,6 +23,7 @@
         "must_not_include": { "type": "array", "items": { "type": "string" } },
         "tools": { "type": "array", "items": { "type": "string" } },
         "tools_forbidden": { "type": "array", "items": { "type": "string" } },
+        "turns": { "type": "object", "minProperties": 1, "propertyNames": { "pattern": "^(0|[1-9][0-9]*)$" }, "additionalProperties": { "type": "object", "additionalProperties": false, "properties": { "must_include": { "type": "array", "items": { "type": "string" } }, "must_not_include": { "type": "array", "items": { "type": "string" } } } } },
         "persisted": {}
       }
     },

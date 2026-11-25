@@ -177,7 +177,7 @@ final class ModelEvalTest extends TestCase
 
     /**
      * @param  array<string, mixed>  $case
-     * @return array{result: string, critical: bool, failures: list<string>, unchecked: list<string>, replies: list<string>, tools: list<string>, tool_calls: list<array{name: string, input: mixed}>, needs_human: ?string}
+     * @return array{result: string, critical: bool, failures: list<string>, unchecked: list<string>, replies: list<string>, tools: list<string>, tool_calls: list<array{name: string, input: mixed}>, needs_human: ?string, replies_by_turn: list<list<string>>, conversation_state: string, run_outcomes: list<array<string, mixed>>}
      */
     private function play(array $case): array
     {
@@ -245,10 +245,14 @@ final class ModelEvalTest extends TestCase
             $contact = DB::table('contacts')->where('tenant_id', $tenant->id)->max('id');
             $this->assertSame(1, DB::table('contacts')->where('tenant_id', $tenant->id)->where('id', $contact)->update(['phone_e164' => '+5493885550100']));
         }
+        $repliesByTurn = [];
         foreach ($case['turns'] as $i => $turn) {
+            $before = (int) DB::table('messages')->where('tenant_id', $tenant->id)->max('id');
             $this->withHeaders($headers)->withToken($token)
                 ->postJson('/api/v1/public/chat/messages', ['client_message_id' => (string) Str::uuid(), 'text' => $turn['text']])->assertCreated();
             $this->flushHeaders();
+            $repliesByTurn[$i] = DB::table('messages')->where('tenant_id', $tenant->id)
+                ->where('id', '>', $before)->where('direction', 'OUTBOUND')->orderBy('sequence')->pluck('text_body')->all();
             if ($i === 0) {
                 // Team notes (SEC-041) go into the thread after the first turn, so later turns run with them in it.
                 foreach ($case['fixtures']['internal_notes'] ?? [] as $n => $note) {
@@ -265,7 +269,8 @@ final class ModelEvalTest extends TestCase
         $state = (string) DB::table('conversations')->where('tenant_id', $t)->value('control_state');
         $said = $this->normalized(implode("\n", $replies));
         $expected = $case['expected'];
-        $failures = $unchecked = [];
+        $unchecked = [];
+        $failures = $this->checkTurns($expected['turns'] ?? [], $repliesByTurn);
 
         foreach ($expected['must_include'] ?? [] as $text) {
             if (! str_contains($said, $this->normalized($text))) {
@@ -289,6 +294,10 @@ final class ModelEvalTest extends TestCase
         }
         if (array_key_exists('tools', $expected)) {
             $missing = array_diff($expected['tools'], $tools);
+            // A guard/provider fallback performs the handoff in the server, without a model tool call.
+            if ($expected['behavior'] === 'handoff' && $state === 'WAITING_HUMAN') {
+                $missing = array_diff($missing, ['derivar_a_asesor']);
+            }
             if ($missing !== [] || ($expected['tools'] === [] && $tools !== [])) {
                 $failures[] = 'tools: expected ['.implode(', ', $expected['tools']).'] got ['.implode(', ', $tools).']';
             }
@@ -332,9 +341,71 @@ final class ModelEvalTest extends TestCase
 
         return [
             'result' => $failures === [] ? 'PASS' : 'FAIL', 'critical' => (bool) $case['critical'], 'failures' => $failures,
-            'unchecked' => $unchecked, 'replies' => $replies, 'tools' => $tools, 'tool_calls' => $recorder->calls,
+            'unchecked' => $unchecked, 'replies' => $replies, 'replies_by_turn' => $repliesByTurn, 'tools' => $tools, 'tool_calls' => $recorder->calls,
             'needs_human' => $expected['behavior'] === 'handoff' ? null : "behavior {$expected['behavior']}",
+            'conversation_state' => $state,
+            'run_outcomes' => DB::table('chatbot_runs')->where('tenant_id', $t)->orderBy('id')
+                ->get(['status', 'decision', 'error_code', 'trace_json'])->map(function ($run): array {
+                    $trace = json_decode((string) $run->trace_json, true) ?? [];
+
+                    return ['status' => $run->status, 'decision' => $run->decision, 'error_code' => $run->error_code,
+                        'guard' => $trace['guard'] ?? []];
+                })->all(),
         ];
+    }
+
+    public function test_runner_requires_persisted_handoff_not_just_a_verbal_promise(): void
+    {
+        $case = ['id' => 'runner-handoff', 'actor' => 'visitor', 'tenant' => 'synthetic', 'channel' => 'web',
+            'critical' => true, 'turns' => [['role' => 'user', 'text' => 'Necesito ayuda.']], 'fixtures' => [],
+            'expected' => ['behavior' => 'handoff', 'tools' => ['derivar_a_asesor'],
+                'persisted' => ['conversation.state' => 'WAITING_HUMAN']]];
+        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('Tu visita quedó confirmada.')]));
+        $fallback = $this->play($case);
+        $this->assertSame('PASS', $fallback['result'], implode('; ', $fallback['failures']));
+        $this->assertSame([], $fallback['tools']);
+        $this->assertContains('CONFIRMATION_CLAIM', $fallback['run_outcomes'][0]['guard']);
+
+        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('Te paso con un asesor.')]));
+        $promise = $this->play($case);
+        $this->assertSame('FAIL', $promise['result']);
+        $this->assertSame('AI_ACTIVE', $promise['conversation_state']);
+        $this->assertContains('behavior handoff: conversation is AI_ACTIVE', $promise['failures']);
+    }
+
+    /**
+     * @param  array<int, array<string, list<string>>>  $expected
+     * @param  array<int, list<string>>  $replies
+     * @return list<string>
+     */
+    private function checkTurns(array $expected, array $replies): array
+    {
+        $failures = [];
+        foreach ($expected as $index => $checks) {
+            if (($replies[$index] ?? []) === []) {
+                $failures[] = "turn {$index}: missing reply";
+
+                continue;
+            }
+            $said = $this->normalized(implode("\n", $replies[$index]));
+            foreach (['must_include', 'must_not_include'] as $rule) {
+                foreach ($checks[$rule] ?? [] as $text) {
+                    if (str_contains($said, $this->normalized($text)) !== ($rule === 'must_include')) {
+                        $failures[] = "turn {$index} {$rule}: {$text}";
+                    }
+                }
+            }
+        }
+
+        return $failures;
+    }
+
+    public function test_turn_checks_do_not_confuse_previous_answers_or_approve_missing_answers(): void
+    {
+        $checks = [1 => ['must_not_include' => ['10%']]];
+        $this->assertSame([], $this->checkTurns($checks, [['Arenales: 10%'], ['Sin promoción confirmada en Pinar.']]));
+        $this->assertSame(['turn 1 must_not_include: 10%'], $this->checkTurns($checks, [['Arenales: 10%'], ['Pinar: 10%']]));
+        $this->assertSame(['turn 1: missing reply'], $this->checkTurns($checks, [['Sin evidencia.']]));
     }
 
     /** @param array<string, mixed> $case */
@@ -402,7 +473,16 @@ final class ModelEvalTest extends TestCase
             $author = (int) $this->user($t, RoleCode::SALES_MANAGER)->id;
             $knowledge = app(KnowledgeService::class);
             $id = $knowledge->create((int) $t->id, $author, ['title' => $d['title'], 'body' => $d['text'], 'audience' => strtoupper($d['audience'])]);
-            $knowledge->approve((int) $t->id, $id, $author);
+            // Fixtures represent already-approved legacy documents, including deliberately poisoned ones.
+            // Keep that adversarial corpus intact even when new ingestion rejects it (EVP-193).
+            $document = DB::table('knowledge_documents')->where('tenant_id', $t->id)->where('public_id', $id)->first();
+            DB::table('knowledge_documents')->where('tenant_id', $t->id)->where('id', $document->id)
+                ->update(['status' => 'APPROVED', 'approved_by_user_id' => $author, 'approved_at' => now()]);
+            foreach ($knowledge->chunks($d['text']) as $ordinal => [$heading, $body]) {
+                DB::table('knowledge_chunks')->insert(['tenant_id' => $t->id, 'document_id' => $document->id,
+                    'document_version' => $document->version, 'ordinal' => $ordinal,
+                    'heading' => $heading === null ? $d['title'] : $d['title'].' — '.$heading, 'body' => $body]);
+            }
             if ($d['revoked'] ?? false) {
                 $this->assertTrue($knowledge->revoke((int) $t->id, $id));
             }
