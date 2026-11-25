@@ -180,7 +180,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
         area_m2: data.area_m2 ? Number(data.area_m2) : undefined,
         description: data.description,
         sectorName: data.propertyType === "Lote" ? data.sectorName : undefined,
-        unitNumber: data.propertyType !== "Lote" && data.floor ? `${data.floor}-${data.unitNumber}` : data.unitNumber,
+        unitNumber: data.propertyType !== "Lote" && data.floor && data.unitNumber ? `${data.floor}-${data.unitNumber}` : data.unitNumber,
         status: "available",
         commercialFeatures: data.propertyType === "Lote" ? { land: {
           frente_m: data.frente_m ? Number(data.frente_m) : undefined,
