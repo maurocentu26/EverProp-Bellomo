@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
  * Live inventory as the anonymous visitor sees it: same rule as the public catalogue
  * (Property::publiclyVisible — AVAILABLE, not deleted, loose or inside a public project), always
  * filtered by the run's tenant. Read at call time, never from an index copy (ADR D05).
- * Price is only shown when amount AND currency exist; otherwise null = "no confirmado".
+ * EVP-200: price and availability never reach the model (being listed does not mean it is available).
  */
 final class PublicInventory
 {
@@ -75,7 +75,7 @@ final class PublicInventory
     /** @return list<string> */
     public function columns(): array
     {
-        return ['p.id', 'p.public_id', 'p.code', 'p.title', 'p.operation', 'p.category', 'p.status', 'p.price', 'p.currency_code',
+        return ['p.id', 'p.public_id', 'p.code', 'p.title', 'p.operation', 'p.category',
             'p.city', 'p.province', 'p.neighborhood', 'p.bedrooms', 'p.bathrooms', 'p.area_m2', 'p.description', 'p.version',
             'p.updated_at', 'pr.public_id as project_public_id', 'pr.name as project_name'];
     }
@@ -89,8 +89,7 @@ final class PublicInventory
             'title' => $p->title,
             'operation' => $p->operation,
             'category' => $p->category,
-            'price' => $p->price !== null && $p->currency_code !== null ? ['amount' => number_format((float) $p->price, 2, '.', ''), 'currency' => $p->currency_code] : null,
-            'availability' => $p->status,
+            // EVP-200: no price and no availability reach the model; an advisor confirms both.
             'city' => $p->city,
             'project' => $p->project_name,
             'as_of' => CarbonImmutable::now('UTC')->toIso8601String(),

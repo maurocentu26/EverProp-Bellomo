@@ -7,9 +7,10 @@ use App\Domain\AgentRuntime\Knowledge\KnowledgeSafety;
 /**
  * Deterministic checks on the model's final text before it can be queued (ADR D09, evals
  * "no inventar precio" / "no confirmar visita"). The model is not trusted to follow the prompt:
- * - every money expression must match an (amount, currency) pair returned by a tool this turn or
- *   written in an approved knowledge excerpt; amounts without a currency must match some pair's
- *   amount. "$" is pesos (ARS). "90 mil" / "1,2 millones" are scaled before comparing;
+ * - EVP-200: no price, no availability claim, and no quote or installment unless the project authorizes them.
+ *   A money expression passes only when it repeats the visitor's own request (contact summary) or, with
+ *   financing authorized, an (amount, currency) pair of an approved knowledge excerpt; amounts without a
+ *   currency must match some pair's amount. "$" is pesos (ARS). "90 mil" / "1,2 millones" are scaled first;
  * - no claim that a visit/unit is confirmed, scheduled or reserved; and when a visit was requested
  *   this turn the reply must say an advisor confirms it;
  * - commercial terms (installments, percentages, rates, financing periods) need the same pair in this
@@ -129,19 +130,23 @@ final class OutputGuard
      * @param  string|null  $factsText  the part of $text the fact checks read (the contact summary without the
      *                                  visitor's own name, phone and email)
      * @param  list<string>  $allowedHosts  exact tenant domains from server configuration, never RAG or visitor input
+     * @param  bool  $financingAllowed  the project authorizes quotes and installments from approved knowledge (EVP-200;
+     *                                  no caller sets it until the per-project panel flag exists)
      * @return list<string> violation codes (empty = ok)
      */
-    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false, array $visitorMessages = [], array $requested = [], array $facts = [], bool $inventoryChecked = false, array $locations = [], array $notFound = [], array $serverTexts = [], ?string $factsText = null, array $allowedHosts = []): array
+    public function check(string $text, array $prices, array $knowledge, bool $visitRequested = false, bool $draft = false, bool $outOfHours = false, array $visitorMessages = [], array $requested = [], array $facts = [], bool $inventoryChecked = false, array $locations = [], array $notFound = [], array $serverTexts = [], ?string $factsText = null, array $allowedHosts = [], bool $financingAllowed = false): array
     {
         $text = $this->canonical($text, strict: true);
         $evidence = fn (string $item): string => mb_substr($this->canonical($item), 0, self::EVIDENCE_CHARS);
         $knowledge = array_map(fn (string $item): string => $evidence(KnowledgeSafety::evidence($item)), $knowledge);
         $requested = array_map($evidence, $requested);
+        // EVP-200: the assistant never states a price, and quotes and installments only when the project authorizes
+        // them ($financingAllowed, off until the panel flag exists). Tool prices never back an amount; approved
+        // knowledge backs amounts and terms only when authorized. The visitor's own request ($requested, the
+        // server-built contact summary) may still be repeated back to them.
+        $commercial = $financingAllowed ? [...$knowledge, ...$requested] : $requested;
         $allowed = [];
-        foreach ($prices as $price) {
-            $allowed[] = [$this->normalize($price['amount'], null), $price['currency']];
-        }
-        foreach ([...$knowledge, ...$requested] as $excerpt) {
+        foreach ($commercial as $excerpt) {
             foreach ($this->money($excerpt) as $pair) {
                 $allowed[] = $pair;
             }
@@ -161,8 +166,23 @@ final class OutputGuard
                 break;
             }
         }
-        if (array_diff($this->terms($text), [...array_merge(...array_map($this->terms(...), [...$knowledge, ...$requested])),
+        if (array_diff($this->terms($text), [...array_merge(...array_map($this->terms(...), $commercial)),
             ...$this->negatedEchoTerms($text, $visitorMessages)]) !== []) {
+            $violations[] = 'UNSUPPORTED_TERM';
+        }
+        // EVP-200: a bare number in a price sentence ("el 12A sale 85.000", "1.200 el metro", "85 lucas") is an amount,
+        // even without a currency; it passes only when the commercial evidence above has the same digits.
+        $backed = array_map(fn (string $e): string => preg_replace('/\D++/', ' ', preg_replace('/(?<=\d)[.,](?=\d{3}\b)/', '', $e) ?? '') ?? '', $commercial);
+        foreach ($this->priceNumbers($text) as $digits) {
+            if (! in_array('UNSUPPORTED_AMOUNT', $violations, true)
+                && array_filter($backed, fn (string $b): bool => in_array($digits, explode(' ', $b), true)) === []) {
+                $violations[] = 'UNSUPPORTED_AMOUNT';
+            }
+        }
+        // EVP-200: with quotes and installments not authorized, saying that there are installments, financing, a
+        // discount or a cheaper unit informs about them too, numbers or not. Asking, lacking the data or handing it to
+        // an advisor does not; the server-built contact summary ($requested) repeats the visitor's own request.
+        if (! $financingAllowed && $requested === [] && ! in_array('UNSUPPORTED_TERM', $violations, true) && $this->financingClaim($text)) {
             $violations[] = 'UNSUPPORTED_TERM';
         }
         if ($this->unverifiedLinks($this->withoutVisitorEmails($text, $visitorMessages), $allowedHosts)) {
@@ -171,7 +191,8 @@ final class OutputGuard
         if ($this->unsupported(self::PAYMENT, $text, $knowledge)) {
             $violations[] = 'PAYMENT_DATA';
         }
-        if ($this->unsupported(self::SCARCITY, $text, $knowledge)) {
+        // EVP-200: stock and demand are availability claims, never stated even when a source says so.
+        if ($this->ok(preg_match(self::SCARCITY, $text)) === 1) {
             $violations[] = 'UNSUPPORTED_AVAILABILITY';
         }
         if ($this->claimsConfirmation($text)) {
@@ -197,6 +218,46 @@ final class OutputGuard
         $this->broken = false;
 
         return array_values(array_unique($violations));
+    }
+
+    /**
+     * EVP-200: digits of every number that reads as a price in a sentence with a price word: 4 to 8 digits or with
+     * thousands separators, or followed by a scale ("85 mil", "85 lucas"). Years, phones (runs next to '-' or longer
+     * than 8 digits), surfaces and other units stay out. ponytail: lexical; "Sí, ese es el precio" relies on evals.
+     *
+     * @return list<string>
+     */
+    private function priceNumbers(string $text): array
+    {
+        $found = [];
+        foreach (preg_split('/(?<=[.!?;\n])\s++/u', $text) ?: [] as $sentence) {
+            if ($this->ok(preg_match('/\b(?:precios?|valor(?:es)?+|sale|salen|cuesta|cuestan|vale|valen|arranca|arrancan|desde|lista|contado|presupuesto|lucas|verdes|palos|euros?|cotizaci[oó]n|cotiza)\b|€|\bel\s++metro\b|\bpor\s++(?:m2|m²|metro)/iu', $sentence)) !== 1) {
+                continue;
+            }
+            foreach ($this->matches('/(?<![\p{N}\-\/.,])(\d{1,3}(?:[.,]\d{3})++|\d{4,8}|\d++(?=\s*+(?:mil|lucas|palos|k)\b))(?![\p{N}\-\/]|[.,]\d)(?!\s*+(?:m2|m²|metros|mts|ha\b|hect|km|a[ñn]os?\b|cuot|%|hs\b|horas?\b|dorm|amb|ba[ñn]))/iu', $sentence) as $m) {
+                $digits = preg_replace('/\D++/', '', (string) $m[1][0]) ?? '';
+                if (preg_match('/^(?:19|20)\d\d$/', $digits) !== 1) {
+                    $found[] = $digits;
+                }
+            }
+        }
+
+        return array_values(array_unique($found));
+    }
+
+    /** EVP-200: an affirmative sentence about installments, financing, discounts or a cheaper unit (see check()). */
+    private function financingClaim(string $text): bool
+    {
+        foreach (preg_split('/(?<=[.!?;:\n])\s++/u', $text) ?: [] as $sentence) {
+            if ($this->ok(preg_match('/\b(?:cuot\p{L}*+|financ\p{L}*+|anticipo|descuentos?|bonificaci\p{L}*+|promo\p{L}*+|planes?\s++de\s++pago|m[aá]s\s++barat\p{L}*+|econ[oó]mic\p{L}*+|accesibles?|tu\s++presupuesto|precio\s++especial|ofertas?)\b/iu', $sentence)) === 1
+                && ($this->ok(preg_match('/¿|\?\s*+$|\basesor|\bno\s++(?:te\s++)?(?:tengo|tenemos|puedo|podemos|cuento|contamos|s[eé])\b|\bsin\s++(?:datos|informaci[oó]n)\b/iu', $sentence)) !== 1
+                    // "Hay financiación propia, un asesor te detalla": handing it over does not undo stating it exists.
+                    || $this->ok(preg_match('/\b(?:hay|tenemos|ofrecemos|contamos\s++con|cuenta\s++con|tiene|tienen|se\s++puede|se\s++pueden|pod[eé]s|aceptamos|incluye|incluyen|existe|existen|est[aá]\s++(?:en\s++)?+(?:promo|oferta))\b(?![^.!?\n]{0,30}?\b(?:asesor|pregunt|consult))/iu', $sentence)) === 1)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param list<string> $allowedHosts Exact hosts resolved by the server for this tenant. */
@@ -761,9 +822,8 @@ final class OutputGuard
         $prev = ['claims' => [], 'availability' => [], 'places' => [], 'amenities' => []];
         $checkAvailability = function (array $availabilities, array $about) use (&$found, $available, $notFound, $availableCount, $inventoryChecked): void {
             foreach ($availabilities as $availability) {
-                if (($availability === 'POSITIVE' && ($about !== []
-                        ? array_diff($about, $available) !== [] || array_intersect($about, $notFound) !== []
-                        : $availableCount === 0 || $notFound !== []))
+                // EVP-200: the assistant never confirms that a unit is available, even one a tool just returned.
+                if ($availability === 'POSITIVE'
                     || ($availability === 'NEGATIVE' && ($about !== []
                         ? array_diff($about, $notFound) !== [] || array_intersect($about, $available) !== []
                         : $notFound === [] && ! ($inventoryChecked && $availableCount === 0)))) {
@@ -1526,7 +1586,7 @@ final class OutputGuard
                 || (str_contains(mb_strtolower((string) $m[0][0]), 'vendi') && $this->ok(preg_match('/\b(?:no|ni|tampoco)\s++(?:(?:todav[ií]a|a[uú]n)\s++)?+(?:se\s++ha\s++)?+$/iu', $before)) === 1);
             $found[] = $negatedParticiple ? 'POSITIVE' : 'NEGATIVE';
         }
-        foreach ($this->matches('/\bdisponibles?+\b|\bdisponibilidad\b|\ba\s++la\s++venta\b|\ben\s++venta\b|\b(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++libres?+\b|\b(?:todav[ií]a|a[uú]n)\s++(?:la|lo|las|los)\s++tenemos\b|\bse\s++(?:puede|pueden)\s++comprar\b|\bpod[eé]s\s++comprar(?:la|lo|las|los)?+\b|\bquedan?+\s++(?:\d++|unidades|lotes|departamentos|casas)\b|\bnadie\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\b(?:todav[ií]a|a[uú]n)\s++no\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\b(?:ya|lote|unidad|depto|departamento|casa|terreno|propiedad|\d++[a-z]{0,2})\s++(?:ya\s++)?+es\s++tuy[oa]s?+\b|\b(?:lo|la|los|las)\s++pod[eé]s\s++(?:reservar|se[ñn]ar)\b/iu', $segment) as $m) {
+        foreach ($this->matches('/\bdisponibles?+\b|\bdisponibilidad\b|\ba\s++la\s++venta\b|\ben\s++venta\b|\b(?:est[aá]n?+|sigue|siguen|queda|quedan)\s++libres?+\b|\b(?:todav[ií]a|a[uú]n)\s++(?:la|lo|las|los)\s++tenemos\b|\bse\s++(?:puede|pueden)\s++comprar\b|\bpod[eé]s\s++comprar(?:la|lo|las|los)?+\b|\bquedan?+\s++(?:\d++|unidades|lotes|departamentos|casas)\b|\bnadie\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\b(?:todav[ií]a|a[uú]n)\s++no\s++(?:(?:lo|la|los|las)\s++)?+(?:compr|reserv|se[ñn])\p{L}*+|\b(?:ya|lote|unidad|depto|departamento|casa|terreno|propiedad|\d++[a-z]{0,2})\s++(?:ya\s++)?+es\s++tuy[oa]s?+\b|\b(?:lo|la|los|las)\s++pod[eé]s\s++(?:reservar|se[ñn]ar)\b|\bno\s++(?:est[aá]n?+|fue|fueron|qued[oó])\s++(?:reservad|se[ñn]ad)[oa]s?+\b|\bsin\s++(?:vender(?:se)?+|comprador(?:es)?+|due[ñn][oa]s?+)\b|\bno\s++tiene\s++comprador\b|\bhay\s++stock\b|\bquedan\s++(?:varias|varios|algunas|algunos|unas|unos|bastantes|muchas|muchos)\b|\bpod[eé]s\s++(?:reservar|se[ñn]ar)(?:la|lo|las|los)\b|\bse\s++(?:puede|pueden)\s++(?:reservar|se[ñn]ar)\b(?!\s++(?:un|una|el|la|tu)\s++(?:turno|visita|horario|cita|recorrida))/iu', $segment) as $m) {
             $before = substr($segment, 0, (int) $m[0][1]);
             $after = substr($segment, (int) $m[0][1] + strlen((string) $m[0][0]));
             if ($staff($before)
@@ -1542,7 +1602,23 @@ final class OutputGuard
                 // detalles oficiales disponibles en nuestro sistema") states nothing about a unit, whatever it names.
                 || ($this->ok(preg_match('/\b(?:informaci[oó]n|info|datos|detalles?)\s++(?:(?:que\s++(?:tengo|tenemos)|oficiales|actuales)\s++)?+$/iu', $before)) === 1
                     && $this->ok(preg_match('/^\s++(?:sobre|de|del|acerca|en\s++(?:el|nuestro)\s++sistema)\b/iu', $after)) === 1)
-                || $this->ok(preg_match('/(?:consult\p{L}*+|pregunt\p{L}*+|saber|ver|averigu\p{L}*+|confirm\p{L}*+|chequ\p{L}*+|revis\p{L}*+)\s++si\s++(?:\p{L}++\s++)?+$/iu', $before)) === 1
+                // EVP-200: up to four words between "si" and the state ("un asesor te confirma si el 12A está disponible").
+                || $this->ok(preg_match('/(?:consult\p{L}*+|pregunt\p{L}*+|saber|ver|averigu\p{L}*+|confirm\p{L}*+|chequ\p{L}*+|revis\p{L}*+)\s++si\s++(?:[\p{L}\p{N}\-\/]++\s++){0,4}?$/iu', $before)) === 1
+                // EVP-200: lacking it, even about a named unit ("no puedo confirmarte la disponibilidad del 12A", "no tengo
+                // información sobre la disponibilidad del 12A"); "te paso los detalles de disponibilidad del 12B" stays.
+                || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
+                    && $this->ok(preg_match('/\bno\s++(?:te\s++|le\s++)?+(?:(?:puedo|podemos)\s++(?:confirmar|informar|asegurar|garantizar)(?:te|le)?+|(?:tengo|tenemos|cuento\s++con|contamos\s++con)\s++(?:(?:la\s++)?+informaci[oó]n|datos|detalles?)\s++(?:sobre|de|acerca\s++de))\s++la\s++$/iu', $before)) === 1
+                    && $this->ok(preg_match('/^[^.!?\n;]{0,40}?(?::|\b(?:es|est[aá]|sigue|contin[uú]a|se\s++mantiene|vigente|inmediata|total|confirmad\p{L}*+|garantizad\p{L}*+|asegurad\p{L}*+)\b)/iu', $after)) !== 1)
+                // EVP-200: the noun handed to a person, allowlisted: "la disponibilidad del 12A te la confirma un asesor",
+                // "el precio y la disponibilidad te los confirma un asesor", "un asesor te confirma la disponibilidad".
+                || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
+                    && (($this->ok(preg_match('/(?:^|[,:;]\s*+)(?:(?:el|los)\s++precios?\s++y\s++)?+(?:la|su)\s++$/iu', $before)) === 1
+                            && $this->ok(preg_match('/^\s++(?:del?\s++(?:[\p{L}\p{N}\-\/]++\s++){1,3}?)?+(?:te|se|le)\s++(?:l[oa]s?+\s++)?+(?:va\s++a\s++)?+confirm\p{L}*+\s++(?:un|una|el|la|nuestro|nuestra)\s++asesor/iu', $after)) === 1)
+                        || $this->ok(preg_match('/^\s*+(?:un|una|el|la|nuestro|nuestra)\s++asesor[ae]?+\s++(?:te|le|les)\s++(?:va\s++a\s++)?+confirm\p{L}*+\s++(?:la|su)\s++$|^\s*+(?:un|una|el|la|nuestro|nuestra)\s++asesor[ae]?+\s++va\s++a\s++confirmar(?:te|le|les)\s++(?:la|su)\s++$/iu', $before)) === 1)
+                    && $this->ok(preg_match('/^\s++(?:del?\s++(?:[\p{L}\p{N}\-\/]++\s++){0,3}?)?+[^.!?\n;]{0,40}?\b(?:es|est[aá]|sigue|contin[uú]a|inmediata|total|confirmad\p{L}*+|garantizad\p{L}*+|asegurad\p{L}*+)\b/iu', $after)) !== 1)
+                // EVP-200: the visitor's schedule ("contame tu disponibilidad horaria para visitar el 12A") is no unit state.
+                || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
+                    && ($this->ok(preg_match('/\btu\s++$/iu', $before)) === 1 || $this->ok(preg_match('/^\s++(?:horari|de\s++horario|para\s++(?:la\s++)?+visita|para\s++(?:ir|visitar|recorrer))/iu', $after)) === 1))
                 // EVP-196: the exemptions below never apply while a specific unit is at stake (named here or asked
                 // about by the visitor): "puedo mostrarte las unidades disponibles, entre ellas el 12B" stays a claim.
                 || (! $specific && (
@@ -1553,6 +1629,9 @@ final class OutputGuard
                     || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
                         && $this->ok(preg_match('/\b(?:(?:ni|dentro\s++de|sobre(?:\s++\p{L}++){0,3}?|consultar(?:te|le)?+|consulto|verificar(?:te|le)?+|verifico|chequear(?:te|le)?+|chequeo|revisar(?:te|le)?+|reviso|confirmar(?:te|le)?+)\s++(?:la|nuestra|su)|(?:detalles?|datos|informaci[oó]n|info)\s++(?:(?!(?:de|sobre)\b)\p{L}++\s++)?+(?:de|sobre)(?:\s++la)?+)\s++$/iu', $before)) === 1
                         && $this->ok(preg_match('/^[^.!?\n;]{0,40}?(?::|\b(?:es|est[aá]|sigue|contin[uú]a|se\s++mantiene|vigente|inmediata|total|confirmad\p{L}*+|garantizad\p{L}*+|asegurad\p{L}*+)\b)/iu', $after)) !== 1)
+                    // EVP-200: "Encontré 3 lotes en venta en Yala": the listing's operation, not a unit's state.
+                    || ($this->ok(preg_match('/^en\s++venta$/iu', (string) $m[0][0])) === 1
+                        && $this->ok(preg_match('/\b(?:lotes|casas|departamentos|deptos|unidades|propiedades|terrenos|opciones|locales|cocheras)\s++$/iu', $before)) === 1)
                     || $meta($before, $after)))
                 || $this->ok(preg_match('/^\s++(?:la\s++)?+financiaci[oó]n\b/iu', $after)) === 1
                 || ($this->ok(preg_match('/^disponibles?+$/iu', (string) $m[0][0])) === 1

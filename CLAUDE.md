@@ -30,7 +30,7 @@ El diseño aprobado para revisión vive en `docs/eversys-conversations/`. Ante c
 2. Sin RBAC paralelo: `users.role_code`, capacidades y scopes existentes (ADR D05).
 3. Baseline SQL inmutable. Cambios solo con scripts `database/schema/forward/AAAA-MM-DD.NNN_descripcion.sql`.
 4. El LLM propone; el backend autoriza. Herramientas cerradas con JSON Schema `additionalProperties:false`; tenant, actor, epoch e `idempotency_key` los genera el servidor. Sin SQL, shell ni HTTP arbitrario (D07, D09).
-5. Precio, moneda, disponibilidad y códigos de unidad salen de Inventory en vivo. `12`, `12A`, `12B` son entidades distintas. Moneda `null` = no confirmada.
+5. Precio, moneda, disponibilidad y códigos de unidad salen de Inventory en vivo. `12`, `12A`, `12B` son entidades distintas. Moneda `null` = no confirmada. El asistente **nunca** informa precio ni disponibilidad de una unidad, y cotización o cuotas solo si el proyecto lo autoriza (por defecto nunca): las tools no se los entregan y `OutputGuard` los bloquea (EVP-200).
 6. Mutaciones idempotentes: `UNIQUE(tenant_id, tool_name, idempotency_key)` + hash; mismo key con otro hash = 409.
 7. Receipt/outbox durables antes de ACK; `UNKNOWN` nunca se reintenta a ciegas (D10).
 8. Handoff con `control_epoch` y serializador de envío; salida IA con epoch viejo se descarta (D11).
