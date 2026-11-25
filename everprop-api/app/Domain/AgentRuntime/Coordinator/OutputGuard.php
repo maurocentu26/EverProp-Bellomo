@@ -182,8 +182,15 @@ final class OutputGuard
             $violations[] = 'ACTION_CLAIM';
         }
         // EVP-L10: with nobody online, never promise a person right away (the fixed notice says when they are back).
-        if ($outOfHours && $this->ok(preg_match(self::IMMEDIATE, $text)) === 1) {
-            $violations[] = 'IMMEDIATE_PROMISE';
+        if ($outOfHours) {
+            foreach ($this->matches(self::IMMEDIATE, $text) as $match) {
+                $before = substr($text, 0, (int) $match[0][1]);
+                // A denial covers only this occurrence, never a later affirmative promise.
+                if ($this->ok(preg_match('/(?:^|[.!?\n])\s*no\s+(?:puedo|podemos)\s+(?:prometer|garantizar)\s+que\s+(?:alguien|un\s+asesor)\s+te\s+(?:llame|contacte|responda|atienda)\s*$/iu', $before)) !== 1) {
+                    $violations[] = 'IMMEDIATE_PROMISE';
+                    break;
+                }
+            }
         }
         if ($visitRequested && ! in_array('CONFIRMATION_CLAIM', $violations, true)
             && $this->ok(preg_match('/asesor[^.!?\n]{0,60}confirm|confirm[^.!?\n]{0,60}asesor/iu', $text)) !== 1) {
@@ -1499,6 +1506,10 @@ final class OutputGuard
      */
     private function availability(string $segment, bool $aboutUnit, bool $specific = false): array
     {
+        // The visit tool's next step asks an advisor to check; it asserts no inventory state.
+        if ($this->ok(preg_match('/^\s*Un\s+asesor\s+revisa\s+(?:la\s+)?disponibilidad\s+y\s+(?:te(?:\s+lo)?\s+)?confirma\s+por\s+este\s+medio[.!]?\s*$/iu', $segment)) === 1) {
+            return [];
+        }
         $found = [];
         if ($this->ok(preg_match('/\bno\s++(?:cuento|contamos)\s++con\s++disponibilidad\b/iu', $segment)) === 1) {
             $found[] = 'NEGATIVE';
