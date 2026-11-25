@@ -429,7 +429,7 @@ export function EditPropertyModal({
           {reviewing && <section aria-label="Confirmación completa">
             <h2>Revisar cambios</h2>
             <dl className="inventory-review">{Object.entries(formData).filter(([key]) =>
-              (formData.propertyType === "Casa" || formData.propertyType === "Departamento") ||
+              residential ? key !== "sectorName" :
               !["rooms", "bedrooms", "bathrooms", "coveredAreaM2", "uncoveredAreaM2", "floor", "orientation", "disposition", "parkingSpaces", "expenses", "expensesCurrency"].includes(key)
             ).map(([key, value]) => <div key={key}>
               <dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie total (m²)",rooms:"Ambientes",bedrooms:"Dormitorios",bathrooms:"Baños",coveredAreaM2:"Superficie cubierta (m²)",uncoveredAreaM2:"Superficie descubierta (m²)",floor:"Piso",orientation:"Orientación",disposition:"Disposición",parkingSpaces:"Cocheras",expenses:"Expensas",expensesCurrency:"Moneda de expensas",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt>
