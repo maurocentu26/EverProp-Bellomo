@@ -1,4 +1,15 @@
 # EVP-193 — Conocimiento confiable y enlaces del tenant
+## Continuación de correcciones — 25/11/2026
+
+El PR #175 fue integrado externamente en develop 9b7259e mientras seguía la evaluación. Eso no constituye aprobación del sistema completo. Este incremento e191e0e se entrega por otro PR y mantiene el ticket abierto.
+
+- Reproducción RED → GREEN de dos falsos bloqueos: el asesor revisa disponibilidad antes de confirmar; negar una promesa de atención inmediata no equivale a prometerla. Pares negativos conservan el rechazo de afirmaciones posteriores y disponibilidad confirmada sin inventario.
+- Prompt versionado: prioriza inventario actual sobre precios históricos y prohíbe citas inventadas cuando no hay fuentes. No cambia la guardia de fuentes desconocidas ni importes sin respaldo.
+- Guardia: 545 pruebas, 677 aserciones. Pint y PHPStan dirigido pasan; revisión independiente de seguridad IA sin hallazgos pendientes en el incremento.
+- Corrida real intermedia (sin EVP-L200): 233 casos, 140 PASS / 64 FAIL / 29 DETERMINISTIC; 45 FAIL críticos. 365 HTTP 200. SEC-012, SEC-040, SEC-020, DATA-003 y CRM-002 pasan en esta corrida. No prueba estabilidad ni ausencia de regresiones: RIO-003 vuelve a fallar porque el modelo agrega un presupuesto cero que el visitante no pidió; ya no confunde el código 12 con 12A en esa traza.
+- El intento anterior con PROVIDER_DISABLED carecía de la clave en el comando local: se registra como ejecución inválida, no como 204 errores nuevos. La regresión inicialmente cargó QUEUE_CONNECTION=redis desde el entorno; se repitió correctamente con sync y sin workers ni envíos.
+- Derivación posterior a consulta: usuario autorizó EVP-L200 aparte. Evaluación conjunta posterior en curso; no mezclar el resultado intermedio con ese código.
+- Artefactos completos conservados localmente en storage/app/evals del worktree de integración; no se reintroducen los dumps eliminados del repositorio por el equipo.
 ## Estado para revisión — 25/11/2026
 
 **ABIERTO / NO APTO PARA RELEASE.** Rama subida y PR en borrador. Integra develop e1a6162; evaluación conjunta EVP-193 4d415c8 + EVP-197 0c48ac5, sin EVP-L198. CI del código aprobado en ambas ramas.
