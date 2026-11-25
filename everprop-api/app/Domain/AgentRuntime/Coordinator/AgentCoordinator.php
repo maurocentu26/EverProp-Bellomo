@@ -322,11 +322,11 @@ final class AgentCoordinator
                 }
                 $e->billable ? $this->ledger->markUnknown($context->tenantId, $key) : $this->ledger->release($context->tenantId, $key);
                 $retriesUsed = $trace['retries'] ?? 0;
-                $wait = $e->retryable && $retriesUsed < (int) config('agent.max_retries') ? $this->retryWait($e) : null;
+                $wait = ! $e->billable && $e->retryable && $retriesUsed < (int) config('agent.max_retries') ? $this->retryWait($e) : null;
                 if ($wait !== null) {
                     $trace['retries'] = $retriesUsed + 1;
                     $trace['retry_wait_ms'] = $wait;
-                    Sleep::for($wait)->milliseconds(); // no open reservation while waiting: released (429) or UNKNOWN at its maximum
+                    Sleep::for($wait)->milliseconds(); // the rejected request's reservation was released before waiting
 
                     continue;
                 }
@@ -351,10 +351,11 @@ final class AgentCoordinator
     private function retryWait(LlmFailure $e): ?int
     {
         $base = $e->retryAfter !== null ? $e->retryAfter * 1000 : max(0, (int) config('agent.retry_base_wait_ms'));
-        if ($base > (int) config('agent.retry_max_wait_seconds') * 1000) {
+        $maxWait = max(0, (int) config('agent.retry_max_wait_seconds') * 1000);
+        if ($base > $maxWait) {
             return null;
         }
-        $wait = $base + random_int(0, max(0, (int) config('agent.retry_jitter_ms')));
+        $wait = $base + random_int(0, min($maxWait - $base, max(0, (int) config('agent.retry_jitter_ms'))));
         $elapsed = hrtime(true) / 1e9 - $this->startedAt;
         $worstCall = (int) config('agent.timeout_seconds') + 5; // + connect timeout of the clients
 

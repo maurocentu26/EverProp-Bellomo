@@ -1,0 +1,27 @@
+{
+  "ticket": "EVP-197",
+  "report": "report-20261124-212504.json",
+  "counts": {
+    "FAIL": 77,
+    "PASS": 123,
+    "DETERMINISTIC": 29
+  },
+  "criticalFailures": 59,
+  "criticalNeedsHuman": 80,
+  "http": {
+    "200": 365
+  },
+  "inputTokens": 654245,
+  "outputAndThoughtTokens": 15440,
+  "estimatedUsd": 0.23487349999999999,
+  "groups": {
+    "Validez limitada: WhatsApp ejecutado como WEB": 22,
+    "Respuesta/expectativa divergente: revisión semántica pendiente": 19,
+    "Respuesta bloqueada por guardia": 17,
+    "Contrato del evaluador: exige otra herramienta de lectura": 6,
+    "Derivación esperada no persistida": 4,
+    "Indicio de búsqueda incorrecta: proyecto usado como ciudad": 6,
+    "Fixture incompatible: código duplicado convertido a nulo": 2,
+    "Referencia de unidad no resuelta": 1
+  }
+}
