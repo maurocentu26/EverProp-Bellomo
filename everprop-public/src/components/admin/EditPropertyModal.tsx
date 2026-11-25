@@ -62,6 +62,7 @@ export function EditPropertyModal({
   const errorRef = useRef<HTMLDivElement>(null);
   const [features, setFeatures] = useState<FeatureDraft[]>(() => (property.features ?? []).map(draftFromFeature));
   const [formData, setFormData] = useState(() => formValues(property));
+  const residential = formData.propertyType === "Casa" || formData.propertyType === "Departamento";
   useEffect(() => {
     if (!open) return;
     setFormData(formValues(property));
@@ -304,7 +305,7 @@ export function EditPropertyModal({
               />
             </Field>
 
-            <Field>
+            {!residential && <Field>
               <FieldLabel htmlFor="edit-property-6" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Manzana / Sector</FieldLabel>
               <Input id="edit-property-6"
                 value={formData.sectorName}
@@ -312,14 +313,14 @@ export function EditPropertyModal({
                 placeholder="Ej: AP7"
                 className="h-10 text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               />
-            </Field>
+            </Field>}
 
             <Field>
-              <FieldLabel htmlFor="edit-property-7" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lote / Unidad</FieldLabel>
+              <FieldLabel htmlFor="edit-property-7" className="text-xs font-semibold text-slate-700 dark:text-slate-300">{residential ? "Número de unidad" : "Lote / Unidad"}</FieldLabel>
               <Input id="edit-property-7"
                 value={formData.unitNumber}
                 onChange={(e) => setFormData({ ...formData, unitNumber: e.target.value })}
-                placeholder="Ej: Lote 12"
+                placeholder={residential ? "Ej: A" : "Ej: Lote 12"}
                 className="h-10 text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               />
             </Field>
