@@ -35,5 +35,5 @@ Las columnas dedicadas permiten filtrar ambientes y mostrar detalles sin interpr
 
 - Repetir la suite completa en CI/Compose canónico y documentar la causa de los siete fallos del contenedor manual.
 - Medir duración y bloqueo del `ALTER TABLE ... ALGORITHM=COPY` sobre una réplica con volumen comparable al real; programar la migración antes de desplegar el código que lee las columnas.
-- Integrar el contrato con EVP-205 y recorrer el panel contra la API de prueba.
+- El contrato se integró localmente con EVP-205 y se recorrió en navegador el alta, lectura y edición de un departamento con característica y expensas. Falta repetir ese recorrido para casa y roles de solo lectura.
 - No se aplicó ninguna migración en staging ni producción. Revisar dominios, permisos y configuración del entorno antes de cualquier despliegue.
