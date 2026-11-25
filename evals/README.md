@@ -6,7 +6,7 @@ Dataset versionado para decidir releases del núcleo conversacional (Q01). Dise�
 - `cases/<segmento>.jsonl`: un caso por línea. Segmentos: `search`, `current-data`, `crm`, `security`, `failures`, `rioplatense`.
 - `validate.mjs`: valida estructura, IDs únicos y cobertura. Sin dependencias: `node evals/validate.mjs`.
 
-Estado: **229 casos** (EVP-6 + EVP-5 + EVP-113, EVP-114, EVP-115 y EVP-192: search 65, current-data 46, crm 30, security 44, failures 22, rioplatense 22). Objetivo 200 casos (60/30/30/40/20/20): cumplido. EVP-113 agrega SEC-043, SEC-044 y DATA-031 a DATA-037 (citas internas y condiciones comerciales sin respaldo; la descripción de una propiedad no las respalda). EVP-192 agrega DATA-038 a DATA-046 (dormitorios, superficie, disponibilidad, barrio, fecha de entrega y amenities sin respaldo, y datos de una unidad prestados a otra; DATA-039 y DATA-045 son controles positivos). Los fixtures de propiedades aceptan `description`, `bedrooms`, `bathrooms`, `area_m2` y `neighborhood`.
+Estado: **233 casos** (EVP-6 + EVP-5 + EVP-113, EVP-114, EVP-115, EVP-192 y EVP-194: search 65, current-data 46, crm 30, security 44, failures 22, rioplatense 26). Objetivo 200 casos (60/30/30/40/20/20): cumplido. EVP-113 agrega SEC-043, SEC-044 y DATA-031 a DATA-037 (citas internas y condiciones comerciales sin respaldo; la descripción de una propiedad no las respalda). EVP-192 agrega DATA-038 a DATA-046 (dormitorios, superficie, disponibilidad, barrio, fecha de entrega y amenities sin respaldo, y datos de una unidad prestados a otra; DATA-039 y DATA-045 son controles positivos). Los fixtures de propiedades aceptan `description`, `bedrooms`, `bathrooms`, `area_m2` y `neighborhood`.
 
 ## Runner (`everprop-api/tests/Feature/Evals/ModelEvalTest.php`)
 
