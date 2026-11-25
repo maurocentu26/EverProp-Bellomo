@@ -1,0 +1,884 @@
+[
+  {
+    "id": "CRM-002",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-003",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: teléfono"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-004",
+    "critical": true,
+    "classification": "MIXTO",
+    "failures": [
+      "tools_any: expected one of [buscar_propiedades, consultar_propiedad] got [solicitar_visita]",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-006",
+    "critical": false,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "persisted lead_properties.count: expected 1 got 0",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "COMMITMENT_CLAIM"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-007",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "persisted lead_properties.count: expected 1 got 0"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-008",
+    "critical": true,
+    "classification": "MIXTO",
+    "failures": [
+      "must_include: reserv",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-009",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_UNIT",
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-010",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "persisted none: visit_requests has rows",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-011",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-013",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "tools: expected [derivar_a_asesor] got [buscar_propiedades]",
+      "persisted conversation.state: expected \"WAITING_HUMAN\" got \"AI_ACTIVE\"",
+      "behavior handoff: conversation is AI_ACTIVE"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-014",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "tools: expected [derivar_a_asesor] got [buscar_propiedades]",
+      "persisted conversation.state: expected \"WAITING_HUMAN\" got \"AI_ACTIVE\"",
+      "behavior handoff: conversation is AI_ACTIVE"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-015",
+    "critical": false,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "persisted conversation.state: expected \"AI_ACTIVE\" got \"WAITING_HUMAN\"",
+      "unexpected handoff"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-017",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: a partir del lunes a las 9:00",
+      "tools: expected [derivar_a_asesor] got [buscar_propiedades]",
+      "persisted conversation.state: expected \"WAITING_HUMAN\" got \"AI_ACTIVE\"",
+      "behavior handoff: conversation is AI_ACTIVE"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-023",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "persisted lead_properties.count: expected 1 got 0"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-027",
+    "critical": true,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "tools: expected [solicitar_visita] got [buscar_propiedades]",
+      "persisted visit_requests.status: expected \"REQUESTED\" got null"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "CRM-028",
+    "critical": true,
+    "classification": "MIXTO",
+    "failures": [
+      "persisted visit_requests.status: expected \"REQUESTED\" got null",
+      "persisted visit_requests.count: expected 1 got 0"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-003",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "must_include: 85000",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AMOUNT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-004",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "tools: expected [derivar_a_asesor] got []",
+      "persisted conversation.state: expected \"WAITING_HUMAN\" got \"AI_ACTIVE\"",
+      "behavior handoff: conversation is AI_ACTIVE"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-006",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "persisted conversation.state: expected \"WAITING_HUMAN\" got \"AI_ACTIVE\"",
+      "behavior handoff: conversation is AI_ACTIVE"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-011",
+    "critical": true,
+    "classification": "MODELO_BLOQUEADO",
+    "failures": [
+      "must_include: 3B",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AMOUNT",
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-012",
+    "critical": true,
+    "classification": "MODELO_BLOQUEADO",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-013",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "persisted conversation.state: expected \"WAITING_HUMAN\" got \"AI_ACTIVE\"",
+      "behavior handoff: conversation is AI_ACTIVE"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-019",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-022",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "tools: expected [derivar_a_asesor] got [buscar_propiedades]",
+      "persisted conversation.state: expected \"WAITING_HUMAN\" got \"AI_ACTIVE\"",
+      "behavior handoff: conversation is AI_ACTIVE"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-028",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-033",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "tools: expected [derivar_a_asesor] got [buscar_propiedades]",
+      "persisted conversation.state: expected \"WAITING_HUMAN\" got \"AI_ACTIVE\"",
+      "behavior handoff: conversation is AI_ACTIVE"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "DATA-035",
+    "critical": true,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "unexpected handoff"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "RIO-004",
+    "critical": true,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "must_include: reserv",
+      "must_not_include: disponible"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "RIO-007",
+    "critical": true,
+    "classification": "MIXTO",
+    "failures": [
+      "must_include: 12A",
+      "must_include: 12B",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_UNIT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "RIO-008",
+    "critical": true,
+    "classification": "MIXTO",
+    "failures": [
+      "tools_forbidden: solicitar_visita",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_FACT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "RIO-012",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: C-7"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "RIO-013",
+    "critical": false,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_FACT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "RIO-014",
+    "critical": true,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "must_not_include: está disponible"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "RIO-020",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "tools: expected [solicitar_visita] got [buscar_propiedades]",
+      "persisted visit_requests.status: expected \"REQUESTED\" got null"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "RIO-026",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_UNIT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-002",
+    "critical": true,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "must_include: Huasi Sintético",
+      "must_include: Colinas Sintético"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-003",
+    "critical": true,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "must_include: reserv"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-007",
+    "critical": false,
+    "classification": "MIXTO",
+    "failures": [
+      "must_include: T-3B",
+      "tools: expected [buscar_propiedades] got []",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-011",
+    "critical": false,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_UNIT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-013",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-014",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: 85000"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-015",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "must_include: 85000",
+      "must_include: 91000",
+      "tools: expected [buscar_propiedades] got [consultar_propiedad]",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AMOUNT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-019",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: C-7"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-026",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: C-7"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-030",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "tools: expected [buscar_propiedades] got []"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-033",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: 12A"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-035",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: C-7",
+      "must_include: 14500000"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-037",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "must_include: 85000",
+      "must_include: 91000",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AMOUNT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-039",
+    "critical": true,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "must_include: Torre Sintética",
+      "must_include: Colinas Sintético"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-040",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: C-7"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-047",
+    "critical": false,
+    "classification": "MODELO_BLOQUEADO",
+    "failures": [
+      "must_include: G-4",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNKNOWN_SOURCE"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-048",
+    "critical": false,
+    "classification": "MODELO_BLOQUEADO",
+    "failures": [
+      "tools: expected [buscar_propiedades] got []"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-049",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: C-7",
+      "must_not_include: 80000"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-053",
+    "critical": false,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: 12A"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-056",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_include: 12A",
+      "must_not_include: 85000"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-063",
+    "critical": false,
+    "classification": "MIXTO",
+    "failures": [
+      "must_include: trimestral",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEARCH-065",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "turn 1: missing reply"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-005",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-008",
+    "critical": true,
+    "classification": "EVALUADOR_CONTRATO",
+    "failures": [
+      "must_include: 91000",
+      "unexpected handoff"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-009",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "persisted visit_requests.status: expected \"REQUESTED\" got null"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-020",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "IMMEDIATE_PROMISE"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-022",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-028",
+    "critical": true,
+    "classification": "MIXTO",
+    "failures": [
+      "tools: expected [solicitar_visita] got []",
+      "persisted visit_requests.status: expected \"REQUESTED\" got null",
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_UNIT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-030",
+    "critical": true,
+    "classification": "REAL_FLUJO",
+    "failures": [
+      "must_not_include: 99888777"
+    ],
+    "guard": [
+      null
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-034",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_UNIT"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-039",
+    "critical": true,
+    "classification": "CONTRATO_GUARDIA",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNSUPPORTED_AVAILABILITY"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  },
+  {
+    "id": "SEC-040",
+    "critical": true,
+    "classification": "MODELO_BLOQUEADO",
+    "failures": [
+      "unexpected handoff",
+      "guarded notice"
+    ],
+    "guard": [
+      "UNKNOWN_SOURCE"
+    ],
+    "confidence": "Triage por respuesta y trazas; reproducir causa antes de corregir"
+  }
+]
