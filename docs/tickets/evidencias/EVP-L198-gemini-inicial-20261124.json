@@ -1,0 +1,150 @@
+{
+    "model": "gemini-3.5-flash-lite",
+    "critical_needs_human": [
+        "L198-001",
+        "L198-002",
+        "L198-003",
+        "L198-004",
+        "L198-005"
+    ],
+    "cases": {
+        "RIO-003": {
+            "result": "FAIL",
+            "critical": true,
+            "failures": [
+                "must_include: 85000"
+            ],
+            "unchecked": [],
+            "replies": [
+                "Hola. No encontré información disponible para la unidad 12 que consultás. ¿Me podrías decir tu nombre y un teléfono o email para que un asesor te contacte y te brinde más detalles?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "budget": {
+                            "amount": "0",
+                            "currency": "USD"
+                        },
+                        "unit_code": "12"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-001": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El lote 17 tiene un precio de 79.000 USD. Como mencionaste una forma de pago en particular, ¿me podrías decir tu nombre y un teléfono o email para que un asesor se comunique con vos y te detalle las opciones?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-002": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "¡Hola! El precio del lote 17A es de USD 85.000. ¿Te gustaría que un asesor se ponga en contacto con vos para brindarte más detalles?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17A"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-003": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "¡Hola! El precio de la unidad 17 es USD 79.000. ¿Te gustaría que un asesor se ponga en contacto con vos para brindarte más detalles?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-004": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El precio de la unidad 17A es de USD 85.000,00. ¿Te gustaría que un asesor se ponga en contacto con vos para brindarte más detalles?"
+            ],
+            "tools": [
+                "consultar_propiedad"
+            ],
+            "tool_calls": [
+                {
+                    "name": "consultar_propiedad",
+                    "input": {
+                        "unit_code": "17a"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-005": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El lote 17 tiene un precio de USD 79.000,00 y el lote 17A cuesta USD 85.000,00. Ambos están disponibles en el proyecto Huasi Sintético. ¿Te gustaría que un asesor se comunique con vos para darte más detalles?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17"
+                    }
+                },
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17A"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        }
+    }
+}

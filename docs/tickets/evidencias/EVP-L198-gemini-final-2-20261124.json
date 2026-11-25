@@ -1,0 +1,145 @@
+{
+    "model": "gemini-3.5-flash-lite",
+    "critical_needs_human": [
+        "RIO-003",
+        "L198-001",
+        "L198-002",
+        "L198-003",
+        "L198-004",
+        "L198-005"
+    ],
+    "cases": {
+        "RIO-003": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El lote 12 tiene un precio de USD 85.000. ¿Te gustaría que te contacte un asesor para coordinar una visita o recibir más detalles?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "12"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-001": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El lote 17 tiene un precio de USD 79.000. ¿Te gustaría que un asesor se comunique con vos para darte más detalles? Para avanzar, ¿me podrías decir tu nombre y un teléfono o email de contacto?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-002": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El precio del lote 17A es de USD 85.000. ¿Te gustaría que un asesor se ponga en contacto con vos para brindarte más detalles?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17A"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-003": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El precio del lote 17 en el proyecto Huasi Sintético de San Salvador de Jujuy es de USD 79.000. ¿Te gustaría que un asesor se ponga en contacto con vos para brindarte más detalles?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-004": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El precio de la unidad 17A es de USD 85.000. ¿Te gustaría que un asesor se ponga en contacto con vos para brindarte más detalles?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17A"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        },
+        "L198-005": {
+            "result": "PASS",
+            "critical": true,
+            "failures": [],
+            "unchecked": [],
+            "replies": [
+                "El lote 17 tiene un precio de USD 79.000,00 y el lote 17A cuenta con un precio de USD 85.000,00. ¿Te gustaría que un asesor se ponga en contacto con vos para avanzar con la comparación?"
+            ],
+            "tools": [
+                "buscar_propiedades"
+            ],
+            "tool_calls": [
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17"
+                    }
+                },
+                {
+                    "name": "buscar_propiedades",
+                    "input": {
+                        "unit_code": "17A"
+                    }
+                }
+            ],
+            "needs_human": "behavior answer"
+        }
+    }
+}

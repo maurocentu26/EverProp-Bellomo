@@ -1339,6 +1339,88 @@ final class AgentTurnTest extends TestCase
 
     // ---- fixtures ------------------------------------------------------------------------
 
+    public function test_numeric_unit_suffix_is_not_invented_from_the_visitors_words(): void
+    {
+        $f = $this->fixture();
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['priced'])->update(['code' => '17A']);
+        $llm = $this->llm([
+            ScriptedLlm::tool('buscar_propiedades', ['unit_code' => '17A']),
+            ScriptedLlm::text('¿Podés confirmar el código de la unidad?'),
+        ]);
+        $this->visitorSays($f, 'Quiero el 17 a nombre mío, ¿cuánto cuesta?');
+        $trace = json_decode((string) DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->value('trace_json'), true);
+        $this->assertSame('UNIT_SELECTION_MISMATCH', $trace['tools'][0]['code']);
+        $this->assertFalse($trace['tools'][0]['ok']);
+        $this->assertStringNotContainsString('85000', json_encode($llm->calls, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_broad_search_cannot_supply_the_wrong_suffix_as_evidence(): void
+    {
+        $f = $this->fixture();
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['priced'])->update(['code' => '17A']);
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['no_price'])->update(['code' => '17', 'price' => '79000', 'currency_code' => 'USD']);
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['priced'])->update(['updated_at' => now()->addMinute()]);
+        $llm = $this->llm([ScriptedLlm::tool('buscar_propiedades', ['limit' => 1]), ScriptedLlm::text('El 17A sale USD 85.000.')]);
+        $this->visitorSays($f, 'Cuánto sale el 17 a pagar en dólares?');
+        $this->assertStringNotContainsString('85000', json_encode($llm->calls, JSON_THROW_ON_ERROR));
+        $this->assertStringContainsString('79000', json_encode($llm->calls, JSON_THROW_ON_ERROR));
+        $this->assertNotContains('El 17A sale USD 85.000.', $this->visible($f));
+        $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
+    }
+
+    public function test_unit_selection_by_uuid_respects_visibility_and_tenant(): void
+    {
+        $f = $this->fixture();
+        $context = $this->context($f);
+        $gateway = app(ToolGateway::class);
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['priced'])->update(['code' => '17A']);
+        $args = ['property_id' => $f['priced']];
+        $this->assertSame('UNIT_SELECTION_MISMATCH', $gateway->execute($context, 'consultar_propiedad', $args, 'el 17')['error']['code']);
+        $this->assertTrue($gateway->execute($context, 'consultar_propiedad', $args, 'el 17A')['ok']);
+        $this->assertSame('NOT_FOUND', $gateway->execute($context, 'consultar_propiedad', ['property_id' => $f['foreign']], 'el L-101A')['error']['code']);
+        $project = DB::table('projects')->insertGetId(['tenant_id' => $f['tenant']->id, 'public_id' => (string) Str::uuid(),
+            'name' => 'Sin landing', 'project_type' => 'LAND_DEVELOPMENT', 'status' => 'PRE_SALE', 'city' => 'Jujuy', 'province' => 'Jujuy']);
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['priced'])->update(['project_id' => $project]);
+        $this->assertSame('NOT_FOUND', $gateway->execute($context, 'consultar_propiedad', $args, 'el 17')['error']['code']);
+        $this->assertSame('NOT_FOUND', $gateway->execute($context, 'consultar_propiedad', $args, 'el 17A')['error']['code']);
+        $this->assertSame('UNIT_SELECTION_MISMATCH', $gateway->execute($context, 'registrar_interes',
+            ['unit_code' => '17A', 'interest_level' => 'HIGH'], 'el 17')['error']['code']);
+        $this->assertSame(0, DB::table('leads')->where('tenant_id', $f['tenant']->id)->count());
+    }
+
+    public function test_unit_exclusions_keep_public_properties_without_a_code(): void
+    {
+        $f = $this->fixture();
+        $context = $this->context($f);
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['priced'])->update(['code' => '17A']);
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['no_price'])->update(['code' => null]);
+        foreach (['Busco para el 2027', 'No quiero la 17A, mostrame otras opciones'] as $text) {
+            $result = app(ToolGateway::class)->execute($context, 'buscar_propiedades', [], $text);
+            $this->assertTrue($result['ok']);
+            $this->assertContains($f['no_price'], array_column($result['data']['items'], 'id'), $text);
+        }
+    }
+    public function test_search_constraints_preserve_comparisons_dates_and_exclusions(): void
+    {
+        $f = $this->fixture();
+        $context = $this->context($f);
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['priced'])->update(['code' => '17A']);
+        DB::table('properties')->where('tenant_id', $f['tenant']->id)->where('public_id', $f['no_price'])->update(['code' => '17']);
+        foreach ([
+            ['Busco para el 2027', ['17', '17A']],
+            ['Compará el 17 y 17A', ['17', '17A']],
+            ['No quiero la 17A, mostrame otras opciones', ['17']],
+            ['El 17 a nombre mío', ['17']],
+            ['La unidad 17A', ['17A']],
+        ] as [$text, $expected]) {
+            $result = app(ToolGateway::class)->execute($context, 'buscar_propiedades', [], $text);
+            $this->assertTrue($result['ok']);
+            $codes = array_column($result['data']['items'], 'code');
+            sort($codes);
+            $this->assertSame($expected, $codes, $text);
+        }
+    }
+
     /** @return array<string, mixed> */
     private function fixture(): array
     {

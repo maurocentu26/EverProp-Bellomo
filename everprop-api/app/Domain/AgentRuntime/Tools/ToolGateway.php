@@ -42,7 +42,7 @@ final class ToolGateway
     }
 
     /** @return array<string, mixed> envelope {ok, data, meta} | {ok:false, error} */
-    public function execute(ToolContext $context, string $name, mixed $arguments): array
+    public function execute(ToolContext $context, string $name, mixed $arguments, ?string $requestText = null): array
     {
         $tool = $this->tools[$name] ?? null;
         if ($tool === null) {
@@ -53,6 +53,15 @@ final class ToolGateway
         }
         /** @var array<string, mixed> $arguments */
         try {
+            if ($requestText !== null) {
+                $code = $arguments['unit_code'] ?? null;
+                if ($code === null && isset($arguments['property_id'])) {
+                    $code = $this->inventory->find($context->tenantId, $arguments['property_id'], $context->channelType === 'WEB_CHAT')?->code;
+                }
+                if (is_string($code) && UnitSelection::conflicts($requestText, $code)) {
+                    throw new ToolError('UNIT_SELECTION_MISMATCH', 'El código no coincide con la unidad mencionada. Pedí aclaración; no sustituyas una unidad por otra.');
+                }
+            }
             if (array_intersect_key($tool->schema()['properties'], PublicInventory::PROPERTY_REF) === PublicInventory::PROPERTY_REF) {
                 $arguments = $this->propertyReference($context, $arguments);
             }
@@ -69,7 +78,11 @@ final class ToolGateway
                 }
             }
 
-            return $this->ok($tool->execute($context, $arguments, $this->executions), $context, persisted: false, replayed: false);
+            $data = $tool instanceof BuscarPropiedades
+                ? $tool->execute($context, $arguments, $this->executions, $requestText)
+                : $tool->execute($context, $arguments, $this->executions);
+
+            return $this->ok($data, $context, persisted: false, replayed: false);
         } catch (ToolError $e) {
             return $this->error($e->errorCode, $e->getMessage(), $context, $e->retryable);
         } catch (Throwable $e) {

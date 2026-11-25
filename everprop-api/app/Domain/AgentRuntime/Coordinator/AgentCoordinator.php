@@ -256,7 +256,7 @@ final class AgentCoordinator
                 // Enforced here too: the model may name a tool it was not offered.
                 $copilot && ! in_array($use['name'], self::COPILOT_TOOLS, true) => ['ok' => false, 'error' => ['code' => 'FORBIDDEN',
                     'message' => 'En modo borrador solo podés consultar; esa acción la hace el asesor.', 'retryable' => false]],
-                $i < (int) config('agent.max_tool_calls') => $this->tools->execute($context, $use['name'], $use['input']),
+                $i < (int) config('agent.max_tool_calls') => $this->tools->execute($context, $use['name'], $use['input'], $query),
                 default => ['ok' => false, 'error' => ['code' => 'VALIDATION_ERROR', 'message' => 'Límite de herramientas por turno.', 'retryable' => false]],
             };
             $trace['tools'][] = ['name' => mb_substr($use['name'], 0, 64), 'ok' => $envelope['ok'], 'code' => $envelope['error']['code'] ?? null,

@@ -1,0 +1,30 @@
+[
+  {
+    "path": "everprop-api/app/Domain/AgentRuntime/Tools/UnitSelection.php",
+    "sha256": "E04F63FFF31763AD537A823304B60177059E50D67FA2D9EAAF9E8EE00815BA95"
+  },
+  {
+    "path": "everprop-api/app/Domain/AgentRuntime/Tools/ToolGateway.php",
+    "sha256": "E43AAFDD8D83697632F5826CDED02DF50586CFD37671F82282679829023C6775"
+  },
+  {
+    "path": "everprop-api/app/Domain/AgentRuntime/Tools/BuscarPropiedades.php",
+    "sha256": "6CEA92BDB5513DED337262CCF676339201FFC31AE77D9AF3A70B9041594A7976"
+  },
+  {
+    "path": "everprop-api/app/Domain/AgentRuntime/Coordinator/AgentCoordinator.php",
+    "sha256": "1437013D120439B8EDA2642451229DC80C95E34FE211B77618D7C4A98420EE79"
+  },
+  {
+    "path": "everprop-api/app/Domain/AgentRuntime/Coordinator/PromptBuilder.php",
+    "sha256": "9956191A132C0A8CB6EDD3C2CF5107DDEE440D8DFDEB7113EC712A3F4BD13959"
+  },
+  {
+    "path": "everprop-api/config/agent.php",
+    "sha256": "8BFC1ABDEF68CCB5D819E0C6A8DE11C8BB4CAEA80F249A663EE6CC8B0DB33D66"
+  },
+  {
+    "path": "evals/targeted/EVP-L198/cases.jsonl",
+    "sha256": "E88D0666B85A3F7FC086433AA3A700CE0413730FD3ADC6D6C0C7572CBA4F972E"
+  }
+]

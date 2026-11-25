@@ -14,7 +14,7 @@ final class BuscarPropiedades implements AgentTool
     public function description(): string
     {
         return 'Busca propiedades publicadas y disponibles del inventario actual. Usala antes de mencionar cualquier propiedad, precio o disponibilidad. '
-            .'Para filtrar por presupuesto hace falta la moneda; no convierte monedas. unit_code busca un código exacto.';
+            .'budget solo filtra un importe máximo expresado por el cliente, con su moneda. Preguntar el precio no expresa un presupuesto: omití budget; nunca inventes un máximo de cero para indicar moneda. No convierte monedas. unit_code busca un código exacto.';
     }
 
     public function schema(): array
@@ -44,7 +44,7 @@ final class BuscarPropiedades implements AgentTool
         return false;
     }
 
-    public function execute(ToolContext $context, array $arguments, ToolExecutions $executions): array
+    public function execute(ToolContext $context, array $arguments, ToolExecutions $executions, ?string $requestText = null): array
     {
         $query = $this->inventory->query($context->tenantId, $context->channelType === 'WEB_CHAT')
             ->when(isset($arguments['operation']), fn ($q) => $q->where('p.operation', $arguments['operation']))
@@ -56,6 +56,9 @@ final class BuscarPropiedades implements AgentTool
             ->when(isset($arguments['budget']), fn ($q) => $q->where('p.currency_code', $arguments['budget']['currency'])
                 ->whereNotNull('p.price')->where('p.price', '<=', $arguments['budget']['amount']));
 
+        if ($requestText !== null) {
+            UnitSelection::constrain($query, $requestText);
+        }
         $limit = $arguments['limit'] ?? 5;
         $rows = $query->orderByDesc('p.updated_at')->orderBy('p.id')->limit($limit + 1)->get($this->inventory->columns());
 
