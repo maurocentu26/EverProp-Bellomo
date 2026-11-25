@@ -1,5 +1,13 @@
 # EVP-197 — Reintentos seguros y capacidad del proveedor IA
 
+## Estado 25/11/2026 — integración local en curso
+
+ABIERTO. El usuario autorizó publicar las ramas de trabajo en GitHub, sin cerrar tickets. Se prueba EVP-197 junto con EVP-193 y EVP-L198 sobre develop 348d5c0. Las corridas anteriores por separado no representan el conjunto.
+
+La suite integrada inicial ejecutó 676 tests: un fixture de horarios incompatible con el nuevo contrato de precios falló y fue corregido; los tests de reintentos pasaron, incluidos 503 no facturable, límite de llamadas, ledger e idempotencia. Revalidación de guardia/turnos/evaluador: 623 tests, 621 aprobados y 2 omitidos. Pendiente la corrida completa de 229 casos con dependencias exactas del lock. No se amplía el presupuesto ni la cantidad de reintentos.
+
+Decisión del usuario 25/11: la futura entrega develop → main incluirá IA/Conversations. La política/CI de entrega aún requiere adecuación y revisión; no se modificó producción ni se aprobó release.
+
 ## Resultado vigente v2 — 24/11/2026
 
 **ABIERTO, sin aprobación de release.** 123 PASS automáticos, 77 FAIL (59 críticos), 29 DETERMINISTIC; 80 PASS críticos requieren revisión humana. 365 respuestas HTTP 200. Estimación USD 0.234873, no factura.
