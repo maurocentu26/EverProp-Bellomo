@@ -1,5 +1,11 @@
 # EVP-L198 — Selección de unidad exacta
 
+## Estado 25/11/2026 — regresión integrada
+
+ABIERTO. Se corrigió una regresión real adicional: NOT IN/NOT REGEXP excluían por lógica SQL las propiedades cuyo código es NULL. Los predicados ahora conservan NULL dentro de grupos AND; no escapan del tenant/canal. La prueba nueva falló antes del fix y pasó dentro de la revalidación integrada (623 tests, 621 aprobados, 2 omitidos).
+
+Autorizada la publicación en GitHub de la rama para revisión. Las dos corridas focalizadas del 24/11 son históricas y no sustituyen la corrida integrada de 229 casos pendiente. No se cierra el ticket ni se despliega.
+
 Fecha: 2026-11-24. **ABIERTO, sin aprobación de release.**
 
 Rama: `ticket/EVP-L198-seleccion-unidad-exacta`, desde `origin/develop@348d5c0b782499ebd14e5383c86521d046cd181f`.
