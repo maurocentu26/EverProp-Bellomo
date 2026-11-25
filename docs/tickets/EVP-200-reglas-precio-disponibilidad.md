@@ -1,6 +1,6 @@
 # EVP-200 — Asistente: nunca precio ni disponibilidad; cotización y cuotas bloqueadas por defecto
 
-Rama `ticket/EVP-200-reglas-precio-disponibilidad`, desde `origin/develop` `71a8528` (incluye EVP-193, EVP-194, EVP-195, EVP-196 y EVP-197) · sin commits todavía · 2026-11-25 · Claude (sesión local) con Mauro Centurión. Jira: [EVP-200](https://eversys.atlassian.net/browse/EVP-200), En curso.
+Rama `ticket/EVP-200-reglas-precio-disponibilidad`, desde `origin/develop` `71a8528` (incluye EVP-193, EVP-194, EVP-195, EVP-196 y EVP-197) · commits `27e9bc4` y el ajuste posterior a los evals · PR [#178](https://github.com/maurocentu26/EverProp-Bellomo/pull/178) · 2026-11-25 · Claude (sesión local) con Mauro Centurión. Jira: [EVP-200](https://eversys.atlassian.net/browse/EVP-200), En curso.
 
 ## 1. Qué pedía el ticket
 
@@ -82,7 +82,7 @@ Fuera de alcance: el flag por proyecto en el panel (columna, SQL y UI), la corri
 
 Entorno: Docker local (PHP 8.4, MySQL 8.4, Redis) con la base de tests recién importada (baseline y forwards; `everprop:schema:verify` OK en dev y testing).
 
-- `vendor/bin/phpunit` (suite completa, después de las correcciones de la revisión): **1213 pruebas, 7558 comprobaciones, 0 fallas, 2 omitidas** (benchmark y modelo real).
+- `vendor/bin/phpunit` (suite completa, después de las correcciones de la revisión): **1213 pruebas, 7577 comprobaciones, 0 fallas, 2 omitidas** (repetida después del ajuste por evals) (benchmark y modelo real).
 - `OutputGuardTest::test_reviewed_price_availability_and_financing_bypasses_fail_and_deflections_pass`: cada bypass de la revisión se bloquea y cada derivación válida pasa. Los gemelos de EVP-196 ("te paso los detalles de disponibilidad del 12B") siguen bloqueados.
 - `tests/Unit/AgentRuntime` y `tests/Feature/AgentRuntime`: 652 pruebas OK. Tests nuevos o reescritos:
   - `OutputGuardTest::test_prices_availability_and_financing_are_never_disclosed_by_default`: precio por tool, fuente o visitante, en dígitos o en letras; disponibilidad de una unidad devuelta; escasez desde una fuente; cuotas y montos de una fuente aprobada; la derivación al asesor pasa y cinco gemelos maliciosos se bloquean.
@@ -91,7 +91,24 @@ Entorno: Docker local (PHP 8.4, MySQL 8.4, Redis) con la base de tests recién i
   - Presupuesto rechazado por el esquema; términos de una fuente bloqueados de punta a punta; copiloto con las mismas reglas.
 - `vendor/bin/pint --test`: PASS. `vendor/bin/phpstan analyse`: sin errores.
 - `node evals/validate.mjs`: **244 casos válidos**, 141 críticos en test.
-- **No verificado:** la corrida de evals contra el modelo real (`EVAL_LLM=configured`). Necesita autorización de gasto y proveedor.
+- **Evals contra el modelo real** (autorizados por el usuario el 2026-11-25):
+  - Configuración: `gemini-3.1-flash-lite` (el mismo modelo que `bellomito-staging`), `APP_ENV=local` con `.env.local` ignorado, base aislada `bellomo_crm_test`, Meta apagado, presupuesto local de USD 10.
+  - Comando: `docker compose --project-name everprop-api run --rm -v "<repo>/evals:/var/www/evals:ro" -e APP_ENV=local -e AGENT_LLM_MODEL=gemini-3.1-flash-lite -e EVAL_LLM=configured everprop-api-php php artisan test --filter=test_model_cases`.
+  - La primera corrida usó `APP_ENV=testing`. Ahí Gemini queda deshabilitado (`PROVIDER_DISABLED`), así que no llamó al modelo ni tuvo costo.
+
+  | Corrida | PASS | FAIL | Bloqueos por disponibilidad | Bloqueos por términos | Qué cambió antes |
+  |---|---|---|---|---|---|
+  | 1 | 120 | 95 | 58 | 10 | código del primer commit |
+  | 2 | 141 | 74 | 23 | 12 | "disponibilidad" como tema deja de ser afirmación |
+  | 3 | 140 | 75 | 3 | 4 | prompt: no repetir cuotas ni promociones de las fuentes; derivaciones destrabadas |
+  | 4 | **157** | **58** | 1 | 4 | prompt: seguir buscando y nombrando unidades, sin precio ni disponibilidad |
+
+  (29 casos deterministas en cada corrida. Reporte final: `storage/app/evals/report-20261125-211733.json` en el volumen local.)
+  - **Fugas:** en la corrida 4 no hay **ningún bloqueo por monto** (`UNSUPPORTED_AMOUNT`). Revisé las respuestas que vio el visitante en busca de cifras, monedas, "disponible", cuotas, anticipos o descuentos: solo aparecen 6 derivaciones del estilo "las cuotas y condiciones te las detalla un asesor", sin datos.
+  - **Diagnóstico:** el texto bloqueado lo obtuve con un log temporal que no se commiteó. En la corrida 1, el modelo derivaba bien ("los precios y la disponibilidad los confirma un asesor") y la guardia lo bloqueaba por la palabra "disponibilidad": eran falsos positivos. Los corregí y quedaron como regresión en `OutputGuardTest`. Las infracciones reales fueron cuotas, anticipos o descuentos copiados de una fuente ("anticipo del 30% y 36 cuotas", "10% de descuento") y "lotes disponibles". La guardia las frenó; después el prompt las redujo a 4 y 1.
+  - **Los 58 FAIL restantes no dependen de estas reglas.** Son expectativas de herramientas: no busca o consulta cuando el caso lo pide, deriva o no según lo esperado, persistencia de CRM y visitas. También hay bloqueos de código de unidad de EVP-192/194 (`UNSUPPORTED_UNIT`: 9) y "gastos de escritura 3%" (DATA-014), bloqueado por decisión.
+  - **No hay corrida de referencia** con el prompt anterior y este mismo modelo, así que no afirmo una mejora global. EVP-193 midió otra versión del dataset con otro modelo. 39 críticos siguen en FAIL y 115 críticos con PASS mecánico requieren calificación humana (gate de `evals/README.md`).
+  - Se ajustaron además 5 casos que todavía exigían informar estado o condiciones: CRM-008, RIO-004 y SEARCH-003 ("reservado"), DATA-032 ("30") y SEARCH-062 ("36").
 - **Revisión `llm-security-reviewer`** (subagente, solo lectura, sobre el primer diff). Hallazgos y resultado:
   - Altos, corregidos:
     - el bypass de la primera excepción ("Hay muy buena disponibilidad del 12A y un asesor te confirma la visita"), resuelto con la lista permitida;
@@ -115,6 +132,7 @@ Entorno: Docker local (PHP 8.4, MySQL 8.4, Redis) con la base de tests recién i
 - **Disponibilidad negativa:** "se vendió" o "no está disponible" siguen permitidas después de un NOT_FOUND, con la lógica de EVP-196. El prompt dice "ni niegues". Bloquearlas también endurecería la regla 2 y cambiaría muchos casos de EVP-196: queda como decisión.
 - **Límite léxico:** "Sí, ese es el precio" o un "Sí" suelto después de "¿está disponible?" no los detecta la guardia; dependen del prompt y de los evals. "No sé si quedan pocas unidades" se bloquea (falla cerrada). En el resumen de contacto, la "Consulta" puede repetir un monto que dijo el visitante.
 - **Código muerto:** el parámetro `$prices` de `check()` llega siempre vacío. Se mantuvo para no reescribir unas 80 llamadas de los tests; se puede quitar en una limpieza.
-- **Evals con el modelo real:** el cambio de prompt puede subir las derivaciones. Correr el dataset con autorización antes de desplegar y revisar a mano los casos críticos.
+- **Evals:** falta la calificación humana de los críticos y una corrida de referencia del prompt anterior con el mismo modelo, para comparar las derivaciones.
+- **Fuentes con financiación:** el modelo a veces copia cuotas o descuentos de una fuente aprobada. Hoy lo frena la guardia y la conversación pasa a un asesor. Una alternativa más limpia, para otro ticket, es no mostrarle al modelo los fragmentos de financiación mientras el proyecto no la autorice.
 - **Integración:** EVP-201 depende de este ticket mergeado en develop y desplegado en staging, con la api, que hoy está en el merge #165, en el mismo commit que los workers.
-- Sin commit, push ni PR: esperan autorización expresa.
+- PR #178 abierto hacia `develop` con autorización del usuario. Sin merge ni despliegue: el merge lo decide una persona y la activación en staging se hace en EVP-201.

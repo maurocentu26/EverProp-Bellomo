@@ -214,6 +214,30 @@ final class OutputGuardTest extends TestCase
             'No puedo confirmarte la disponibilidad del 12A; te derivo con un asesor.', 'Contame tu disponibilidad horaria para visitar el 12A.'] as $reply) {
             $this->assertSame([], array_intersect($check($reply), ['UNSUPPORTED_AMOUNT', 'UNSUPPORTED_TERM', 'UNSUPPORTED_AVAILABILITY']), $reply);
         }
+        // Deflections gemini-3.1-flash-lite wrote in the EVP-200 eval (2026-11-25) that the first guard blocked.
+        foreach (['Los precios y la disponibilidad de las propiedades son confirmados exclusivamente por nuestros asesores comerciales.',
+            'Entiendo, pero los temas de precios, disponibilidad y condiciones de pago los maneja directamente un asesor comercial.',
+            'Sobre el lote 12A, un asesor comercial te va a estar contactando para confirmarte la disponibilidad.',
+            'Sobre la disponibilidad de esa unidad, no tengo información confirmada en mi sistema. Te la precisa un asesor comercial.',
+            'Te comento que los valores y la disponibilidad de las unidades son información que un asesor te va a confirmar personalmente.',
+            'No manejo precios ni disponibilidad en este chat.',
+            'Ya registramos el pedido y un asesor revisará la disponibilidad para confirmarte por este mismo medio.',
+            // Second run.
+            'Voy a derivar tu solicitud a un asesor para que se contacte con vos y confirme la disponibilidad y la coordinación.',
+            'Esa información comercial, junto con la disponibilidad, te la podrá detallar un asesor.',
+            'No cuento con información actualizada sobre si la unidad 12A está disponible, reservada o vendida. Te lo confirma un asesor.',
+            'Recordá que nuestro equipo vuelve a estar disponible el lunes a partir de las 9:00.'] as $reply) {
+            $this->assertNotContains('UNSUPPORTED_AVAILABILITY', $check($reply), $reply);
+        }
+        $generic = fn (string $reply): array => $guard->check($reply, [], [], inventoryChecked: true);
+        $this->assertNotContains('UNSUPPORTED_AVAILABILITY', $generic('Un asesor comercial puede detallarte las opciones disponibles según tus preferencias.'));
+        $this->assertNotContains('UNSUPPORTED_AVAILABILITY', $generic('Nuestro equipo de atención al cliente está disponible de lunes a viernes.'));
+        foreach (['Contamos con propuestas disponibles en ese proyecto.', 'Tenemos lotes disponibles en Huasi.', 'Hay unidades disponibles para la venta.'] as $reply) {
+            $this->assertContains('UNSUPPORTED_AVAILABILITY', $generic($reply), $reply);
+        }
+        foreach (['Te confirmo la disponibilidad del 12A.', 'La disponibilidad del 12A está confirmada.', 'Te paso los detalles de disponibilidad del 12A.'] as $reply) {
+            $this->assertContains('UNSUPPORTED_AVAILABILITY', $check($reply), $reply);
+        }
         // The server-built contact summary may repeat the visitor's own amount; nothing else backs a bare price.
         $this->assertNotContains('UNSUPPORTED_AMOUNT', $guard->check('Consulta: "presupuesto de 85.000"', [], [], requested: ['mi presupuesto es de 85.000']));
     }

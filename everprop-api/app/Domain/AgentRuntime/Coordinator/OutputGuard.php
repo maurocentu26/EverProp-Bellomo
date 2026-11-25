@@ -1582,6 +1582,10 @@ final class OutputGuard
         }
         foreach ($this->matches('/\b(?:vendid[oa]s?+|ocupad[oa]s?+|alquilad[oa]s?+)\b|\b(?:ya\s++)?se\s++vendi[oó]\b/iu', $segment) as $m) {
             $before = substr($segment, 0, (int) $m[0][1]);
+            // EVP-200: "no tengo información sobre si el 12A está disponible, reservado o vendido" asks, states nothing.
+            if ($this->ok(preg_match('/(?:consult\p{L}*+|pregunt\p{L}*+|saber|averigu\p{L}*+|confirm\p{L}*+|chequ\p{L}*+|revis\p{L}*+|sobre)\s++si\b[^.!?\n]{0,60}$/iu', $before)) === 1) {
+                continue;
+            }
             $negatedParticiple = $this->ok(preg_match('/\b(?:no|ni|tampoco)\s++(?:(?:todav[ií]a|a[uú]n)\s++)?+(?:(?:est[aá]n?+|fue|fueron|ha\s++sido|han\s++sido|se\s++ha|qued[oó]|se\s++encuentra|sigue|siguen|figura\p{L}*+)\s++(?:(?:todav[ií]a|a[uú]n)\s++)?+)?+$/iu', $before)) === 1
                 || (str_contains(mb_strtolower((string) $m[0][0]), 'vendi') && $this->ok(preg_match('/\b(?:no|ni|tampoco)\s++(?:(?:todav[ií]a|a[uú]n)\s++)?+(?:se\s++ha\s++)?+$/iu', $before)) === 1);
             $found[] = $negatedParticiple ? 'POSITIVE' : 'NEGATIVE';
@@ -1603,19 +1607,26 @@ final class OutputGuard
                 || ($this->ok(preg_match('/\b(?:informaci[oó]n|info|datos|detalles?)\s++(?:(?:que\s++(?:tengo|tenemos)|oficiales|actuales)\s++)?+$/iu', $before)) === 1
                     && $this->ok(preg_match('/^\s++(?:sobre|de|del|acerca|en\s++(?:el|nuestro)\s++sistema)\b/iu', $after)) === 1)
                 // EVP-200: up to four words between "si" and the state ("un asesor te confirma si el 12A está disponible").
-                || $this->ok(preg_match('/(?:consult\p{L}*+|pregunt\p{L}*+|saber|ver|averigu\p{L}*+|confirm\p{L}*+|chequ\p{L}*+|revis\p{L}*+)\s++si\s++(?:[\p{L}\p{N}\-\/]++\s++){0,4}?$/iu', $before)) === 1
-                // EVP-200: lacking it, even about a named unit ("no puedo confirmarte la disponibilidad del 12A", "no tengo
-                // información sobre la disponibilidad del 12A"); "te paso los detalles de disponibilidad del 12B" stays.
+                || $this->ok(preg_match('/(?:consult\p{L}*+|pregunt\p{L}*+|saber|ver|averigu\p{L}*+|confirm\p{L}*+|chequ\p{L}*+|revis\p{L}*+|sobre)\s++si\s++(?:[\p{L}\p{N}\-\/]++\s++){0,4}?$/iu', $before)) === 1
+                // EVP-200: the team's hours ("nuestro equipo de atención está disponible de 9 a 18", "vuelve a estar
+                // disponible el lunes") are about people, wherever the staff noun sits in the segment.
+                || (! $aboutUnit && $this->ok(preg_match('/\b(?:equipo|asesor(?:es|as?)?+|personal|oficina)\b[^.!?\n,;]{0,40}?\b(?:est[aá]n?+|vuelven?+\s++a\s++estar|estar[aá]n?+|se\s++encuentra\p{L}*+)\s++$/iu', $before)) === 1)
+                // EVP-200: generic options mentioned while handing over ("un asesor te detalla las opciones disponibles",
+                // "sobre unidades disponibles") assert no unit; "contamos con propuestas disponibles" still does.
+                || (! $specific && $this->ok(preg_match('/^disponibles$/iu', (string) $m[0][0])) === 1
+                    && $this->ok(preg_match('/\b(?:sobre|de|las|los|nuestras|nuestros|sus|tus)\s++(?:\p{L}++\s++)?(?:opciones|alternativas|propiedades|unidades|lotes|departamentos|casas|terrenos|propuestas)\s++$/iu', $before)) === 1
+                    && $this->ok(preg_match('/(?<!\bno\s)\b(?:hay|tenemos|contamos|tengo|cuento|quedan|ofrecemos|existen)\b/iu', $before)) !== 1)
+                // EVP-200: the noun as a topic ("los precios y la disponibilidad los confirma un asesor", "sobre la
+                // disponibilidad de esa unidad no tengo información") states nothing, even about a named unit: it is
+                // what the prompt asks the model to say. It is a claim when a verb asserts it before ("hay muy buena
+                // disponibilidad", "te confirmo la disponibilidad", "con disponibilidad") or a state follows ("…es
+                // inmediata", "…: buenas noticias", "…está confirmada"); a passive by an advisor ("son confirmados por
+                // nuestros asesores") is no state. ponytail: lexical; "es real" or "es segura" rely on the evals.
                 || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
-                    && $this->ok(preg_match('/\bno\s++(?:te\s++|le\s++)?+(?:(?:puedo|podemos)\s++(?:confirmar|informar|asegurar|garantizar)(?:te|le)?+|(?:tengo|tenemos|cuento\s++con|contamos\s++con)\s++(?:(?:la\s++)?+informaci[oó]n|datos|detalles?)\s++(?:sobre|de|acerca\s++de))\s++la\s++$/iu', $before)) === 1
-                    && $this->ok(preg_match('/^[^.!?\n;]{0,40}?(?::|\b(?:es|est[aá]|sigue|contin[uú]a|se\s++mantiene|vigente|inmediata|total|confirmad\p{L}*+|garantizad\p{L}*+|asegurad\p{L}*+)\b)/iu', $after)) !== 1)
-                // EVP-200: the noun handed to a person, allowlisted: "la disponibilidad del 12A te la confirma un asesor",
-                // "el precio y la disponibilidad te los confirma un asesor", "un asesor te confirma la disponibilidad".
-                || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
-                    && (($this->ok(preg_match('/(?:^|[,:;]\s*+)(?:(?:el|los)\s++precios?\s++y\s++)?+(?:la|su)\s++$/iu', $before)) === 1
-                            && $this->ok(preg_match('/^\s++(?:del?\s++(?:[\p{L}\p{N}\-\/]++\s++){1,3}?)?+(?:te|se|le)\s++(?:l[oa]s?+\s++)?+(?:va\s++a\s++)?+confirm\p{L}*+\s++(?:un|una|el|la|nuestro|nuestra)\s++asesor/iu', $after)) === 1)
-                        || $this->ok(preg_match('/^\s*+(?:un|una|el|la|nuestro|nuestra)\s++asesor[ae]?+\s++(?:te|le|les)\s++(?:va\s++a\s++)?+confirm\p{L}*+\s++(?:la|su)\s++$|^\s*+(?:un|una|el|la|nuestro|nuestra)\s++asesor[ae]?+\s++va\s++a\s++confirmar(?:te|le|les)\s++(?:la|su)\s++$/iu', $before)) === 1)
-                    && $this->ok(preg_match('/^\s++(?:del?\s++(?:[\p{L}\p{N}\-\/]++\s++){0,3}?)?+[^.!?\n;]{0,40}?\b(?:es|est[aá]|sigue|contin[uú]a|inmediata|total|confirmad\p{L}*+|garantizad\p{L}*+|asegurad\p{L}*+)\b/iu', $after)) !== 1)
+                    && $this->ok(preg_match('/\b(?:hay|haber|tenemos|tengo|tiene|tienen|contamos\s++con|cuento\s++con|cuenta\s++con|cuentan\s++con|existe|existen|(?<!junto\s)con|queda|quedan|sigue|siguen|mantiene|mantienen|ofrecemos|damos|(?:te\s++|le\s++|les\s++)?+(?:confirm|asegur|garantiz)(?:o|amos|é))\s++(?:[\p{L}\p{N}]++\s++){0,3}?$/iu', $before)) !== 1
+                    // "Te paso los detalles de disponibilidad del 12B" hands the data over itself.
+                    && $this->ok(preg_match('/\b(?:te|le|les)\s++(?:paso|pasamos|mando|mandamos|env[ií]o|enviamos|comparto|compartimos|dejo|dejamos)\b[^.!?\n]{0,30}?$/iu', $before)) !== 1
+                    && $this->ok(preg_match('/^[^.!?\n;]{0,60}?(?::|\b(?:inmediata|total|plena|alta|buena|buenas|excelente|amplia|vigente|segura|cierta|real|sigue|contin[uú]a|se\s++mantiene|garantizad\p{L}*+|asegurad\p{L}*+|(?:est[aá]|es|qued[oó]|queda)\s++confirmad\p{L}*+(?!\s++(?:por|exclusivamente|personalmente|directamente|solo|s[oó]lo|[uú]nicamente)\b))\b)/iu', $after)) !== 1)
                 // EVP-200: the visitor's schedule ("contame tu disponibilidad horaria para visitar el 12A") is no unit state.
                 || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
                     && ($this->ok(preg_match('/\btu\s++$/iu', $before)) === 1 || $this->ok(preg_match('/^\s++(?:horari|de\s++horario|para\s++(?:la\s++)?+visita|para\s++(?:ir|visitar|recorrer))/iu', $after)) === 1))
