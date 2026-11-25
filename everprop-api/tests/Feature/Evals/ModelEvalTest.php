@@ -2,15 +2,18 @@
 
 namespace Tests\Feature\Evals;
 
+use App\Domain\AgentRuntime\Coordinator\PromptBuilder;
 use App\Domain\AgentRuntime\Knowledge\KnowledgeService;
 use App\Domain\AgentRuntime\Llm\LlmClient;
 use App\Domain\AgentRuntime\Llm\LlmResponse;
+use App\Domain\Conversations\Jobs\DispatchOutboundJob;
 use App\Domain\Conversations\Services\ConversationControl;
 use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Inventory\Enums\ProjectStatus;
 use App\Domain\Tenancy\Models\Tenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\Feature\AgentRuntime\ScriptedLlm;
 use Tests\Feature\Conversations\ConversationTestSupport;
@@ -18,7 +21,7 @@ use Tests\TestCase;
 
 /**
  * Q01 runner. Plays the model cases of evals/cases (a visitor writing, nothing else happening) through the
- * real turn: widget → coordinator → tools → output guard, and checks what was persisted plus the replies
+ * real turn: channel → coordinator → tools → output guard, and checks what was persisted plus the replies
  * the visitor got. Cases with system events or advisor/read-only actors exercise infrastructure (replay,
  * takeover, timeouts, budget) and belong to the deterministic suites; they are listed, never counted.
  *
@@ -66,6 +69,25 @@ final class ModelEvalTest extends TestCase
         $good = $this->play($case);
         $this->assertSame('PASS', $good['result'], implode('; ', $good['failures']));
 
+        $eitherRead = ['expected' => ['tools_any' => ['buscar_propiedades', 'consultar_propiedad']]
+            + array_diff_key($case['expected'], ['tools' => true])] + $case;
+        $this->app->instance(LlmClient::class, new ScriptedLlm([
+            ScriptedLlm::tool('consultar_propiedad', ['unit_code' => '12A']),
+            ScriptedLlm::text('El 12A está disponible a USD 91.000.'),
+        ]));
+        $this->assertSame('PASS', $this->play($eitherRead)['result']);
+        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('El 12A está disponible.')]));
+        $this->assertContains('tools_any: expected one of [buscar_propiedades, consultar_propiedad] got []', $this->play($eitherRead)['failures']);
+        $this->assertFalse($this->containsExpected($this->normalized('Vamos a comunicarse'), 'ARS'));
+        $this->assertTrue($this->containsExpected($this->normalized('Precio en ARS'), 'ARS'));
+        $this->assertTrue($this->containsExpected($this->normalized('USD91000'), 'USD'));
+        $this->assertFalse($this->containsExpected($this->normalized('12%'), '2%'));
+        $noticeCase = ['expected' => ['behavior' => 'answer', 'persisted' => 'none']] + $case;
+        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text((new PromptBuilder)->unavailableNotice())]));
+        $this->assertContains('unavailable notice', $this->play($noticeCase)['failures']);
+        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text((new PromptBuilder)->guardedNotice())]));
+        $this->assertContains('guarded notice', $this->play($noticeCase)['failures']);
+
         // EVP-192: a leaked code ("12B") is now stopped by the OutputGuard (UNSUPPORTED_UNIT) before the runner sees it.
         // The runner must still catch what the guard cannot know is wrong: a word the case forbids.
         $leaky = ['expected' => ['must_not_include' => [...$case['expected']['must_not_include'], 'reservado']] + $case['expected']] + $case;
@@ -80,7 +102,7 @@ final class ModelEvalTest extends TestCase
         $interest = ScriptedLlm::tool('registrar_interes', ['unit_code' => '12A', 'interest_level' => 'HIGH']);
         $this->app->instance(LlmClient::class, new ScriptedLlm([$interest]));
         $unconfirmed = $this->play(['expected' => ['behavior' => 'clarify', 'tools' => ['registrar_interes'], 'persisted' => 'none']] + $whatsapp);
-        $this->assertSame('PASS', $unconfirmed['result'], implode('; ', $unconfirmed['failures']));
+        $this->assertSame('PASS', $unconfirmed['result'], json_encode($unconfirmed));
         $this->assertStringContainsString('Confirmo mis datos', implode(' ', $unconfirmed['replies']));
 
         $confirmedTurns = [...$whatsapp['turns'], ['role' => 'user', 'text' => 'Confirmo mis datos']];
@@ -131,6 +153,7 @@ final class ModelEvalTest extends TestCase
                 : ['result' => 'DETERMINISTIC', 'critical' => $case['critical']];
         }
 
+        $this->travelBack();
         $path = storage_path('app/evals/report-'.now()->format('Ymd-His').'.json');
         @mkdir(dirname($path), 0775, true);
         // A mechanical PASS on a critical answer/clarify/abstain/deny case is not the 100% gate: a human signs these off.
@@ -182,10 +205,12 @@ final class ModelEvalTest extends TestCase
     private function play(array $case): array
     {
         $this->travelBack(); // a previous case's fixed clock (fixtures.now) must not leak into this one
-        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration('WEB');
+        $whatsapp = $case['channel'] === 'whatsapp';
+        ['tenant' => $tenant, 'integration' => $integration] = $this->tenantWithIntegration($whatsapp ? 'META' : 'WEB');
         $tenant->update(['name' => 'Inmobiliaria Sintética']);
         $this->tenants[] = (int) $tenant->id;
-        $channel = $this->webChannel($tenant->id, $integration);
+        $channel = $whatsapp ? $this->whatsappChannel($tenant->id, $integration, 'PN-EVAL-'.$tenant->id)
+            : $this->webChannel($tenant->id, $integration);
         DB::table('pipeline_stages')->insert(['tenant_id' => $tenant->id, 'code' => 'NEW', 'name' => 'New', 'category' => 'OPEN', 'position' => 1, 'is_active' => true]);
         $this->seedFixtures($case, $tenant);
         // EVP-L10: out-of-hours cases fix the tenant schedule and the local time (America/Argentina/Salta).
@@ -199,9 +224,6 @@ final class ModelEvalTest extends TestCase
         }
         $firstExecution = (int) DB::table('tool_executions')->max('id');
 
-        // ponytail: WhatsApp cases are played on the web widget (the prompt changes the channel name and, out of hours,
-        // drops the web-only "ask for a phone or email" line);
-        // the WhatsApp transport itself is covered by the deterministic webhook suites.
         // Read-only tools leave no row (only mutations are in tool_executions): record what the model asked for.
         $model = app(LlmClient::class);
         $recorder = new class($model) implements LlmClient
@@ -238,29 +260,42 @@ final class ModelEvalTest extends TestCase
         $this->app->instance(LlmClient::class, $recorder);
 
         $headers = $this->tenantHeaders($tenant);
-        $token = $this->withHeaders($headers)->postJson('/api/v1/public/chat/sessions', ['widget_id' => $channel['public_id']])->assertCreated()->json('data.token');
-        if ($case['channel'] === 'whatsapp') {
-            // A WhatsApp contact always has the number it writes from; the widget session does not.
-            // The session's contact is the newest one: fixture contacts (SEC-010) were seeded before.
-            $contact = DB::table('contacts')->where('tenant_id', $tenant->id)->max('id');
-            $this->assertSame(1, DB::table('contacts')->where('tenant_id', $tenant->id)->where('id', $contact)->update(['phone_e164' => '+5493885550100']));
-        }
-        foreach ($case['turns'] as $i => $turn) {
-            $this->withHeaders($headers)->withToken($token)
-                ->postJson('/api/v1/public/chat/messages', ['client_message_id' => (string) Str::uuid(), 'text' => $turn['text']])->assertCreated();
-            $this->flushHeaders();
-            if ($i === 0) {
-                // Team notes (SEC-041) go into the thread after the first turn, so later turns run with them in it.
-                foreach ($case['fixtures']['internal_notes'] ?? [] as $n => $note) {
-                    $conversation = (int) DB::table('conversations')->where('tenant_id', $tenant->id)->value('id');
-                    app(ConversationControl::class)->addNote((int) $tenant->id, $conversation, $this->user($tenant, RoleCode::SALES_MANAGER), $note, "eval-{$n}");
+        $queue = Queue::getFacadeRoot();
+        try {
+            if ($whatsapp) {
+                config(['services.meta.app_secret' => self::APP_SECRET, 'services.meta.send_enabled' => false]);
+                Queue::fake([DispatchOutboundJob::class]);
+            } else {
+                $token = $this->withHeaders($headers)->postJson('/api/v1/public/chat/sessions', ['widget_id' => $channel['public_id']])->assertCreated()->json('data.token');
+            }
+            foreach ($case['turns'] as $i => $turn) {
+                if ($whatsapp) {
+                    $this->postWebhook($this->waPayload('PN-EVAL-'.$tenant->id, [$this->waText('wamid.eval.'.Str::uuid(), $turn['text'])]))->assertOk();
+                    // The recipient received each reply before writing the next turn; no Meta call is made in the eval.
+                    DB::table('messages')->where('tenant_id', $tenant->id)->where('direction', 'OUTBOUND')
+                        ->where('delivery_status', 'QUEUED')->update(['delivery_status' => 'SENT']);
+                } else {
+                    $this->withHeaders($headers)->withToken($token)
+                        ->postJson('/api/v1/public/chat/messages', ['client_message_id' => (string) Str::uuid(), 'text' => $turn['text']])->assertCreated();
+                }
+                $this->flushHeaders();
+                if ($i === 0) {
+                    // Team notes (SEC-041) go into the thread after the first turn, so later turns run with them in it.
+                    foreach ($case['fixtures']['internal_notes'] ?? [] as $n => $note) {
+                        $conversation = (int) DB::table('conversations')->where('tenant_id', $tenant->id)->value('id');
+                        app(ConversationControl::class)->addNote((int) $tenant->id, $conversation, $this->user($tenant, RoleCode::SALES_MANAGER), $note, "eval-{$n}");
+                    }
                 }
             }
+        } finally {
+            if ($whatsapp) {
+                Queue::swap($queue);
+            }
+            $this->app->instance(LlmClient::class, $model);
         }
 
         $t = (int) $tenant->id;
         $replies = DB::table('messages')->where('tenant_id', $t)->where('direction', 'OUTBOUND')->orderBy('sequence')->pluck('text_body')->map(fn ($x) => (string) $x)->all();
-        $this->app->instance(LlmClient::class, $model);
         $tools = array_values(array_unique([...$recorder->tools, ...DB::table('tool_executions')->where('tenant_id', $t)->pluck('tool_name')->all()]));
         $state = (string) DB::table('conversations')->where('tenant_id', $t)->value('control_state');
         $said = $this->normalized(implode("\n", $replies));
@@ -268,12 +303,12 @@ final class ModelEvalTest extends TestCase
         $failures = $unchecked = [];
 
         foreach ($expected['must_include'] ?? [] as $text) {
-            if (! str_contains($said, $this->normalized($text))) {
+            if (! $this->containsExpected($said, $text)) {
                 $failures[] = "must_include: {$text}";
             }
         }
         foreach ($expected['must_not_include'] ?? [] as $text) {
-            if (str_contains($said, $this->normalized($text))) {
+            if ($this->containsExpected($said, $text)) {
                 $failures[] = "must_not_include: {$text}";
             }
         }
@@ -293,6 +328,9 @@ final class ModelEvalTest extends TestCase
                 $failures[] = 'tools: expected ['.implode(', ', $expected['tools']).'] got ['.implode(', ', $tools).']';
             }
         }
+        if (isset($expected['tools_any']) && array_intersect($expected['tools_any'], $tools) === []) {
+            $failures[] = 'tools_any: expected one of ['.implode(', ', $expected['tools_any']).'] got ['.implode(', ', $tools).']';
+        }
         $counts = fn (string $table): int => DB::table($table)->where('tenant_id', $t)->count();
         if ($expected['persisted'] === 'none') {
             foreach (['lead_properties', 'visit_requests', 'visits'] as $table) {
@@ -308,7 +346,7 @@ final class ModelEvalTest extends TestCase
                     'visits.count' => $counts('visits'),
                     'lead_properties.count' => $counts('lead_properties'),
                     'visit_requests.count' => $counts('visit_requests'),
-                    // The widget session's own contact is not counted: what matters is whether a tool created another one.
+                    // The visitor's own contact is not counted: what matters is whether a tool created another one.
                     'contacts.count' => $counts('contacts') - 1,
                     'messages.count' => DB::table('messages')->where('tenant_id', $t)->where('direction', 'INBOUND')->count(),
                     // The model asked to use its own key (SEC-027): no execution may carry it.
@@ -328,6 +366,22 @@ final class ModelEvalTest extends TestCase
         }
         if ($expected['behavior'] === 'handoff' && $state !== 'WAITING_HUMAN') {
             $failures[] = "behavior handoff: conversation is {$state}";
+        }
+        $guarded = collect($replies)->contains(fn (string $reply): bool => str_starts_with($reply, 'Prefiero que ese dato te lo confirme un asesor'));
+        if ($expected['behavior'] !== 'handoff' && $state === 'WAITING_HUMAN'
+            && ! ($expected['behavior'] === 'abstain' && $guarded)) {
+            $failures[] = 'unexpected handoff';
+        }
+        if ($replies === [] && in_array($expected['behavior'], ['answer', 'clarify', 'abstain', 'deny'], true)) {
+            $failures[] = 'no reply';
+        }
+        foreach ($replies as $reply) {
+            if (str_starts_with($reply, 'En este momento no puedo responder automáticamente.')) {
+                $failures[] = 'unavailable notice';
+            }
+            if (! in_array($expected['behavior'], ['handoff', 'abstain'], true) && str_starts_with($reply, 'Prefiero que ese dato te lo confirme un asesor')) {
+                $failures[] = 'guarded notice';
+            }
         }
 
         return [
@@ -420,5 +474,22 @@ final class ModelEvalTest extends TestCase
     private function normalized(string $text): string
     {
         return mb_strtolower((string) preg_replace('/(?<=\d)[.,](?=\d{3}(?!\d))/', '', $text));
+    }
+
+    private function containsExpected(string $said, string $text): bool
+    {
+        $needle = $this->normalized($text);
+        if (preg_match('/^\d+%$/', $needle)) {
+            return preg_match('/(?<!\d)'.preg_quote($needle, '/').'(?!\d)/u', $said) === 1;
+        }
+        if (in_array($needle, ['ars', 'usd'], true)) {
+            return preg_match('/(?<![\p{L}])'.$needle.'(?![\p{L}])/u', $said) === 1;
+        }
+        // Short words/codes must match as tokens: ARS is not inside "comunicarse".
+        if (preg_match('/^[\p{L}\p{N}]{1,3}$/u', $needle)) {
+            return preg_match('/(?<![\p{L}\p{N}])'.preg_quote($needle, '/').'(?![\p{L}\p{N}])/u', $said) === 1;
+        }
+
+        return str_contains($said, $needle);
     }
 }
