@@ -201,7 +201,7 @@ final class GeminiChatClientTest extends TestCase
                 ['type' => 'tool_result', 'tool_use_id' => 'local-a', 'content' => '{}'],
                 ['type' => 'tool_result', 'tool_use_id' => 'local-c', 'content' => '{}'],
             ]],
-        ], [], 100, true);
+        ], [['name' => 'buscar_propiedades', 'description' => 'Consulta inventario', 'input_schema' => ['type' => 'object']]], 100, true);
         $parts = Http::recorded()[0][0]->data()['contents'][1]['parts'];
         $this->assertSame('provider-b', $parts[0]['functionResponse']['id']);
         $this->assertSame('provider-a', $parts[1]['functionResponse']['id']);

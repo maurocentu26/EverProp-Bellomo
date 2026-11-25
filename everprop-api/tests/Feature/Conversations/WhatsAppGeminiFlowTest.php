@@ -99,9 +99,10 @@ final class WhatsAppGeminiFlowTest extends TestCase
         $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'COMMITTED')->count());
         $this->assertSame(2, DB::table('messages')->where('tenant_id', $f['tenant'])->count());
         $this->assertDatabaseHas('messages', ['id' => $run->output_message_id, 'tenant_id' => $f['tenant'], 'delivery_status' => 'SENT']);
-        // EVP-108: the final call carries the tool result as text in the same user turn, with no function context.
+        // The final call keeps lookup results as text (EVP-108), offering only a terminal handoff.
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'generativelanguage')
-            && ! isset($r['tools'])
+            && array_column($r['tools'][0]['functionDeclarations'] ?? [], 'name') === ['derivar_a_asesor']
+            && ! str_contains((string) json_encode($r['contents'], JSON_UNESCAPED_UNICODE), 'No hay más herramientas disponibles')
             && str_contains($r['contents'][array_key_last($r['contents'])]['parts'][array_key_last($r['contents'][array_key_last($r['contents'])]['parts'])]['text'] ?? '', '<resultado_herramienta nombre="buscar_propiedades">')
             && ! str_contains((string) json_encode($r['contents']), 'functionCall')
             && ! str_contains((string) json_encode($r['contents']), 'functionResponse'));
