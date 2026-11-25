@@ -445,7 +445,7 @@ final class ModelEvalTest extends TestCase
             $said = $this->normalized(implode("\n", $replies[$index]));
             foreach (['must_include', 'must_not_include'] as $rule) {
                 foreach ($checks[$rule] ?? [] as $text) {
-                    if (str_contains($said, $this->normalized($text)) !== ($rule === 'must_include')) {
+                    if ($this->containsExpected($said, $text) !== ($rule === 'must_include')) {
                         $failures[] = "turn {$index} {$rule}: {$text}";
                     }
                 }
@@ -461,6 +461,10 @@ final class ModelEvalTest extends TestCase
         $this->assertSame([], $this->checkTurns($checks, [['Arenales: 10%'], ['Sin promoción confirmada en Pinar.']]));
         $this->assertSame(['turn 1 must_not_include: 10%'], $this->checkTurns($checks, [['Arenales: 10%'], ['Pinar: 10%']]));
         $this->assertSame(['turn 1: missing reply'], $this->checkTurns($checks, [['Sin evidencia.']]));
+        $this->assertSame([], $this->checkTurns($checks, [[], ['Pinar: 110%']]));
+        foreach (['12' => 'Unidad 12A', 'ARS' => 'Pueden comunicarse', '2%' => 'Descuento 12%'] as $needle => $reply) {
+            $this->assertSame(["turn 0 must_include: {$needle}"], $this->checkTurns([['must_include' => [(string) $needle]]], [[$reply]]));
+        }
     }
 
     /** @param array<string, mixed> $case */

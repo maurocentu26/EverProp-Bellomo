@@ -911,10 +911,17 @@ final class OutputGuard
                     }
                 }
                 $unitProof = $proof($units);
+                // A catalogue count describes the named set, not a numeric attribute of its first unit.
+                $catalogueCount = $inventoryChecked && $named !== [] && ! $every && $offset < $mentions[0][1]
+                    && $this->ok(preg_match('/\b(?:por|cada)\s++(?:(?:cada|una?|el|la)\s++)?+(?:'.self::UNIT_NOUN.'|opci[oó]n)\b/iu', $segment)) === 0
+                    && $value === (string) count($named)
+                    && array_diff($named, $available) === []
+                    && $this->ok(preg_match('/\b(?:tenemos|hay|encontramos|encontr[eé])\s++(?:disponibles\s++)?+$/iu', substr($segment, 0, $offset))) === 1
+                    && $this->ok(preg_match('/^\d++\s++(?:lotes|unidades|opciones)\b/iu', substr($segment, $offset))) === 1;
                 $ok = match ($kind) {
                     // A phone or an account number: the same digits inside a single run of the visitor, a source or the server.
                     'digits' => array_any([...$baseDigitRuns, ...$unitProof['digitRuns']], fn (string $r): bool => str_contains($r, $value)),
-                    null => in_array($value, [...(($units === null || $when) ? $base : []), ...$unitProof['numbers'], ...$this->recordValues($unitProof['records'])], true),
+                    null => $catalogueCount || in_array($value, [...(($units === null || $when) ? $base : []), ...$unitProof['numbers'], ...$this->recordValues($unitProof['records'])], true),
                     default => ($echoAt($offset) && in_array($value.'|'.$kind, $visitorTyped, true)) || $this->typedBacked($value, $kind, $unitProof, $claimEvery),
                 };
                 if (! $ok) {

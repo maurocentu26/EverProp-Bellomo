@@ -13,6 +13,20 @@ final class OutputGuardTest extends TestCase
 
     private const KNOWLEDGE = ['Financiación: 36 cuotas fijas de $ 150.000 durante la promoción.'];
 
+    public function test_inventory_count_is_backed_by_distinct_available_units_not_their_attributes(): void
+    {
+        $guard = new OutputGuard;
+        $facts = [['code' => 'C-7'], ['code' => 'C-8']];
+        $this->assertNotContains('UNSUPPORTED_FACT', $guard->check('Tenemos dos lotes: C-7 y C-8.', [], [], facts: $facts, inventoryChecked: true));
+        $this->assertContains('UNSUPPORTED_FACT', $guard->check('Tenemos tres lotes: C-7 y C-8.', [], [], facts: $facts, inventoryChecked: true));
+        $this->assertContains('UNSUPPORTED_FACT', $guard->check('Tenemos dos lotes: C-7 y C-8.', [], [], facts: [$facts[0]], inventoryChecked: true));
+        $this->assertContains('UNSUPPORTED_FACT', $guard->check('C-7 y C-8 tienen dos baños.', [], [], facts: $facts, inventoryChecked: true));
+        $this->assertContains('UNSUPPORTED_FACT', $guard->check('Tenemos dos lotes: C-7 y C-7.', [], [], facts: [$facts[0], $facts[0]], inventoryChecked: true));
+        $this->assertContains('UNSUPPORTED_FACT', $guard->check('C-7 y C-8 incluyen dos lotes cada uno.', [], [], facts: $facts, inventoryChecked: true));
+        $this->assertContains('UNSUPPORTED_FACT', $guard->check('C-7 incluye dos lotes y C-8 también.', [], [], facts: $facts, inventoryChecked: true));
+        $this->assertContains('UNSUPPORTED_FACT', $guard->check('Tenemos dos lotes por unidad en C-7 y C-8.', [], [], facts: $facts, inventoryChecked: true));
+    }
+
     public function test_peso_prefix_and_suffix_preserve_each_unit_price(): void
     {
         $guard = new OutputGuard;
