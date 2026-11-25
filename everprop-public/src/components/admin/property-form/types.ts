@@ -27,7 +27,7 @@ export const formSchema = z.object({
   disposition: z.string().max(80).optional(),
   parkingSpaces: countOptional,
   expenses: nonnegativeOptional,
-  expensesCurrency: z.enum(["USD", "ARS"]).optional(),
+  expensesCurrency: z.enum(["USD", "ARS", ""]).optional(),
 
   // Enterprise/Commercial specifics
   area_m2: positiveOptional,

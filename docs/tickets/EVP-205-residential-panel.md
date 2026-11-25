@@ -22,8 +22,9 @@ El panel permite cargar y editar ambientes separados de dormitorios, baños, sup
 
 ## QA integrada posterior
 
-- En navegador, con la API EVP-204 y MySQL 8.4 aislado, se creó un departamento con medidas, expensas y característica; se leyó en la ficha y se editó la característica. Se revisó la ficha y el modal en ancho de 390 px.
+- En navegador, con la API EVP-204 y MySQL 8.4 aislado, se creó un departamento con medidas, expensas y característica; se leyó en la ficha y se editó la característica. Se creó también una casa sin expensas. Se revisó la ficha y el modal en ancho de 390 px.
 - La prueba integrada detectó campos de lote en el modal residencial; se ocultaron y se ajustó el resumen de revisión. El identificador `2-undefined` provenía de la integración local con EVP-203; se corrigió en esa rama.
-- Pendiente de verificación: alta de casa, teclado, asesor de solo lectura y recuperación de errores parciales. Los cuatro fallos globales preexistentes siguen clasificados como gate previo. Los comentarios de Jira EVP-205 eran cero al crear la PR.
+- La prueba de casa detectó que el formulario rechazaba el valor vacío de «Sin expensas informadas»; se corrigió el esquema y se completó el alta.
+- Pendiente de verificación: teclado, asesor de solo lectura y recuperación de errores parciales. Los cuatro fallos globales preexistentes siguen clasificados como gate previo. Los comentarios de Jira EVP-205 eran cero al crear la PR.
 
 PR: https://github.com/maurocentu26/EverProp-Bellomo/pull/183. No se fusionó ni desplegó esta rama. El backend EVP-204 debe integrarse antes de usar los campos nuevos en producción.
