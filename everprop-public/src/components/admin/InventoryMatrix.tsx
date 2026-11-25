@@ -14,9 +14,14 @@ const countLabel = (count: number, status: Property['status']) => {
   return `${count} ${labels[status ?? 'unknown'][count === 1 ? 0 : 1]}`;
 };
 
-export default function InventoryMatrix({ properties, isLoading }: { properties: Property[]; isLoading?: boolean }) {
+export default function InventoryMatrix({ properties, isLoading, canEdit = false, canDelete = false, busyUnitId, onStatusChange, onDelete }: {
+  properties: Property[]; isLoading?: boolean; canEdit?: boolean; canDelete?: boolean; busyUnitId?: string | null;
+  onStatusChange?: (unit: Property, status: "available" | "reserved" | "sold" | "not_marketed") => Promise<void>;
+  onDelete?: (unit: Property) => Promise<void>;
+}) {
   const filterId = useId();
-  const [selectedUnit, setSelectedUnit] = useState<Property | null>(null);
+  const [selectedUnitState, setSelectedUnit] = useState<Property | null>(null);
+  const selectedUnit = properties.find(unit => unit.id === selectedUnitState?.id) ?? null;
   const [selectedSector, setSelectedSector] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const grouped: Record<string, Property[]> = {};
@@ -37,7 +42,7 @@ export default function InventoryMatrix({ properties, isLoading }: { properties:
       <div className="lots-scroll" role="region" aria-label={`Lotes de ${sectorLabel(sector)}`} tabIndex={0}><div className="lots-grid">{[...units].sort((a, b) => (a.unitNumber ?? a.title).localeCompare(b.unitNumber ?? b.title, 'es', { numeric: true })).map(unit => { const Icon = statusIcon(unit.status); return <button type="button" key={unit.id} className="lots-cell" data-status={unit.status ?? 'unknown'} aria-pressed={selectedUnit?.id === unit.id} aria-label={`${unit.unitNumber ?? unit.title} · ${sectorLabel(sector)} · ${propertyStatusLabel(unit.status)} · ${inventoryPriceLabel(unit)}`} onClick={() => setSelectedUnit(unit)}><strong>{unit.unitNumber ?? unit.title}</strong><Icon size={20} aria-hidden="true" /><span>Ver</span></button>; })}</div></div>
     </section>)}
     {!isLoading && !properties.length && <p className="inventory-empty">No hay unidades registradas para este proyecto.</p>}
-    </div><aside className="lots-selected" aria-labelledby="lots-selected-title"><h2 id="lots-selected-title">Lote seleccionado</h2>{selectedUnit ? <><h3>{selectedUnit.unitNumber ?? selectedUnit.title} · {sectorLabel(selectedUnit.sectorName || 'Sin manzana informada')}</h3><p>{selectedUnit.area_m2 == null ? 'Superficie: Sin datos' : `${selectedUnit.area_m2.toLocaleString('es-AR')} m²`}</p><p className="inventory-price">{inventoryPriceLabel(selectedUnit)}</p><span className="lots-status" data-status={selectedUnit.status ?? 'unknown'}>{propertyStatusLabel(selectedUnit.status)}</span><Link href={`/admin/properties/${selectedUnit.id}`} className="inventory-cta">Ver ficha<ArrowRight size={20} aria-hidden="true" /></Link><button type="button" onClick={() => setDetailsOpen(true)}>Ver detalles</button></> : <p>Elegí un lote para ver su superficie, precio y disponibilidad.</p>}</aside></div>
+    </div><aside className="lots-selected" aria-labelledby="lots-selected-title"><h2 id="lots-selected-title">Lote seleccionado</h2>{selectedUnit ? <><h3>{selectedUnit.unitNumber ?? selectedUnit.title} · {sectorLabel(selectedUnit.sectorName || 'Sin manzana informada')}</h3><p>{selectedUnit.area_m2 == null ? 'Superficie: Sin datos' : `${selectedUnit.area_m2.toLocaleString('es-AR')} m²`}</p><p className="inventory-price">{inventoryPriceLabel(selectedUnit)}</p><span className="lots-status" data-status={selectedUnit.status ?? 'unknown'}>{propertyStatusLabel(selectedUnit.status)}</span>{canEdit && onStatusChange && <label className="text-sm">Cambiar estado<select value={selectedUnit.status ?? "unknown"} disabled={busyUnitId === selectedUnit.id} onChange={event => void onStatusChange(selectedUnit, event.target.value as "available" | "reserved" | "sold" | "not_marketed")}>{!["available", "reserved", "sold", "not_marketed"].includes(selectedUnit.status ?? "unknown") && <option value={selectedUnit.status ?? "unknown"} disabled>{propertyStatusLabel(selectedUnit.status)}</option>}<option value="available">Disponible</option><option value="reserved">Reservado</option><option value="sold">Vendido</option><option value="not_marketed">No comercializado</option></select></label>}{canDelete && onDelete && <button type="button" disabled={busyUnitId === selectedUnit.id} onClick={() => void onDelete(selectedUnit)}>Eliminar lote</button>}<Link href={`/admin/properties/${selectedUnit.id}`} className="inventory-cta">Ver ficha<ArrowRight size={20} aria-hidden="true" /></Link><button type="button" onClick={() => setDetailsOpen(true)}>Ver detalles</button></> : <p>Elegí un lote para ver su superficie, precio y disponibilidad.</p>}</aside></div>
     <Sheet open={detailsOpen && !!selectedUnit} onOpenChange={setDetailsOpen}>
       <SheetContent side="right" showCloseButton={false} className="admin-workspace inventory-view lots-sheet">
         {selectedUnit && <>

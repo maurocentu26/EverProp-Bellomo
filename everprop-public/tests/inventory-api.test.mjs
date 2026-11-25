@@ -72,6 +72,26 @@ test('cleared optional fields are explicitly sent as null',async()=>{
  assert.equal(payload.description,null);assert.equal(payload.sector_name,null);assert.equal(payload.unit_number,null);assert.equal(payload.area_m2,null);
 });
 
+test('lot edits send measures, services and a paired cleared price',async()=>{
+ let payload;
+ const api=client((url,init)=>{payload=JSON.parse(init.body);return {data:{...property,price:null,currency_code:null,services:init.body.services_json,commercial_features:init.body.commercial_features_json}};});
+ const land={frente_m:10,fondo_m:24,ochava_m2:0,padron:'A-123'};
+ await api.updateEverpropProperty('property-a',{version:8,price:null,currency:null,services:{water:true,electricity:false},commercialFeatures:{land}});
+ assert.equal(payload.price,null);assert.equal(payload.currency_code,null);
+ assert.equal(payload.services_json.water,true);assert.equal(payload.services_json.electricity,false);
+ assert.equal(payload.commercial_features_json.land.padron,'A-123');
+ assert.equal(payload.commercial_features_json.land.ochava_m2,0);
+});
+
+test('not marketed status and deletion use the existing property endpoint',async()=>{
+ const requests=[];
+ const api=client((url,init)=>{requests.push({url,method:init.method,body:init.body?JSON.parse(init.body):null});return {data:{...property,status:'NOT_MARKETED'}};});
+ const updated=await api.updateEverpropPropertyStatus('property-a','not_marketed',8);
+ assert.equal(requests[0].body.status,'NOT_MARKETED');assert.equal(updated.status,'not_marketed');
+ await api.deleteEverpropProperty('property-a');
+ assert.match(requests[1].url,/properties\/property-a$/);assert.equal(requests[1].method,'DELETE');
+});
+
 test('Inventory adapter preserves exact codes, null currency and missing prices for the redesigned view',async()=>{
  const rows=['12','12A','12B'].map((code,index)=>({...property,public_id:code,unit_number:code,currency_code:index===1?null:'ARS',price:index===2?null:0}));
  const api=client(()=>({data:rows}));

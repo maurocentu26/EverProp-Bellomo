@@ -450,7 +450,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload, intake
   return mapProperty(response.data);
 }
 
-export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold", version?: number) {
+export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold" | "not_marketed", version?: number) {
   return updateEverpropProperty(publicId, { status, version });
 }
 
@@ -884,8 +884,8 @@ export type UpdatePropertyPayload = {
   operation?: Property['operation'];
   propertyType?: string;
   status?: Property['status'];
-  price?: number;
-  currency?: "USD" | "ARS";
+  price?: number | null;
+  currency?: "USD" | "ARS" | null;
   city?: string;
   province?: string;
   neighborhood?: string;
@@ -895,6 +895,8 @@ export type UpdatePropertyPayload = {
   bedrooms?: number;
   bathrooms?: number;
   description?: string | null;
+  services?: Property["services"] | null;
+  commercialFeatures?: Property["commercialFeatures"] | null;
   version?: number;
 };
 
@@ -927,7 +929,7 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
   if (data.propertyType !== undefined) payload.category = categoryMap[data.propertyType] || "UNKNOWN";
   if (data.status !== undefined) payload.status = statusMap[data.status] || "UNKNOWN";
   if (data.price !== undefined) {
-    payload.price = Number(data.price);
+    payload.price = data.price === null ? null : Number(data.price);
   }
   if (data.currency !== undefined) payload.currency_code = data.currency;
   if (data.city !== undefined) payload.city = data.city;
@@ -939,6 +941,8 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
   if (data.bedrooms !== undefined) payload.bedrooms = data.bedrooms ?? null;
   if (data.bathrooms !== undefined) payload.bathrooms = data.bathrooms ?? null;
   if (data.description !== undefined) payload.description = data.description;
+  if (data.services !== undefined) payload.services_json = data.services;
+  if (data.commercialFeatures !== undefined) payload.commercial_features_json = data.commercialFeatures;
 
   const response = await apiFetch<ApiEnvelope<ApiProperty>>(`/api/v1/admin/properties/${publicId}`, {
     method: "PATCH",
@@ -946,6 +950,10 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
   });
 
   return mapProperty(response.data);
+}
+
+export async function deleteEverpropProperty(publicId: string): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/admin/properties/${encodeURIComponent(publicId)}`, { method: "DELETE" });
 }
 
 /** EVP-171: edición de la ficha del proyecto (PUT existente de AdminProjectController). */

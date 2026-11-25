@@ -53,7 +53,7 @@ test('EVP-75 sector filter, plural counts, missing sector and supplied details',
  assert.match(text(nodes(tree).find(n=>n.props?.className==='lots-legend')),/Disponible · 1/);
  const detailed=matrix(); tree=detailed({properties:[{...properties[0],area_m2:300,commercialFeatures:{land:{frente_m:12,fondo_m:25,ochava_m2:4}},services:{water:true,internet:true}}]});
  nodes(tree).find(n=>n.type==='button'&&n.props['aria-label']).props.onClick();
- tree=detailed({properties:[]});
+ tree=detailed({properties:[{...properties[0],area_m2:300,commercialFeatures:{land:{frente_m:12,fondo_m:25,ochava_m2:4}},services:{water:true,internet:true}}]});
  for(const label of ['300 m²','Frente: 12 m','Fondo: 25 m','Ochava: 4 m²','Agua potable · Internet'])assert.ok(text(tree).includes(label),label);
 });
 test('EVP-75 existing routes, loading, error and responsive containment',()=>{
@@ -62,6 +62,20 @@ test('EVP-75 existing routes, loading, error and responsive containment',()=>{
  assert.match(css,/\.lots-scroll \{[^}]*overflow-x: auto/); assert.match(css,/min-height: 72px; min-width: 44px/); assert.match(css,/\.lots-sheet\[data-slot="sheet-content"\] \{ inset: 0; width: 100%; max-width: none/);
  assert.match(text(matrix()({properties:[],isLoading:true})),/Cargando lotes/);
  assert.match(text(matrix()({properties:[]})),/No hay unidades/);
+});
+
+test('EVP-203 matrix exposes status and delete only to permitted editors',()=>{
+ const render=matrix();
+ const readOnly=render();
+ assert.equal(nodes(readOnly).some(n=>n.type==='select'&&/Cambiar estado/.test(text(n))),false);
+ nodes(readOnly).find(n=>n.type==='button'&&n.props['aria-label']?.startsWith('12 ·')).props.onClick();
+ let state='',deleted='';
+ const editable=render({properties,canEdit:true,canDelete:true,onStatusChange:async(unit,next)=>{state=`${unit.id}:${next}`;},onDelete:async unit=>{deleted=unit.id;}});
+ const summary=nodes(editable).find(n=>n.props?.className==='lots-selected');
+ const select=nodes(summary).find(n=>n.type==='select');
+ select.props.onChange({target:{value:'not_marketed'}});
+ nodes(summary).find(n=>n.type==='button'&&/Eliminar lote/.test(text(n))).props.onClick();
+ assert.equal(state,'12:not_marketed');assert.equal(deleted,'12');
 });
 
 test('EVP-75 initial selection skips empty projects and respects project URL in API and mock', async()=>{

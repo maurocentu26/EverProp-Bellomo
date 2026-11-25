@@ -115,7 +115,8 @@ test('EVP-73 detail: single identity, location without empty parts, advisor read
   const context={exports:{},window:{confirm(message){confirmation=message;return false;}},require(name){
     if(name==='react') return {useState(){return [initial[cursor++],()=>{}];},useRef(){return {current:null};},useEffect(){}};
     if(name==='react/jsx-runtime') return {jsx:jsxTree,jsxs:jsxTree};
-    if(name==='@/hooks/use-current-session') return {useCurrentSession:()=>({isEngineer:false,isAdvisor:advisor,user:{name:'Asesor prueba'}})};
+    if(name==='next/navigation') return {useRouter:()=>({push(){}})};
+    if(name==='@/hooks/use-current-session') return {useCurrentSession:()=>({isEngineer:false,isAdvisor:advisor,user:{name:'Asesor prueba',permissions:advisor?[]:['update','delete']}})};
     if(name==='@/lib/inventory-labels') return labels.exports;
     if(name==='@/lib/utils') return {cn:()=>''};
     return components;

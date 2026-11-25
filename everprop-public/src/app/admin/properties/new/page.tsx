@@ -11,17 +11,18 @@ import { Button } from "@/components/ui/button";
 
 export default function NewPropertyPage() {
   const router = useRouter();
-  const { isAdvisor, isReady } = useCurrentSession();
+  const { isAdvisor, isReady, user } = useCurrentSession();
+  const cannotCreate = isAdvisor || !Boolean(user?.permissions?.includes("create") || user?.permissions?.includes("full_access") || user?.permissions?.includes("manage_inventory"));
 
   useEffect(() => {
-    if (isReady && isAdvisor) {
+    if (isReady && cannotCreate) {
       toast.error("Acceso no autorizado", {
         description: "Los asesores comerciales no tienen permisos para crear o modificar el catálogo de propiedades.",
         duration: 5000,
       });
       router.replace("/admin/properties");
     }
-  }, [isReady, isAdvisor, router]);
+  }, [isReady, cannotCreate, router]);
 
   if (!isReady) {
     return (
@@ -31,7 +32,7 @@ export default function NewPropertyPage() {
     );
   }
 
-  if (isAdvisor) {
+  if (cannotCreate) {
     return (
       <div className="mx-auto flex min-h-[50vh] w-full max-w-xl flex-col items-center justify-center px-4 py-16 text-center">
         <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
@@ -41,7 +42,7 @@ export default function NewPropertyPage() {
           Acceso Restringido
         </h1>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Tu rol de asesor comercial no tiene permisos para dar de alta activos o unidades en el inventario. Redirigiendo al Catálogo de Propiedades...
+          Tu perfil no tiene permisos para dar de alta activos o unidades en el inventario. Redirigiendo al Catálogo de Propiedades...
         </p>
         <div className="mt-6">
           <Button variant="outline" className="gap-2" nativeButton={false} role="link" render={<Link href="/admin/properties" />}>
