@@ -95,7 +95,8 @@ final class WhatsAppGeminiFlowTest extends TestCase
         $run = DB::table('chatbot_runs')->where('tenant_id', $f['tenant'])->sole();
         $this->assertSame(['gemini', 'SUCCEEDED', 'REPLY'], [$run->model_provider, $run->status, $run->decision]);
         $this->assertSame(3, json_decode($run->trace_json, true)['calls']);
-        $this->assertSame(1, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'UNKNOWN')->count());
+        $this->assertSame(1, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'RELEASED')->count());
+        $this->assertSame(0, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'UNKNOWN')->count());
         $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'COMMITTED')->count());
         $this->assertSame(2, DB::table('messages')->where('tenant_id', $f['tenant'])->count());
         $this->assertDatabaseHas('messages', ['id' => $run->output_message_id, 'tenant_id' => $f['tenant'], 'delivery_status' => 'SENT']);
@@ -131,7 +132,7 @@ final class WhatsAppGeminiFlowTest extends TestCase
         Http::assertSentCount(4);
     }
 
-    public function test_persistent_provider_failure_sends_one_handoff_and_preserves_unknown_cost(): void
+    public function test_persistent_provider_rejection_sends_one_handoff_and_releases_cost(): void
     {
         $f = $this->channel('QA-FAIL');
         Http::fake([
@@ -147,7 +148,8 @@ final class WhatsAppGeminiFlowTest extends TestCase
         $this->assertDatabaseHas('chatbot_runs', ['tenant_id' => $f['tenant'], 'status' => 'FAILED', 'error_code' => 'PROVIDER_ERROR']);
         $this->assertDatabaseHas('conversations', ['tenant_id' => $f['tenant'], 'control_state' => 'WAITING_HUMAN']);
         $this->assertSame(1, DB::table('messages')->where('tenant_id', $f['tenant'])->where('direction', 'OUTBOUND')->where('delivery_status', 'SENT')->count());
-        $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'UNKNOWN')->count());
+        $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'RELEASED')->count());
+        $this->assertSame(0, DB::table('usage_ledger')->where('tenant_id', $f['tenant'])->where('status', 'UNKNOWN')->count());
         $automatic = app(ConversationKpis::class)->compute($f['tenant'], now()->toImmutable()->startOfDay(), now()->toImmutable()->addDay())['automatic'];
         $this->assertSame(['PROVIDER_ERROR' => 1], $automatic['errors']);
         $this->assertSame([], $automatic['reply_delivery'], 'the fixed handoff is not counted as a generated reply');

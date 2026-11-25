@@ -318,7 +318,7 @@ final class GeminiChatClientTest extends TestCase
     {
         $this->app['env'] = 'local';
         config(['conversations.ai_enabled' => false]);
-        foreach ([401 => ['PROVIDER_REJECTED', false, false], 429 => ['RATE_LIMITED', true, false], 500 => ['PROVIDER_ERROR', true, true]] as $status => $expected) {
+        foreach ([401 => ['PROVIDER_REJECTED', false, false], 429 => ['RATE_LIMITED', true, false], 500 => ['PROVIDER_ERROR', false, true]] as $status => $expected) {
             Http::swap(new Factory);
             Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['error' => ['message' => 'secret-canary']], $status)]);
             try {
@@ -348,7 +348,7 @@ final class GeminiChatClientTest extends TestCase
                 (new GeminiChatClient('secret-canary', 'test-model', 20))->complete('secret-canary', $messages, [], 100, false);
                 $this->fail('Expected provider failure');
             } catch (LlmFailure $e) {
-                $this->assertSame(['PROVIDER_ERROR', true, true], [$e->errorCode, $e->retryable, $e->billable]);
+                $this->assertSame(['PROVIDER_ERROR', false, true], [$e->errorCode, $e->retryable, $e->billable]);
             }
             $record = $logger->shouldHaveReceived('warning', ['Gemini request failed', [
                 'http_status' => 503,
@@ -363,7 +363,7 @@ final class GeminiChatClientTest extends TestCase
         $records->twice();
     }
 
-    public function test_timeout_is_unknown_billable_and_retryable(): void
+    public function test_timeout_is_unknown_billable_and_not_retryable(): void
     {
         $this->app['env'] = 'local';
         config(['conversations.ai_enabled' => false]);
@@ -372,7 +372,27 @@ final class GeminiChatClientTest extends TestCase
             (new GeminiChatClient('fake', 'gemini-3.8-flash', 20))->complete('test', [], [], 100, false);
             $this->fail('Expected timeout');
         } catch (LlmFailure $e) {
-            $this->assertSame(['TIMEOUT', true, true], [$e->errorCode, $e->retryable, $e->billable]);
+            $this->assertSame(['TIMEOUT', false, true], [$e->errorCode, $e->retryable, $e->billable]);
+        }
+    }
+
+    public function test_explicit_unavailable_preserves_retry_after_and_is_not_billable(): void
+    {
+        $this->app['env'] = 'local';
+        $this->freezeTime();
+        foreach ([null, '3', 'invalid', now()->addSeconds(5)->toRfc7231String()] as $header) {
+            Http::swap(new Factory);
+            Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+                'error' => ['status' => 'UNAVAILABLE', 'message' => 'private-context-canary'],
+            ], 503, $header === null ? [] : ['Retry-After' => $header])]);
+            try {
+                (new GeminiChatClient('fake', 'test-model', 20))->complete('test', [], [], 100, false);
+                $this->fail('Expected unavailable failure');
+            } catch (LlmFailure $e) {
+                $this->assertSame(['PROVIDER_ERROR', true, false], [$e->errorCode, $e->retryable, $e->billable]);
+                $this->assertSame(LlmFailure::rateLimited($header)->retryAfter, $e->retryAfter);
+                $this->assertStringNotContainsString('private-context-canary', $e->getMessage());
+            }
         }
     }
 

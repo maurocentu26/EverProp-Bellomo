@@ -706,7 +706,7 @@ final class AgentTurnTest extends TestCase
         $this->assertSame('QUOTA_EXCEEDED', DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->value('error_code'));
     }
 
-    public function test_provider_timeouts_retry_once_keep_cost_unknown_and_hand_off(): void
+    public function test_provider_timeouts_never_retry_even_if_the_adapter_marks_them_retryable(): void
     {
         $f = $this->fixture();
         $timeout = fn () => new LlmFailure('TIMEOUT', retryable: true, billable: true);
@@ -715,9 +715,10 @@ final class AgentTurnTest extends TestCase
 
         $this->visitorSays($f, 'Hola');
 
-        $this->assertCount(2, $llm->calls);
-        Sleep::assertSleptTimes(1); // EVP-115: a jittered wait before the single retry
-        $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'UNKNOWN')->count());
+        $this->assertCount(1, $llm->calls);
+        Sleep::assertNeverSlept();
+        $this->assertSame(1, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'UNKNOWN')->count());
+        $this->assertSame(0, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'RELEASED')->count());
         $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
     }
 
@@ -1407,6 +1408,40 @@ final class AgentTurnTest extends TestCase
         $date = now()->addSeconds(5)->toRfc7231String();
         $this->assertSame(5, LlmFailure::rateLimited($date)->retryAfter);
         $this->assertSame(0, LlmFailure::rateLimited(now()->subMinute()->toRfc7231String())->retryAfter);
+    }
+
+    public function test_explicit_provider_rejections_retry_within_the_wait_cap_and_release_the_reservation(): void
+    {
+        foreach ([LlmFailure::rateLimited(null), LlmFailure::unavailable('10')] as $failure) {
+            $f = $this->fixture();
+            Sleep::fake();
+            config(['agent.retry_base_wait_ms' => 1000, 'agent.retry_jitter_ms' => 1000, 'agent.retry_max_wait_seconds' => 10]);
+            $llm = $this->llm([fn () => $failure, ScriptedLlm::text('Hola, ¿en qué te ayudo?')]);
+            $this->visitorSays($f, 'Hola');
+
+            $this->assertCount(2, $llm->calls);
+            $minimum = ($failure->retryAfter ?? 1) * 1000;
+            $maximum = $failure->retryAfter === null ? 2000 : 10000;
+            Sleep::assertSlept(fn ($duration) => $duration->totalMilliseconds >= $minimum && $duration->totalMilliseconds <= $maximum, 1);
+            $this->assertSame('AI_ACTIVE', $this->state($f)->control_state);
+            $this->assertSame(1, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'RELEASED')->count());
+            $this->assertSame(1, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'COMMITTED')->count());
+            $this->assertSame(0, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->whereIn('status', ['UNKNOWN', 'RESERVED'])->count());
+        }
+    }
+
+    public function test_provider_retry_does_not_exceed_the_turn_deadline(): void
+    {
+        $f = $this->fixture();
+        Sleep::fake();
+        config(['agent.turn_deadline_seconds' => 25, 'agent.timeout_seconds' => 20]);
+        $llm = $this->llm([fn () => LlmFailure::unavailable('1'), ScriptedLlm::text('No debe ejecutarse')]);
+        $this->visitorSays($f, 'Hola');
+
+        $this->assertCount(1, $llm->calls);
+        Sleep::assertNeverSlept();
+        $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
+        $this->assertSame(1, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'RELEASED')->count());
     }
 
     public function test_messages_delivered_out_of_order_reach_the_model_in_real_order(): void
