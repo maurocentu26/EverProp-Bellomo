@@ -1,5 +1,11 @@
 # EVP-L198 — Selección de unidad exacta
 
+## Integración 25/11 — no fusionar esta versión
+
+Durante la evaluación, develop avanzó a bbb47f1 al integrar EVP-194 (PR #172), que resuelve el mismo problema de selección con otra implementación. Este PR #177 tiene conflictos y queda como borrador abierto para reconciliación; no es candidato de entrega tal como está. La integración vigente de EVP-193/197 se prepara sobre EVP-194 para no duplicar validadores.
+
+La revisión independiente detectó incompatibilidades al combinar ambos parsers: «12 A» explícito, «No quiero la 17A» y «Busco para el 2027». Los aportes diferenciales por revisar son exclusiones antes de LIMIT conservando NULL y descripción de presupuesto. No se descartan pruebas ni se presenta la medición de la base anterior como validación de develop actualizado. La corrida de 229 casos sobre 348d5c0 se conserva como evidencia histórica identificada.
+
 ## Estado 25/11/2026 — regresión integrada
 
 ABIERTO. Se corrigió una regresión real adicional: NOT IN/NOT REGEXP excluían por lógica SQL las propiedades cuyo código es NULL. Los predicados ahora conservan NULL dentro de grupos AND; no escapan del tenant/canal. La prueba nueva falló antes del fix y pasó dentro de la revalidación integrada (623 tests, 621 aprobados, 2 omitidos).
