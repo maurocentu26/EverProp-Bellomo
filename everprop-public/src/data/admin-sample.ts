@@ -144,7 +144,7 @@ export type Property = {
   sectorName?: string;
   unitNumber?: string;
   status?: 'available' | 'reserved' | 'sold' | 'rented' | 'not_sellable' | 'not_marketed' | 'unknown';
-  services?: { electricity?: boolean; water?: boolean; gas?: boolean; sewage?: boolean; internet?: boolean };
+  services?: Record<string, boolean>;
   landFeatures?: { water?: boolean; electricity?: boolean; curb?: boolean; gravel?: boolean; sewage?: boolean; spaceType?: 'Abierto' | 'Semiabierto' | 'Cerrado' };
   isCovered?: boolean;
   commercialFeatures?: { showcaseLength?: number; hasBathroom?: boolean; mezzanine?: boolean; dualAccess?: boolean; land?: { frente_m?: number; fondo_m?: number; ochava_m2?: number; padron?: string; curb?: boolean; gravel?: boolean; lighting?: boolean; spaceType?: string } };

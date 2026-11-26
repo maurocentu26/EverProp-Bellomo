@@ -20,7 +20,7 @@ export const MOCK_USERS: UserProfile[] = [
     name: "Marcos Bellomo",
     avatar: "MB",
     title: "Director General",
-    permissions: ["full_access", "view_all_stats", "reassign_leads", "manage_inventory"],
+    permissions: ["create", "update", "delete", "view_all_stats", "reassign_leads"],
     source: "demo",
   },
   {
@@ -30,7 +30,7 @@ export const MOCK_USERS: UserProfile[] = [
     name: "Ing. Sofía Bellomo",
     avatar: "SB",
     title: "Ingeniera / Directora de Obra",
-    permissions: ["desarrolladora_workspace", "manage_inventory", "construction_progress"],
+    permissions: ["desarrolladora_workspace", "create", "update", "construction_progress"],
     source: "demo",
   },
   {

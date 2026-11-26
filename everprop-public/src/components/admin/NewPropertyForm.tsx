@@ -39,16 +39,18 @@ type Props = {
 
 export default function NewPropertyForm({ companyId = "c1", initialProjectId, initialCategory, initialType, onSaved, onBusyChange }: Props) {
   const router = useRouter();
-  const { isAdvisor } = useCurrentSession();
+  const { isAdvisor, user } = useCurrentSession();
+  const canCreate = !isAdvisor && Boolean(user?.permissions?.includes("create"));
   const searchParams = useSearchParams();
   const paramCategory = initialCategory ?? searchParams.get("category") as Category | null;
   const paramType = initialType ?? searchParams.get("type") as "Casa" | "Departamento" | "Lote" | "Cochera" | "Local" | null;
+  const returnProjectId = !initialProjectId ? searchParams.get("project") : null;
 
   const [error, setError] = useState("");
   const [partialCreatedId, setPartialCreatedId] = useState<string | null>(null);
   const [features, setFeatures] = useState<FeatureDraft[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectId, setProjectId] = useState(initialProjectId ?? "");
+  const [projectId, setProjectId] = useState(initialProjectId ?? returnProjectId ?? "");
   const [projectsError, setProjectsError] = useState("");
   useEffect(() => {
     let active = true;
@@ -147,9 +149,9 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
 
   const onSubmit = async (data: FormData) => {
     if (submitLock.current) return;
-    if (isAdvisor) {
-      setError("Acceso no autorizado: Los asesores no tienen permisos para crear propiedades.");
-      toast.error("Acceso restringido: Los asesores no tienen permisos para crear propiedades.");
+    if (!canCreate) {
+      setError("Acceso no autorizado: tu perfil no puede crear propiedades.");
+      toast.error("Acceso restringido: tu perfil no puede crear propiedades.");
       return;
     }
     if (projectsError) { setError(projectsError); return; }
@@ -194,7 +196,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
         features: residential ? featureInputs.map((feature, index) => ({ id: index, group: feature.group, code: feature.code, label: feature.label, value: feature.value, isFilterable: true, sortOrder: index })) : [],
         description: data.description,
         sectorName: data.propertyType === "Lote" ? data.sectorName : undefined,
-        unitNumber: residential ? data.unitNumber : data.floor ? `${data.floor}-${data.unitNumber}` : data.unitNumber,
+        unitNumber: data.propertyType !== "Lote" && data.floor && data.unitNumber ? `${data.floor}-${data.unitNumber}` : data.unitNumber,
         status: "available",
         commercialFeatures: data.propertyType === "Lote" ? { land: {
           frente_m: data.frente_m ? Number(data.frente_m) : undefined,
@@ -219,7 +221,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
           title: nextProperty.title,
           projectId: nextProperty.projectId,
           commercialFeatures: nextProperty.commercialFeatures,
-          services: {water: Boolean(data.water), electricity: Boolean(data.electricity), gas: Boolean(data.gas), sewage: Boolean(data.sewage)},
+          services: {water: Boolean(data.water), electricity: Boolean(data.electricity), lighting: Boolean(data.lighting), curb: Boolean(data.curb), gas: Boolean(data.gas), sewage: Boolean(data.sewage)},
           operation: nextProperty.operation,
           propertyType: nextProperty.propertyType,
           price: nextProperty.price,
@@ -255,7 +257,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
 
       if (typeof sessionStorage !== "undefined") { try { sessionStorage.removeItem(draftKey); } catch { /* ignore */ } }
       if (onSaved) onSaved();
-      else router.push("/admin/properties");
+      else router.push(returnProjectId && projectId === returnProjectId ? `/admin/desarrollos/${encodeURIComponent(returnProjectId)}` : "/admin/properties");
     } catch (e: any) {
       if (e instanceof EverpropApiError && e.status === 422 && pendingKey) { sessionStorage.removeItem(pendingKey); setPendingUnit(null); }
       if (createdPropertyId) setPartialCreatedId(createdPropertyId);

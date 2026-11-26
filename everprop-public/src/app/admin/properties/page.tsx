@@ -37,7 +37,8 @@ const typeFilters = [
 
 export default function AllPropertiesPage() {
   const { invalidateSession } = useAuth();
-  const { isAdvisor } = useCurrentSession();
+  const { isAdvisor, user } = useCurrentSession();
+  const canCreate = !isAdvisor && Boolean(user?.permissions?.includes("create"));
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });
@@ -180,7 +181,7 @@ export default function AllPropertiesPage() {
     <div className="inventory-view max-w-[1400px] mx-auto space-y-6 pb-10">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div><h1>Activos &amp; Unidades</h1><p>Precio y disponibilidad de cada unidad.</p></div>
-        {!isAdvisor && <Link className="inventory-cta" href="/admin/properties/new"><Plus aria-hidden="true" size={20} />Nuevo activo</Link>}
+        {canCreate && <Link className="inventory-cta" href="/admin/properties/new"><Plus aria-hidden="true" size={20} />Nuevo activo</Link>}
       </header>
       <section aria-label="Filtros de activos" className="inventory-filters">
         <label>Proyecto<select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}><option value="all">Todos</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>

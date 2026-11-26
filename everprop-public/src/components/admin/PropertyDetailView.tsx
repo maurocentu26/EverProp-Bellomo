@@ -2,15 +2,16 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
     ArrowLeft, Building2, MapPin, Ruler,
-    Edit3, Share2, Calendar, CheckCircle2, Trees
+    Edit3, Share2, Calendar, CheckCircle2, Trees, Trash2
 } from "lucide-react";
 import type { Lead, Property, Visit } from "@/data/admin-sample";
 import { leads as sampleLeads, properties as sampleProperties, projects as sampleProjects } from "@/data/admin-sample";
 import { loadLeadList, loadPropertyList, saveLeadList, savePropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropCatalog, loadEverpropLeads, loadEverpropVisits, createEverpropVisit, cancelEverpropVisit, updateEverpropPropertyStatus, loadEverpropPropertyById } from "@/lib/everprop-api";
+import { loadEverpropCatalog, loadEverpropLeads, loadEverpropVisits, createEverpropVisit, cancelEverpropVisit, updateEverpropPropertyStatus, loadEverpropPropertyById, deleteEverpropProperty, EverpropApiError } from "@/lib/everprop-api";
 import {
   createInterestForProperty,
   getInterestAssetIds,
@@ -31,7 +32,10 @@ type Props = {
 };
 
 export default function PropertyDetailView({ propertyId }: Props) {
+  const router = useRouter();
   const { isEngineer, isAdvisor, user } = useCurrentSession();
+  const canEditInventory = !isAdvisor && !isEngineer && Boolean(user?.permissions?.includes("update"));
+  const canDeleteInventory = canEditInventory && Boolean(user?.permissions?.includes("delete"));
   const visitSectionRef = useRef<HTMLDivElement>(null);
   const [projectName, setProjectName] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -41,6 +45,21 @@ export default function PropertyDetailView({ propertyId }: Props) {
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function removeLot() {
+    if (!property || property.propertyType !== "Lote" || !canDeleteInventory || deleting) return;
+    if (!window.confirm(`¿Eliminar el lote ${property.unitNumber || property.title}? Revisá sus visitas y contactos vinculados antes de continuar.`)) return;
+    setDeleting(true);
+    try {
+      if (isMockDataMode) savePropertyList(loadPropertyList(sampleProperties, "c1").filter(item => item.id !== property.id), "c1");
+      else await deleteEverpropProperty(property.id);
+      toast.success("Lote eliminado del inventario.");
+      router.push(property.projectId ? `/admin/desarrollos/${encodeURIComponent(property.projectId)}` : "/admin/properties");
+    } catch (error) {
+      toast.error(error instanceof EverpropApiError && error.status === 403 ? "No tenés permiso para eliminar este lote." : error instanceof EverpropApiError && error.status === 409 ? "Este lote tiene vínculos que impiden eliminarlo. Revisá visitas y contactos." : error instanceof Error ? error.message : "No se pudo eliminar el lote.");
+    } finally { setDeleting(false); }
+  }
 
   // Carga inicial de datos
   useEffect(() => {
@@ -210,7 +229,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
             >
               <Share2 className="h-3.5 w-3.5" /> Copiar enlace interno
             </Button>
-            {!isAdvisor && (
+            {canEditInventory && (
               <Button
                 variant="outline"
                 size="sm"
@@ -220,6 +239,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
                 <Edit3 className="h-3.5 w-3.5" /> Editar
               </Button>
             )}
+            {property.propertyType === "Lote" && canDeleteInventory && <Button variant="outline" size="sm" disabled={deleting} onClick={() => void removeLot()} className="gap-2 text-xs font-semibold text-rose-700"><Trash2 className="h-3.5 w-3.5" />{deleting ? "Eliminando…" : "Eliminar lote"}</Button>}
         </div>
       </div>
 
@@ -309,8 +329,8 @@ export default function PropertyDetailView({ propertyId }: Props) {
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                 Estado del inmueble
               </span>
-              {isAdvisor || isEngineer ? <p>{propertyStatusLabel(property.status)}</p> : <div className="flex w-full flex-wrap justify-center gap-1 rounded-xl bg-slate-100 p-1">
-                {(['available', 'reserved', 'sold'] as const).map((st) => (
+              {!canEditInventory ? <p>{propertyStatusLabel(property.status)}</p> : <div className="flex w-full flex-wrap justify-center gap-1 rounded-xl bg-slate-100 p-1">
+                {(['available', 'reserved', 'sold', ...(property.propertyType === 'Lote' ? ['not_marketed' as const] : [])] as const).map((st) => (
                   <button
                     key={st}
                     aria-pressed={property.status === st}
@@ -324,9 +344,17 @@ export default function PropertyDetailView({ propertyId }: Props) {
                         try {
                           const persisted = await updateEverpropPropertyStatus(property.id, st, property.version);
                           setProperty(persisted);
-                          toast.success(`Estado actualizado a ${st === 'available' ? 'Disponible' : st === 'reserved' ? 'Reservado' : 'Vendido'}`);
-                        } catch (e: any) {
-                          toast.error("No se pudo actualizar el estado: " + e.message);
+                          toast.success(`Estado actualizado a ${propertyStatusLabel(st)}`);
+                        } catch (error) {
+                          if (error instanceof EverpropApiError && error.status === 409) {
+                            try {
+                              const fresh = await loadEverpropPropertyById(property.id);
+                              setProperty({ ...fresh, visits: property.visits });
+                              toast.error("La unidad cambió en otra sesión. Se recargó su estado; revisalo antes de volver a guardar.");
+                            } catch {
+                              toast.error("La unidad cambió en otra sesión. Recargá la ficha antes de volver a guardar.");
+                            }
+                          } else toast.error(error instanceof EverpropApiError && error.status === 403 ? "No tenés permiso para cambiar esta unidad." : error instanceof Error ? error.message : "No se pudo actualizar el estado.");
                         } finally { setSavingStatus(false); }
                       } else {
                         const nextProps = allProperties.map(p => p.id === property.id ? updated : p);
@@ -346,7 +374,7 @@ export default function PropertyDetailView({ propertyId }: Props) {
                         : "text-slate-600 hover:text-slate-900"
                     )}
                   >
-                    {st === 'available' ? 'Disponible' : st === 'reserved' ? 'Reservado' : 'Vendido'}
+                    {propertyStatusLabel(st)}
                   </button>
                 ))}
               </div>}

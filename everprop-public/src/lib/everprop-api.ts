@@ -87,7 +87,7 @@ type ApiProperty = {
   unit_number?: string | null;
   project?: { public_id?: string } | null;
     legacy?: { data?: Record<string, any> };
-  services?: Property["services"] | null;
+  services?: Property["services"] | string[] | null;
   commercial_features?: Property["commercialFeatures"] | null;
 };
 
@@ -245,6 +245,22 @@ function mapProject(project: ApiProject): Project {
   };
 }
 
+const serviceKeys: Record<string, string> = {
+  agua: "water", luz: "electricity", alumbrado: "lighting", cordon: "curb",
+  gas: "gas", cloacas: "sewage", internet: "internet",
+};
+
+function normalizeServices(raw: unknown): Property["services"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const services: Record<string, boolean> = Object.create(null);
+  for (const [key, value] of Object.entries(raw)) {
+    const legacyEntry = /^\d+$/.test(key) && typeof value === "string";
+    const name = legacyEntry ? value : key;
+    services[Object.hasOwn(serviceKeys, name) ? serviceKeys[name] : name] = legacyEntry ? true : Boolean(value);
+  }
+  return services;
+}
+
 function mapProperty(property: ApiProperty): Property {
   const categoryLabels: Record<string, string> = {
     LOT: "Lote",
@@ -296,7 +312,7 @@ function mapProperty(property: ApiProperty): Property {
     unitNumber: property.unit_number || undefined,
     status: status === "RENTED" ? "rented" : status === "SOLD" ? "sold" : status === "RESERVED" ? "reserved" : status === "AVAILABLE" ? "available" : status === "NOT_SELLABLE" ? "not_sellable" : status === "NOT_MARKETED" ? "not_marketed" : "unknown",
     legacyData: property.legacy?.data || undefined,
-    services: property.services || undefined,
+    services: normalizeServices(property.services),
     commercialFeatures: property.commercial_features || undefined,
   };
 }
@@ -495,7 +511,7 @@ export async function createEverpropProperty(data: CreatePropertyPayload, intake
   return mapProperty(response.data);
 }
 
-export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold", version?: number) {
+export async function updateEverpropPropertyStatus(publicId: string, status: "available" | "reserved" | "sold" | "not_marketed", version?: number) {
   return updateEverpropProperty(publicId, { status, version });
 }
 
@@ -929,8 +945,8 @@ export type UpdatePropertyPayload = {
   operation?: Property['operation'];
   propertyType?: string;
   status?: Property['status'];
-  price?: number;
-  currency?: "USD" | "ARS";
+  price?: number | null;
+  currency?: "USD" | "ARS" | null;
   city?: string;
   province?: string;
   neighborhood?: string;
@@ -949,6 +965,8 @@ export type UpdatePropertyPayload = {
   expenses?: number | null;
   expensesCurrency?: "USD" | "ARS" | null;
   description?: string | null;
+  services?: Property["services"] | null;
+  commercialFeatures?: Property["commercialFeatures"] | null;
   version?: number;
 };
 
@@ -981,7 +999,7 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
   if (data.propertyType !== undefined) payload.category = categoryMap[data.propertyType] || "UNKNOWN";
   if (data.status !== undefined) payload.status = statusMap[data.status] || "UNKNOWN";
   if (data.price !== undefined) {
-    payload.price = Number(data.price);
+    payload.price = data.price === null ? null : Number(data.price);
   }
   if (data.currency !== undefined) payload.currency_code = data.currency;
   if (data.city !== undefined) payload.city = data.city;
@@ -1004,6 +1022,8 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
     payload.expenses_currency_code = data.expensesCurrency ?? null;
   }
   if (data.description !== undefined) payload.description = data.description;
+  if (data.services !== undefined) payload.services_json = data.services;
+  if (data.commercialFeatures !== undefined) payload.commercial_features_json = data.commercialFeatures;
 
   const response = await apiFetch<ApiEnvelope<ApiProperty>>(`/api/v1/admin/properties/${publicId}`, {
     method: "PATCH",
@@ -1054,6 +1074,10 @@ export async function deleteEverpropPropertyFeature(publicId: string, id: number
   await apiFetch<unknown>(`/api/v1/admin/properties/${encodeURIComponent(publicId)}/features/${id}`, { method: "DELETE" });
 }
 
+export async function deleteEverpropProperty(publicId: string): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/admin/properties/${encodeURIComponent(publicId)}`, { method: "DELETE" });
+}
+
 /** EVP-171: edición de la ficha del proyecto (PUT existente de AdminProjectController). */
 export async function updateEverpropProject(publicId: string, payload: Record<string, unknown>) {
   const response = await apiFetch<ApiEnvelope<ApiProject>>(`/api/v1/admin/projects/${encodeURIComponent(publicId)}`, {
@@ -1098,7 +1122,7 @@ export async function generateLotsBatch(payload: GenerateLotsPayload) {
       corner_lots: payload.cornerLots || [],
       corner_price: payload.cornerPrice ? Number(payload.cornerPrice) : null,
       corner_area_m2: payload.cornerArea_m2 ? Number(payload.cornerArea_m2) : null,
-      services: payload.services || [],
+      services: normalizeServices(payload.services) || {},
       description: payload.description || undefined,
     }),
   });

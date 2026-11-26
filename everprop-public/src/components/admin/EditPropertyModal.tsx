@@ -32,6 +32,10 @@ function formValues(property: Property) {
     sectorName: property.sectorName || "",
     unitNumber: property.unitNumber || "",
     area_m2: property.area_m2 != null ? String(property.area_m2) : "",
+    frente_m: property.commercialFeatures?.land?.frente_m != null ? String(property.commercialFeatures.land.frente_m) : "",
+    fondo_m: property.commercialFeatures?.land?.fondo_m != null ? String(property.commercialFeatures.land.fondo_m) : "",
+    ochava_m2: property.commercialFeatures?.land?.ochava_m2 != null ? String(property.commercialFeatures.land.ochava_m2) : "",
+    padron: property.commercialFeatures?.land?.padron || "",
     rooms: property.rooms != null ? String(property.rooms) : "",
     bedrooms: property.bedrooms != null ? String(property.bedrooms) : "",
     bathrooms: property.bathrooms != null ? String(property.bathrooms) : "",
@@ -63,15 +67,18 @@ export function EditPropertyModal({
   const [features, setFeatures] = useState<FeatureDraft[]>(() => (property.features ?? []).map(draftFromFeature));
   const [formData, setFormData] = useState(() => formValues(property));
   const residential = formData.propertyType === "Casa" || formData.propertyType === "Departamento";
+  const [services, setServices] = useState<Property["services"]>(property.services || {});
   useEffect(() => {
     if (!open) return;
     setFormData(formValues(property));
     setFeatures((property.features ?? []).map(draftFromFeature));
+    setServices(property.services || {});
     setReviewing(false);
     setError("");
   }, [open, property.id]);
   const hasChanges = () => JSON.stringify(formData) !== JSON.stringify(formValues(property))
-    || JSON.stringify(features) !== JSON.stringify((property.features ?? []).map(draftFromFeature));
+    || JSON.stringify(features) !== JSON.stringify((property.features ?? []).map(draftFromFeature))
+    || JSON.stringify(services) !== JSON.stringify(property.services || {});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,9 +113,11 @@ export function EditPropertyModal({
     const currencyChanged = formData.currency !== (property.inventoryCurrency === null ? "" : property.inventoryCurrency ?? property.currency);
     const expensesChanged = formData.expenses !== (property.expenses == null ? "" : String(property.expenses))
       || formData.expensesCurrency !== (property.expensesCurrency || "");
-    if (currencyChanged && !formData.currency) { toast.error("La API no admite quitar la moneda desde esta ficha."); return; }
-    if (priceChanged && !formData.price.trim()) { toast.error("La API no admite quitar el precio desde esta ficha."); return; }
+    if ((priceChanged || currencyChanged) && Boolean(formData.price.trim()) !== Boolean(formData.currency)) { toast.error("El precio y su moneda deben informarse o quitarse juntos."); return; }
     if ((priceChanged || currencyChanged) && formData.price.trim() && !formData.currency) { toast.error("Confirmá la moneda antes de guardar un precio."); return; }
+    if (formData.propertyType === "Lote") for (const [label, value] of [["Frente", formData.frente_m], ["Fondo", formData.fondo_m], ["Ochava", formData.ochava_m2]]) {
+      if (value && (!Number.isFinite(Number(value)) || Number(value) < 0)) { toast.error(`${label}: ingresá una medida válida.`); return; }
+    }
     if (!reviewing) { setReviewing(true); return; }
     savingRef.current = true;
     setIsSaving(true);
@@ -144,6 +153,14 @@ export function EditPropertyModal({
           label: feature.label, value: feature.value, isFilterable: feature.isFilterable ?? true,
           sortOrder: index,
         })) : property.features,
+        commercialFeatures: formData.propertyType === "Lote" ? { ...property.commercialFeatures, land: {
+          ...property.commercialFeatures?.land,
+          frente_m: formData.frente_m ? Number(formData.frente_m) : undefined,
+          fondo_m: formData.fondo_m ? Number(formData.fondo_m) : undefined,
+          ochava_m2: formData.ochava_m2 ? Number(formData.ochava_m2) : undefined,
+          padron: formData.padron.trim() || undefined,
+        }} : property.commercialFeatures,
+        services: formData.propertyType === "Lote" ? services : property.services,
         city: formData.city.trim() || property.city || "Sin ciudad",
         neighborhood: formData.neighborhood.trim() || property.neighborhood || "",
         description: formData.description.trim() || undefined,
@@ -153,8 +170,7 @@ export function EditPropertyModal({
         const persisted = await updateEverpropProperty(property.id, {
           version: property.version,
           title: updatedData.title,
-          ...(priceChanged && formData.price.trim() ? { price: updatedData.price } : {}),
-          ...((priceChanged || currencyChanged) && formData.currency ? { currency: updatedData.currency } : {}),
+          ...(priceChanged || currencyChanged ? { price: formData.price.trim() ? updatedData.price : null, currency: formData.currency ? updatedData.currency : null } : {}),
           operation: updatedData.operation,
           propertyType: updatedData.propertyType,
           status: updatedData.status,
@@ -169,6 +185,7 @@ export function EditPropertyModal({
             parkingSpaces: updatedData.parkingSpaces,
             ...(expensesChanged ? { expenses: updatedData.expenses, expensesCurrency: updatedData.expensesCurrency } : {}),
           } : {}),
+          ...(formData.propertyType === "Lote" ? { commercialFeatures: updatedData.commercialFeatures, services: updatedData.services } : {}),
           city: updatedData.city,
           neighborhood: updatedData.neighborhood,
           description: updatedData.description ?? null,
@@ -249,6 +266,19 @@ export function EditPropertyModal({
                 className="h-10 text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               />
             </Field>
+
+            {formData.propertyType === "Lote" && <>
+              {([["frente_m", "Frente (m)"], ["fondo_m", "Fondo (m)"], ["ochava_m2", "Ochava (m²)"]] as const).map(([key, label]) => <Field key={key}>
+                <FieldLabel htmlFor={`edit-${key}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</FieldLabel>
+                <Input id={`edit-${key}`} type="number" min="0" step="any" value={formData[key]} onChange={event => setFormData({ ...formData, [key]: event.target.value })} />
+              </Field>)}
+              <Field><FieldLabel htmlFor="edit-padron" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Padrón</FieldLabel>
+                <Input id="edit-padron" value={formData.padron} maxLength={100} onChange={event => setFormData({ ...formData, padron: event.target.value })} />
+              </Field>
+              <fieldset className="md:col-span-2 rounded-xl border border-slate-200 p-3"><legend className="px-1 text-xs font-semibold text-slate-700">Servicios del lote</legend>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{([["water", "Agua"], ["electricity", "Luz"], ["lighting", "Alumbrado público"], ["curb", "Cordón cuneta"], ["gas", "Gas"], ["sewage", "Cloacas"], ["internet", "Internet"]] as const).map(([key, label]) => <label key={key} className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(services?.[key])} onChange={event => setServices({ ...services, [key]: event.target.checked })} />{label}</label>)}</div>
+              </fieldset>
+            </>}
 
             <Field>
               <FieldLabel htmlFor="edit-property-2" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tipo de Inmueble</FieldLabel>
@@ -429,12 +459,14 @@ export function EditPropertyModal({
           {reviewing && <section aria-label="Confirmación completa">
             <h2>Revisar cambios</h2>
             <dl className="inventory-review">{Object.entries(formData).filter(([key]) =>
-              residential ? key !== "sectorName" :
-              !["rooms", "bedrooms", "bathrooms", "coveredAreaM2", "uncoveredAreaM2", "floor", "orientation", "disposition", "parkingSpaces", "expenses", "expensesCurrency"].includes(key)
+              !(key === "currency" && !formData.price && !formData.currency) && (formData.propertyType === "Lote"
+                ? !["rooms", "bedrooms", "bathrooms", "coveredAreaM2", "uncoveredAreaM2", "floor", "orientation", "disposition", "parkingSpaces", "expenses", "expensesCurrency"].includes(key)
+                : !["sectorName", "frente_m", "fondo_m", "ochava_m2", "padron"].includes(key))
             ).map(([key, value]) => <div key={key}>
-              <dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie total (m²)",rooms:"Ambientes",bedrooms:"Dormitorios",bathrooms:"Baños",coveredAreaM2:"Superficie cubierta (m²)",uncoveredAreaM2:"Superficie descubierta (m²)",floor:"Piso",orientation:"Orientación",disposition:"Disposición",parkingSpaces:"Cocheras",expenses:"Expensas",expensesCurrency:"Moneda de expensas",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt>
-              <dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a consultar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd>
+              <dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie total (m²)",frente_m:"Frente (m)",fondo_m:"Fondo (m)",ochava_m2:"Ochava (m²)",padron:"Padrón",rooms:"Ambientes",bedrooms:"Dormitorios",bathrooms:"Baños",coveredAreaM2:"Superficie cubierta (m²)",uncoveredAreaM2:"Superficie descubierta (m²)",floor:"Piso",orientation:"Orientación",disposition:"Disposición",parkingSpaces:"Cocheras",expenses:"Expensas",expensesCurrency:"Moneda de expensas",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt>
+              <dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a confirmar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd>
             </div>)}</dl>
+            {formData.propertyType === "Lote" && <p className="my-3 text-sm">Servicios: {Object.entries(services || {}).filter(([, enabled]) => enabled).map(([name]) => ({water:"Agua",electricity:"Luz",lighting:"Alumbrado público",curb:"Cordón cuneta",gas:"Gas",sewage:"Cloacas",internet:"Internet"} as Record<string,string>)[name] || name).join(", ") || "Sin informar"}</p>}
             {(formData.propertyType === "Casa" || formData.propertyType === "Departamento") && <p className="my-3 text-sm font-medium">Características: {features.length}</p>}
             <Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button>
           </section>}

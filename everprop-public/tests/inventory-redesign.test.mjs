@@ -85,17 +85,22 @@ test('EVP-73 editing reviews all fields, preserves null currency and writes only
     return components;
   }};
   vm.runInNewContext(compile('../src/components/admin/EditPropertyModal.tsx'),context);
-  const property={id:'12A',title:'Unidad 12A',unitNumber:'12A',inventoryPrice:38500,inventoryCurrency:null,price:38500,currency:'USD',propertyType:'Lote',operation:'sale',status:'reserved',version:8};
+  const property={id:'12A',title:'Unidad 12A',unitNumber:'12A',inventoryPrice:38500,inventoryCurrency:null,price:38500,currency:'USD',propertyType:'Lote',operation:'sale',status:'reserved',version:8,services:{water:true,electricity:true,lighting:true,curb:true,gas:true}};
   const render=()=>{cursor=0;return context.exports.EditPropertyModal({open:true,property,onOpenChange(){},onSuccess(){}});};
   const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tree) ? tree.flatMap(nodes) : [tree,...nodes(tree.props?.children)];
   const text = tree => tree == null ? '' : typeof tree === 'string' || typeof tree === 'number' ? String(tree) : Array.isArray(tree) ? tree.map(text).join(' ') : text(tree.props?.children);
   let tree=render();
+  for(const service of ['Agua','Luz','Alumbrado público','Cordón cuneta','Gas']) {
+    const label=nodes(tree).find(n=>n.type==='label'&&text(n).includes(service));
+    assert.equal(nodes(label).find(n=>n.type==='input').props.checked,true,service);
+  }
+  nodes(nodes(tree).find(n=>n.type==='label'&&text(n).includes('Alumbrado público'))).find(n=>n.type==='input').props.onChange({target:{checked:false}});
   await nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
   assert.equal(writes,0);
   tree=render();
   const review=nodes(tree).find(n=>n.props?.['aria-label']==='Confirmación completa');
   assert.ok(review);
-  for(const value of ['Unidad 12A','38.500','Moneda sin confirmar','Reservado','Superficie total (m²)','Descripción']) assert.ok(text(review).includes(value),value);
+  for(const value of ['Unidad 12A','38.500','Moneda sin confirmar','Reservado','Superficie total (m²)','Descripción','Cordón cuneta']) assert.ok(text(review).includes(value),value);
   nodes(review).find(n=>n.type==='Button').props.onClick();
   tree=render(); assert.equal(nodes(tree).find(n=>n.type==='fieldset').props.hidden,false);
   await nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});
@@ -104,6 +109,7 @@ test('EVP-73 editing reviews all fields, preserves null currency and writes only
   await Promise.all([submit({preventDefault(){}}),submit({preventDefault(){}})]);
   assert.equal(writes,1); assert.equal('currency' in saved,false); assert.equal('price' in saved,false);
   assert.equal(saved.unitNumber,'12A'); assert.equal(saved.version,8);
+  assert.equal(saved.services.lighting,false); assert.equal(saved.services.curb,true); assert.equal(saved.services.water,true);
 });
 
 
@@ -116,7 +122,8 @@ test('EVP-73 detail: single identity, location without empty parts, advisor read
   const context={exports:{},window:{confirm(message){confirmation=message;return false;}},require(name){
     if(name==='react') return {useState(){return [initial[cursor++],()=>{}];},useRef(){return {current:null};},useEffect(){}};
     if(name==='react/jsx-runtime') return {jsx:jsxTree,jsxs:jsxTree};
-    if(name==='@/hooks/use-current-session') return {useCurrentSession:()=>({isEngineer:false,isAdvisor:advisor,user:{name:'Asesor prueba'}})};
+    if(name==='next/navigation') return {useRouter:()=>({push(){}})};
+    if(name==='@/hooks/use-current-session') return {useCurrentSession:()=>({isEngineer:false,isAdvisor:advisor,user:{name:'Asesor prueba',permissions:advisor?[]:['update','delete']}})};
     if(name==='@/lib/inventory-labels') return labels.exports;
     if(name==='@/lib/utils') return {cn:()=>''};
     return components;

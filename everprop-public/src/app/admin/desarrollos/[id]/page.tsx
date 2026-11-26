@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowRight, Layers, Pencil, Ruler } from "lucide-react";
+import { ArrowRight, Layers, Pencil, Ruler, Plus, Trash2 } from "lucide-react";
 import { type Project, type Property, projects as sampleProjects, properties as sampleProperties } from "@/data/admin-sample";
-import { loadProjectList, loadPropertyList } from "@/lib/admin-storage";
+import { loadProjectList, loadPropertyList, savePropertyList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { loadEverpropProjects, loadEverpropPropertiesByProject, isInvalidEverpropSession } from "@/lib/everprop-api";
+import { deleteEverpropProperty, EverpropApiError, loadEverpropProjects, loadEverpropPropertiesByProject, isInvalidEverpropSession, updateEverpropPropertyStatus } from "@/lib/everprop-api";
 import { AVAILABLE_UNIT_STATES, compareUnits, projectLocationLabel, projectStatusLabel, projectTypeLabel, projectUnitSummary, UNIT_STATES, unitDisplay, unitState, unitStateLabel, type UnitState } from '@/lib/project-labels';
 import { inventoryPriceLabel, propertyStatusLabel } from '@/lib/inventory-labels';
 import { ProjectStateBar } from "@/components/admin/ProjectCard";
@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ProjectMaterials, MaterialErrorNotice } from "@/components/admin/BellomoResources";
 import { ProjectEditDialog } from "@/components/admin/ProjectEditDialog";
 import { EditPropertyModal } from "@/components/admin/EditPropertyModal";
+import { toast } from "sonner";
 
 type UnitFilter = UnitState | "all" | "offered";
 const PAGE_SIZE = 24;
@@ -26,7 +27,7 @@ const PAGE_SIZE = 24;
 export default function ProjectDetailView() {
   const params = useParams();
   const projectId = params.id as string;
-  const { isAdvisor } = useCurrentSession();
+  const { isAdvisor, user } = useCurrentSession();
   const { invalidateSession } = useAuth();
   
   const [project, setProject] = useState<Project | null>(null);
@@ -39,6 +40,43 @@ export default function ProjectDetailView() {
   const [visibleUnits, setVisibleUnits] = useState(PAGE_SIZE);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Property | null>(null);
+  const [busyUnitId, setBusyUnitId] = useState<string | null>(null);
+  const canEdit = !isAdvisor && Boolean(user?.permissions?.includes("update"));
+  const canCreate = !isAdvisor && Boolean(user?.permissions?.includes("create"));
+  const canDelete = canEdit && Boolean(user?.permissions?.includes("delete"));
+
+  async function changeUnitStatus(unit: Property, status: "available" | "reserved" | "sold" | "not_marketed") {
+    if (!canEdit || busyUnitId || unit.status === status) return;
+    if (!window.confirm(`¿Cambiar ${unit.unitNumber || unit.title} de ${propertyStatusLabel(unit.status)} a ${propertyStatusLabel(status)}?`)) return;
+    setBusyUnitId(unit.id);
+    try {
+      let updated: Property;
+      if (isMockDataMode) {
+        updated = { ...unit, status, version: (unit.version ?? 0) + 1 };
+        const next = loadPropertyList(sampleProperties, "c1").map(item => item.id === unit.id ? updated : item);
+        savePropertyList(next, "c1");
+      } else updated = await updateEverpropPropertyStatus(unit.id, status, unit.version);
+      setProperties(items => items.map(item => item.id === unit.id ? updated : item));
+      toast.success(`Estado actualizado: ${propertyStatusLabel(status)}`);
+    } catch (error) {
+      toast.error(error instanceof EverpropApiError && error.status === 409 ? "La unidad cambió en otra sesión. Recargá el proyecto." : error instanceof Error ? error.message : "No se pudo cambiar el estado.");
+    } finally { setBusyUnitId(null); }
+  }
+
+  async function removeUnit(unit: Property) {
+    if (!canDelete || busyUnitId) return;
+    if (!window.confirm(`¿Eliminar el lote ${unit.unitNumber || unit.title}? Esta acción lo quitará del inventario. Revisá primero sus visitas y contactos vinculados.`)) return;
+    setBusyUnitId(unit.id);
+    try {
+      if (isMockDataMode) {
+        savePropertyList(loadPropertyList(sampleProperties, "c1").filter(item => item.id !== unit.id), "c1");
+      } else await deleteEverpropProperty(unit.id);
+      setProperties(items => items.filter(item => item.id !== unit.id));
+      toast.success("Lote eliminado del inventario.");
+    } catch (error) {
+      toast.error(error instanceof EverpropApiError && error.status === 403 ? "No tenés permiso para eliminar este lote." : error instanceof EverpropApiError && error.status === 409 ? "Este lote tiene vínculos que impiden eliminarlo. Revisá visitas y contactos." : error instanceof Error ? error.message : "No se pudo eliminar el lote.");
+    } finally { setBusyUnitId(null); }
+  }
 
   useEffect(() => {
     let active = true;
@@ -91,7 +129,7 @@ export default function ProjectDetailView() {
     </div>
   );
 
-  const summary = projectUnitSummary(project, properties);
+  const summary = projectUnitSummary(project, properties, true);
   const offeredStates = AVAILABLE_UNIT_STATES.filter(state => summary.counts[state] > 0);
   const defaultFilter: UnitFilter = offeredStates.length > 1 ? "offered" : offeredStates[0] ?? "all";
   const unitFilter = pickedFilter ?? defaultFilter;
@@ -115,9 +153,10 @@ export default function ProjectDetailView() {
           <p className="project-meta">{projectLocationLabel(project)}</p>
           {project.description && <p>{project.description}</p>}
         </div>
-        {!isAdvisor && <div className="flex flex-wrap gap-3">
-          {!isMockDataMode && <Button variant="outline" onClick={() => setIsEditOpen(true)}><Pencil aria-hidden="true" /> Editar datos</Button>}
-          <Button variant="outline" onClick={() => setIsGenerateLotsOpen(true)}><Layers aria-hidden="true" /> Cargar manzana y lotes</Button>
+        {(canCreate || canEdit) && <div className="flex flex-wrap gap-3">
+          {canCreate && <Link className="inventory-secondary" href={`/admin/properties/new?category=loteo&type=Lote&project=${encodeURIComponent(project.id)}`}><Plus aria-hidden="true" /> Agregar unidad</Link>}
+          {canEdit && !isMockDataMode && <Button variant="outline" onClick={() => setIsEditOpen(true)}><Pencil aria-hidden="true" /> Editar datos</Button>}
+          {canCreate && <Button variant="outline" onClick={() => setIsGenerateLotsOpen(true)}><Layers aria-hidden="true" /> Cargar manzana y lotes</Button>}
         </div>}
       </header>
 
@@ -149,7 +188,9 @@ export default function ProjectDetailView() {
           <p className="project-unit-state"><span aria-hidden="true" className="project-dot" data-state={unitState(property)} />{property.status === "available" && property.operation === "sale" ? "En venta" : property.status === "available" && property.operation === "rent" ? "En alquiler" : propertyStatusLabel(property.status)}</p>
           <p className="project-unit-price">{inventoryPriceLabel(property)}</p>
           <div className="project-unit-actions">
-            {!isAdvisor && <button type="button" className="inventory-secondary" onClick={() => setEditingUnit(property)} aria-label={`Editar ${unitDisplay(property).name}`}><Pencil aria-hidden="true" size={18} /> Editar</button>}
+            {canEdit && <button type="button" className="inventory-secondary" onClick={() => setEditingUnit(property)} aria-label={`Editar ${unitDisplay(property).name}`}><Pencil aria-hidden="true" size={18} /> Editar</button>}
+            {canEdit && property.propertyType === "Lote" && <select disabled={busyUnitId === property.id} aria-label={`Estado de ${unitDisplay(property).name}`} value={property.status ?? "unknown"} onChange={event => void changeUnitStatus(property, event.target.value as "available" | "reserved" | "sold" | "not_marketed")}>{!["available", "reserved", "sold", "not_marketed"].includes(property.status ?? "unknown") && <option value={property.status ?? "unknown"} disabled>{propertyStatusLabel(property.status)}</option>}<option value="available">Disponible</option><option value="reserved">Reservado</option><option value="sold">Vendido</option><option value="not_marketed">No comercializado</option></select>}
+            {canDelete && property.propertyType === "Lote" && <button type="button" disabled={busyUnitId === property.id} className="inventory-secondary" onClick={() => void removeUnit(property)} aria-label={`Eliminar ${unitDisplay(property).name}`}><Trash2 aria-hidden="true" size={18} /> Eliminar</button>}
             <Link href={`/admin/properties/${property.id}`} className="inventory-secondary">Ver ficha <ArrowRight aria-hidden="true" size={18} /></Link>
           </div>
         </article>)}
@@ -158,7 +199,7 @@ export default function ProjectDetailView() {
           {visibleUnits < filteredUnits.length && <button type="button" className="inventory-secondary" onClick={() => setVisibleUnits(count => count + PAGE_SIZE)}>Ver más</button>}
         </div>
       </section> : <p className="inventory-empty">Este proyecto todavía no tiene unidades cargadas.</p>)}
-      {activeTab === "matrix" && <InventoryMatrix properties={properties} />}
+      {activeTab === "matrix" && <InventoryMatrix properties={properties} canEdit={canEdit} canDelete={canDelete} busyUnitId={busyUnitId} onStatusChange={changeUnitStatus} onDelete={removeUnit} />}
       {activeTab === "materials" && <>
         {project.masterplanImage && <a className="inventory-secondary" href={project.masterplanImage} target="_blank" rel="noreferrer">Ver plano del proyecto</a>}
         {!isMockDataMode && <ProjectMaterials key={project.id} projectId={project.id} />}
@@ -166,7 +207,7 @@ export default function ProjectDetailView() {
       </>}
 
       {!isAdvisor && !isMockDataMode && isEditOpen && <ProjectEditDialog projectId={project.id} open onOpenChange={setIsEditOpen} onSaved={setProject} />}
-      {!isAdvisor && editingUnit && <EditPropertyModal
+      {canEdit && editingUnit && <EditPropertyModal
         key={editingUnit.id}
         open
         onOpenChange={(open) => { if (!open) setEditingUnit(null); }}
@@ -174,7 +215,7 @@ export default function ProjectDetailView() {
         onSuccess={(updated) => setProperties((previous) => previous.map((unit) => (unit.id === updated.id ? updated : unit)))}
       />}
 
-      {!isAdvisor && <GenerateLotsModal
+      {canCreate && <GenerateLotsModal
         open={isGenerateLotsOpen}
         onOpenChange={setIsGenerateLotsOpen}
         defaultProjectId={project.id}

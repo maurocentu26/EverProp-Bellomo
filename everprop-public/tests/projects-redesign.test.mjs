@@ -69,6 +69,7 @@ test('EVP-109 unit summary never hides units: leasing stays available and the re
   assert.equal(availableUnitsLabel(projectUnitSummary({...project,propertiesCount:17,availableUnitsCount:17,availableRentUnitsCount:17})),'en alquiler');
   const sum=projectUnitSummary(project,Array.from({length:150},()=>properties[0]));
   assert.deepEqual([sum.total,sum.available,sum.counts.sale],[150,150,150]);
+  assert.equal(projectUnitSummary({...project,propertiesCount:1,availableUnitsCount:1},[],true).total,0);
 });
 
 const nodes=t=>!t||typeof t!=='object'?[]:Array.isArray(t)?t.flatMap(nodes):[t,...nodes(t.props?.children)];
@@ -81,7 +82,7 @@ test('EVP-109 detail starts on what is offered, preserves 12, 12A, 12B and null 
     if(name==='react')return {useState:()=>[states[cursor++],()=>{}],useEffect(){}};
     if(name==='react/jsx-runtime')return {jsx:jsxTree,jsxs:jsxTree};
     if(name==='next/navigation')return {useParams:()=>({id:'p1'})};
-    if(name==='@/hooks/use-current-session')return {useCurrentSession:()=>({isAdvisor:advisor})};
+    if(name==='@/hooks/use-current-session')return {useCurrentSession:()=>({isAdvisor:advisor,user:{permissions:advisor?[]:['create','update','delete']}})};
     if(name==='@/lib/auth-context')return {useAuth:()=>({invalidateSession(){}})};
     if(name==='@/lib/project-labels')return labels.exports;
     if(name==='@/lib/inventory-labels')return inventory.exports;
@@ -109,6 +110,8 @@ test('EVP-109 detail starts on what is offered, preserves 12, 12A, 12B and null 
   states[6]=null;states[7]=24;advisor=false;tree=render();
   assert.equal(nodes(tree).find(n=>n.type==='GenerateLotsModal').props.confirmBeforeSave,true);
   assert.match(text(tree),/Cargar manzana y lotes/);
+  assert.equal(nodes(tree).find(n=>/Agregar unidad/.test(text(n))&&n.props?.href?.startsWith('/admin/properties/new'))?.props.href,'/admin/properties/new?category=loteo&type=Lote&project=p1');
+  assert.ok(rows(tree).some(row=>nodes(row).some(n=>n.type==='button'&&/Eliminar/.test(text(n)))));
   // EVP-171: each unit row of a non-advisor offers an edit action next to "Ver ficha".
   assert.ok(rows(tree).length>0&&rows(tree).every(row=>nodes(row).some(n=>n.type==='button'&&/Editar/.test(text(n)))));
   states[1]=[properties[0],{...properties[0],id:'r',unitNumber:'R1',operation:'rent'}];tree=render();
