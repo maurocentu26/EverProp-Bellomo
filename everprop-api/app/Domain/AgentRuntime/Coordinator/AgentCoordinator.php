@@ -284,7 +284,26 @@ final class AgentCoordinator
 
         $messages[] = ['role' => 'assistant', 'content' => $response->content];
         $messages[] = ['role' => 'user', 'content' => $results];
-        $final = $this->call($context, $system, $messages, $definitions, $maxOut, false, $trace, $usage);
+        // A lookup may reveal the need for a human. Only this terminal action remains; no third model call.
+        $terminalTools = ! $copilot && $context->handoff === null && count($toolUses) < (int) config('agent.max_tool_calls')
+            && array_diff(array_column($toolUses, 'name'), self::COPILOT_TOOLS) === []
+            ? array_values(array_filter($definitions, fn (array $d): bool => $d['name'] === 'derivar_a_asesor')) : [];
+        $final = $this->call($context, $system, $messages, $terminalTools, $maxOut, $terminalTools !== [], $trace, $usage);
+        $terminalUses = $final->toolUses();
+        if ($terminalUses !== []) {
+            if ($terminalTools === [] || count($terminalUses) !== 1 || $terminalUses[0]['name'] !== 'derivar_a_asesor') {
+                throw new LlmFailure('INVALID_TERMINAL_TOOL', retryable: false, billable: false);
+            }
+            $use = $terminalUses[0];
+            $envelope = $this->tools->execute($context, $use['name'], $use['input']);
+            $trace['tools'][] = ['name' => $use['name'], 'ok' => $envelope['ok'], 'code' => $envelope['error']['code'] ?? null,
+                'replayed' => $envelope['meta']['replayed'] ?? false];
+            if (! $envelope['ok'] || $context->handoff === null) {
+                throw new LlmFailure('TERMINAL_HANDOFF_FAILED', retryable: false, billable: false);
+            }
+
+            return $this->prompts->handoffNotice($this->back($context->tenantId));
+        }
 
         return $this->finalText($final);
     }

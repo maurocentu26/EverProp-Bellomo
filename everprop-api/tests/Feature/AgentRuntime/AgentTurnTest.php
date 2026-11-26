@@ -63,7 +63,7 @@ final class AgentTurnTest extends TestCase
                 $this->assertArrayNotHasKey('price', $item);
                 $this->assertArrayNotHasKey('availability', $item);
                 $this->assertStringNotContainsString('85000', json_encode($request, JSON_THROW_ON_ERROR));
-                $this->assertFalse($request['allow_tools'], 'second call must not open more tools');
+                $this->assertTrue($request['allow_tools'], 'the final call may hand off, but cannot reopen inventory or writes');
 
                 return ScriptedLlm::text($reply)($request);
             },
@@ -77,7 +77,83 @@ final class AgentTurnTest extends TestCase
         $this->assertSame(2, json_decode($run->trace_json, true)['calls']);
         $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'COMMITTED')->count());
         $this->assertCount(2, $llm->calls);
+        $this->assertSame(['derivar_a_asesor'], $llm->calls[1]['tools']);
         $this->assertSame('AI_ACTIVE', $this->state($f)->control_state);
+    }
+
+    public function test_inventory_lookup_can_end_in_a_persisted_handoff_without_a_third_model_call(): void
+    {
+        $f = $this->fixture();
+        $llm = $this->llm([
+            ScriptedLlm::tool('buscar_propiedades', ['unit_code' => 'L-101']),
+            ScriptedLlm::tool('derivar_a_asesor', ['reason' => 'COMMERCIAL_EXCEPTION', 'summary' => 'Solicita una condición comercial no publicada.']),
+        ]);
+        $this->visitorSays($f, '¿Cuánto sale L-101 y qué descuento me hacen?');
+        $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
+        $this->assertCount(2, $llm->calls);
+        $this->assertSame(['derivar_a_asesor'], $llm->calls[1]['tools']);
+        $run = DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->first();
+        $this->assertSame('SUCCEEDED', $run->status);
+        $this->assertSame(['buscar_propiedades', 'derivar_a_asesor'], array_column(json_decode($run->trace_json, true)['tools'], 'name'));
+        $this->assertStringContainsString('asesor', implode(' ', $this->visible($f)));
+        $this->assertSame(2, DB::table('usage_ledger')->where('tenant_id', $f['tenant']->id)->where('status', 'COMMITTED')->count());
+    }
+
+    public function test_final_call_cannot_execute_another_mutation_or_injected_handoff_arguments(): void
+    {
+        foreach ([['registrar_interes', ['unit_code' => 'L-101', 'interest_level' => 'HIGH']],
+            ['derivar_a_asesor', ['reason' => 'USER_REQUEST', 'summary' => 'Solicita asesor', 'tenant_id' => 999]]] as [$name, $input]) {
+            $f = $this->fixture();
+            $llm = $this->llm([ScriptedLlm::tool('buscar_propiedades', ['unit_code' => 'L-101']), ScriptedLlm::tool($name, $input)]);
+            $this->visitorSays($f, 'Consulto por L-101');
+            $this->assertSame('WAITING_HUMAN', $this->state($f)->control_state);
+            $this->assertCount(2, $llm->calls);
+            $this->assertSame(0, DB::table('lead_properties')->where('tenant_id', $f['tenant']->id)->count());
+            $this->assertSame('FAILED', DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->value('status'));
+        }
+    }
+
+    public function test_a_visit_keeps_its_pending_acknowledgement_without_terminal_tools(): void
+    {
+        $f = $this->fixture();
+        $start = CarbonImmutable::now('America/Argentina/Jujuy')->addDay()->setTime(10, 0);
+        $llm = $this->llm([
+            ScriptedLlm::tool('solicitar_visita', ['unit_code' => 'L-101', 'contact_email' => 'visitor@example.test',
+                'preferred_slots' => [['start' => $start->toIso8601String(), 'end' => $start->addHour()->toIso8601String(), 'timezone' => 'America/Argentina/Jujuy']]]),
+            ScriptedLlm::text('Un asesor confirma la solicitud de visita.'),
+        ]);
+        $this->visitorSays($f, 'Quiero visitar L-101 mañana a las 10, mi correo es visitor@example.test');
+        $this->assertSame([], $llm->calls[1]['tools']);
+        $this->assertFalse($llm->calls[1]['allow_tools']);
+        $this->assertSame('REQUESTED', DB::table('visit_requests')->where('tenant_id', $f['tenant']->id)->value('status'));
+        $this->assertSame('Un asesor confirma la solicitud de visita.', last($this->visible($f)));
+    }
+
+    public function test_terminal_handoff_respects_the_total_tool_budget(): void
+    {
+        config(['agent.max_tool_calls' => 1]);
+        $f = $this->fixture();
+        $llm = $this->llm([ScriptedLlm::tool('buscar_propiedades', ['unit_code' => 'L-101']),
+            ScriptedLlm::tool('derivar_a_asesor', ['reason' => 'USER_REQUEST', 'summary' => 'Pide asesor'])]);
+        $this->visitorSays($f, 'Consulto por L-101');
+        $this->assertSame([], $llm->calls[1]['tools']);
+        $this->assertFalse($llm->calls[1]['allow_tools']);
+        $this->assertSame('INVALID_TERMINAL_TOOL', DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->value('error_code'));
+    }
+
+    public function test_terminal_handoff_does_not_override_an_advisor_takeover(): void
+    {
+        $f = $this->fixture();
+        $advisor = $this->user($f['tenant'], RoleCode::SALES_MANAGER);
+        $this->llm([ScriptedLlm::tool('buscar_propiedades', ['unit_code' => 'L-101']),
+            function (array $request) use ($f, $advisor) {
+                app(ConversationControl::class)->takeover($f['tenant']->id, $this->conversationId($f), $advisor);
+
+                return ScriptedLlm::tool('derivar_a_asesor', ['reason' => 'USER_REQUEST', 'summary' => 'Solicita asesor'])($request);
+            }]);
+        $this->visitorSays($f, 'Consulto por L-101');
+        $this->assertSame('HUMAN_ACTIVE', $this->state($f)->control_state);
+        $this->assertSame(0, DB::table('messages')->where('tenant_id', $f['tenant']->id)->where('sender_type', 'BOT')->count());
     }
 
     public function test_links_use_only_the_current_tenants_exact_server_host_mapping(): void
