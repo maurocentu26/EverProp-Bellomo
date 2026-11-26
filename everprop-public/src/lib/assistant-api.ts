@@ -66,6 +66,15 @@ export const approveKnowledge = (id: string) =>
 export const revokeKnowledge = (id: string) =>
   apiFetch(`/api/v1/admin/knowledge/${encodeURIComponent(id)}/revoke`, { method: "POST" });
 
+export type AssistantWidgetConfig = {
+  widget_id: string | null;
+  display_name: string | null;
+  ai_enabled: boolean;
+};
+
+export const loadAssistantWidget = (signal?: AbortSignal) =>
+  apiFetch<{ data: AssistantWidgetConfig }>("/api/v1/admin/assistant/widget", { signal });
+
 const mockVisits: VisitRequest[] = isMockDataMode ? [
   ["Lucía Ferreyra", "12", "Las Moras", "2026-10-26T13:30:00Z", "REQUESTED", "WhatsApp", "¿Puedo pasar por la mañana?"],
   ["Tomás Quiroga", "12A", "Las Moras", "2026-10-27T13:00:00Z", "REQUESTED", "Web", "Quiero conocer la unidad 12A y las opciones de financiación."],

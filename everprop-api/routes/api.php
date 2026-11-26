@@ -138,6 +138,7 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
 
         Route::get('/conversations-ai', [AdminAiSettingsController::class, 'show']);
         Route::put('/conversations-ai', [AdminAiSettingsController::class, 'update'])->middleware('throttle:30,1');
+        Route::get('/assistant/widget', [AdminAiSettingsController::class, 'widget'])->middleware('throttle:60,1');
         Route::get('/business-hours', [AdminBusinessHoursController::class, 'show']);
         Route::put('/business-hours', [AdminBusinessHoursController::class, 'update'])->middleware('throttle:30,1');
 
