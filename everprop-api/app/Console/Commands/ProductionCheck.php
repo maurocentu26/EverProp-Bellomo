@@ -130,6 +130,8 @@ final class ProductionCheck extends Command
                 $checks['Schema: assistant test sessions'] = Schema::hasTable('assistant_test_sessions')
                     && Schema::hasTable('assistant_test_message_reviews')
                     && DB::table('schema_versions')->where('version', '2026-11-26.001')->exists();
+                // EVP-214 (forward 2026-11-26.002) is data-only: its schema_versions row is the only trace that it ran.
+                $checks['Schema: Loteo San Pablo unified'] = DB::table('schema_versions')->where('version', '2026-11-26.002')->exists();
             } catch (Throwable) {
                 $checks['Database and Redis connections'] = false;
             }
