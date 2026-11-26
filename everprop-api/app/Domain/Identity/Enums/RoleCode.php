@@ -11,11 +11,15 @@ enum RoleCode: string
     case BOT_OPERATOR = 'BOT_OPERATOR';
     case READ_ONLY = 'READ_ONLY';
     case ROTATOR = 'ROTATOR';
+    /** EVP-212: client QA account; RotatorRoleBoundary limits it to its own assistant test sessions and conversations. */
+    case ASSISTANT_TESTER = 'ASSISTANT_TESTER';
 
     /** @return list<Capability> */
     public function capabilities(): array
     {
         return match ($this) {
+            // No generic capability: every access is an explicit role check (deny by default).
+            self::ASSISTANT_TESTER => [],
             self::SUPER_ADMIN, self::TENANT_ADMIN => Capability::cases(),
             self::ROTATOR => [Capability::VIEW_ANY, Capability::VIEW, Capability::ASSIGN],
             self::SALES_MANAGER => [
