@@ -73,7 +73,16 @@ final class ProductionEnvironmentTest extends TestCase
             ->expectsOutputToContain('OK Schema: lead interests')
             ->expectsOutputToContain('OK Schema: residential property details')
             ->expectsOutputToContain('OK Schema: assistant test sessions')
+            ->expectsOutputToContain('OK Schema: assistant tester role')
             ->assertSuccessful();
+        DB::beginTransaction();
+        try {
+            DB::table('schema_versions')->where('version', '2026-11-26.002')->delete();
+            $this->artisan('everprop:production-check --connections')
+                ->expectsOutputToContain('FAIL Schema: assistant tester role')->assertFailed();
+        } finally {
+            DB::rollBack();
+        }
         DB::beginTransaction();
         try {
             DB::table('schema_versions')->where('version', '2026-11-26.001')->delete();

@@ -16,7 +16,7 @@ Backend image, Railway service configuration and environment setup: see [railway
 
 ## Accounts and permissions
 
-`GET /api/v1/admin/users` and `POST /api/v1/admin/users` require user-management policy authorization. POST accepts `firstName`, `lastName`, `email`, E.164 `phone` and `role` (`SALES_ADVISOR`, `ROTATOR` or `TENANT_ADMIN`). It rejects client tenant IDs and administrative roles. Accounts start paused without a password. The response contains a 24-hour activation token; it is never returned by the list endpoint.
+`GET /api/v1/admin/users` and `POST /api/v1/admin/users` require user-management policy authorization. POST accepts `firstName`, `lastName`, `email`, E.164 `phone` and `role` (`SALES_ADVISOR`, `ROTATOR`, `TENANT_ADMIN` or `ASSISTANT_TESTER`, the client's QA account from EVP-212, created without price access). It rejects client tenant IDs and administrative roles. Accounts start paused without a password. The response contains a 24-hour activation token; it is never returned by the list endpoint.
 
 The frontend uses `/activar#TOKEN` so the token is not sent in the URL to access logs. `POST /api/v1/auth/activate` accepts `token`, `password` and `password_confirmation`, enforces tenant matching and a 12-character password with letters and numbers, and enables the account once. Redis locks serialize activation for the same account. `POST /api/v1/admin/users/{public_id}/activation` supplies a new link for pending accounts when one is lost or expired. Earlier unexpired links also cease working once the account activates.
 

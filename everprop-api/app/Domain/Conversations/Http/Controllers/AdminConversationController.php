@@ -37,7 +37,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class AdminConversationController extends Controller
 {
-    private const VIEW_ROLES = [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY];
+    private const VIEW_ROLES = [RoleCode::TENANT_ADMIN, RoleCode::SALES_MANAGER, RoleCode::SALES_ADVISOR, RoleCode::READ_ONLY, RoleCode::ASSISTANT_TESTER];
 
     /** EVP-125: social channels whose unanswered DMs are "possible leads" (they never create a lead on their own). */
     private const SOCIAL_CHANNELS = ['INSTAGRAM_DM', 'FACEBOOK_MESSENGER', 'WHATSAPP'];
@@ -659,7 +659,7 @@ final class AdminConversationController extends Controller
     private function writer(Request $request): User
     {
         $user = $this->viewer($request);
-        abort_if($user->role() === RoleCode::READ_ONLY, 403);
+        abort_if(in_array($user->role(), [RoleCode::READ_ONLY, RoleCode::ASSISTANT_TESTER], true), 403);
 
         return $user;
     }
@@ -669,7 +669,11 @@ final class AdminConversationController extends Controller
         return DB::table('conversations as c')->where('c.tenant_id', $this->tenantId())
             ->when($user->role() === RoleCode::SALES_ADVISOR, fn ($q) => $q->where(fn ($w) => $w
                 ->where('c.assigned_user_id', $user->id)
-                ->orWhere(fn ($p) => $p->whereNull('c.assigned_user_id')->where('c.control_state', 'WAITING_HUMAN'))));
+                ->orWhere(fn ($p) => $p->whereNull('c.assigned_user_id')->where('c.control_state', 'WAITING_HUMAN'))))
+            // EVP-212: the client's QA account reads only the conversations of the test sessions it created.
+            ->when($user->role() === RoleCode::ASSISTANT_TESTER, fn ($q) => $q->whereExists(fn ($s) => $s->from('assistant_test_sessions as ats')
+                ->whereColumn('ats.tenant_id', 'c.tenant_id')->whereColumn('ats.conversation_id', 'c.id')
+                ->where('ats.created_by_user_id', $user->id)));
     }
 
     private function find(User $user, string $publicId): object
