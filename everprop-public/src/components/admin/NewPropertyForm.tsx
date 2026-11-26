@@ -13,13 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { properties as sampleProperties, type Property, type Project, projects as sampleProjects, JUJUY_CITIES } from "@/data/admin-sample";
 import { loadPropertyList, savePropertyList, loadProjectList } from "@/lib/admin-storage";
 import { isMockDataMode } from "@/lib/data-mode";
-import { createEverpropProperty, EverpropApiError, loadEverpropCatalog, type CreatePropertyPayload } from "@/lib/everprop-api";
+import { createEverpropProperty, createEverpropPropertyFeature, EverpropApiError, loadEverpropCatalog, type CreatePropertyPayload } from "@/lib/everprop-api";
 import { Car, Store, Map, Building2, Home, ArrowLeft, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deferEffectUpdate } from "@/lib/deferred-effect";
 
 import CategorySelector from "./property-form/CategorySelector";
 import TraditionalFields from "./property-form/TraditionalFields";
+import PropertyFeaturesEditor, { validateFeatureDrafts, type FeatureDraft } from "./property-form/PropertyFeaturesEditor";
 import LoteFields from "./property-form/LoteFields";
 import CommercialFields from "./property-form/CommercialFields";
 import { formSchema, type FormData, type Category } from "./property-form/types";
@@ -44,6 +45,8 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
   const paramType = initialType ?? searchParams.get("type") as "Casa" | "Departamento" | "Lote" | "Cochera" | "Local" | null;
 
   const [error, setError] = useState("");
+  const [partialCreatedId, setPartialCreatedId] = useState<string | null>(null);
+  const [features, setFeatures] = useState<FeatureDraft[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState(initialProjectId ?? "");
   const [projectsError, setProjectsError] = useState("");
@@ -153,8 +156,11 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
     submitLock.current = true;
     setError("");
     setIsSaving(true);
+    let createdPropertyId: string | null = null;
 
     try {
+      const residential = data.propertyType === "Casa" || data.propertyType === "Departamento";
+      const featureInputs = residential ? validateFeatureDrafts(features) : [];
       if (data.propertyType === "Lote" && (!data.area_m2 || !data.sectorName || !data.unitNumber)) {
         throw new Error("Completá Superficie, Manzana y Nro de Lote.");
       }
@@ -175,10 +181,20 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
         neighborhood: data.neighborhood.trim(),
         bedrooms: data.bedrooms ? Number(data.bedrooms) : 0,
         bathrooms: data.bathrooms ? Number(data.bathrooms) : 0,
+        rooms: residential && data.rooms !== "" && data.rooms !== undefined ? Number(data.rooms) : null,
         area_m2: data.area_m2 ? Number(data.area_m2) : undefined,
+        coveredAreaM2: residential && data.covered_area_m2 ? Number(data.covered_area_m2) : null,
+        uncoveredAreaM2: residential && data.uncovered_area_m2 !== "" && data.uncovered_area_m2 !== undefined ? Number(data.uncovered_area_m2) : null,
+        floor: residential ? data.floor?.trim() || null : null,
+        orientation: residential ? data.orientation?.trim() || null : null,
+        disposition: residential ? data.disposition?.trim() || null : null,
+        parkingSpaces: residential && data.parkingSpaces !== "" && data.parkingSpaces !== undefined ? Number(data.parkingSpaces) : null,
+        expenses: residential && data.expenses !== "" && data.expenses !== undefined ? Number(data.expenses) : null,
+        expensesCurrency: residential && data.expenses ? data.expensesCurrency || null : null,
+        features: residential ? featureInputs.map((feature, index) => ({ id: index, group: feature.group, code: feature.code, label: feature.label, value: feature.value, isFilterable: true, sortOrder: index })) : [],
         description: data.description,
         sectorName: data.propertyType === "Lote" ? data.sectorName : undefined,
-        unitNumber: data.floor ? `${data.floor}-${data.unitNumber}` : data.unitNumber,
+        unitNumber: residential ? data.unitNumber : data.floor ? `${data.floor}-${data.unitNumber}` : data.unitNumber,
         status: "available",
         commercialFeatures: data.propertyType === "Lote" ? { land: {
           frente_m: data.frente_m ? Number(data.frente_m) : undefined,
@@ -215,12 +231,23 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
           area_m2: nextProperty.area_m2,
           bedrooms: nextProperty.bedrooms,
           bathrooms: nextProperty.bathrooms,
+          rooms: nextProperty.rooms,
+          coveredAreaM2: nextProperty.coveredAreaM2,
+          uncoveredAreaM2: nextProperty.uncoveredAreaM2,
+          floor: nextProperty.floor,
+          orientation: nextProperty.orientation,
+          disposition: nextProperty.disposition,
+          parkingSpaces: nextProperty.parkingSpaces,
+          expenses: nextProperty.expenses,
+          expensesCurrency: nextProperty.expensesCurrency,
           description: nextProperty.description,
         };
         const request = initialProjectId ? { key: crypto.randomUUID(), payload } : null;
         if (request) { sessionStorage.setItem(pendingKey, JSON.stringify(request)); setPendingUnit(request); }
-        await createEverpropProperty(payload, request?.key);
+        const created = await createEverpropProperty(payload, request?.key);
+        createdPropertyId = created.id;
         if (request) { sessionStorage.removeItem(pendingKey); setPendingUnit(null); }
+        for (const feature of featureInputs) await createEverpropPropertyFeature(created.id, feature);
       } else {
         const existingProperties = loadPropertyList(sampleProperties, companyId);
         savePropertyList([nextProperty, ...existingProperties]);
@@ -231,7 +258,10 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
       else router.push("/admin/properties");
     } catch (e: any) {
       if (e instanceof EverpropApiError && e.status === 422 && pendingKey) { sessionStorage.removeItem(pendingKey); setPendingUnit(null); }
-      setError(e.message || "Error al guardar el activo.");
+      if (createdPropertyId) setPartialCreatedId(createdPropertyId);
+      setError(createdPropertyId
+        ? `La propiedad se creó, pero no se pudieron guardar todas las características: ${e.message || "Error desconocido"}. Revisá la ficha antes de volver a cargarla.`
+        : e.message || "Error al guardar el activo.");
       setIsSaving(false);
     } finally {
       submitLock.current = false;
@@ -378,6 +408,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
               </Field>
 
               {category === "tradicional" && <TraditionalFields register={register} />}
+              {category === "tradicional" && <PropertyFeaturesEditor value={features} onChange={setFeatures} disabled={isSaving} />}
               {category === "loteo" && <LoteFields register={register} />}
               {category === "comercial" && <CommercialFields register={register} activeTab={activeTab} />}
 
@@ -395,12 +426,13 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
             </FieldGroup>
 
             {error && <div ref={errorRef} tabIndex={-1} role="alert" aria-live="assertive" className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold">{error}</div>}
+            {partialCreatedId && <a href={`/admin/properties/${partialCreatedId}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 underline">Abrir la propiedad creada</a>}
 
             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
               {!initialCategory && <Button type="button" variant="outline" size="sm" className="rounded-lg px-4 h-9 text-xs font-semibold" disabled={isSaving} onClick={() => { if (isDirty && typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Hay cambios sin guardar en el activo. ¿Querés cancelar y descartarlos?")) return; setStep(1); }}>
                 Cancelar
               </Button>}
-              <Button type="submit" size="sm" disabled={isSaving} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 h-9 text-xs font-semibold shadow-sm">
+              <Button type="submit" size="sm" disabled={isSaving || !!partialCreatedId} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 h-9 text-xs font-semibold shadow-sm">
                 {isSaving ? "Guardando..." : `Guardar ${activeTab}`}
               </Button>
             </div>

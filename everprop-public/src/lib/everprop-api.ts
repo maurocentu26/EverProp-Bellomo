@@ -1,4 +1,4 @@
-import type { Project, Property, Visit, Lead, LeadFollowUp, LeadFollowUpType, LeadInterestCategory } from "@/data/admin-sample";
+import type { Project, Property, PropertyFeature, Visit, Lead, LeadFollowUp, LeadFollowUpType, LeadInterestCategory } from "@/data/admin-sample";
 import type { UserProfile, UserRole } from "@/data/auth-sample";
 
 const CONFIGURED_API_URL =
@@ -55,6 +55,8 @@ type ApiProject = {
   not_marketed_units_count?: number;
 };
 
+type ApiFeature = { id: number; feature_group: PropertyFeature["group"]; feature_code: string; label: string; value: unknown; unit_code?: string | null; is_filterable: boolean; sort_order: number };
+
 type ApiProperty = {
   version?: number;
   public_id: string;
@@ -66,9 +68,19 @@ type ApiProperty = {
   currency_code?: string | null;
   city?: string | null;
   neighborhood?: string | null;
+  rooms?: number | null;
   bedrooms?: number | null;
   bathrooms?: number | null;
   area_m2?: number | string | null;
+  covered_area_m2?: number | string | null;
+  uncovered_area_m2?: number | string | null;
+  floor?: string | null;
+  orientation?: string | null;
+  disposition?: string | null;
+  parking_spaces?: number | null;
+  expenses?: number | string | null;
+  expenses_currency_code?: "USD" | "ARS" | null;
+  features?: ApiFeature[];
   main_image_url?: string | null;
   description?: string | null;
   sector_name?: string | null;
@@ -261,7 +273,21 @@ function mapProperty(property: ApiProperty): Property {
     neighborhood: property.neighborhood || "",
     bedrooms: property.bedrooms || 0,
     bathrooms: property.bathrooms || 0,
+    rooms: property.rooms ?? null,
     area_m2: property.area_m2 == null ? undefined : Number(property.area_m2),
+    coveredAreaM2: property.covered_area_m2 == null ? null : Number(property.covered_area_m2),
+    uncoveredAreaM2: property.uncovered_area_m2 == null ? null : Number(property.uncovered_area_m2),
+    floor: property.floor ?? null,
+    orientation: property.orientation ?? null,
+    disposition: property.disposition ?? null,
+    parkingSpaces: property.parking_spaces ?? null,
+    expenses: property.expenses == null ? null : Number(property.expenses),
+    expensesCurrency: property.expenses_currency_code ?? null,
+    features: property.features?.map(feature => ({
+      id: feature.id, group: feature.feature_group, code: feature.feature_code,
+      label: feature.label, value: feature.value, unitCode: feature.unit_code,
+      isFilterable: feature.is_filterable, sortOrder: feature.sort_order,
+    })) ?? [],
     mainImage: property.main_image_url || undefined,
     description: cleanText(property.description) || undefined,
     projectId: property.project?.public_id || undefined,
@@ -395,9 +421,18 @@ export type CreatePropertyPayload = {
   projectId?: string;
   sectorName?: string;
   unitNumber?: string;
+  rooms?: number | null;
   bedrooms?: number;
   bathrooms?: number;
   area_m2?: number;
+  coveredAreaM2?: number | null;
+  uncoveredAreaM2?: number | null;
+  floor?: string | null;
+  orientation?: string | null;
+  disposition?: string | null;
+  parkingSpaces?: number | null;
+  expenses?: number | null;
+  expensesCurrency?: "USD" | "ARS" | null;
   description?: string;
   services?: Property["services"];
   commercialFeatures?: Record<string, any>;
@@ -432,9 +467,18 @@ export async function createEverpropProperty(data: CreatePropertyPayload, intake
     project_id: projectId,
     sector_name: data.sectorName || null,
     unit_number: data.unitNumber || null,
+    rooms: data.rooms ?? null,
     bedrooms: data.bedrooms ?? null,
     bathrooms: data.bathrooms ?? null,
     area_m2: data.area_m2 ?? null,
+    covered_area_m2: data.coveredAreaM2 ?? null,
+    uncovered_area_m2: data.uncoveredAreaM2 ?? null,
+    floor: data.floor || null,
+    orientation: data.orientation || null,
+    disposition: data.disposition || null,
+    parking_spaces: data.parkingSpaces ?? null,
+    expenses: data.expenses ?? null,
+    expenses_currency_code: data.expenses == null ? null : data.expensesCurrency,
     description: data.description || null,
     services_json: data.services || null,
     commercial_features_json: data.commercialFeatures || null,
@@ -892,8 +936,17 @@ export type UpdatePropertyPayload = {
   sectorName?: string | null;
   unitNumber?: string | null;
   area_m2?: number | null;
-  bedrooms?: number;
-  bathrooms?: number;
+  rooms?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  coveredAreaM2?: number | null;
+  uncoveredAreaM2?: number | null;
+  floor?: string | null;
+  orientation?: string | null;
+  disposition?: string | null;
+  parkingSpaces?: number | null;
+  expenses?: number | null;
+  expensesCurrency?: "USD" | "ARS" | null;
   description?: string | null;
   version?: number;
 };
@@ -936,8 +989,19 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
   if (data.sectorName !== undefined) payload.sector_name = data.sectorName;
   if (data.unitNumber !== undefined) payload.unit_number = data.unitNumber;
   if (data.area_m2 !== undefined) payload.area_m2 = data.area_m2 ? Number(data.area_m2) : null;
+  if (data.rooms !== undefined) payload.rooms = data.rooms;
   if (data.bedrooms !== undefined) payload.bedrooms = data.bedrooms ?? null;
   if (data.bathrooms !== undefined) payload.bathrooms = data.bathrooms ?? null;
+  if (data.coveredAreaM2 !== undefined) payload.covered_area_m2 = data.coveredAreaM2;
+  if (data.uncoveredAreaM2 !== undefined) payload.uncovered_area_m2 = data.uncoveredAreaM2;
+  if (data.floor !== undefined) payload.floor = data.floor;
+  if (data.orientation !== undefined) payload.orientation = data.orientation;
+  if (data.disposition !== undefined) payload.disposition = data.disposition;
+  if (data.parkingSpaces !== undefined) payload.parking_spaces = data.parkingSpaces;
+  if (data.expenses !== undefined || data.expensesCurrency !== undefined) {
+    payload.expenses = data.expenses ?? null;
+    payload.expenses_currency_code = data.expensesCurrency ?? null;
+  }
   if (data.description !== undefined) payload.description = data.description;
 
   const response = await apiFetch<ApiEnvelope<ApiProperty>>(`/api/v1/admin/properties/${publicId}`, {
@@ -946,6 +1010,47 @@ export async function updateEverpropProperty(publicId: string, data: UpdatePrope
   });
 
   return mapProperty(response.data);
+}
+
+export type PropertyFeatureInput = {
+  group: PropertyFeature["group"];
+  code: string;
+  label: string;
+  value: unknown;
+  isFilterable?: boolean;
+};
+
+export async function createEverpropPropertyFeature(publicId: string, feature: PropertyFeatureInput) {
+  const response = await apiFetch<ApiEnvelope<ApiFeature>>(
+    `/api/v1/admin/properties/${encodeURIComponent(publicId)}/features`, {
+      method: "POST",
+      body: JSON.stringify({
+        feature_group: feature.group,
+        feature_code: feature.code,
+        label: feature.label,
+        feature_value: feature.value,
+        is_filterable: feature.isFilterable ?? true,
+      }),
+    },
+  );
+  return response.data;
+}
+
+export async function updateEverpropPropertyFeature(publicId: string, id: number, feature: Partial<PropertyFeatureInput>) {
+  return apiFetch<ApiEnvelope<unknown>>(`/api/v1/admin/properties/${encodeURIComponent(publicId)}/features/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      ...(feature.group !== undefined ? { feature_group: feature.group } : {}),
+      ...(feature.code !== undefined ? { feature_code: feature.code } : {}),
+      ...(feature.label !== undefined ? { label: feature.label } : {}),
+      ...(feature.value !== undefined ? { feature_value: feature.value } : {}),
+      ...(feature.isFilterable !== undefined ? { is_filterable: feature.isFilterable } : {}),
+    }),
+  });
+}
+
+export async function deleteEverpropPropertyFeature(publicId: string, id: number) {
+  await apiFetch<unknown>(`/api/v1/admin/properties/${encodeURIComponent(publicId)}/features/${id}`, { method: "DELETE" });
 }
 
 /** EVP-171: edición de la ficha del proyecto (PUT existente de AdminProjectController). */

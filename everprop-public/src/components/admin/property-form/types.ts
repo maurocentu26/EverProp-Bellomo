@@ -5,6 +5,7 @@ export type Category = "tradicional" | "loteo" | "comercial" | null;
 
 const positiveOptional = z.string().optional().refine(v => !v || (Number.isFinite(Number(v)) && Number(v) > 0), "Ingresá un valor mayor a cero.");
 const nonnegativeOptional = z.string().optional().refine(v => !v || (Number.isFinite(Number(v)) && Number(v) >= 0), "Ingresá un valor mayor o igual a cero.");
+const countOptional = z.string().optional().refine(v => !v || (Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 65535), "Ingresá un número entero mayor o igual a cero.");
 
 export const formSchema = z.object({
   propertyType: z.enum(["Casa", "Departamento", "Lote", "Cochera", "Local"]),
@@ -17,8 +18,16 @@ export const formSchema = z.object({
   
   // Traditional
   operation: z.enum(["sale", "rent", "temporal"]).optional(),
-  bedrooms: z.string().optional(),
-  bathrooms: z.string().optional(),
+  rooms: countOptional,
+  bedrooms: countOptional,
+  bathrooms: countOptional,
+  covered_area_m2: positiveOptional,
+  uncovered_area_m2: nonnegativeOptional,
+  orientation: z.string().max(80).optional(),
+  disposition: z.string().max(80).optional(),
+  parkingSpaces: countOptional,
+  expenses: nonnegativeOptional,
+  expensesCurrency: z.enum(["USD", "ARS", ""]).optional(),
 
   // Enterprise/Commercial specifics
   area_m2: positiveOptional,
@@ -41,6 +50,10 @@ export const formSchema = z.object({
   sewage: z.boolean().optional(),
   gas: z.boolean().optional(),
   lighting: z.boolean().optional(),
+}).superRefine((data, context) => {
+  if (["Casa", "Departamento"].includes(data.propertyType) && Boolean(data.expenses) !== Boolean(data.expensesCurrency)) {
+    context.addIssue({ code: "custom", path: ["expensesCurrency"], message: "Informá monto y moneda de expensas juntos." });
+  }
 });
 
 export type FormData = z.infer<typeof formSchema>;
