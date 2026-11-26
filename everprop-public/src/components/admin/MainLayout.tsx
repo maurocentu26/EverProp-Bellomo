@@ -20,7 +20,7 @@ type Props = {
 
 export default function MainLayout({ children }: Props) {
     const pathname = usePathname();
-    const conversationsWorkspace = pathname === "/admin/conversaciones";
+    const conversationsWorkspace = pathname === "/admin/conversaciones" || pathname === "/admin/probar-asistente";
     const router = useRouter();
     const { currentUser, isLoaded, invalidateSession } = useAuth();
     const { theme } = useTheme();

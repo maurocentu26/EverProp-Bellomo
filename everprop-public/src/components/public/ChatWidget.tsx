@@ -26,7 +26,7 @@ async function call<T>(path: string, init: RequestInit & { token?: string | null
  * Visitor chat. Anonymous: the session token only grants access to this one conversation.
  * Messages are durable on the server before they show up; retries reuse the same client id.
  */
-export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widgetId: string; title?: string }) {
+export function ChatWidget({ widgetId, title = "Chateá con nosotros", embedded = false }: { widgetId: string; title?: string; embedded?: boolean }) {
   const [token, setToken] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("boot");
   const [persistent, setPersistent] = useState(true);
@@ -150,9 +150,9 @@ export function ChatWidget({ widgetId, title = "Chateá con nosotros" }: { widge
   }
 
   return (
-    <section className="flex h-dvh flex-col bg-background text-foreground" aria-label={title}>
+    <section className={`flex ${embedded ? "h-full" : "h-dvh"} flex-col bg-background text-foreground`} aria-label={title}>
       <header className="border-b border-border bg-blue-600 px-4 py-3 text-white">
-        <h1 className="text-base font-bold">{title}</h1>
+        {embedded ? <h2 className="text-base font-bold">{title}</h2> : <h1 className="text-base font-bold">{title}</h1>}
         {/* Neutral: with the assistant off only people answer. Automatic replies are labelled per message. */}
         <p className="text-xs opacity-90">Te respondemos por este chat. Las respuestas automáticas dicen «Asistente virtual».</p>
       </header>

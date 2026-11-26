@@ -302,4 +302,45 @@ final class AiSettingsTest extends TestCase
             ->putJson('/api/v1/admin/conversations-ai', ['ai_enabled' => true])->assertOk()->assertJsonPath('data.ai_enabled', true);
         $this->assertNull(DB::table('audit_logs')->where('tenant_id', $tenant->id)->value('request_id'), 'an invalid request id is not stored');
     }
+
+    public function test_assistant_widget_requires_admin_and_isolates_tenants(): void
+    {
+        $tenantA = $this->tenant($this->on());
+        $tenantB = $this->tenant();
+        $integrationA = (int) DB::table('integration_connections')->insertGetId([
+            'tenant_id' => $tenantA->id, 'public_id' => (string) Str::uuid(), 'provider' => 'WEB', 'name' => 'Web', 'status' => 'ACTIVE',
+        ]);
+        $widgetA = $this->webChannel($tenantA->id, $integrationA);
+
+        $this->withHeaders($this->tenantHeaders($tenantA))
+            ->getJson('/api/v1/admin/assistant/widget')
+            ->assertUnauthorized();
+
+        foreach ([RoleCode::SALES_ADVISOR, RoleCode::SALES_MANAGER, RoleCode::BOT_OPERATOR, RoleCode::ROTATOR, RoleCode::READ_ONLY] as $role) {
+            $this->actingAs($this->user($tenantA, $role))->withHeaders($this->tenantHeaders($tenantA))
+                ->getJson('/api/v1/admin/assistant/widget')
+                ->assertForbidden();
+        }
+
+        $adminA = $this->user($tenantA, RoleCode::TENANT_ADMIN);
+        $responseA = $this->actingAs($adminA)->withHeaders($this->tenantHeaders($tenantA))
+            ->getJson('/api/v1/admin/assistant/widget')
+            ->assertOk()
+            ->assertJsonPath('data.widget_id', $widgetA['public_id'])
+            ->assertJsonPath('data.ai_enabled', true);
+        $cacheControl = (string) $responseA->headers->get('Cache-Control');
+        $this->assertStringContainsString('private', $cacheControl);
+        $this->assertStringContainsString('no-store', $cacheControl);
+
+        // Cross-tenant: admin of A pointed at B's host gets 404, and admin of B never sees A's widget.
+        $this->actingAs($adminA)->withHeaders($this->tenantHeaders($tenantB))
+            ->getJson('/api/v1/admin/assistant/widget')
+            ->assertNotFound();
+        $adminB = $this->user($tenantB, RoleCode::TENANT_ADMIN);
+        $this->actingAs($adminB)->withHeaders($this->tenantHeaders($tenantB))
+            ->getJson('/api/v1/admin/assistant/widget')
+            ->assertOk()
+            ->assertJsonPath('data.widget_id', null)
+            ->assertJsonPath('data.ai_enabled', false);
+    }
 }

@@ -127,6 +127,9 @@ final class ProductionCheck extends Command
                     'rooms', 'covered_area_m2', 'uncovered_area_m2', 'floor', 'orientation',
                     'disposition', 'parking_spaces', 'expenses', 'expenses_currency_code',
                 ]) && DB::table('schema_versions')->where('version', '2026-11-25.001')->exists();
+                $checks['Schema: assistant test sessions'] = Schema::hasTable('assistant_test_sessions')
+                    && Schema::hasTable('assistant_test_message_reviews')
+                    && DB::table('schema_versions')->where('version', '2026-11-26.001')->exists();
             } catch (Throwable) {
                 $checks['Database and Redis connections'] = false;
             }
