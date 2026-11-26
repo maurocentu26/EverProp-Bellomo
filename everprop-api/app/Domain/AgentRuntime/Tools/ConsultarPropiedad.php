@@ -13,7 +13,7 @@ final class ConsultarPropiedad implements AgentTool
 
     public function description(): string
     {
-        return 'Devuelve el detalle vigente de una propiedad. Si no está disponible responde NOT_FOUND.'.PublicInventory::PROPERTY_REF_HINT;
+        return 'Devuelve el detalle publicado de una propiedad, sin precio ni disponibilidad. Si no figura en el catálogo responde NOT_FOUND.'.PublicInventory::PROPERTY_REF_HINT;
     }
 
     public function schema(): array

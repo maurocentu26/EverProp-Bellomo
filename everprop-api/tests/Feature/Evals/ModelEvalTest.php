@@ -65,7 +65,9 @@ final class ModelEvalTest extends TestCase
             'expected' => ['behavior' => 'answer', 'must_include' => ['12A'], 'must_not_include' => ['12B', '93000'], 'tools' => ['buscar_propiedades'], 'persisted' => 'none']];
         $search = ScriptedLlm::tool('buscar_propiedades', ['unit_code' => '12A']);
 
-        $this->app->instance(LlmClient::class, new ScriptedLlm([$search, ScriptedLlm::text('Sí, el 12A de Huasi Sintético está disponible a USD 91.000.')]));
+        // EVP-200: a correct answer names the unit and leaves price and availability to an advisor.
+        $this->app->instance(LlmClient::class, new ScriptedLlm([$search,
+            ScriptedLlm::text('El 12A de Huasi Sintético figura en el catálogo; el precio y la disponibilidad te los confirma un asesor.')]));
         $good = $this->play($case);
         $this->assertSame('PASS', $good['result'], implode('; ', $good['failures']));
 
@@ -73,10 +75,10 @@ final class ModelEvalTest extends TestCase
             + array_diff_key($case['expected'], ['tools' => true])] + $case;
         $this->app->instance(LlmClient::class, new ScriptedLlm([
             ScriptedLlm::tool('consultar_propiedad', ['unit_code' => '12A']),
-            ScriptedLlm::text('El 12A está disponible a USD 91.000.'),
+            ScriptedLlm::text('El 12A figura en el catálogo; un asesor te confirma el precio.'),
         ]));
         $this->assertSame('PASS', $this->play($eitherRead)['result']);
-        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('El 12A está disponible.')]));
+        $this->app->instance(LlmClient::class, new ScriptedLlm([ScriptedLlm::text('El 12A figura en el catálogo.')]));
         $this->assertContains('tools_any: expected one of [buscar_propiedades, consultar_propiedad] got []', $this->play($eitherRead)['failures']);
         $this->assertFalse($this->containsExpected($this->normalized('Vamos a comunicarse'), 'ARS'));
         $this->assertTrue($this->containsExpected($this->normalized('Precio en ARS'), 'ARS'));
