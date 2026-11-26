@@ -6,6 +6,7 @@ use App\Domain\Collections\CollectionBillingController;
 use App\Domain\Collections\CollectionEmailController;
 use App\Domain\Collections\CollectionsController;
 use App\Domain\Conversations\Http\Controllers\AdminAiSettingsController;
+use App\Domain\Conversations\Http\Controllers\AdminAssistantTestSessionController;
 use App\Domain\Conversations\Http\Controllers\AdminBusinessHoursController;
 use App\Domain\Conversations\Http\Controllers\AdminConversationController;
 use App\Domain\Conversations\Http\Controllers\MetaWhatsAppWebhookController;
@@ -139,6 +140,12 @@ Route::middleware(['tenant', 'auth:sanctum', TouchLastActive::class])->group(fun
         Route::get('/conversations-ai', [AdminAiSettingsController::class, 'show']);
         Route::put('/conversations-ai', [AdminAiSettingsController::class, 'update'])->middleware('throttle:30,1');
         Route::get('/assistant/widget', [AdminAiSettingsController::class, 'widget'])->middleware('throttle:60,1');
+        Route::get('/assistant/test-sessions', [AdminAssistantTestSessionController::class, 'index'])->middleware('throttle:60,1');
+        Route::post('/assistant/test-sessions', [AdminAssistantTestSessionController::class, 'store'])->middleware('throttle:30,1');
+        Route::get('/assistant/test-sessions/{session}', [AdminAssistantTestSessionController::class, 'show'])->whereUuid('session')->middleware('throttle:120,1');
+        Route::post('/assistant/test-sessions/{session}/messages', [AdminAssistantTestSessionController::class, 'sendMessage'])->whereUuid('session')->middleware('throttle:60,1');
+        Route::put('/assistant/test-sessions/{session}/messages/{sequence}/review', [AdminAssistantTestSessionController::class, 'reviewMessage'])->whereUuid('session')->whereNumber('sequence')->middleware('throttle:60,1');
+        Route::post('/assistant/test-sessions/{session}/finish', [AdminAssistantTestSessionController::class, 'finish'])->whereUuid('session')->middleware('throttle:30,1');
         Route::get('/business-hours', [AdminBusinessHoursController::class, 'show']);
         Route::put('/business-hours', [AdminBusinessHoursController::class, 'update'])->middleware('throttle:30,1');
 

@@ -1,58 +1,70 @@
-# EVP-207 — Staging: página «Probar asistente» con login para probar Bellomito
+# EVP-207 — Staging: página «Probar asistente» con login, sesiones, calificación y exportación
 
 Rama `ticket/EVP-207-probar-asistente` · fecha 2026-11-26 · autor: Mauro Centurión + agente
 
 ## 1. Qué pedía el ticket
 
-- Incorporar en el panel (`everprop-public`) una página **"Probar asistente"** detrás de la sesión existente (Sanctum), accesible **solo para administradores** (`TENANT_ADMIN` / `SUPER_ADMIN`, sin RBAC paralelo — ADR D05).
-- Mostrar el chat del widget oficial (`WEB_CHAT`) del tenant resuelto en servidor, sin hardcodear ni exponer el `widget_id` fuera de la página con login, junto con una guía breve de qué probar y el enlace a **Conversaciones** (`/admin/conversaciones`) para revisar la traza completa de mensajes.
-- Con sesión de otro tenant, nunca exponer el widget de Bellomo; sin sesión, redirigir al login.
-- **Fuera de alcance:** marcado por mensaje (correcta/incorrecta con comentario) — se acordó revisar las trazas directamente en `/admin/conversaciones`; sin cambios de esquema SQL ni forward nuevo; sin deploy ni alta de credenciales en staging hasta su aprobación.
+- Incorporar en el panel (`everprop-public`) la página **"Probar asistente"** (`/admin/probar-asistente`) detrás de la sesión Sanctum, accesible **solo para administradores** (`TENANT_ADMIN` / `SUPER_ADMIN`, sin RBAC paralelo — ADR D05), destinada únicamente a **staging** (`develop` → `bellomito-staging`; el módulo de IA y conversaciones nunca va a `main`).
+- Permitir que el equipo administrativo del cliente (Mónica) y Eversys puedan:
+  1. **Crear nuevas sesiones de prueba** (con título opcional por tema organizativo) y listar sesiones en curso y finalizadas.
+  2. **Calificar cada respuesta del asistente** como **Bien / Mal** (`GOOD` / `BAD`) y dejar **anotaciones** por mensaje.
+  3. **Finalizar la sesión** dejando **anotaciones generales de cierre**.
+  4. **Revisar y exportar** desde cualquier cuenta administradora del tenant la traza completa de mensajes junto con todas las calificaciones y observaciones (`.md` y `.json`), además de ver la conversación real en `/admin/conversaciones`.
 
 ## 2. Qué se implementó
 
+### Esquema (`everprop-api`)
+- [2026-11-26.001_assistant_test_sessions.sql](everprop-api/database/schema/forward/2026-11-26.001_assistant_test_sessions.sql): forward aditivo e idempotente (`CREATE TABLE IF NOT EXISTS`, `SET SESSION lock_wait_timeout = 10`) que agrega dos tablas por tenant con FKs compuestas:
+  - `assistant_test_sessions` (`tenant_id`, `public_id`, `conversation_id`, `created_by_user_id`, `title`, `status` `OPEN|FINISHED`, `closing_note`, `finished_at`).
+  - `assistant_test_message_reviews` (`tenant_id`, `session_id`, `message_sequence`, `rating` `GOOD|BAD|NULL`, `note`, `reviewed_by_user_id`).
+- [database-contract.php](everprop-api/config/database-contract.php): actualizado (`tables: 69`, `tenant_tables: 63`, `foreign_keys: 153`).
+- [ProductionCheck.php](everprop-api/app/Console/Commands/ProductionCheck.php#L130-L132) y [ProductionEnvironmentTest.php](everprop-api/tests/Feature/ProductionEnvironmentTest.php#L75-L84): registrado `Schema: assistant test sessions` exigiendo ambas tablas y la fila `2026-11-26.001` en `schema_versions`.
+
 ### Backend (`everprop-api`)
-- [api.php](everprop-api/routes/api.php#L141): nueva ruta `GET /api/v1/admin/assistant/widget` (`throttle:60,1`) dentro del grupo `['tenant', 'auth:sanctum', TouchLastActive::class]` y `RotatorRoleBoundary`.
-- [AdminAiSettingsController.php](everprop-api/app/Domain/Conversations/Http/Controllers/AdminAiSettingsController.php#L31-L49): método `widget(Request $request)` que autoriza con `$this->admin($request)` (`Capability::MANAGE_INTEGRATIONS`, solo `TENANT_ADMIN` y `SUPER_ADMIN`), consulta `channel_accounts` filtrado por `tenant_id` resuelto en servidor (`TenantContext`), `channel_type = 'WEB_CHAT'` y `status = 'ACTIVE'`, y devuelve `{ widget_id, display_name, ai_enabled }` con `Cache-Control: private, no-store`.
-- [AiSettingsTest.php](everprop-api/tests/Feature/Conversations/AiSettingsTest.php#L306-L345): test `test_assistant_widget_requires_admin_and_isolates_tenants` cubriendo 401 sin sesión, 403 para `SALES_ADVISOR`, `SALES_MANAGER`, `BOT_OPERATOR`, `ROTATOR` y `READ_ONLY`, 200 con `Cache-Control: private, no-store` para `TENANT_ADMIN`, 404 cuando el admin de Tenant A apunta al host de Tenant B, y `widget_id: null` / `ai_enabled: false` para el admin de Tenant B.
+- [api.php](everprop-api/routes/api.php#L141-L148): nuevas rutas bajo `['tenant', 'auth:sanctum', TouchLastActive::class]` + `RotatorRoleBoundary`:
+  - `GET /api/v1/admin/assistant/widget`
+  - `GET /api/v1/admin/assistant/test-sessions`
+  - `POST /api/v1/admin/assistant/test-sessions`
+  - `GET /api/v1/admin/assistant/test-sessions/{session}`
+  - `POST /api/v1/admin/assistant/test-sessions/{session}/messages`
+  - `PUT /api/v1/admin/assistant/test-sessions/{session}/messages/{sequence}/review`
+  - `POST /api/v1/admin/assistant/test-sessions/{session}/finish`
+- [AdminAssistantTestSessionController.php](everprop-api/app/Domain/Conversations/Http/Controllers/AdminAssistantTestSessionController.php): autoriza con `Capability::MANAGE_INTEGRATIONS` (ADR D05), crea conversaciones reales `WEB_CHAT` en `conversations`, envía mensajes por `InboundMessageService::accept()`, persiste calificaciones/anotaciones por mensaje y anotación final, todo filtrado por `tenant_id` resuelto en servidor y con `Cache-Control: private, no-store`.
+- [AdminAiSettingsController.php](everprop-api/app/Domain/Conversations/Http/Controllers/AdminAiSettingsController.php#L31-L49): método `widget()` tenant-scoped para admins.
+- Tests: [AssistantTestSessionTest.php](everprop-api/tests/Feature/Conversations/AssistantTestSessionTest.php) y [AiSettingsTest.php](everprop-api/tests/Feature/Conversations/AiSettingsTest.php#L306-L345).
 
 ### Frontend (`everprop-public`)
-- [assistant-api.ts](everprop-public/src/lib/assistant-api.ts#L69-L76): tipo `AssistantWidgetConfig` y cliente `loadAssistantWidget(signal?)` apuntando a `/api/v1/admin/assistant/widget`.
-- [ChatWidget.tsx](everprop-public/src/components/public/ChatWidget.tsx#L29): prop opcional `embedded?: boolean` para renderizar embebido dentro del panel (`h-full` en lugar de `h-dvh`, y `<h2>` en lugar de `<h1>` para mantener un único `<h1>` por página).
-- [page.tsx](everprop-public/src/app/admin/probar-asistente/page.tsx): página `/admin/probar-asistente` protegida por `useCurrentSession()` (redirige a `/login` sin sesión) y restringida a `TENANT_ADMIN` / `SUPER_ADMIN`. Muestra guía de prueba, aviso si la IA está desactivada, botón **Nueva conversación** (limpia el token del widget en storage y remonta el chat) y acceso directo a **Conversaciones**.
-- [navigation.ts](everprop-public/src/components/sidebar/navigation.ts#L150-L158): ítem **"Probar asistente"** bajo *Comercializadora*, visible solo cuando `isTenantAdmin` es verdadero.
-- [probar-asistente.test.mjs](everprop-public/tests/probar-asistente.test.mjs): verificación estática de restricción a administradores, consumo vía `loadAssistantWidget` y ausencia de UUIDs hardcodeados.
-
-### Esquema / Configuración
-- Sin cambios de esquema SQL ni forwards nuevos.
-- Sin variables de entorno nuevas.
+- [assistant-api.ts](everprop-public/src/lib/assistant-api.ts#L69-L194): clientes tipados para sesiones, mensajes, calificación, cierre y `formatAssistantTestSessionMarkdown`.
+- [page.tsx](everprop-public/src/app/admin/probar-asistente/page.tsx): pantalla `/admin/probar-asistente` (solo `TENANT_ADMIN` / `SUPER_ADMIN`, redirige a `/login` sin sesión) con creación y listado de sesiones, chat con polling en vivo, calificación **Bien / Mal** + anotación por respuesta, cierre con anotación general, exportación `.md` / `.json` y enlace a `/admin/conversaciones`.
+- [navigation.ts](everprop-public/src/components/sidebar/navigation.ts#L150-L158): entrada **"Probar asistente"** bajo *Comercializadora*, solo para `isTenantAdmin`.
+- [ChatWidget.tsx](everprop-public/src/components/public/ChatWidget.tsx): prop opcional `embedded`.
+- [probar-asistente.test.mjs](everprop-public/tests/probar-asistente.test.mjs).
 
 ## 3. Por qué esta solución
 
-- Reutiliza `ChatWidget` y el flujo same-origin de `/api/v1/public/chat/*` (donde cada conversación se persiste automáticamente en `conversations` y `messages`, visible en `/admin/conversaciones` con su traza completa).
-- Reutiliza `AdminAiSettingsController::admin()` (`Capability::MANAGE_INTEGRATIONS`, ADR D05) sin introducir tablas ni roles paralelos.
-- Al consultar `widget_id` por sesión autenticada con `Cache-Control: private, no-store`, el identificador no queda en el bundle ni en variables públicas.
+- Cada sesión de prueba usa el mismo pipeline real (`InboundMessageService::accept` → `RunAgentJob` → `AgentCoordinator`, con reglas `EVP-200`) y queda en `conversations`/`messages`, sin depender de tokens anónimos ni `localStorage` ni `allowed_origins` del navegador.
+- Al guardar `assistant_test_sessions` y `assistant_test_message_reviews` en tablas nuevas aditivas, no se hace `ALTER TABLE` sobre tablas grandes existentes.
+- Cualquier admin del tenant puede abrir cualquier sesión de Mónica y exportar toda la traza + calificaciones + notas en un clic.
 
 ## 4. Cómo se verificó
 
-- **Backend (Docker local, MySQL 8.4 + Redis, contenedores detenidos al finalizar):**
-  - `vendor/bin/pint --test` sobre los 3 archivos PHP tocados: **PASS**.
-  - `vendor/bin/phpstan analyse` sobre los 3 archivos PHP tocados: **`[OK] No errors`**.
+- **Forward SQL (MySQL 8.4 local):** aplicado dos veces seguidas sobre `bellomo_crm_test` (replay idempotente sin errores) y verificado con `php artisan everprop:schema:verify --env=testing`: **PASS** (`tables: 69`, `tenant_tables: 63`, `foreign_keys: 153`).
+- **Backend (Docker local, detenido al finalizar):**
+  - `vendor/bin/pint --test` en todos los archivos PHP tocados: **PASS**.
+  - `vendor/bin/phpstan analyse`: **`[OK] No errors`**.
+  - `php artisan test tests/Feature/Conversations/AssistantTestSessionTest.php`: **PASS**.
   - `php artisan test tests/Feature/Conversations/AiSettingsTest.php`: **17 passed (137 assertions)**.
+  - `php artisan test tests/Feature/ProductionEnvironmentTest.php`: **3 passed** (incluye `OK Schema: assistant test sessions` y `FAIL` si falta `2026-11-26.001`).
 - **Frontend (`everprop-public`):**
-  - `npx eslint` sobre los 4 archivos tocados: **0 errors, 0 warnings**.
-  - `npm run lint` global: **0 errors**.
-  - `npm run build` (Next.js 16.3.6 Turbopack + TypeScript, `NEXT_PUBLIC_DATA_MODE=api`): **PASS** (ruta `/admin/probar-asistente` generada).
+  - `npm run build` (Next.js 16.3.6 Turbopack + TypeScript, `NEXT_PUBLIC_DATA_MODE=api`): **PASS**.
   - `node --test tests/probar-asistente.test.mjs tests/chat-session.test.mjs`: **6/6 passed**.
-- **Revisión obligatoria de aislamiento por tenant (`tenant-isolation-reviewer`):** **PASS** (se incorporaron los 3 refuerzos sugeridos en `AiSettingsTest.php`: `BOT_OPERATOR` 403, cross-tenant host mismatch 404 y aserción de `private` en `Cache-Control`).
-- **No verificado todavía:** despliegue y smoke en navegador de **staging** (`bellomito-staging`: login, chat con IA respondiendo según reglas EVP-200, verificación de traza en `/admin/conversaciones` y cierre de sesión).
+- **Revisiones obligatorias (`tenant-isolation-reviewer` + `schema-migration-guardian`):** los 3 hallazgos detectados (`messages.text_body`, `ContactIdentityResolver` `display_name`, `BIGINT UNSIGNED` + `lock_wait_timeout`) fueron corregidos y verificados con tests en MySQL real.
+- **No verificado todavía:** aplicación del forward `2026-11-26.001` en `bellomito-staging` y smoke en navegador tras desplegar.
 
 ## 5. Pendientes y riesgos
 
-- **Entorno configurado:** aún no desplegado en staging (`bellomito-staging`).
-- **Antes de entregar acceso al cliente en staging:**
-  1. Verificar dominio del panel de staging, CORS de la API, `tenant_domains`, Sanctum/cookies y que el canal `WEB_CHAT` del tenant de staging tenga el origen del panel en `allowed_origins` (`everprop:channels:web-chat`).
-  2. Confirmar que el catálogo real de Bellomo esté cargado en staging (`EVP-202`) y que la IA esté encendida (`EVP-201`).
-  3. Crear la cuenta administradora de prueba del cliente en staging y entregar las credenciales por canal privado (nunca en Git, informes ni PRs).
-  4. Probar el flujo completo desde el navegador de staging (login, envío de mensajes, respuesta IA sin precios/disponibilidad/cuotas, lectura de traza en `/admin/conversaciones`, logout).
-- **Producción (`main`):** el módulo de IA y conversaciones no se integra a `main` (`CLAUDE.md`).
+- **Antes de mergear PR #186 a `develop` (staging):**
+  1. **Aplicar el forward SQL `2026-11-26.001_assistant_test_sessions.sql` en `bellomito-staging` (`mysql84`) ANTES del merge**, ya que `everprop:production-check --connections` lo exige al arrancar el contenedor.
+  2. Mergear PR #186 a `develop` y verificar `php artisan everprop:production-check --connections` en `worker` de staging.
+  3. Confirmar catálogo real de Bellomo (`EVP-202`), IA encendida (`EVP-201`), alta privada de la cuenta admin de Mónica y smoke en el navegador de staging (login, nueva sesión, respuesta IA, calificación Bien/Mal + nota, cierre + nota final, exportación `.md`/`.json` y logout).
+- **Producción (`main`):** no aplica — el módulo de IA y conversaciones nunca va a `main`.

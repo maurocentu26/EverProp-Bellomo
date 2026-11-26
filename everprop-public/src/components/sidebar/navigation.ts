@@ -43,6 +43,7 @@ type NavigationAccess = {
   isMockMode: boolean;
   isAdvisor?: boolean;
   isTenantAdmin?: boolean;
+  canTestAssistant?: boolean;
   canViewCommercialStats?: boolean;
 };
 
@@ -129,6 +130,7 @@ export function getAvailableNavigationGroups({
   isEngineer,
   isAdvisor,
   isTenantAdmin,
+  canTestAssistant,
   canViewCommercialStats,
 }: NavigationAccess): NavGroup[] {
   if (isAdvisor) {
@@ -148,7 +150,7 @@ export function getAvailableNavigationGroups({
   }
 
   return navigationGroups.map(group => {
-    if (group.label === "Comercializadora" && isTenantAdmin) {
+    if (group.label === "Comercializadora" && (canTestAssistant ?? isTenantAdmin)) {
       return {...group, items: [...group.items, {title: "Probar asistente", href: "/admin/probar-asistente", icon: Bot, matchPath: "/admin/probar-asistente"}]};
     }
     if (group.label === "Gestión" && isTenantAdmin) {
