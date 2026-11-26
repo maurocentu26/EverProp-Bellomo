@@ -43,11 +43,20 @@ final class UpdatePropertyRequest extends InventoryRequest
             'province' => ['sometimes', 'string', 'max:160'],
             'neighborhood' => ['sometimes', 'nullable', 'string', 'max:160'],
             'address' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'rooms' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:65535'],
             'bedrooms' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:65535'],
             'bathrooms' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:65535'],
             'area_m2' => ['sometimes', 'nullable', 'numeric', 'gt:0'],
+            'covered_area_m2' => ['sometimes', 'nullable', 'numeric', 'gt:0'],
+            'uncovered_area_m2' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'sector_name' => ['sometimes', 'nullable', 'string', 'max:160'],
             'unit_number' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'floor' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'orientation' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'disposition' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'parking_spaces' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:65535'],
+            'expenses' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'expenses_currency_code' => ['sometimes', 'nullable', Rule::in(['USD', 'ARS'])],
             'description' => ['sometimes', 'nullable', 'string', 'max:100000'],
             'main_image_url' => ['sometimes', 'nullable', 'url:https', 'max:2048'],
             'services_json' => ['sometimes', 'nullable', 'array'],
@@ -68,6 +77,12 @@ final class UpdatePropertyRequest extends InventoryRequest
             if ($this->exists('price') && $this->exists('currency_code')
                 && (($this->input('price') === null) !== ($this->input('currency_code') === null))) {
                 $validator->errors()->add('price', 'price and currency_code must both be values or both be null.');
+            }
+            if ($this->exists('expenses') xor $this->exists('expenses_currency_code')) {
+                $validator->errors()->add('expenses', 'expenses and expenses_currency_code must be updated together.');
+            } elseif ($this->exists('expenses')
+                && (($this->input('expenses') === null) !== ($this->input('expenses_currency_code') === null))) {
+                $validator->errors()->add('expenses', 'expenses and expenses_currency_code must both be values or both be null.');
             }
         }];
     }

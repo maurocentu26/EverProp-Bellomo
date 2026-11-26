@@ -123,6 +123,10 @@ final class ProductionCheck extends Command
                 // EVP-178: the table alone does not prove the lead_properties backfill ran; its schema_versions row does.
                 $checks['Schema: lead interests'] = Schema::hasColumns('lead_interests', ['participants_json', 'prototype_label', 'deleted_at'])
                     && DB::table('schema_versions')->where('version', '2026-11-21.001')->exists();
+                $checks['Schema: residential property details'] = Schema::hasColumns('properties', [
+                    'rooms', 'covered_area_m2', 'uncovered_area_m2', 'floor', 'orientation',
+                    'disposition', 'parking_spaces', 'expenses', 'expenses_currency_code',
+                ]) && DB::table('schema_versions')->where('version', '2026-11-25.001')->exists();
             } catch (Throwable) {
                 $checks['Database and Redis connections'] = false;
             }

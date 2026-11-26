@@ -74,6 +74,99 @@ final class InventoryWriteGuardsTest extends TestCase
             ->assertJsonPath('data.status', 'AVAILABLE');
     }
 
+    public function test_residential_details_are_distinct_editable_and_publicly_readable(): void
+    {
+        [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $created = $this->as($admin, $tenant)->postJson('/api/v1/admin/properties', $this->propertyPayload([
+            'category' => 'APARTMENT', 'rooms' => 3, 'bedrooms' => 2, 'bathrooms' => 2,
+            'area_m2' => 80.5, 'covered_area_m2' => 70.5, 'uncovered_area_m2' => 10,
+            'floor' => '2', 'orientation' => 'Norte', 'disposition' => 'Frente',
+            'parking_spaces' => 1, 'expenses' => 25000, 'expenses_currency_code' => 'ARS',
+        ]))->assertCreated()->assertJsonPath('data.rooms', 3)->assertJsonPath('data.bedrooms', 2)
+            ->assertJsonPath('data.expenses_currency_code', 'ARS');
+        $id = $created->json('data.public_id');
+        $this->getJson("/api/v1/public/properties/$id")
+            ->assertOk()->assertJsonPath('data.rooms', 3)->assertJsonPath('data.covered_area_m2', '70.50');
+
+        $this->as($admin, $tenant)->patchJson("/api/v1/admin/properties/$id", [
+            'version' => 1, 'rooms' => 4, 'expenses' => null, 'expenses_currency_code' => null,
+        ])->assertOk()->assertJsonPath('data.rooms', 4)->assertJsonPath('data.expenses', null);
+        $this->as($admin, $tenant)->patchJson("/api/v1/admin/properties/$id", [
+            'version' => 1, 'rooms' => 5,
+        ])->assertStatus(409);
+        $this->getJson('/api/v1/public/properties?rooms_min=4&rooms_max=4')
+            ->assertOk()->assertJsonPath('data.0.public_id', $id);
+
+        $house = $this->as($admin, $tenant)->postJson('/api/v1/admin/properties', $this->propertyPayload([
+            'rooms' => 5, 'bedrooms' => 3, 'covered_area_m2' => 120, 'uncovered_area_m2' => 35,
+        ]))->assertCreated()->assertJsonPath('data.category', 'HOUSE')
+            ->assertJsonPath('data.rooms', 5)->json('data.public_id');
+        $this->getJson("/api/v1/public/properties/$house")
+            ->assertOk()->assertJsonPath('data.bedrooms', 3)->assertJsonPath('data.expenses', null);
+    }
+
+    public function test_residential_details_validate_amounts_and_preserve_tenant_feature_boundaries(): void
+    {
+        [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $this->as($admin, $tenant)->postJson('/api/v1/admin/properties', $this->propertyPayload([
+            'rooms' => -1, 'covered_area_m2' => 0, 'expenses' => 100,
+        ]))->assertUnprocessable()->assertJsonValidationErrors(['rooms', 'covered_area_m2', 'expenses']);
+
+        $id = $this->as($admin, $tenant)->postJson('/api/v1/admin/properties', $this->propertyPayload())
+            ->assertCreated()->json('data.public_id');
+        $feature = $this->as($admin, $tenant)->postJson("/api/v1/admin/properties/$id/features", [
+            'feature_group' => 'AMENITY', 'feature_code' => 'BALCON', 'label' => 'Balcón',
+            'feature_value' => true, 'is_filterable' => true,
+        ])->assertCreated()->json('data.id');
+        $this->as($admin, $tenant)->patchJson("/api/v1/admin/properties/$id/features/$feature", [
+            'label' => 'Balcón aterrazado',
+        ])->assertOk()->assertJsonPath('data.label', 'Balcón aterrazado');
+        $this->getJson("/api/v1/public/properties/$id")
+            ->assertOk()->assertJsonPath('data.features.0.label', 'Balcón aterrazado');
+        $this->as($admin, $tenant)->deleteJson("/api/v1/admin/properties/$id/features/$feature")->assertNoContent();
+        $otherFeature = $this->as($admin, $tenant)->postJson("/api/v1/admin/properties/$id/features", [
+            'feature_group' => 'SERVICE', 'feature_code' => 'GAS', 'label' => 'Gas',
+            'feature_value' => true, 'is_filterable' => true,
+        ])->assertCreated()->json('data.id');
+
+        $advisor = $this->user($tenant, RoleCode::SALES_ADVISOR);
+        $this->as($advisor, $tenant)->patchJson("/api/v1/admin/properties/$id", [
+            'version' => 1, 'rooms' => 4,
+        ])->assertForbidden();
+        $this->as($advisor, $tenant)->postJson("/api/v1/admin/properties/$id/features", [
+            'feature_group' => 'OTHER', 'feature_code' => 'PATIO', 'label' => 'Patio', 'feature_value' => true,
+        ])->assertForbidden();
+
+        [$foreignTenant, $foreignAdmin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $this->as($foreignAdmin, $foreignTenant)->getJson("/api/v1/admin/properties/$id/features")->assertNotFound();
+        $this->as($foreignAdmin, $foreignTenant)->deleteJson("/api/v1/admin/properties/$id/features/$otherFeature")->assertNotFound();
+    }
+
+    public function test_expenses_follow_existing_price_permissions(): void
+    {
+        [$tenant, $admin] = $this->identity(RoleCode::TENANT_ADMIN);
+        $id = $this->as($admin, $tenant)->postJson('/api/v1/admin/properties', $this->propertyPayload([
+            'expenses' => 25000, 'expenses_currency_code' => 'ARS',
+        ]))->assertCreated()->json('data.public_id');
+        $advisor = $this->user($tenant, RoleCode::SALES_ADVISOR);
+        $this->settings($tenant->id, $advisor->id, 'ALL', canManagePrices: false);
+
+        $this->as($advisor, $tenant)->patchJson("/api/v1/admin/properties/$id", [
+            'version' => 1, 'rooms' => 3,
+        ])->assertOk()->assertJsonPath('data.rooms', 3);
+        $this->as($advisor, $tenant)->patchJson("/api/v1/admin/properties/$id", [
+            'version' => 2, 'expenses' => 30000, 'expenses_currency_code' => 'ARS',
+        ])->assertForbidden();
+        $this->assertDatabaseHas('properties', ['public_id' => $id, 'expenses' => '25000.00', 'version' => 2]);
+
+        $viewer = $this->user($tenant, RoleCode::SALES_ADVISOR);
+        $this->settings($tenant->id, $viewer->id, 'ALL', canManagePrices: false);
+        DB::table('user_inventory_settings')->where('tenant_id', $tenant->id)
+            ->where('user_id', $viewer->id)->update(['can_view_prices' => false]);
+        $this->as($viewer, $tenant)->getJson("/api/v1/admin/properties/$id")
+            ->assertOk()->assertJsonMissingPath('data.expenses')->assertJsonMissingPath('data.expenses_currency_code');
+    }
+
     public function test_scoped_editor_cannot_create_or_move_inventory_into_unscoped_project(): void
     {
         [$tenant, $editor] = $this->editor('SCOPED');
