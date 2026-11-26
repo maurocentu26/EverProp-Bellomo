@@ -746,7 +746,6 @@ final class OutputGuard
         }
         $codes = array_values(array_unique(array_filter(array_column($records, 'code'))));
         $available = array_values(array_unique(array_filter(array_map(fn (array $r): string => $r['available'] ? $r['code'] : '', $records))));
-        $availableCount = count(array_filter($records, fn (array $r): bool => $r['available']));
         $notFound = array_values(array_unique(array_map(fn (string $c): string => mb_strtolower(trim($c)), $notFound)));
         $knowledgeItems = array_values(array_filter(array_map(fn (string $e): string => mb_substr($e, 0, self::EVIDENCE_CHARS), $evidence),
             fn (string $e): bool => $e !== ''));
@@ -820,13 +819,12 @@ final class OutputGuard
         $current = [];
         $financing = false; // the previous segment was about financing ("12 cuotas. Después, 60 meses más")
         $prev = ['claims' => [], 'availability' => [], 'places' => [], 'amenities' => []];
-        $checkAvailability = function (array $availabilities, array $about) use (&$found, $available, $notFound, $availableCount, $inventoryChecked): void {
+        // EVP-200: the assistant never confirms nor denies that a unit is available ("está disponible", "el 12B ya no
+        // está disponible", "se vendió"), whatever a tool returned. The one negative that passes is about the catalogue,
+        // not a unit: no unit in play and a search that returned nothing ("no encontré unidades disponibles en Tilcara").
+        $checkAvailability = function (array $availabilities, array $about) use (&$found, $codes, $inventoryChecked): void {
             foreach ($availabilities as $availability) {
-                // EVP-200: the assistant never confirms that a unit is available, even one a tool just returned.
-                if ($availability === 'POSITIVE'
-                    || ($availability === 'NEGATIVE' && ($about !== []
-                        ? array_diff($about, $notFound) !== [] || array_intersect($about, $available) !== []
-                        : $notFound === [] && ! ($inventoryChecked && $availableCount === 0)))) {
+                if ($availability === 'POSITIVE' || $about !== [] || ! $inventoryChecked || $codes !== []) {
                     $found['UNSUPPORTED_AVAILABILITY'] = true;
                 }
             }
@@ -989,12 +987,10 @@ final class OutputGuard
                 }
             }
 
-            // Availability: never in a question. "disponible" needs every unit it is about returned this turn (with no
-            // unit: something returned and nothing reported missing); "vendida" needs that unit reported missing.
+            // Availability: never in a question; any statement, positive or negative, is blocked (EVP-200).
             $availabilities = $question ? [] : $this->availability($segment, $named !== [] || $this->ok(preg_match('/\b'.self::UNIT_NOUN.'/iu', $segment)) === 1,
                 $named !== [] || $current !== [] || $lastVisitorCodes !== []);
-            $about = $named !== [] ? $named : ($current !== [] ? $current : $lastVisitorCodes);
-            $checkAvailability($availabilities, $about);
+            $checkAvailability($availabilities, $named !== [] ? $named : ($current !== [] ? $current : $lastVisitorCodes));
 
             $hasEllipsisWord = $this->ok(preg_match('/\b(?:tambi[eé]n|igual|lo\s++mismo|[ií]dem)\b/iu', $segment)) === 1;
             $scopedUnits = $named !== [] ? $named : ($scope ?? ($every && count($records) > 1 ? $codes : []));

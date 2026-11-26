@@ -31,7 +31,8 @@ Fuera de alcance: el flag por proyecto en el panel (columna, SQL y UI), la corri
   - la regla 2 prohíbe cotizaciones y condiciones de pago aunque estén en una fuente;
   - la regla 5 deriva si el cliente insiste;
   - se quitaron las menciones a "informar precio" de la regla 12/12A y la palabra "disponibilidad" de la regla de horario.
-  - `agent.prompt_version` pasa a `coordinator-2026-11-25.200`.
+  - si una unidad no aparece, el asistente dice que no la encontró en el catálogo, sin decir que no está disponible ni que se vendió; los gastos de escritura cuentan como condición de pago;
+  - `agent.prompt_version` pasa a `coordinator-2026-11-25.200b` (la `.200` fue la de las corridas contra Gemini).
 - **Coordinador.** [`AgentCoordinator.php`](../../everprop-api/app/Domain/AgentRuntime/Coordinator/AgentCoordinator.php):
   - se eliminó `collectPrices()`: ningún precio de tool es evidencia;
   - los hechos de propiedad ya no incluyen `price`;
@@ -52,11 +53,11 @@ Fuera de alcance: el flag por proyecto en el panel (columna, SQL y UI), la corri
   - **Más frases de disponibilidad positiva:** "no está reservado", "sin vender", "sin dueño", "no tiene comprador", "hay stock", "quedan varias", "se puede reservar el 12A", "podés reservarlo". "Se puede reservar un turno de visita" no cuenta.
   - **Números sin moneda en una oración de precio** (`priceNumbers()`): "sale 85.000", "precio de lista: 85.000", "arrancan en 25.000", "1.200 el metro", "85 lucas", "€ 85.000" son `UNSUPPORTED_AMOUNT`, salvo que los mismos dígitos estén en la evidencia comercial. Quedan afuera años, teléfonos y superficies.
   - **Financiación sin cifras** (`financingClaim()`), con la autorización apagada: "se puede pagar en cuotas", "hay financiación propia", "hay descuento por contado", "es más barato que", "entra en tu presupuesto" son `UNSUPPORTED_TERM`. Pasan las preguntas, la falta de datos ("no tengo información sobre financiación") y la derivación sin afirmar ("las condiciones de pago te las detalla un asesor"). "Hay financiación propia, un asesor te detalla" sigue bloqueado. No se aplica al resumen de contacto del servidor.
-  - La disponibilidad negativa conserva la lógica de EVP-192/196.
+  - **Disponibilidad negativa** (decisión del usuario, 2026-11-25): también se bloquea sobre una unidad ("el 12B ya no está disponible", "se vendió", "la unidad 14 no se encuentra disponible"), aunque una tool la haya reportado NOT_FOUND. Solo pasa la negativa sobre el catálogo, sin unidad en juego y con una búsqueda vacía ("no encontré casas disponibles en Tilcara"). "No encontré la unidad 14 en el catálogo" pasa porque no afirma un estado.
 - **Evals** (`evals/cases/*.jsonl`):
   - 38 casos que exigían una cifra (precio, `USD`, `%`, "36 cuotas") o la palabra "disponible" ahora la tienen prohibida, con una nota EVP-200. El `behavior` no cambia: la respuesta tiene que derivar sin que actúe la guardia.
-  - 11 casos negativos nuevos:
-    - DATA-047 a DATA-054: precio en la base, insistencia, presupuesto, disponibilidad de una unidad devuelta, stock, unidad vendida, cuotas de una fuente aprobada y descuento de contado;
+  - 13 casos negativos nuevos (DATA-055 y DATA-056 se sumaron con las decisiones del usuario):
+    - DATA-047 a DATA-056: precio en la base, insistencia, presupuesto, disponibilidad de una unidad devuelta, stock, unidad vendida, cuotas de una fuente aprobada, descuento de contado, unidad inexistente y gastos de escritura;
     - SEC-045: falsa autoridad pide el precio de lista;
     - SEC-046: descripción con precio e instrucción inyectada;
     - RIO-027: pregunta coloquial por precio y "cuotitas".
@@ -91,6 +92,7 @@ Entorno: Docker local (PHP 8.4, MySQL 8.4, Redis) con la base de tests recién i
   - Presupuesto rechazado por el esquema; términos de una fuente bloqueados de punta a punta; copiloto con las mismas reglas.
 - `vendor/bin/pint --test`: PASS. `vendor/bin/phpstan analyse`: sin errores.
 - `node evals/validate.mjs`: **244 casos válidos**, 141 críticos en test.
+- **Después de las decisiones del usuario** (disponibilidad negativa, gastos de escritura): suite completa **1217 pruebas, 7581 comprobaciones, 0 fallas, 2 omitidas**; Pint y PHPStan OK; `node evals/validate.mjs`: **246 casos válidos**, 143 críticos en test. No se repitió la corrida contra Gemini.
 - **Evals contra el modelo real** (autorizados por el usuario el 2026-11-25):
   - Configuración: `gemini-3.1-flash-lite` (el mismo modelo que `bellomito-staging`), `APP_ENV=local` con `.env.local` ignorado, base aislada `bellomo_crm_test`, Meta apagado, presupuesto local de USD 10.
   - Comando: `docker compose --project-name everprop-api run --rm -v "<repo>/evals:/var/www/evals:ro" -e APP_ENV=local -e AGENT_LLM_MODEL=gemini-3.1-flash-lite -e EVAL_LLM=configured everprop-api-php php artisan test --filter=test_model_cases`.
@@ -126,10 +128,11 @@ Entorno: Docker local (PHP 8.4, MySQL 8.4, Redis) con la base de tests recién i
 ## 5. Pendientes y riesgos
 
 - **Flag por proyecto** "mostrar cotización y cuotas" en el panel, con columna, SQL y UI: ticket nuevo. Hoy ningún llamador enciende `financingAllowed`.
-- **Decisiones abiertas para el revisor:**
-  - ¿El copiloto (borradores para el asesor) debe seguir las mismas reglas? Hoy sí.
-  - ¿Descuentos y "gastos de escritura 3%" (DATA-014) cuentan como cotización? Hoy se bloquean.
-- **Disponibilidad negativa:** "se vendió" o "no está disponible" siguen permitidas después de un NOT_FOUND, con la lógica de EVP-196. El prompt dice "ni niegues". Bloquearlas también endurecería la regla 2 y cambiaría muchos casos de EVP-196: queda como decisión.
+- **Decisiones tomadas por el usuario (2026-11-25):**
+  - el copiloto (borradores para el asesor) sigue las mismas reglas: sin cambio de código;
+  - descuentos y gastos de escritura cuentan como cotización y se bloquean: sin cambio de guardia; prompt explícito y caso DATA-056;
+  - no se confirma ni se niega la disponibilidad de una unidad: la guardia bloquea también la negativa (sección 2) y se agregó DATA-055. Las corridas contra Gemini de la sección 4 son anteriores a este ajuste.
+- **Acceso del cliente al widget en staging:** con login (credenciales provistas por Eversys), en un ticket aparte ligado a EVP-201.
 - **Límite léxico:** "Sí, ese es el precio" o un "Sí" suelto después de "¿está disponible?" no los detecta la guardia; dependen del prompt y de los evals. "No sé si quedan pocas unidades" se bloquea (falla cerrada). En el resumen de contacto, la "Consulta" puede repetir un monto que dijo el visitante.
 - **Código muerto:** el parámetro `$prices` de `check()` llega siempre vacío. Se mantuvo para no reescribir unas 80 llamadas de los tests; se puede quitar en una limpieza.
 - **Evals:** falta la calificación humana de los críticos y una corrida de referencia del prompt anterior con el mismo modelo, para comparar las derivaciones.
