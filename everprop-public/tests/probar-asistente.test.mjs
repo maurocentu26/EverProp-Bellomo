@@ -31,6 +31,12 @@ test("EVP-212: the client's tester account is confined to the test page and its 
   assert.match(read("src/app/admin/probar-asistente/page.tsx"), /"ASSISTANT_TESTER"/);
 });
 
+test("EVP-215: the silent 3 s poll does not overwrite the closing note being typed", () => {
+  const page = fs.readFileSync(path.join(root, "src/app/admin/probar-asistente/page.tsx"), "utf8");
+  assert.match(page, /if \(!silent\) setClosingNote\(res\.data\.closing_note \?\? ""\)/);
+  assert.doesNotMatch(page, /^\s*setClosingNote\(res\.data\.closing_note/m);
+});
+
 test("EVP-212: the handoff verdict is written at the start of the review note, not in a new field", () => {
   const api = fs.readFileSync(path.join(root, "src/lib/assistant-api.ts"), "utf8");
   const page = fs.readFileSync(path.join(root, "src/app/admin/probar-asistente/page.tsx"), "utf8");
