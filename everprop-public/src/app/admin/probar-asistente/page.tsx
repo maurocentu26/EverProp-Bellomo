@@ -31,6 +31,11 @@ import {
   loadAssistantTestSession,
   reviewAssistantTestMessage,
   sendAssistantTestMessage,
+  HANDOFF_VERDICTS,
+  handoffVerdictOf,
+  noteWithoutVerdict,
+  withHandoffVerdict,
+  type HandoffVerdict,
   type AssistantMessageRating,
   type AssistantTestMessage,
   type AssistantTestSessionDetail,
@@ -38,7 +43,8 @@ import {
 } from "@/lib/assistant-api";
 import { EverpropApiError } from "@/lib/everprop-api";
 
-const ADMIN_ROLES = new Set(["TENANT_ADMIN", "SUPER_ADMIN"]);
+// TENANT_ADMIN / SUPER_ADMIN, plus the client's QA account (EVP-212), which only sees its own sessions.
+const ADMIN_ROLES = new Set(["TENANT_ADMIN", "SUPER_ADMIN", "ASSISTANT_TESTER"]);
 const GUIDE_STORAGE_KEY = "everprop:probar-asistente-guide-v1";
 
 const GUIDE_STEPS = [
@@ -234,7 +240,8 @@ function AssistantMessageRow({
   const hasReview = Boolean(message.review?.rating || message.review?.note);
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState<AssistantMessageRating | null>(message.review?.rating ?? null);
-  const [note, setNote] = useState(message.review?.note ?? "");
+  const [note, setNote] = useState(noteWithoutVerdict(message.review?.note));
+  const [verdict, setVerdict] = useState<HandoffVerdict | null>(handoffVerdictOf(message.review?.note));
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -242,7 +249,8 @@ function AssistantMessageRow({
     if (saving) return;
     setSaving(true);
     try {
-      const cleanNote = note.trim() || null;
+      // EVP-212: the handoff verdict goes at the start of the note, no field of its own.
+      const cleanNote = (message.handoff ? withHandoffVerdict(note, verdict) : note.trim()) || null;
       if (!isMockDataMode) {
         await reviewAssistantTestMessage(sessionId, message.sequence, {
           rating,
@@ -276,6 +284,7 @@ function AssistantMessageRow({
         <div className="wa-bubble max-w-[78%] rounded-2xl border border-border bg-card px-4 py-3 text-foreground shadow-xs">
           <p className="conversation-sender mb-1 text-xs font-semibold opacity-80">
             {message.from === "assistant" ? "Asistente virtual" : "Asesor"} · {formatArDate(message.at)}
+            {message.handoff && <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 font-medium text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">Derivó a un asesor</span>}
           </p>
           <p className="whitespace-pre-wrap break-words">{message.text}</p>
         </div>
@@ -362,9 +371,32 @@ function AssistantMessageRow({
               </span>
             )}
           </div>
+          {message.handoff && (
+            <fieldset className="space-y-1.5">
+              <legend className="text-sm font-medium">¿La derivación fue necesaria?</legend>
+              <div className="flex flex-wrap gap-2">
+                {HANDOFF_VERDICTS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={saving}
+                    aria-pressed={verdict === option}
+                    onClick={() => setVerdict((prev) => (prev === option ? null : option))}
+                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                      verdict === option
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-background text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <textarea
             rows={2}
-            maxLength={2000}
+            maxLength={1960}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Escribí una anotación sobre esta respuesta (opcional)…"
@@ -392,6 +424,7 @@ export default function ProbarAsistentePage() {
       || (isMockDataMode && user.role === "ADMIN")
     ),
   );
+  const tester = user?.apiRole === "ASSISTANT_TESTER";
 
   const [sessions, setSessions] = useState<AssistantTestSessionSummary[]>(() =>
     isMockDataMode ? MOCK_SESSIONS.map(summarizeMock) : [],
@@ -654,14 +687,16 @@ export default function ProbarAsistentePage() {
           }`}
         >
           <header className="conversation-workspace-heading border-b border-border">
-            <Link
-              href="/admin"
-              aria-label="Volver al panel"
-              className="conversation-icon-button hover:bg-muted"
-              title="Volver al panel"
-            >
-              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-            </Link>
+            {tester ? <span aria-hidden="true" /> : (
+              <Link
+                href="/admin"
+                aria-label="Volver al panel"
+                className="conversation-icon-button hover:bg-muted"
+                title="Volver al panel"
+              >
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </Link>
+            )}
             <h1 className="text-lg font-bold">Probar asistente</h1>
             <button
               type="button"
@@ -774,10 +809,14 @@ export default function ProbarAsistentePage() {
           {!meta.ai_enabled && (
             <div role="status" className="flex items-center gap-2 border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
               <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <p>
-                El asistente automático está apagado. Podés activarlo desde{" "}
-                <Link href="/admin/settings" className="font-semibold underline">Configuración</Link>.
-              </p>
+              {tester ? (
+                <p>El asistente automático está apagado. Avisale al equipo de Eversys para que lo active.</p>
+              ) : (
+                <p>
+                  El asistente automático está apagado. Podés activarlo desde{" "}
+                  <Link href="/admin/settings" className="font-semibold underline">Configuración</Link>.
+                </p>
+              )}
             </div>
           )}
 

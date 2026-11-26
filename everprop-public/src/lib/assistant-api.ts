@@ -87,10 +87,31 @@ export type AssistantMessageReview = {
 export type AssistantTestMessage = {
   sequence: number;
   from: "visitor" | "assistant" | "advisor";
+  /** EVP-212: this assistant message is the notice sent when it handed the conversation to an advisor. */
+  handoff?: boolean;
   text: string | null;
   at: string;
   review: AssistantMessageReview | null;
 };
+
+/** EVP-212: the tester's opinion on a handoff lives at the start of the review note, never in a field of its own. */
+export const HANDOFF_VERDICTS = ["muy temprana", "innecesaria", "correcta"] as const;
+export type HandoffVerdict = (typeof HANDOFF_VERDICTS)[number];
+const HANDOFF_PREFIX = /^Derivación: (muy temprana|innecesaria|correcta)\.\s*/;
+
+export function handoffVerdictOf(note: string | null | undefined): HandoffVerdict | null {
+  return (note?.match(HANDOFF_PREFIX)?.[1] as HandoffVerdict | undefined) ?? null;
+}
+
+/** The note without the verdict prefix, so the textarea shows only what the tester wrote. */
+export function noteWithoutVerdict(note: string | null | undefined): string {
+  return (note ?? "").replace(HANDOFF_PREFIX, "");
+}
+
+export function withHandoffVerdict(note: string, verdict: HandoffVerdict | null): string {
+  const rest = noteWithoutVerdict(note).trim();
+  return verdict === null ? rest : `Derivación: ${verdict}.${rest ? ` ${rest}` : ""}`;
+}
 
 export type AssistantTestSessionSummary = {
   id: string;
@@ -174,7 +195,7 @@ export function formatAssistantTestSessionMarkdown(session: AssistantTestSession
 
   for (const m of session.messages) {
     const who = m.from === "visitor" ? "Usuario (prueba)" : m.from === "assistant" ? "Asistente virtual" : "Asesor";
-    lines.push(`### #${m.sequence} · ${who} (${m.at})`);
+    lines.push(`### #${m.sequence} · ${who}${m.handoff ? " · derivó a un asesor" : ""} (${m.at})`);
     lines.push("");
     lines.push(m.text || "_(sin texto)_");
     lines.push("");
