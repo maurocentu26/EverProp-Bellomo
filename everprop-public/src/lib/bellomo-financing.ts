@@ -39,6 +39,7 @@ export function findFinancingPlan(name?: string): FinancingPlan | undefined {
   if (!name) return undefined;
   const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   const aliases: Record<string, string> = {
+    'loteo san pablo': 'san pablo 1',
     'loteo san pablo 1': 'san pablo 1',
     'san pablo 1': 'san pablo 1',
     'san pablo': 'san pablo 1',
