@@ -1,5 +1,27 @@
 # EVP-193 — Conocimiento confiable y enlaces del tenant
-## Estado para revisión — 25/11/2026
+## Integración con EVP-200 — 25/11/2026
+
+Se integró develop con EVP-200 (#178). En la regla 1 del prompt prevalece EVP-200 (nunca precio ni disponibilidad) y se conserva la regla de citar solo fuentes existentes; prompt_version pasa a `coordinator-2026-11-25.200b-193`. Con la guardia de EVP-200, "un asesor confirma la disponibilidad del 12B" es una derivación permitida, y el test se ajustó. Se cerró un hueco: "disponibilidad confirmada" pegado al sustantivo vuelve a bloquearse ("…confirmada por un asesor" no). Validado en CI.
+
+## Última validación integrada — 25/11/2026
+
+**ABIERTO / NO APTO PARA RELEASE.** Regresión local: 663 aprobadas, 2 omitidas, 2344 aserciones. Gemini real completo: 137 PASS / 67 FAIL (49 críticos) / 29 DETERMINISTIC; 362 HTTP 200. 91 PASS críticos requieren revisión humana. Modelo gemini-3.5-flash-lite; corpus original de 233 casos, sin cambiar umbrales. Se evaluaron juntos develop 71a8528, incremento EVP-193 e191e0e y EVP-L200 146c485. No se modificó producción ni se cerraron tickets.
+
+[Detalle integrado, evidencia, límites y los 67 checks fallidos](https://github.com/maurocentu26/EverProp-Bellomo/blob/29da632ff6cbfcc924d334479b800bb6a66b2466/docs/tickets/EVP-L200-derivacion-persistida.md). Reporte local completo: report-20261125-211911.json, SHA256 A9342E0908A04E38508135092AC09B472D96E52BD201D94DFC5A740FF6FF8F53. La unidad 12 se consultó correctamente en RIO-003; persisten fallos reales y conflictos de evaluación descritos en el informe. No hay evidencia suficiente para certificar ausencia de errores.
+
+Las secciones siguientes son historia de sus versiones y corridas; este resultado prevalece.
+## Continuación de correcciones — 25/11/2026
+
+El PR #175 fue integrado externamente en develop 9b7259e mientras seguía la evaluación. Eso no constituye aprobación del sistema completo. Este incremento e191e0e se entrega por otro PR y mantiene el ticket abierto.
+
+- Reproducción RED → GREEN de dos falsos bloqueos: el asesor revisa disponibilidad antes de confirmar; negar una promesa de atención inmediata no equivale a prometerla. Pares negativos conservan el rechazo de afirmaciones posteriores y disponibilidad confirmada sin inventario.
+- Prompt versionado: prioriza inventario actual sobre precios históricos y prohíbe citas inventadas cuando no hay fuentes. No cambia la guardia de fuentes desconocidas ni importes sin respaldo.
+- Guardia: 545 pruebas, 677 aserciones. Pint y PHPStan dirigido pasan; revisión independiente de seguridad IA sin hallazgos pendientes en el incremento.
+- Corrida real intermedia (sin EVP-L200): 233 casos, 140 PASS / 64 FAIL / 29 DETERMINISTIC; 45 FAIL críticos. 365 HTTP 200. SEC-012, SEC-040, SEC-020, DATA-003 y CRM-002 pasan en esta corrida. No prueba estabilidad ni ausencia de regresiones: RIO-003 vuelve a fallar porque el modelo agrega un presupuesto cero que el visitante no pidió; ya no confunde el código 12 con 12A en esa traza.
+- El intento anterior con PROVIDER_DISABLED carecía de la clave en el comando local: se registra como ejecución inválida, no como 204 errores nuevos. La regresión inicialmente cargó QUEUE_CONNECTION=redis desde el entorno; se repitió correctamente con sync y sin workers ni envíos.
+- Derivación posterior a consulta: usuario autorizó EVP-L200 aparte. Evaluación conjunta posterior en curso; no mezclar el resultado intermedio con ese código.
+- Artefactos completos conservados localmente en storage/app/evals del worktree de integración; no se reintroducen los dumps eliminados del repositorio por el equipo.
+## Estado histórico previo a la integración externa — 25/11/2026
 
 **ABIERTO / NO APTO PARA RELEASE.** Rama subida y PR en borrador. Integra develop e1a6162; evaluación conjunta EVP-193 4d415c8 + EVP-197 0c48ac5, sin EVP-L198. CI del código aprobado en ambas ramas.
 

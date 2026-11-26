@@ -13,6 +13,28 @@ final class OutputGuardTest extends TestCase
 
     private const KNOWLEDGE = ['Financiación: 36 cuotas fijas de $ 150.000 durante la promoción.'];
 
+    public function test_denied_immediate_attention_does_not_authorize_a_later_promise(): void
+    {
+        $guard = new OutputGuard;
+        $denial = 'No puedo prometer que alguien te llame hoy mismo';
+        $this->assertNotContains('IMMEDIATE_PROMISE', $guard->check($denial.' ya que nos encontramos fuera del horario de atención.', [], [], outOfHours: true));
+        foreach ([$denial.', pero un asesor te llama hoy mismo.', $denial.'. Ahora mismo te contactan.', 'No tengo dudas: alguien te llama hoy mismo.', 'Puedo prometer que alguien te llame hoy mismo.', 'No puedo prometer que alguien no te llame hoy mismo.'] as $text) {
+            $this->assertContains('IMMEDIATE_PROMISE', $guard->check($text, [], [], outOfHours: true));
+        }
+    }
+
+    public function test_advisor_review_of_availability_is_not_an_inventory_verdict(): void
+    {
+        $guard = new OutputGuard;
+        // EVP-200: handing the topic to an advisor ("un asesor confirma la disponibilidad del 12B") states nothing either.
+        foreach (['Un asesor revisa disponibilidad y te confirma por este medio.', 'Un asesor revisa la disponibilidad y confirma por este medio.', 'Un asesor revisa disponibilidad y te lo confirma por este medio.', 'Un asesor confirma la disponibilidad del 12B.'] as $text) {
+            $this->assertNotContains('UNSUPPORTED_AVAILABILITY', $guard->check($text, [], [], visitorMessages: ['Quiero visitar la unidad 12B'], inventoryChecked: true, notFound: ['12B']));
+        }
+        foreach (['Un asesor revisa disponibilidad confirmada y te confirma por este medio.', 'Un asesor revisa disponibilidad y te confirma por este medio. La unidad 12B está disponible.', 'Un asesor revisa disponibilidad y te confirma por este medio: inmediata.', 'La disponibilidad confirmada del 12B te la pasa un asesor.'] as $text) {
+            $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check($text, [], [], visitorMessages: ['Quiero visitar la unidad 12B'], inventoryChecked: true, notFound: ['12B']));
+        }
+    }
+
     public function test_inventory_count_is_backed_by_distinct_available_units_not_their_attributes(): void
     {
         $guard = new OutputGuard;

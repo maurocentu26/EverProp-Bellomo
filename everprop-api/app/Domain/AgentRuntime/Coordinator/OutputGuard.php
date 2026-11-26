@@ -203,8 +203,15 @@ final class OutputGuard
             $violations[] = 'ACTION_CLAIM';
         }
         // EVP-L10: with nobody online, never promise a person right away (the fixed notice says when they are back).
-        if ($outOfHours && $this->ok(preg_match(self::IMMEDIATE, $text)) === 1) {
-            $violations[] = 'IMMEDIATE_PROMISE';
+        if ($outOfHours) {
+            foreach ($this->matches(self::IMMEDIATE, $text) as $match) {
+                $before = substr($text, 0, (int) $match[0][1]);
+                // A denial covers only this occurrence, never a later affirmative promise.
+                if ($this->ok(preg_match('/(?:^|[.!?\n])\s*no\s+(?:puedo|podemos)\s+(?:prometer|garantizar)\s+que\s+(?:alguien|un\s+asesor)\s+te\s+(?:llame|contacte|responda|atienda)\s*$/iu', $before)) !== 1) {
+                    $violations[] = 'IMMEDIATE_PROMISE';
+                    break;
+                }
+            }
         }
         if ($visitRequested && ! in_array('CONFIRMATION_CLAIM', $violations, true)
             && $this->ok(preg_match('/asesor[^.!?\n]{0,60}confirm|confirm[^.!?\n]{0,60}asesor/iu', $text)) !== 1) {
@@ -1555,6 +1562,10 @@ final class OutputGuard
      */
     private function availability(string $segment, bool $aboutUnit, bool $specific = false): array
     {
+        // The visit tool's next step asks an advisor to check; it asserts no inventory state.
+        if ($this->ok(preg_match('/^\s*Un\s+asesor\s+revisa\s+(?:la\s+)?disponibilidad\s+y\s+(?:te(?:\s+lo)?\s+)?confirma\s+por\s+este\s+medio[.!]?\s*$/iu', $segment)) === 1) {
+            return [];
+        }
         $found = [];
         if ($this->ok(preg_match('/\bno\s++(?:cuento|contamos)\s++con\s++disponibilidad\b/iu', $segment)) === 1) {
             $found[] = 'NEGATIVE';
@@ -1622,7 +1633,9 @@ final class OutputGuard
                     && $this->ok(preg_match('/\b(?:hay|haber|tenemos|tengo|tiene|tienen|contamos\s++con|cuento\s++con|cuenta\s++con|cuentan\s++con|existe|existen|(?<!junto\s)con|queda|quedan|sigue|siguen|mantiene|mantienen|ofrecemos|damos|(?:te\s++|le\s++|les\s++)?+(?:confirm|asegur|garantiz)(?:o|amos|é))\s++(?:[\p{L}\p{N}]++\s++){0,3}?$/iu', $before)) !== 1
                     // "Te paso los detalles de disponibilidad del 12B" hands the data over itself.
                     && $this->ok(preg_match('/\b(?:te|le|les)\s++(?:paso|pasamos|mando|mandamos|env[ií]o|enviamos|comparto|compartimos|dejo|dejamos)\b[^.!?\n]{0,30}?$/iu', $before)) !== 1
-                    && $this->ok(preg_match('/^[^.!?\n;]{0,60}?(?::|\b(?:inmediata|total|plena|alta|buena|buenas|excelente|amplia|vigente|segura|cierta|real|sigue|contin[uú]a|se\s++mantiene|garantizad\p{L}*+|asegurad\p{L}*+|(?:est[aá]|es|qued[oó]|queda)\s++confirmad\p{L}*+(?!\s++(?:por|exclusivamente|personalmente|directamente|solo|s[oó]lo|[uú]nicamente)\b))\b)/iu', $after)) !== 1)
+                    && $this->ok(preg_match('/^[^.!?\n;]{0,60}?(?::|\b(?:inmediata|total|plena|alta|buena|buenas|excelente|amplia|vigente|segura|cierta|real|sigue|contin[uú]a|se\s++mantiene|garantizad\p{L}*+|asegurad\p{L}*+|(?:est[aá]|es|qued[oó]|queda)\s++confirmad\p{L}*+(?!\s++(?:por|exclusivamente|personalmente|directamente|solo|s[oó]lo|[uú]nicamente)\b))\b)/iu', $after)) !== 1
+                    // "disponibilidad confirmada" right after the noun is a verdict too ("…confirmada por un asesor" is not).
+                    && $this->ok(preg_match('/^\s++confirmad\p{L}*+(?!\s++(?:por|exclusivamente|personalmente|directamente|solo|s[oó]lo|[uú]nicamente)\b)/iu', $after)) !== 1)
                 // EVP-200: the visitor's schedule ("contame tu disponibilidad horaria para visitar el 12A") is no unit state.
                 || (str_starts_with(mb_strtolower((string) $m[0][0]), 'disponibilidad')
                     && ($this->ok(preg_match('/\btu\s++$/iu', $before)) === 1 || $this->ok(preg_match('/^\s++(?:horari|de\s++horario|para\s++(?:la\s++)?+visita|para\s++(?:ir|visitar|recorrer))/iu', $after)) === 1))
