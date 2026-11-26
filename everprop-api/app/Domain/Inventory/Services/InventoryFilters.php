@@ -22,6 +22,7 @@ final class InventoryFilters
         'status' => 'properties.status',
         'price' => 'properties.price',
         'area_m2' => 'properties.area_m2',
+        'rooms' => 'properties.rooms',
         'bedrooms' => 'properties.bedrooms',
         'created_at' => 'properties.created_at',
         'updated_at' => 'properties.updated_at',
@@ -74,6 +75,8 @@ final class InventoryFilters
             ->when($filters['neighborhood'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->where('properties.neighborhood', $value))
             ->when($filters['bedrooms_min'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->where('properties.bedrooms', '>=', $value))
             ->when($filters['bedrooms_max'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->where('properties.bedrooms', '<=', $value))
+            ->when($filters['rooms_min'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->where('properties.rooms', '>=', $value))
+            ->when(array_key_exists('rooms_max', $filters), fn (Builder $builder): Builder => $builder->where('properties.rooms', '<=', $filters['rooms_max']))
             ->when($filters['price_min'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->where('properties.price', '>=', $value))
             ->when($filters['price_max'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->where('properties.price', '<=', $value))
             ->when($filters['search'] ?? null, function (Builder $builder, mixed $value): void {

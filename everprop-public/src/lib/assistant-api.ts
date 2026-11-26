@@ -66,6 +66,133 @@ export const approveKnowledge = (id: string) =>
 export const revokeKnowledge = (id: string) =>
   apiFetch(`/api/v1/admin/knowledge/${encodeURIComponent(id)}/revoke`, { method: "POST" });
 
+export type AssistantWidgetConfig = {
+  widget_id: string | null;
+  display_name: string | null;
+  ai_enabled: boolean;
+};
+
+export const loadAssistantWidget = (signal?: AbortSignal) =>
+  apiFetch<{ data: AssistantWidgetConfig }>("/api/v1/admin/assistant/widget", { signal });
+
+export type AssistantMessageRating = "GOOD" | "BAD";
+
+export type AssistantMessageReview = {
+  rating: AssistantMessageRating | null;
+  note: string | null;
+  reviewed_by_name: string | null;
+  updated_at: string;
+};
+
+export type AssistantTestMessage = {
+  sequence: number;
+  from: "visitor" | "assistant" | "advisor";
+  text: string | null;
+  at: string;
+  review: AssistantMessageReview | null;
+};
+
+export type AssistantTestSessionSummary = {
+  id: string;
+  conversation_id: string;
+  title: string | null;
+  status: "OPEN" | "FINISHED";
+  closing_note: string | null;
+  created_by_name: string | null;
+  created_at: string;
+  finished_at: string | null;
+  message_count: number;
+  good_count: number;
+  bad_count: number;
+  noted_count: number;
+};
+
+export type AssistantTestSessionDetail = {
+  id: string;
+  conversation_id: string;
+  title: string | null;
+  status: "OPEN" | "FINISHED";
+  closing_note: string | null;
+  created_by_name: string | null;
+  created_at: string;
+  finished_at: string | null;
+  ai_enabled: boolean;
+  messages: AssistantTestMessage[];
+};
+
+export const listAssistantTestSessions = (signal?: AbortSignal) =>
+  apiFetch<{ data: AssistantTestSessionSummary[]; meta: { ai_enabled: boolean; has_web_channel: boolean } }>(
+    "/api/v1/admin/assistant/test-sessions",
+    { signal },
+  );
+
+export const createAssistantTestSession = (title?: string) =>
+  apiFetch<{ data: AssistantTestSessionSummary }>("/api/v1/admin/assistant/test-sessions", {
+    method: "POST",
+    body: JSON.stringify({ title: title?.trim() || null }),
+  });
+
+export const loadAssistantTestSession = (id: string, signal?: AbortSignal) =>
+  apiFetch<{ data: AssistantTestSessionDetail }>(`/api/v1/admin/assistant/test-sessions/${encodeURIComponent(id)}`, { signal });
+
+export const sendAssistantTestMessage = (id: string, clientMessageId: string, text: string) =>
+  apiFetch<{ data: { sequence: number; replayed: boolean } }>(
+    `/api/v1/admin/assistant/test-sessions/${encodeURIComponent(id)}/messages`,
+    { method: "POST", body: JSON.stringify({ client_message_id: clientMessageId, text }) },
+  );
+
+export const reviewAssistantTestMessage = (
+  id: string,
+  sequence: number,
+  input: { rating: AssistantMessageRating | null; note: string | null },
+) =>
+  apiFetch<{ data: AssistantMessageReview & { sequence: number } }>(
+    `/api/v1/admin/assistant/test-sessions/${encodeURIComponent(id)}/messages/${sequence}/review`,
+    { method: "PUT", body: JSON.stringify(input) },
+  );
+
+export const finishAssistantTestSession = (id: string, closingNote: string | null) =>
+  apiFetch<{ data: { id: string; status: "FINISHED"; closing_note: string | null; finished_at: string } }>(
+    `/api/v1/admin/assistant/test-sessions/${encodeURIComponent(id)}/finish`,
+    { method: "POST", body: JSON.stringify({ closing_note: closingNote }) },
+  );
+
+export function formatAssistantTestSessionMarkdown(session: AssistantTestSessionDetail): string {
+  const lines: string[] = [
+    `# Sesión de prueba: ${session.title || "Sin título"}`,
+    "",
+    `- **ID sesión:** ${session.id}`,
+    `- **ID conversación:** ${session.conversation_id}`,
+    `- **Estado:** ${session.status === "FINISHED" ? "Finalizada" : "En curso"}`,
+    `- **Creada por:** ${session.created_by_name || "Sin informar"}`,
+    `- **Inicio:** ${session.created_at}`,
+    ...(session.finished_at ? [`- **Finalización:** ${session.finished_at}`] : []),
+    "",
+    "## Mensajes y calificaciones",
+    "",
+  ];
+
+  for (const m of session.messages) {
+    const who = m.from === "visitor" ? "Usuario (prueba)" : m.from === "assistant" ? "Asistente virtual" : "Asesor";
+    lines.push(`### #${m.sequence} · ${who} (${m.at})`);
+    lines.push("");
+    lines.push(m.text || "_(sin texto)_");
+    lines.push("");
+    if (m.review && (m.review.rating || m.review.note)) {
+      const ratingLabel = m.review.rating === "GOOD" ? "Bien" : m.review.rating === "BAD" ? "Mal" : "Sin calificar";
+      lines.push(`> **Calificación:** ${ratingLabel}${m.review.reviewed_by_name ? ` (${m.review.reviewed_by_name})` : ""}`);
+      if (m.review.note) lines.push(`> **Anotación:** ${m.review.note}`);
+      lines.push("");
+    }
+  }
+
+  lines.push("## Anotaciones finales de la sesión");
+  lines.push("");
+  lines.push(session.closing_note || "_Sin anotaciones finales._");
+  lines.push("");
+  return lines.join("\n");
+}
+
 const mockVisits: VisitRequest[] = isMockDataMode ? [
   ["Lucía Ferreyra", "12", "Las Moras", "2026-10-26T13:30:00Z", "REQUESTED", "WhatsApp", "¿Puedo pasar por la mañana?"],
   ["Tomás Quiroga", "12A", "Las Moras", "2026-10-27T13:00:00Z", "REQUESTED", "Web", "Quiero conocer la unidad 12A y las opciones de financiación."],

@@ -13,6 +13,7 @@ import { LeadFollowUpStatus } from "@/components/admin/LeadFollowUpStatus";
 type PropertyLite = {
   title?: string;
   bedrooms?: number;
+  rooms?: number | null;
   price?: number;
   currency?: string;
   operation?: "sale" | "rent" | "temporal" | "leasing" | "unknown";
@@ -117,7 +118,7 @@ export default function CardLead({ id, name, phone, email, origin, properties = 
                 <>
                   <span className="truncate max-w-[140px]">{mainProperty.title}</span>
                   <span className="text-slate-300 dark:text-slate-600">•</span>
-                  <span>{mainProperty.bedrooms} amb.</span>
+                  <span>{mainProperty.rooms != null ? `${mainProperty.rooms} amb.` : mainProperty.bedrooms != null ? `${mainProperty.bedrooms} dorm.` : "Sin ambientes informados"}</span>
                   {extraCount > 0 && (
                     <span className="ml-1 inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
                       +{extraCount}

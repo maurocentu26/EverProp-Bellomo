@@ -263,11 +263,11 @@ export default function PropertyDetailView({ propertyId }: Props) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-4 border-y border-slate-100">
                 {[
                     { label: 'Superficie', val: `${property.area_m2?.toLocaleString("es-AR", { maximumFractionDigits: 2 }) ?? "--"} m²`, icon: Ruler },
-                    { label: property.propertyType === 'Lote' ? 'Manzana' : 'Habitaciones', val: property.propertyType === 'Lote' ? property.sectorName || '-' : property.bedrooms || 'Sin informar', icon: Trees },
-                    { label: property.propertyType === 'Lote' ? 'Parcela' : 'Baños', val: property.propertyType === 'Lote' ? property.unitNumber || '-' : property.bathrooms || 'Sin informar', icon: Building2 },
+                    { label: property.propertyType === 'Lote' ? 'Manzana' : 'Dormitorios', val: property.propertyType === 'Lote' ? property.sectorName || '-' : property.bedrooms ?? 'Sin informar', icon: Trees },
+                    { label: property.propertyType === 'Lote' ? 'Parcela' : 'Baños', val: property.propertyType === 'Lote' ? property.unitNumber || '-' : property.bathrooms ?? 'Sin informar', icon: Building2 },
                     {
-                      label: property.propertyType === 'Lote' ? 'Ochava' : 'Tipo',
-                      val: property.propertyType !== 'Lote' ? property.propertyType : property.commercialFeatures?.land?.ochava_m2 != null ? `${property.commercialFeatures.land.ochava_m2.toLocaleString("es-AR")} m²` : 'Sin informar',
+                      label: property.propertyType === 'Lote' ? 'Ochava' : ['Casa', 'Departamento'].includes(property.propertyType) ? 'Ambientes' : 'Tipo',
+                      val: property.propertyType === 'Lote' ? property.commercialFeatures?.land?.ochava_m2 != null ? `${property.commercialFeatures.land.ochava_m2.toLocaleString("es-AR")} m²` : 'Sin informar' : ['Casa', 'Departamento'].includes(property.propertyType) ? property.rooms ?? 'Sin informar' : property.propertyType,
                       icon: MapPin
                     }
                 ].map((item, idx) => (
@@ -285,6 +285,28 @@ export default function PropertyDetailView({ propertyId }: Props) {
             {property.commercialFeatures?.land && <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3 text-sm">
               {Object.entries({ Frente: property.commercialFeatures.land.frente_m != null ? `${property.commercialFeatures.land.frente_m.toLocaleString("es-AR")} m` : undefined, Fondo: property.commercialFeatures.land.fondo_m != null ? `${property.commercialFeatures.land.fondo_m.toLocaleString("es-AR")} m` : undefined, Padrón: property.commercialFeatures.land.padron }).filter(([, value]) => value != null).map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="break-words font-semibold">{value}</dd></div>)}
             </dl>}
+            {['Casa', 'Departamento'].includes(property.propertyType) && (
+              <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" aria-label="Detalle de la unidad">
+                <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-slate-100">Detalle de la unidad</h2>
+                <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                  {([
+                    ['Superficie cubierta', property.coveredAreaM2 != null ? `${property.coveredAreaM2.toLocaleString('es-AR')} m²` : null],
+                    ['Superficie descubierta', property.uncoveredAreaM2 != null ? `${property.uncoveredAreaM2.toLocaleString('es-AR')} m²` : null],
+                    ['Piso', property.floor], ['Orientación', property.orientation], ['Disposición', property.disposition],
+                    ['Cocheras', property.parkingSpaces != null ? String(property.parkingSpaces) : null],
+                    ['Expensas', property.expenses != null && property.expensesCurrency ? `${property.expensesCurrency} ${property.expenses.toLocaleString('es-AR')}` : null],
+                  ] as [string, string | null | undefined][]).map(([label, value]) => (
+                    <div key={label}><dt className="text-slate-500 dark:text-slate-400">{label}</dt><dd className="font-semibold text-slate-900 dark:text-slate-100">{value || 'Sin informar'}</dd></div>
+                  ))}
+                </dl>
+                {!!property.features?.length && <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                  <h3 className="mb-2 text-sm font-semibold">Características</h3>
+                  <ul className="flex flex-wrap gap-2">{property.features.map(feature => <li key={feature.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+                    <span className="font-medium">{feature.label}</span>{feature.value !== true && feature.value != null ? ` · ${typeof feature.value === 'object' ? JSON.stringify(feature.value) : String(feature.value)}` : ''}
+                  </li>)}</ul>
+                </div>}
+              </section>
+            )}
           </div>
         </div>
 

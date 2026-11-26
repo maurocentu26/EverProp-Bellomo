@@ -59,7 +59,8 @@ final class AdminPropertyController extends InventoryController
         $this->exposePriceVisibility($request, $user);
         $payload = $request->validated();
 
-        if (array_key_exists('price', $payload) && $payload['price'] !== null) {
+        if ((array_key_exists('price', $payload) && $payload['price'] !== null)
+            || (array_key_exists('expenses', $payload) && $payload['expenses'] !== null)) {
             $this->authorizeAction($this->policy->setInitialPrices($user));
         }
 
@@ -268,6 +269,17 @@ final class AdminPropertyController extends InventoryController
             }
 
             if (array_key_exists('price', $payload) || array_key_exists('currency_code', $payload)) {
+                $this->authorizeAction($this->policy->managePrices($user, $locked));
+            }
+            if (array_key_exists('expenses', $payload) || array_key_exists('expenses_currency_code', $payload)) {
+                $expenses = array_key_exists('expenses', $payload) ? $payload['expenses'] : $locked->expenses;
+                $expensesCurrency = array_key_exists('expenses_currency_code', $payload)
+                    ? $payload['expenses_currency_code'] : $locked->expenses_currency_code;
+                if (($expenses === null) !== ($expensesCurrency === null)) {
+                    throw ValidationException::withMessages([
+                        'expenses' => ['expenses and expenses_currency_code must both be values or both be null.'],
+                    ]);
+                }
                 $this->authorizeAction($this->policy->managePrices($user, $locked));
             }
 

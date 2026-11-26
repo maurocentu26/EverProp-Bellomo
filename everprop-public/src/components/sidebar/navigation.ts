@@ -13,6 +13,7 @@ import {
   MessagesSquare,
   CalendarCheck,
   BookOpenCheck,
+  Bot,
   Globe,
   type LucideIcon 
 } from "lucide-react";
@@ -42,6 +43,7 @@ type NavigationAccess = {
   isMockMode: boolean;
   isAdvisor?: boolean;
   isTenantAdmin?: boolean;
+  canTestAssistant?: boolean;
   canViewCommercialStats?: boolean;
 };
 
@@ -128,6 +130,7 @@ export function getAvailableNavigationGroups({
   isEngineer,
   isAdvisor,
   isTenantAdmin,
+  canTestAssistant,
   canViewCommercialStats,
 }: NavigationAccess): NavGroup[] {
   if (isAdvisor) {
@@ -146,7 +149,13 @@ export function getAvailableNavigationGroups({
       .filter((group) => group.label !== "Comercializadora");
   }
 
-  return navigationGroups.map(group => group.label === "Gestión" && isTenantAdmin
-    ? {...group, items: [...group.items, {title: "Alta de usuarios", href: "/admin/asesores", icon: Users, matchPath: "/admin/asesores"}]}
-    : group).map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href) && (item.href !== "/admin/estadisticas" || !!canViewCommercialStats))})).filter(group => group.items.length > 0);
+  return navigationGroups.map(group => {
+    if (group.label === "Comercializadora" && (canTestAssistant ?? isTenantAdmin)) {
+      return {...group, items: [...group.items, {title: "Probar asistente", href: "/admin/probar-asistente", icon: Bot, matchPath: "/admin/probar-asistente"}]};
+    }
+    if (group.label === "Gestión" && isTenantAdmin) {
+      return {...group, items: [...group.items, {title: "Alta de usuarios", href: "/admin/asesores", icon: Users, matchPath: "/admin/asesores"}]};
+    }
+    return group;
+  }).map(group => ({...group, items: group.items.filter(item => isReleaseRouteVisible(item.href) && (item.href !== "/admin/estadisticas" || !!canViewCommercialStats))})).filter(group => group.items.length > 0);
 }

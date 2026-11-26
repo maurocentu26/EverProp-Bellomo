@@ -13,8 +13,8 @@ final class BuscarPropiedades implements AgentTool
 
     public function description(): string
     {
-        return 'Busca propiedades publicadas y disponibles del inventario actual. Usala antes de mencionar cualquier propiedad, precio o disponibilidad. '
-            .'Para filtrar por presupuesto hace falta la moneda; no convierte monedas. unit_code busca un código exacto.';
+        return 'Busca propiedades publicadas en el catálogo actual. Usala antes de mencionar cualquier propiedad. No devuelve precios '
+            .'ni disponibilidad: figurar en el catálogo no confirma que esté disponible. unit_code busca un código exacto.';
     }
 
     public function schema(): array
@@ -27,13 +27,6 @@ final class BuscarPropiedades implements AgentTool
                 'city' => ['type' => 'string', 'maxLength' => 160, 'minLength' => 2],
                 'project_id' => ['type' => 'string', 'format' => 'uuid'],
                 'unit_code' => ['type' => 'string', 'maxLength' => 80, 'minLength' => 1],
-                'budget' => [
-                    'type' => 'object', 'additionalProperties' => false, 'required' => ['amount', 'currency'],
-                    'properties' => [
-                        'amount' => ['type' => 'string', 'format' => 'decimal'],
-                        'currency' => ['type' => 'string', 'enum' => ['ARS', 'USD']],
-                    ],
-                ],
                 'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => PublicInventory::PAGE_MAX],
             ],
         ];
@@ -51,17 +44,15 @@ final class BuscarPropiedades implements AgentTool
             ->when(isset($arguments['category']), fn ($q) => $q->where('p.category', $arguments['category']))
             ->when(isset($arguments['city']), fn ($q) => $q->where('p.city', 'like', '%'.addcslashes(trim($arguments['city']), '%_\\').'%'))
             ->when(isset($arguments['project_id']), fn ($q) => $q->where('pr.public_id', $arguments['project_id']))
-            ->when(isset($arguments['unit_code']), fn ($q) => $q->where('p.code', trim($arguments['unit_code'])))
-            // Budget: same currency only, priced units only. No FX conversion is ever implied.
-            ->when(isset($arguments['budget']), fn ($q) => $q->where('p.currency_code', $arguments['budget']['currency'])
-                ->whereNotNull('p.price')->where('p.price', '<=', $arguments['budget']['amount']));
+            // EVP-200: no budget filter: which units fit an amount would reveal their prices.
+            ->when(isset($arguments['unit_code']), fn ($q) => $q->where('p.code', trim($arguments['unit_code'])));
 
         $limit = $arguments['limit'] ?? 5;
         $rows = $query->orderByDesc('p.updated_at')->orderBy('p.id')->limit($limit + 1)->get($this->inventory->columns());
 
         return [
             'items' => $rows->take($limit)->map(fn ($p) => $this->inventory->summary($p))->values()->all(),
-            'more_available' => $rows->count() > $limit,
+            'more_results' => $rows->count() > $limit, // pagination only, never stock
         ];
     }
 }

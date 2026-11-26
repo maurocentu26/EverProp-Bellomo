@@ -39,11 +39,20 @@ final class StorePropertyRequest extends InventoryRequest
             'province' => ['required', 'string', 'max:160'],
             'neighborhood' => ['nullable', 'string', 'max:160'],
             'address' => ['nullable', 'string', 'max:500'],
+            'rooms' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'bedrooms' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'bathrooms' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'area_m2' => ['nullable', 'numeric', 'gt:0'],
+            'covered_area_m2' => ['nullable', 'numeric', 'gt:0'],
+            'uncovered_area_m2' => ['nullable', 'numeric', 'min:0'],
             'sector_name' => ['nullable', 'string', 'max:160'],
             'unit_number' => ['nullable', 'string', 'max:80'],
+            'floor' => ['nullable', 'string', 'max:40'],
+            'orientation' => ['nullable', 'string', 'max:80'],
+            'disposition' => ['nullable', 'string', 'max:80'],
+            'parking_spaces' => ['nullable', 'integer', 'min:0', 'max:65535'],
+            'expenses' => ['nullable', 'numeric', 'min:0'],
+            'expenses_currency_code' => ['nullable', Rule::in(['USD', 'ARS'])],
             'description' => ['nullable', 'string', 'max:100000'],
             'main_image_url' => ['nullable', 'url:https', 'max:2048'],
             'services_json' => ['nullable', 'array'],
@@ -63,6 +72,9 @@ final class StorePropertyRequest extends InventoryRequest
         return [function ($validator): void {
             if (($this->input('price') === null) !== ($this->input('currency_code') === null)) {
                 $validator->errors()->add('price', 'price and currency_code must both be present or both be null.');
+            }
+            if (($this->input('expenses') === null) !== ($this->input('expenses_currency_code') === null)) {
+                $validator->errors()->add('expenses', 'expenses and expenses_currency_code must both be present or both be null.');
             }
         }];
     }

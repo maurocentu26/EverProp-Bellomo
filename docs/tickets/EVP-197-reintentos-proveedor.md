@@ -1,11 +1,25 @@
 # EVP-197 — Reintentos seguros y capacidad del proveedor IA
-## Estado para revisión — 25/11/2026
+## Última validación integrada — 25/11/2026
+
+**ABIERTO / NO APTO PARA RELEASE.** Regresión local: 663 aprobadas, 2 omitidas, 2344 aserciones. Gemini real completo: 137 PASS / 67 FAIL (49 críticos) / 29 DETERMINISTIC; 362 HTTP 200. 91 PASS críticos requieren revisión humana. Modelo gemini-3.5-flash-lite; corpus original de 233 casos, sin cambiar umbrales. Se evaluaron juntos develop 71a8528, incremento EVP-193 e191e0e y EVP-L200 146c485. No se modificó producción ni se cerraron tickets.
+
+[Detalle integrado, evidencia, límites y los 67 checks fallidos](https://github.com/maurocentu26/EverProp-Bellomo/blob/29da632ff6cbfcc924d334479b800bb6a66b2466/docs/tickets/EVP-L200-derivacion-persistida.md). Reporte local completo: report-20261125-211911.json, SHA256 A9342E0908A04E38508135092AC09B472D96E52BD201D94DFC5A740FF6FF8F53. La unidad 12 se consultó correctamente en RIO-003; persisten fallos reales y conflictos de evaluación descritos en el informe. No hay evidencia suficiente para certificar ausencia de errores.
+
+Las secciones siguientes son historia de sus versiones y corridas; este resultado prevalece.
+## Continuación de validación — 25/11/2026
+
+El equipo integró externamente el PR #176 en develop 71a8528 mientras seguía la evaluación. Esta sesión no hizo merge, despliegue ni cierre de tickets. La integración de código no equivale a una aprobación del comportamiento completo.
+
+La regresión conjunta con el incremento EVP-193 y EVP-L200 pasa: 665 pruebas, 663 aprobadas, 2 omitidas, 2344 aserciones. Las respuestas 401/429/500/503 del log de esta suite son simuladas; validan reintentos, rechazo persistente, ledger e idempotencia. No se enviaron mensajes a Meta. Pint y PHPStan dirigidos pasan.
+
+La evaluación real completa del conjunto corregido continúa. Los fallos semánticos no se atribuyen automáticamente a la cuota ni se arreglan aumentando reintentos. Los resultados anteriores quedan como historia, conservando enlaces al commit que contiene la evidencia que el equipo retiró del árbol actual.
+## Estado histórico previo a la integración externa — 25/11/2026
 
 **ABIERTO / NO APTO PARA RELEASE.** Rama subida y PR en borrador. Integra develop e1a6162; evaluación conjunta EVP-193 4d415c8 + EVP-197 0c48ac5, sin EVP-L198. CI del código aprobado en ambas ramas.
 
 - Regresión: 658 tests, 656 aprobados, 2 omitidos, 2292 aserciones.
 - Gemini real, corpus completo233: 137 PASS, 67 FAIL (49 críticos), 29 DETERMINISTIC. 370HTTP200; sin errores de transporte en la corrida final. 94 PASS críticos pendientes de revisión humana.
-- [Informe integrado, correcciones, evidencia y matriz de 67 fallos](evidencias/integracion-20261125.md).
+- [Informe integrado, correcciones, evidencia y matriz de 67 fallos](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/integracion-20261125.md).
 - Se distingue fallo funcional, contrato del evaluador, conflicto con guardia y salida incorrecta bloqueada. No afirmar ausencia de errores ni cerrar el ticket.
 - El usuario autorizó incluir IA/Conversations en la futura entrega develop → main. La política de release todavía necesita adecuación y configuración del destino. No hubo merge ni cambios en producción.
 
@@ -23,9 +37,9 @@ Decisión del usuario 25/11: la futura entrega develop → main incluirá IA/Con
 
 **ABIERTO, sin aprobación de release.** 123 PASS automáticos, 77 FAIL (59 críticos), 29 DETERMINISTIC; 80 PASS críticos requieren revisión humana. 365 respuestas HTTP 200. Estimación USD 0.234873, no factura.
 
-- [Todos los casos y clasificación](evidencias/EVP-197-v2-20261124.md).
-- [Diagnóstico, cambios y pendientes](evidencias/EVP-197-v2-diagnostico-20261124.md).
-- [Respuestas y causas registradas](evidencias/EVP-197-v2-20261124.json).
+- [Todos los casos y clasificación](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-v2-20261124.md).
+- [Diagnóstico, cambios y pendientes](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-v2-diagnostico-20261124.md).
+- [Respuestas y causas registradas](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-v2-20261124.json).
 
 Esta rama incorpora el ajuste y diagnóstico del evaluador; 3 tests/51 aserciones aprobados en la revalidación. La suite previa de retry quedó 85 aprobados/2 omitidos; su runtime no cambió en este incremento. No contiene las correcciones de guardia/precios de EVP-193.
 
@@ -38,7 +52,7 @@ PHPStan dirigido sin errores tras corregir la anotación del retorno; revisión 
 
 **ABIERTO.** Última corrida: 116 PASS mecánicos, 84 FAIL (65 críticos), 29 DETERMINISTIC; 77 PASS críticos requieren firma humana. 366 respuestas HTTP 200; estimación USD 0.236361, no factura. 7:33.577, 457 aserciones; exit 1 por fallos críticos.
 
-- [Informe final](evidencias/EVP-197-final-20261124.md), [respuestas por caso](evidencias/EVP-197-final-20261124.json), [triage y borradores](evidencias/EVP-197-triage-20261124.md).
+- [Informe final](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-final-20261124.md), [respuestas por caso](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-final-20261124.json), [triage y borradores](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-triage-20261124.md).
 - Deterministas: 85 aprobados, 2 omitidos, 1242 aserciones. PHPStan dirigido sin errores; formato corregido y dataset de 229 casos válido.
 - No hay evidencia de fallos HTTP en esta corrida; el retry real no fue necesario. La batería funcional sigue sin aprobar. Esta rama no incluye EVP-193.
 - No cerrar, publicar ni desplegar por estos resultados. Las secciones siguientes conservan el historial; esta actualización prevalece.
@@ -48,7 +62,7 @@ Rama `ticket/EVP-197-reintentos-proveedor` · base `develop@0d24671f4ba6b928b3f5
 
 > **Estado actual (24/11/2026): ABIERTO.** El usuario pidió no cerrar los tickets. Revisión causal de fallos y correcciones en curso; ver evidencias/EVP-197-triage-20261124.md. Las mediciones anteriores se conservan como históricas, no certifican el código más reciente.
 >
-> **Evidencia vigente:** [informe y fallos completos](evidencias/EVP-197-gemini35-paid-20261124.md), [229 casos](evidencias/EVP-197-gemini35-paid-20261124.json) y [métricas HTTP](evidencias/EVP-197-gemini35-paid-http-20261124.jsonl). Duración 08:44.974. El bloqueo de cuota anterior fue resuelto para estas pruebas; las secciones posteriores conservan el historial. Pendientes: firma humana, revisión del equipo y publicación autorizada. No cerrar por el solo hecho de que la infraestructura ya responda.
+> **Evidencia vigente:** [informe y fallos completos](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-gemini35-paid-20261124.md), [229 casos](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-gemini35-paid-20261124.json) y [métricas HTTP](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-gemini35-paid-http-20261124.jsonl). Duración 08:44.974. El bloqueo de cuota anterior fue resuelto para estas pruebas; las secciones posteriores conservan el historial. Pendientes: firma humana, revisión del equipo y publicación autorizada. No cerrar por el solo hecho de que la infraestructura ya responda.
 **Credencial exclusiva verificada posteriormente:** el usuario guardó la clave nueva; se contrastó su terminación enmascarada con el proyecto gen-lang-client-0580332463 y se copió sin mostrarla entre los dos archivos locales ignorados. El preflight confirmó GeminiChatClient, APP_ENV=local, bellomo_crm_test, host Docker 172.17.0.2, IA remota y envíos deshabilitados. Se reutilizan solo MySQL/Redis de estos tickets. Los 16 tenants residuales previos se conservan sin eliminación; cada corrida usa UUID nuevos y limpia únicamente sus propios tenants. Las notas de clave pendiente siguientes son históricas.
 
 ## Actualización de infraestructura de evaluación — 24/11/2026
@@ -181,7 +195,7 @@ Se inició el recorrido completo de 229 casos con gemini-3.5-flash-lite en esta 
 
 Google confirmó mediante error.details: **Free Tier, GenerateRequestsPerMinutePerProjectPerModel-FreeTier=15 y GenerateRequestsPerDayPerProjectPerModel-FreeTier=500**. Se agotó el límite diario; RetryInfo indicó entre 47.104 y 47.067 segundos de espera (aproximadamente 13 horas). No se presupone una hora fija de renovación. No hace falta otra clave para el mismo proyecto; hay que esperar renovación o configurar una cuota/plan suficiente con el administrador.
 
-La corrida se detuvo explícitamente al comprobar el agotamiento diario; proceso exit 137 por cancelación deliberada, no fallo de PHPUnit. **No completó los 229 casos y no produjo reporte final de casos**. Evidencia parcial: [eventos HTTP sanitizados](evidencias/EVP-197-gemini35-parcial-20261124.jsonl). Se observaron 32 eventos: 4 respuestas 200, 27 respuestas 429 y 1 fallo de conexión. Puede existir un intento en vuelo al detener; estos eventos no son un denominador completo de todas las solicitudes. Los 4 éxitos informaron 9.127 tokens de entrada y 86 de salida/pensamiento: equivalente estándar USD 0,0029531; no factura, y no cubre consumo incierto. No afirmar tasa operativa ni costo total a partir de esta muestra truncada.
+La corrida se detuvo explícitamente al comprobar el agotamiento diario; proceso exit 137 por cancelación deliberada, no fallo de PHPUnit. **No completó los 229 casos y no produjo reporte final de casos**. Evidencia parcial: [eventos HTTP sanitizados](https://github.com/maurocentu26/EverProp-Bellomo/blob/8a6ccadf9d84d71d42b945cd13d90dfd89ba4df4/docs/tickets/evidencias/EVP-197-gemini35-parcial-20261124.jsonl). Se observaron 32 eventos: 4 respuestas 200, 27 respuestas 429 y 1 fallo de conexión. Puede existir un intento en vuelo al detener; estos eventos no son un denominador completo de todas las solicitudes. Los 4 éxitos informaron 9.127 tokens de entrada y 86 de salida/pensamiento: equivalente estándar USD 0,0029531; no factura, y no cubre consumo incierto. No afirmar tasa operativa ni costo total a partir de esta muestra truncada.
 
 **Decisión de capacidad propuesta:** Free Tier no cubre el pico ya planteado de 10 turnos/minuto (hasta 30 intentos/minuto, 36 con margen). Para producción, contratar/configurar el menor plan pago cuya cuota efectiva del modelo alcance al menos 36 RPM y 288.000 tokens de entrada/minuto bajo el supuesto de 8.000 tokens/llamada. Como escenario explícito de planificación —no volumen confirmado—, 100 conversaciones/día por 6 turnos y hasta 3 intentos requieren 1.800 solicitudes/día, o 2.160 con margen de 20%. Verificar pico real, cuota efectiva y presupuesto antes de elegir tier; no basta su nombre comercial. No se activó facturación ni se compró plan.
 

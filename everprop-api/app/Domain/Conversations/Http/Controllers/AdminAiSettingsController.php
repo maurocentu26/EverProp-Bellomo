@@ -27,6 +27,27 @@ final class AdminAiSettingsController extends Controller
         return response()->json(['data' => $this->state(app(TenantContext::class)->id())]);
     }
 
+    /** EVP-207: returns the resolved tenant's active WEB_CHAT widget id only to its admins. */
+    public function widget(Request $request): JsonResponse
+    {
+        $this->admin($request);
+        $tenantId = app(TenantContext::class)->id();
+        $channel = DB::table('channel_accounts')
+            ->where('tenant_id', $tenantId)
+            ->where('channel_type', 'WEB_CHAT')
+            ->where('status', 'ACTIVE')
+            ->orderBy('id')
+            ->first(['public_id', 'display_name']);
+
+        return response()->json([
+            'data' => [
+                'widget_id' => $channel !== null ? (string) $channel->public_id : null,
+                'display_name' => $channel !== null ? (string) $channel->display_name : null,
+                'ai_enabled' => InboundMessageService::aiEnabled($tenantId),
+            ],
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     public function update(Request $request): JsonResponse
     {
         $user = $this->admin($request);

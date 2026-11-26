@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { Building2, Save } from "lucide-react";
 import { type Property, JUJUY_CITIES } from "@/data/admin-sample";
 import { isMockDataMode } from "@/lib/data-mode";
 import { propertyStatusLabel, propertyOperationLabel } from "@/lib/inventory-labels";
-import { updateEverpropProperty } from "@/lib/everprop-api";
+import { createEverpropPropertyFeature, deleteEverpropPropertyFeature, loadEverpropPropertyById, updateEverpropProperty, updateEverpropPropertyFeature } from "@/lib/everprop-api";
+import PropertyFeaturesEditor, { draftFromFeature, validateFeatureDrafts, type FeatureDraft } from "./property-form/PropertyFeaturesEditor";
 
 interface EditPropertyModalProps {
   open: boolean;
@@ -20,18 +21,8 @@ interface EditPropertyModalProps {
   onSuccess: (updated: Property) => void;
 }
 
-export function EditPropertyModal({
-  open,
-  onOpenChange,
-  property,
-  onSuccess,
-}: EditPropertyModalProps) {
-  const savingRef = useRef(false);
-  const [reviewing, setReviewing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
-  const errorRef = useRef<HTMLDivElement>(null);
-  const [formData, setFormData] = useState({
+function formValues(property: Property) {
+  return {
     title: property.title,
     price: property.inventoryPrice === null ? "" : String(property.inventoryPrice ?? property.price),
     currency: property.inventoryCurrency === null ? "" : property.inventoryCurrency ?? property.currency,
@@ -45,14 +36,49 @@ export function EditPropertyModal({
     fondo_m: property.commercialFeatures?.land?.fondo_m != null ? String(property.commercialFeatures.land.fondo_m) : "",
     ochava_m2: property.commercialFeatures?.land?.ochava_m2 != null ? String(property.commercialFeatures.land.ochava_m2) : "",
     padron: property.commercialFeatures?.land?.padron || "",
+    rooms: property.rooms != null ? String(property.rooms) : "",
+    bedrooms: property.bedrooms != null ? String(property.bedrooms) : "",
+    bathrooms: property.bathrooms != null ? String(property.bathrooms) : "",
+    coveredAreaM2: property.coveredAreaM2 != null ? String(property.coveredAreaM2) : "",
+    uncoveredAreaM2: property.uncoveredAreaM2 != null ? String(property.uncoveredAreaM2) : "",
+    floor: property.floor || "",
+    orientation: property.orientation || "",
+    disposition: property.disposition || "",
+    parkingSpaces: property.parkingSpaces != null ? String(property.parkingSpaces) : "",
+    expenses: property.expenses != null ? String(property.expenses) : "",
+    expensesCurrency: property.expensesCurrency || "",
     city: property.city || "",
     neighborhood: property.neighborhood || "",
     description: property.description || "",
-  });
+  };
+}
+
+export function EditPropertyModal({
+  open,
+  onOpenChange,
+  property,
+  onSuccess,
+}: EditPropertyModalProps) {
+  const savingRef = useRef(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
+  const [features, setFeatures] = useState<FeatureDraft[]>(() => (property.features ?? []).map(draftFromFeature));
+  const [formData, setFormData] = useState(() => formValues(property));
+  const residential = formData.propertyType === "Casa" || formData.propertyType === "Departamento";
   const [services, setServices] = useState<Property["services"]>(property.services || {});
-  const initialForm = useRef(formData);
-  const initialServices = useRef(services);
-  const hasChanges = () => JSON.stringify(formData) !== JSON.stringify(initialForm.current) || JSON.stringify(services) !== JSON.stringify(initialServices.current);
+  useEffect(() => {
+    if (!open) return;
+    setFormData(formValues(property));
+    setFeatures((property.features ?? []).map(draftFromFeature));
+    setServices(property.services || {});
+    setReviewing(false);
+    setError("");
+  }, [open, property.id]);
+  const hasChanges = () => JSON.stringify(formData) !== JSON.stringify(formValues(property))
+    || JSON.stringify(features) !== JSON.stringify((property.features ?? []).map(draftFromFeature))
+    || JSON.stringify(services) !== JSON.stringify(property.services || {});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,8 +89,30 @@ export function EditPropertyModal({
     if (formData.area_m2 && (!Number.isFinite(Number(formData.area_m2)) || Number(formData.area_m2) <= 0)) {
       toast.error("La superficie debe ser mayor que cero."); return;
     }
+    const residential = formData.propertyType === "Casa" || formData.propertyType === "Departamento";
+    if (residential) {
+      for (const [label, value, positive] of [
+        ["Ambientes", formData.rooms, false], ["Dormitorios", formData.bedrooms, false],
+        ["Baños", formData.bathrooms, false], ["Cocheras", formData.parkingSpaces, false],
+        ["Superficie cubierta", formData.coveredAreaM2, true], ["Superficie descubierta", formData.uncoveredAreaM2, false],
+        ["Expensas", formData.expenses, false],
+      ] as [string, string, boolean][]) {
+        if (value && (!Number.isFinite(Number(value)) || Number(value) < 0 || (positive && Number(value) === 0))) {
+          toast.error(`${label}: ingresá un valor válido.`); return;
+        }
+      }
+      for (const value of [formData.rooms, formData.bedrooms, formData.bathrooms, formData.parkingSpaces]) {
+        if (value && !Number.isInteger(Number(value))) { toast.error("Ambientes, dormitorios, baños y cocheras deben ser enteros."); return; }
+      }
+      if (Boolean(formData.expenses.trim()) !== Boolean(formData.expensesCurrency)) {
+        toast.error("Informá el monto y la moneda de expensas juntos."); return;
+      }
+      try { validateFeatureDrafts(features); } catch (reason) { toast.error((reason as Error).message); return; }
+    }
     const priceChanged = formData.price !== (property.inventoryPrice === null ? "" : String(property.inventoryPrice ?? property.price));
     const currencyChanged = formData.currency !== (property.inventoryCurrency === null ? "" : property.inventoryCurrency ?? property.currency);
+    const expensesChanged = formData.expenses !== (property.expenses == null ? "" : String(property.expenses))
+      || formData.expensesCurrency !== (property.expensesCurrency || "");
     if ((priceChanged || currencyChanged) && Boolean(formData.price.trim()) !== Boolean(formData.currency)) { toast.error("El precio y su moneda deben informarse o quitarse juntos."); return; }
     if ((priceChanged || currencyChanged) && formData.price.trim() && !formData.currency) { toast.error("Confirmá la moneda antes de guardar un precio."); return; }
     if (formData.propertyType === "Lote") for (const [label, value] of [["Frente", formData.frente_m], ["Fondo", formData.fondo_m], ["Ochava", formData.ochava_m2]]) {
@@ -73,6 +121,7 @@ export function EditPropertyModal({
     if (!reviewing) { setReviewing(true); return; }
     savingRef.current = true;
     setIsSaving(true);
+    let propertySaved = false;
     try {
       let updatedData: Property = {
         ...property,
@@ -88,6 +137,22 @@ export function EditPropertyModal({
         sectorName: formData.sectorName.trim() || undefined,
         unitNumber: formData.unitNumber.trim() || undefined,
         area_m2: formData.area_m2 ? Number(formData.area_m2) : undefined,
+        rooms: residential && formData.rooms !== "" ? Number(formData.rooms) : null,
+        bedrooms: residential && formData.bedrooms !== "" ? Number(formData.bedrooms) : property.bedrooms,
+        bathrooms: residential && formData.bathrooms !== "" ? Number(formData.bathrooms) : property.bathrooms,
+        coveredAreaM2: residential && formData.coveredAreaM2 !== "" ? Number(formData.coveredAreaM2) : null,
+        uncoveredAreaM2: residential && formData.uncoveredAreaM2 !== "" ? Number(formData.uncoveredAreaM2) : null,
+        floor: residential ? formData.floor.trim() || null : property.floor,
+        orientation: residential ? formData.orientation.trim() || null : property.orientation,
+        disposition: residential ? formData.disposition.trim() || null : property.disposition,
+        parkingSpaces: residential && formData.parkingSpaces !== "" ? Number(formData.parkingSpaces) : null,
+        expenses: residential && formData.expenses !== "" ? Number(formData.expenses) : null,
+        expensesCurrency: residential && formData.expenses !== "" ? formData.expensesCurrency as "USD" | "ARS" : null,
+        features: residential ? validateFeatureDrafts(features).map((feature, index) => ({
+          id: features[index].id ?? -(index + 1), group: feature.group, code: feature.code,
+          label: feature.label, value: feature.value, isFilterable: feature.isFilterable ?? true,
+          sortOrder: index,
+        })) : property.features,
         commercialFeatures: formData.propertyType === "Lote" ? { ...property.commercialFeatures, land: {
           ...property.commercialFeatures?.land,
           frente_m: formData.frente_m ? Number(formData.frente_m) : undefined,
@@ -112,19 +177,54 @@ export function EditPropertyModal({
           sectorName: updatedData.sectorName ?? null,
           unitNumber: updatedData.unitNumber ?? null,
           area_m2: updatedData.area_m2 ?? null,
+          ...(residential ? {
+            rooms: updatedData.rooms, bedrooms: formData.bedrooms === "" ? null : updatedData.bedrooms,
+            bathrooms: formData.bathrooms === "" ? null : updatedData.bathrooms,
+            coveredAreaM2: updatedData.coveredAreaM2, uncoveredAreaM2: updatedData.uncoveredAreaM2,
+            floor: updatedData.floor, orientation: updatedData.orientation, disposition: updatedData.disposition,
+            parkingSpaces: updatedData.parkingSpaces,
+            ...(expensesChanged ? { expenses: updatedData.expenses, expensesCurrency: updatedData.expensesCurrency } : {}),
+          } : {}),
           ...(formData.propertyType === "Lote" ? { commercialFeatures: updatedData.commercialFeatures, services: updatedData.services } : {}),
           city: updatedData.city,
           neighborhood: updatedData.neighborhood,
           description: updatedData.description ?? null,
         });
         updatedData = { ...updatedData, ...persisted };
+        propertySaved = true;
+        if (residential) {
+          const inputs = validateFeatureDrafts(features);
+          const remainingIds = new Set(features.map(feature => feature.id).filter((id): id is number => id != null));
+          for (const previous of property.features ?? []) {
+            if (!remainingIds.has(previous.id)) await deleteEverpropPropertyFeature(property.id, previous.id);
+          }
+          for (const [index, draft] of features.entries()) {
+            const input = inputs[index];
+            if (!draft.id) await createEverpropPropertyFeature(property.id, input);
+            else {
+              const previous = property.features?.find(feature => feature.id === draft.id);
+              if (previous && (previous.group !== input.group || previous.label !== input.label || previous.value !== input.value)) {
+                await updateEverpropPropertyFeature(property.id, draft.id, {
+                  group: input.group, label: input.label, value: input.value,
+                });
+              }
+            }
+          }
+          updatedData = await loadEverpropPropertyById(property.id);
+        }
       }
 
       toast.success("Activo actualizado correctamente");
       onSuccess(updatedData);
       onOpenChange(false);
     } catch (err: any) {
-      const msg = "Error al actualizar la propiedad: " + (err.message || "Error desconocido");
+      if (propertySaved && !isMockDataMode) {
+        try { const current = await loadEverpropPropertyById(property.id); onSuccess(current); setFeatures((current.features ?? []).map(draftFromFeature)); }
+        catch { /* El mensaje conserva el estado parcial para no sugerir un nuevo intento ciego. */ }
+      }
+      const msg = propertySaved
+        ? "La propiedad se actualizó, pero algunas características no se guardaron. Recargá la ficha y revisalas antes de reintentar. " + (err.message || "")
+        : "Error al actualizar la propiedad: " + (err.message || "Error desconocido");
       setError(msg);
       errorRef.current?.focus();
       toast.error(msg);
@@ -235,7 +335,7 @@ export function EditPropertyModal({
               />
             </Field>
 
-            <Field>
+            {!residential && <Field>
               <FieldLabel htmlFor="edit-property-6" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Manzana / Sector</FieldLabel>
               <Input id="edit-property-6"
                 value={formData.sectorName}
@@ -243,14 +343,14 @@ export function EditPropertyModal({
                 placeholder="Ej: AP7"
                 className="h-10 text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               />
-            </Field>
+            </Field>}
 
             <Field>
-              <FieldLabel htmlFor="edit-property-7" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Lote / Unidad</FieldLabel>
+              <FieldLabel htmlFor="edit-property-7" className="text-xs font-semibold text-slate-700 dark:text-slate-300">{residential ? "Número de unidad" : "Lote / Unidad"}</FieldLabel>
               <Input id="edit-property-7"
                 value={formData.unitNumber}
                 onChange={(e) => setFormData({ ...formData, unitNumber: e.target.value })}
-                placeholder="Ej: Lote 12"
+                placeholder={residential ? "Ej: A" : "Ej: Lote 12"}
                 className="h-10 text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               />
             </Field>
@@ -266,6 +366,39 @@ export function EditPropertyModal({
                 className="h-10 text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               />
             </Field>
+
+            {(formData.propertyType === "Casa" || formData.propertyType === "Departamento") && <>
+              {([
+                ["rooms", "Ambientes", "1", "1"], ["bedrooms", "Dormitorios", "1", "1"],
+                ["bathrooms", "Baños", "1", "1"], ["coveredAreaM2", "Superficie cubierta (m²)", "0.01", "0.01"],
+                ["uncoveredAreaM2", "Superficie descubierta (m²)", "0", "0.01"],
+                ["parkingSpaces", "Cocheras", "1", "1"], ["expenses", "Expensas", "0", "0.01"],
+              ] as [keyof typeof formData, string, string, string][]).map(([key, label, min, step]) => (
+                <Field key={key}>
+                  <FieldLabel htmlFor={`edit-${key}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</FieldLabel>
+                  <Input id={`edit-${key}`} type="number" min={min === "1" ? "0" : min} step={step} value={formData[key]}
+                    onChange={event => setFormData({ ...formData, [key]: event.target.value })}
+                    className="h-10 text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" />
+                </Field>
+              ))}
+              {([['floor', 'Piso'], ['orientation', 'Orientación'], ['disposition', 'Disposición']] as [keyof typeof formData, string][]).map(([key, label]) => (
+                <Field key={key}>
+                  <FieldLabel htmlFor={`edit-${key}`} className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</FieldLabel>
+                  <Input id={`edit-${key}`} value={formData[key]} maxLength={key === 'floor' ? 40 : 80}
+                    onChange={event => setFormData({ ...formData, [key]: event.target.value })}
+                    className="h-10 text-sm border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" />
+                </Field>
+              ))}
+              <Field>
+                <FieldLabel htmlFor="edit-expenses-currency" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Moneda de expensas</FieldLabel>
+                <select id="edit-expenses-currency" value={formData.expensesCurrency}
+                  onChange={event => setFormData({ ...formData, expensesCurrency: event.target.value })}
+                  className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950">
+                  <option value="">Sin expensas informadas</option><option value="ARS">Pesos (ARS)</option><option value="USD">Dólares (USD)</option>
+                </select>
+              </Field>
+              <PropertyFeaturesEditor value={features} onChange={setFeatures} disabled={isSaving} />
+            </>}
 
             <Field>
               <FieldLabel htmlFor="edit-property-9" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Estado</FieldLabel>
@@ -325,11 +458,16 @@ export function EditPropertyModal({
           </fieldset>
           {reviewing && <section aria-label="Confirmación completa">
             <h2>Revisar cambios</h2>
-            <dl className="inventory-review">{Object.entries(formData).filter(([key]) => key !== "currency" || Boolean(formData.price || formData.currency)).map(([key, value]) => <div key={key}>
-              <dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie (m²)",frente_m:"Frente (m)",fondo_m:"Fondo (m)",ochava_m2:"Ochava (m²)",padron:"Padrón",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt>
+            <dl className="inventory-review">{Object.entries(formData).filter(([key]) =>
+              !(key === "currency" && !formData.price && !formData.currency) && (formData.propertyType === "Lote"
+                ? !["rooms", "bedrooms", "bathrooms", "coveredAreaM2", "uncoveredAreaM2", "floor", "orientation", "disposition", "parkingSpaces", "expenses", "expensesCurrency"].includes(key)
+                : !["sectorName", "frente_m", "fondo_m", "ochava_m2", "padron"].includes(key))
+            ).map(([key, value]) => <div key={key}>
+              <dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie total (m²)",frente_m:"Frente (m)",fondo_m:"Fondo (m)",ochava_m2:"Ochava (m²)",padron:"Padrón",rooms:"Ambientes",bedrooms:"Dormitorios",bathrooms:"Baños",coveredAreaM2:"Superficie cubierta (m²)",uncoveredAreaM2:"Superficie descubierta (m²)",floor:"Piso",orientation:"Orientación",disposition:"Disposición",parkingSpaces:"Cocheras",expenses:"Expensas",expensesCurrency:"Moneda de expensas",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt>
               <dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a confirmar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd>
             </div>)}</dl>
             {formData.propertyType === "Lote" && <p className="my-3 text-sm">Servicios: {Object.entries(services || {}).filter(([, enabled]) => enabled).map(([name]) => ({water:"Agua",electricity:"Luz",lighting:"Alumbrado público",curb:"Cordón cuneta",gas:"Gas",sewage:"Cloacas",internet:"Internet"} as Record<string,string>)[name] || name).join(", ") || "Sin informar"}</p>}
+            {(formData.propertyType === "Casa" || formData.propertyType === "Departamento") && <p className="my-3 text-sm font-medium">Características: {features.length}</p>}
             <Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button>
           </section>}
 

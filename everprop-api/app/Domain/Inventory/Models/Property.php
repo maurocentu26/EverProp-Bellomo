@@ -37,8 +37,17 @@ use Illuminate\Support\Carbon;
  * @property string|null $neighborhood
  * @property string|null $address
  * @property int|null $bedrooms
+ * @property int|null $rooms
  * @property int|null $bathrooms
  * @property string|null $area_m2
+ * @property string|null $covered_area_m2
+ * @property string|null $uncovered_area_m2
+ * @property string|null $floor
+ * @property string|null $orientation
+ * @property string|null $disposition
+ * @property int|null $parking_spaces
+ * @property string|null $expenses
+ * @property string|null $expenses_currency_code
  * @property string|null $sector_name
  * @property string|null $unit_number
  * @property string|null $description
@@ -70,11 +79,20 @@ class Property extends Model
         'province',
         'neighborhood',
         'address',
+        'rooms',
         'bedrooms',
         'bathrooms',
         'area_m2',
+        'covered_area_m2',
+        'uncovered_area_m2',
         'sector_name',
         'unit_number',
+        'floor',
+        'orientation',
+        'disposition',
+        'parking_spaces',
+        'expenses',
+        'expenses_currency_code',
         'description',
         'main_image_url',
         'services_json',
@@ -94,9 +112,14 @@ class Property extends Model
             'category' => PropertyCategory::class,
             'status' => PropertyStatus::class,
             'price' => 'decimal:2',
+            'rooms' => 'integer',
             'bedrooms' => 'integer',
             'bathrooms' => 'integer',
             'area_m2' => 'decimal:2',
+            'covered_area_m2' => 'decimal:2',
+            'uncovered_area_m2' => 'decimal:2',
+            'parking_spaces' => 'integer',
+            'expenses' => 'decimal:2',
             'services_json' => 'array',
             'commercial_features_json' => 'array',
             'legacy_ed_id' => 'integer',
