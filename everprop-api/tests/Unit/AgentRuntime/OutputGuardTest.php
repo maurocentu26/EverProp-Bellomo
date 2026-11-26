@@ -26,10 +26,11 @@ final class OutputGuardTest extends TestCase
     public function test_advisor_review_of_availability_is_not_an_inventory_verdict(): void
     {
         $guard = new OutputGuard;
-        foreach (['Un asesor revisa disponibilidad y te confirma por este medio.', 'Un asesor revisa la disponibilidad y confirma por este medio.', 'Un asesor revisa disponibilidad y te lo confirma por este medio.'] as $text) {
+        // EVP-200: handing the topic to an advisor ("un asesor confirma la disponibilidad del 12B") states nothing either.
+        foreach (['Un asesor revisa disponibilidad y te confirma por este medio.', 'Un asesor revisa la disponibilidad y confirma por este medio.', 'Un asesor revisa disponibilidad y te lo confirma por este medio.', 'Un asesor confirma la disponibilidad del 12B.'] as $text) {
             $this->assertNotContains('UNSUPPORTED_AVAILABILITY', $guard->check($text, [], [], visitorMessages: ['Quiero visitar la unidad 12B'], inventoryChecked: true, notFound: ['12B']));
         }
-        foreach (['Un asesor revisa disponibilidad confirmada y te confirma por este medio.', 'Un asesor revisa disponibilidad y te confirma por este medio. La unidad 12B está disponible.', 'Un asesor revisa disponibilidad y te confirma por este medio: inmediata.', 'Un asesor confirma la disponibilidad del 12B.'] as $text) {
+        foreach (['Un asesor revisa disponibilidad confirmada y te confirma por este medio.', 'Un asesor revisa disponibilidad y te confirma por este medio. La unidad 12B está disponible.', 'Un asesor revisa disponibilidad y te confirma por este medio: inmediata.', 'La disponibilidad confirmada del 12B te la pasa un asesor.'] as $text) {
             $this->assertContains('UNSUPPORTED_AVAILABILITY', $guard->check($text, [], [], visitorMessages: ['Quiero visitar la unidad 12B'], inventoryChecked: true, notFound: ['12B']));
         }
     }

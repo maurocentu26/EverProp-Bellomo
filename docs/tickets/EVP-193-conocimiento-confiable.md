@@ -1,4 +1,8 @@
 # EVP-193 — Conocimiento confiable y enlaces del tenant
+## Integración con EVP-200 — 25/11/2026
+
+Se integró develop con EVP-200 (#178). En la regla 1 del prompt prevalece EVP-200 (nunca precio ni disponibilidad) y se conserva la regla de citar solo fuentes existentes; prompt_version pasa a `coordinator-2026-11-25.200b-193`. Con la guardia de EVP-200, "un asesor confirma la disponibilidad del 12B" es una derivación permitida, y el test se ajustó. Se cerró un hueco: "disponibilidad confirmada" pegado al sustantivo vuelve a bloquearse ("…confirmada por un asesor" no). Validado en CI.
+
 ## Última validación integrada — 25/11/2026
 
 **ABIERTO / NO APTO PARA RELEASE.** Regresión local: 663 aprobadas, 2 omitidas, 2344 aserciones. Gemini real completo: 137 PASS / 67 FAIL (49 críticos) / 29 DETERMINISTIC; 362 HTTP 200. 91 PASS críticos requieren revisión humana. Modelo gemini-3.5-flash-lite; corpus original de 233 casos, sin cambiar umbrales. Se evaluaron juntos develop 71a8528, incremento EVP-193 e191e0e y EVP-L200 146c485. No se modificó producción ni se cerraron tickets.
