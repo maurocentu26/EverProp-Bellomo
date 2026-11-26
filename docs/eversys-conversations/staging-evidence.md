@@ -1,5 +1,25 @@
 # Bellomito staging — evidencia 2026-10-02
 
+## EVP-201: widget de Bellomito para el cliente — 2026-11-26, 01:20 ART
+
+- **Commit desplegado:** `97f03a1` (develop, incluye EVP-200 y EVP-210). Está en API, worker, worker-fast, scheduler y panel-staging.
+  - La API seguía en `9d46f63` (22/11). Se desplegó con `railway deployment redeploy -s api --commit 97f03a1` (deployment `f810b019-4c42-4eef-ad51-bc1225ec7bd2`, SUCCESS), con autorización del usuario.
+  - Los demás servicios ya se habían desplegado solos en ese commit.
+- **Forwards:** staging ya tenía hasta `2026-11-25.001`, el último de develop. No se aplicó SQL.
+- **`everprop:production-check --connections` en API:** todas las comprobaciones OK, incluidos "Assistant: LLM provider configured", "Trusted tenant hosts configured", "Explicit frontend origins" y el esquema de residential property details.
+- **`/readyz`:** 200.
+- **Widget:** https://panel-staging-staging-62ec.up.railway.app/widget/8f32042b-a9b8-4a74-91c0-40837d962910 devuelve 200, con `frame-ancestors 'self' https://panel-staging-staging-62ec.up.railway.app`.
+- **CORS de `OPTIONS /api/v1/public/chat/sessions`:** responde siempre `Access-Control-Allow-Origin: https://panel-staging-staging-62ec.up.railway.app`; para un origen ajeno no lo refleja. Por lo tanto el chat solo funciona desde el dominio de Railway del panel.
+- **Dominio propio** `everprop-review-staging.eversyssolutions.com.ar`: **no resuelve en DNS** (curl exit 6; nslookup contra 8.8.8.8 sin respuesta). No se usa para el cliente.
+- **Prueba de humo en el navegador, sobre el widget del dominio de Railway:**
+  - búsqueda de lotes: el asistente nombra lotes reales de La Arbolada 2, sin precio;
+  - "¿cuánto sale el 144-AP9-8? ¿está disponible?": lo confirma un asesor y ofrece registrar el contacto;
+  - "¿cuotas? ¿anticipo?": son condiciones que detalla un asesor; ofrece registrar el contacto.
+- **Bandeja, por consulta de solo lectura en `mysql84`:** conversación 43, `AI_ACTIVE`/`OPEN`, 6 mensajes, 3 `chatbot_runs` `SUCCEEDED`/`REPLY` y ningún `error_code`. No se vio el 503 de Gemini en esta prueba.
+- **Panel:** el login del dominio de Railway no tenía sesión. La bandeja no se revisó en la UI.
+- **Vuelta atrás:** Panel → Configuración → IA del tenant → "IA apagada". Otra opción es volver a desplegar la API en `9d46f63`.
+- **Sin cambios en:** variables, producción, `main` ni el sitio de Bellomo.
+
 ## Auditoría de despliegue y PWA — 2026-10-07, 22:49 ART
 
 ### Ampliación de la auditoría (misma fecha, posterior a las 22:49 ART)
