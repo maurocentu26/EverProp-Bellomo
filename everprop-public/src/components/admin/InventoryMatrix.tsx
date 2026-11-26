@@ -30,7 +30,7 @@ export default function InventoryMatrix({ properties, isLoading, canEdit = false
   const activeSector = selectedSector in grouped ? selectedSector : '';
   const land = selectedUnit?.commercialFeatures?.land;
   const services = selectedUnit?.services;
-  const serviceNames = services ? [[services.water, 'Agua potable'], [services.electricity, 'Electricidad'], [services.gas, 'Gas natural'], [services.sewage, 'Cloacas'], [services.internet, 'Internet']].filter(([enabled]) => enabled).map(([, label]) => label).join(' · ') : '';
+  const serviceNames = services ? [[services.water, 'Agua potable'], [services.electricity, 'Electricidad'], [services.lighting, 'Alumbrado público'], [services.curb, 'Cordón cuneta'], [services.gas, 'Gas natural'], [services.sewage, 'Cloacas'], [services.internet, 'Internet']].filter(([enabled]) => enabled).map(([, label]) => label).join(' · ') : '';
 
   return <div className="inventory-view lots-matrix" aria-busy={isLoading}>
     <div className="inventory-filters"><label htmlFor={filterId}>Manzana<select id={filterId} value={activeSector} onChange={event => setSelectedSector(event.target.value)}><option value="">Todas las manzanas</option>{Object.keys(grouped).map(sector => <option key={sector} value={sector}>{sectorLabel(sector)}</option>)}</select></label></div>

@@ -75,7 +75,7 @@ type ApiProperty = {
   unit_number?: string | null;
   project?: { public_id?: string } | null;
     legacy?: { data?: Record<string, any> };
-  services?: Property["services"] | null;
+  services?: Property["services"] | string[] | null;
   commercial_features?: Property["commercialFeatures"] | null;
 };
 
@@ -232,6 +232,22 @@ function mapProject(project: ApiProject): Project {
   };
 }
 
+const serviceKeys: Record<string, string> = {
+  agua: "water", luz: "electricity", alumbrado: "lighting", cordon: "curb",
+  gas: "gas", cloacas: "sewage", internet: "internet",
+};
+
+function normalizeServices(raw: unknown): Property["services"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const services: Record<string, boolean> = Object.create(null);
+  for (const [key, value] of Object.entries(raw)) {
+    const legacyEntry = /^\d+$/.test(key) && typeof value === "string";
+    const name = legacyEntry ? value : key;
+    services[Object.hasOwn(serviceKeys, name) ? serviceKeys[name] : name] = legacyEntry ? true : Boolean(value);
+  }
+  return services;
+}
+
 function mapProperty(property: ApiProperty): Property {
   const categoryLabels: Record<string, string> = {
     LOT: "Lote",
@@ -269,7 +285,7 @@ function mapProperty(property: ApiProperty): Property {
     unitNumber: property.unit_number || undefined,
     status: status === "RENTED" ? "rented" : status === "SOLD" ? "sold" : status === "RESERVED" ? "reserved" : status === "AVAILABLE" ? "available" : status === "NOT_SELLABLE" ? "not_sellable" : status === "NOT_MARKETED" ? "not_marketed" : "unknown",
     legacyData: property.legacy?.data || undefined,
-    services: property.services || undefined,
+    services: normalizeServices(property.services),
     commercialFeatures: property.commercial_features || undefined,
   };
 }
@@ -1000,7 +1016,7 @@ export async function generateLotsBatch(payload: GenerateLotsPayload) {
       corner_lots: payload.cornerLots || [],
       corner_price: payload.cornerPrice ? Number(payload.cornerPrice) : null,
       corner_area_m2: payload.cornerArea_m2 ? Number(payload.cornerArea_m2) : null,
-      services: payload.services || [],
+      services: normalizeServices(payload.services) || {},
       description: payload.description || undefined,
     }),
   });

@@ -205,7 +205,7 @@ export default function NewPropertyForm({ companyId = "c1", initialProjectId, in
           title: nextProperty.title,
           projectId: nextProperty.projectId,
           commercialFeatures: nextProperty.commercialFeatures,
-          services: {water: Boolean(data.water), electricity: Boolean(data.electricity), gas: Boolean(data.gas), sewage: Boolean(data.sewage)},
+          services: {water: Boolean(data.water), electricity: Boolean(data.electricity), lighting: Boolean(data.lighting), curb: Boolean(data.curb), gas: Boolean(data.gas), sewage: Boolean(data.sewage)},
           operation: nextProperty.operation,
           propertyType: nextProperty.propertyType,
           price: nextProperty.price,

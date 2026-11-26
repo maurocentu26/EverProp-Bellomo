@@ -51,10 +51,10 @@ test('EVP-75 sector filter, plural counts, missing sector and supplied details',
  tree=render({properties:[...properties,{...properties[0],id:'no-sector',sectorName:undefined}]});
  assert.equal(nodes(tree).filter(n=>n.type==='button'&&n.props['aria-label']).length,1);
  assert.match(text(nodes(tree).find(n=>n.props?.className==='lots-legend')),/Disponible · 1/);
- const detailed=matrix(); tree=detailed({properties:[{...properties[0],area_m2:300,commercialFeatures:{land:{frente_m:12,fondo_m:25,ochava_m2:4}},services:{water:true,internet:true}}]});
+ const detailed=matrix(); tree=detailed({properties:[{...properties[0],area_m2:300,commercialFeatures:{land:{frente_m:12,fondo_m:25,ochava_m2:4}},services:{water:true,lighting:true,curb:true,internet:true}}]});
  nodes(tree).find(n=>n.type==='button'&&n.props['aria-label']).props.onClick();
- tree=detailed({properties:[{...properties[0],area_m2:300,commercialFeatures:{land:{frente_m:12,fondo_m:25,ochava_m2:4}},services:{water:true,internet:true}}]});
- for(const label of ['300 m²','Frente: 12 m','Fondo: 25 m','Ochava: 4 m²','Agua potable · Internet'])assert.ok(text(tree).includes(label),label);
+ tree=detailed({properties:[{...properties[0],area_m2:300,commercialFeatures:{land:{frente_m:12,fondo_m:25,ochava_m2:4}},services:{water:true,lighting:true,curb:true,internet:true}}]});
+ for(const label of ['300 m²','Frente: 12 m','Fondo: 25 m','Ochava: 4 m²','Agua potable · Alumbrado público · Cordón cuneta · Internet'])assert.ok(text(tree).includes(label),label);
 });
 test('EVP-75 existing routes, loading, error and responsive containment',()=>{
  const page=read('../src/app/admin/inventory-matrix/page.tsx'),css=read('../src/app/admin-design.css');

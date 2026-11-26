@@ -176,7 +176,7 @@ export function EditPropertyModal({
                 <Input id="edit-padron" value={formData.padron} maxLength={100} onChange={event => setFormData({ ...formData, padron: event.target.value })} />
               </Field>
               <fieldset className="md:col-span-2 rounded-xl border border-slate-200 p-3"><legend className="px-1 text-xs font-semibold text-slate-700">Servicios del lote</legend>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{([["water", "Agua"], ["electricity", "Luz"], ["gas", "Gas"], ["sewage", "Cloacas"], ["internet", "Internet"]] as const).map(([key, label]) => <label key={key} className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(services?.[key])} onChange={event => setServices({ ...services, [key]: event.target.checked })} />{label}</label>)}</div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{([["water", "Agua"], ["electricity", "Luz"], ["lighting", "Alumbrado público"], ["curb", "Cordón cuneta"], ["gas", "Gas"], ["sewage", "Cloacas"], ["internet", "Internet"]] as const).map(([key, label]) => <label key={key} className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(services?.[key])} onChange={event => setServices({ ...services, [key]: event.target.checked })} />{label}</label>)}</div>
               </fieldset>
             </>}
 
@@ -329,7 +329,7 @@ export function EditPropertyModal({
               <dt>{({title:"Título",price:"Precio",currency:"Moneda",operation:"Operación",propertyType:"Tipo",status:"Disponibilidad",sectorName:"Manzana o sector",unitNumber:"Unidad",area_m2:"Superficie (m²)",frente_m:"Frente (m)",fondo_m:"Fondo (m)",ochava_m2:"Ochava (m²)",padron:"Padrón",city:"Ciudad",neighborhood:"Barrio",description:"Descripción"} as Record<string,string>)[key]}</dt>
               <dd>{key === "currency" ? value || "Moneda sin confirmar" : key === "price" ? value ? Number(value).toLocaleString("es-AR") : "Precio a confirmar" : key === "status" ? propertyStatusLabel(value as Property["status"]) : key === "operation" ? propertyOperationLabel(value as Property["operation"]) : value || "Sin informar"}</dd>
             </div>)}</dl>
-            {formData.propertyType === "Lote" && <p className="my-3 text-sm">Servicios: {Object.entries(services || {}).filter(([, enabled]) => enabled).map(([name]) => ({water:"Agua",electricity:"Luz",gas:"Gas",sewage:"Cloacas",internet:"Internet"} as Record<string,string>)[name] || name).join(", ") || "Sin informar"}</p>}
+            {formData.propertyType === "Lote" && <p className="my-3 text-sm">Servicios: {Object.entries(services || {}).filter(([, enabled]) => enabled).map(([name]) => ({water:"Agua",electricity:"Luz",lighting:"Alumbrado público",curb:"Cordón cuneta",gas:"Gas",sewage:"Cloacas",internet:"Internet"} as Record<string,string>)[name] || name).join(", ") || "Sin informar"}</p>}
             <Button type="button" variant="outline" disabled={isSaving} onClick={() => setReviewing(false)}>Volver a editar</Button>
           </section>}
 

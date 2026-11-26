@@ -14,8 +14,8 @@ Rama `ticket/EVP-203-lot-unit-management` · 2026-11-25 · Álvaro Ruggeri / Cod
 
 - `npm run lint`, `npx tsc --noEmit`, `npm run build`: pasan.
 - Los siete scripts de test pedidos por el ticket (`test:conversations`, `test:follow-up`, `test:chat-session`, `test:statistics`, `test:materials`, `test:password-recovery`, `test:collections`): pasan.
-- Pruebas focalizadas de adaptador, proyecto, matriz y ficha: 28/28 pasan. Incluyen contrato de precio/moneda nulos, medidas/servicios, estado no comercializado, ruta de borrado y visibilidad de acciones.
-- `node --test tests/*.test.mjs`: 231/235 pasan, cuatro fallos. En `develop` limpio esos mismos cuatro casos fallan (228/232); son un gate previo y requieren clasificación con el equipo antes de considerar verde el suite global.
+- Pruebas focalizadas de adaptador, proyecto, matriz y ficha: 29/29 pasan. Incluyen contrato de precio/moneda nulos, medidas/servicios, estado no comercializado, ruta de borrado y visibilidad de acciones.
+- `node --test tests/*.test.mjs`: 232/236 pasan, cuatro fallos. En `develop` limpio esos mismos cuatro casos fallan (228/232); son un gate previo y requieren clasificación con el equipo antes de considerar verde el suite global.
 
 ## QA integrada posterior
 
@@ -24,3 +24,11 @@ Rama `ticket/EVP-203-lot-unit-management` · 2026-11-25 · Álvaro Ruggeri / Cod
 - Pendiente de verificación: 403/409 en navegador, roles sin permisos, matriz en móvil y teclado. Los cuatro fallos globales preexistentes siguen clasificados como gate previo. Los comentarios de Jira EVP-203 eran cero al crear la PR.
 
 PR: https://github.com/maurocentu26/EverProp-Bellomo/pull/184. No se fusionó ni desplegó esta rama.
+
+## Revisión de Mauro — servicios de lotes por rango
+
+El comentario de revisión del 2026-11-25 detectó que `batch-generate` devolvía servicios como lista de códigos en español y el editor esperaba un objeto booleano con claves en inglés. El adaptador ahora normaliza las listas antiguas y los objetos que ya mezclaban ambos formatos. Conserva también claves desconocidas y da prioridad a una selección booleana explícita frente al código heredado. Los lotes nuevos generados por rango se envían como objeto booleano, el mismo formato que usa el editor. Alumbrado público y cordón cuneta figuran en el editor, la revisión y la matriz; el alta individual también los envía en `services_json`.
+
+Verificación posterior al cambio: 29/29 pruebas focalizadas; `npm run lint -- --quiet`, `npx tsc --noEmit` y `npm run build` pasan. La regresión cubre lectura de una lista de servicios de un lote generado por rango, su edición sin índices numéricos, la conservación de alumbrado/cordón y un objeto previamente mezclado. Falta repetir el recorrido contra la API real tras el merge de las dependencias.
+
+La segunda solicitud de Mauro es condicional: #182 (EVP-204) y #183 (EVP-205) siguen abiertas. Cuando estén integradas en `develop`, actualizar esta rama y resolver los conflictos de `everprop-api.ts`, `EditPropertyModal.tsx` y `NewPropertyForm.tsx`, luego repetir los checks y la QA integrada antes del merge de #184.
