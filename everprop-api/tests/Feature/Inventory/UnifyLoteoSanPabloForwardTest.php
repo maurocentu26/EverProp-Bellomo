@@ -123,7 +123,7 @@ final class UnifyLoteoSanPabloForwardTest extends TestCase
 
         $interestId = $this->insertLeadInterest((int) $bellomo->id, $sp2, $prop2);
 
-        $script = (string) file_get_contents(base_path('database/schema/forward/2026-11-26.002_unify_loteo_san_pablo.sql'));
+        $script = (string) file_get_contents(base_path('database/schema/forward/2026-11-26.003_unify_loteo_san_pablo.sql'));
         DB::unprepared($script);
 
         $kept = DB::table('projects')->where('id', $sp1)->first();
@@ -160,7 +160,7 @@ final class UnifyLoteoSanPabloForwardTest extends TestCase
 
         $auditCount = DB::table('audit_logs')->where('tenant_id', $bellomo->id)->count();
         $this->assertSame(2, $auditCount);
-        $this->assertTrue(DB::table('schema_versions')->where('version', '2026-11-26.002')->exists());
+        $this->assertTrue(DB::table('schema_versions')->where('version', '2026-11-26.003')->exists());
 
         // Re-running the forward is a no-op and writes no duplicate audit rows.
         DB::unprepared($script);

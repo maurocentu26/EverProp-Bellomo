@@ -1,12 +1,32 @@
 -- EVP-214: data-only fix, no DDL on persistent tables.
 -- Unifies Loteo San Pablo 1 (legacy_id 70) and Loteo San Pablo 2 (legacy_id 73)
--- into a single canonical project "Loteo San Pablo" (slug "loteo-san-pablo")
--- for Bellomo tenants ('bellomo', 'bellomito-staging') only.
+-- into a single canonical project "Loteo San Pablo" (slug "loteo-san-pablo" when
+-- project_landing exists) for Bellomo tenants ('bellomo', 'bellomito-staging') only.
+-- Tables introduced in later develop forwards (project_landing, project_landing_assets,
+-- knowledge_documents, lead_interests) are guarded via information_schema.tables so
+-- this script applies cleanly on both staging and production.
 -- Every change is audited first. Re-runnable: subsequent runs match no duplicate
 -- rows and leave already-unified rows untouched.
 SET SESSION innodb_lock_wait_timeout = 5;
 SET SESSION lock_wait_timeout = 10;
 SET @evp214_now = UTC_TIMESTAMP(3);
+
+SET @evp214_has_landing = (
+    SELECT COUNT(*) FROM information_schema.tables
+     WHERE table_schema = DATABASE() AND table_name = 'project_landing'
+);
+SET @evp214_has_landing_assets = (
+    SELECT COUNT(*) FROM information_schema.tables
+     WHERE table_schema = DATABASE() AND table_name = 'project_landing_assets'
+);
+SET @evp214_has_knowledge = (
+    SELECT COUNT(*) FROM information_schema.tables
+     WHERE table_schema = DATABASE() AND table_name = 'knowledge_documents'
+);
+SET @evp214_has_lead_interests = (
+    SELECT COUNT(*) FROM information_schema.tables
+     WHERE table_schema = DATABASE() AND table_name = 'lead_interests'
+);
 
 DROP TEMPORARY TABLE IF EXISTS tmp_evp214_san_pablo;
 CREATE TEMPORARY TABLE tmp_evp214_san_pablo (
@@ -27,55 +47,39 @@ SELECT
   LEFT JOIN (
       SELECT p.tenant_id, p.id
         FROM projects p
-        LEFT JOIN project_landing pl
-          ON pl.tenant_id = p.tenant_id
-         AND pl.project_id = p.id
        WHERE p.deleted_at IS NULL
          AND (
              p.legacy_id = 70
-             OR pl.slug IN ('loteo-san-pablo', 'loteo-san-pablo-1')
              OR UPPER(TRIM(p.name)) IN ('LOTEO SAN PABLO', 'LOTEO SAN PABLO 1', 'SAN PABLO 1')
          )
          AND p.id = (
              SELECT p2.id
                FROM projects p2
-               LEFT JOIN project_landing pl2
-                 ON pl2.tenant_id = p2.tenant_id
-                AND pl2.project_id = p2.id
               WHERE p2.tenant_id = p.tenant_id
                 AND p2.deleted_at IS NULL
                 AND (
                     p2.legacy_id = 70
-                    OR pl2.slug IN ('loteo-san-pablo', 'loteo-san-pablo-1')
                     OR UPPER(TRIM(p2.name)) IN ('LOTEO SAN PABLO', 'LOTEO SAN PABLO 1', 'SAN PABLO 1')
                 )
-              ORDER BY (p2.legacy_id = 70) DESC, (pl2.slug = 'loteo-san-pablo') DESC, p2.id ASC
+              ORDER BY (p2.legacy_id = 70) DESC, p2.id ASC
               LIMIT 1
          )
   ) sp1 ON sp1.tenant_id = t.id
   LEFT JOIN (
       SELECT p.tenant_id, p.id
         FROM projects p
-        LEFT JOIN project_landing pl
-          ON pl.tenant_id = p.tenant_id
-         AND pl.project_id = p.id
        WHERE p.deleted_at IS NULL
          AND (
              p.legacy_id = 73
-             OR pl.slug = 'loteo-san-pablo-2'
              OR UPPER(TRIM(p.name)) IN ('LOTEO SAN PABLO 2', 'SAN PABLO 2')
          )
          AND p.id = (
              SELECT p2.id
                FROM projects p2
-               LEFT JOIN project_landing pl2
-                 ON pl2.tenant_id = p2.tenant_id
-                AND pl2.project_id = p2.id
               WHERE p2.tenant_id = p.tenant_id
                 AND p2.deleted_at IS NULL
                 AND (
                     p2.legacy_id = 73
-                    OR pl2.slug = 'loteo-san-pablo-2'
                     OR UPPER(TRIM(p2.name)) IN ('LOTEO SAN PABLO 2', 'SAN PABLO 2')
                 )
               ORDER BY (p2.legacy_id = 73) DESC, p2.id ASC
@@ -87,32 +91,25 @@ SELECT
 
 START TRANSACTION;
 
--- Audit surviving project only when something actually changes (name, landing slug or merged duplicate).
+-- Audit surviving project only when something actually changes (name or merged duplicate).
 INSERT INTO audit_logs (tenant_id, actor_type, action_code, entity_type, entity_id, before_json, after_json, metadata_json)
 SELECT m.tenant_id, 'SYSTEM', 'PROJECT_UNIFIED', 'PROJECT', k.id,
-       JSON_OBJECT('name', k.name, 'slug', pl.slug),
-       JSON_OBJECT('name', 'Loteo San Pablo', 'slug', IF(pl.id IS NOT NULL OR pld.id IS NOT NULL, 'loteo-san-pablo', NULL)),
-       JSON_OBJECT('forward', '2026-11-26.002', 'ticket', 'EVP-214', 'merged_project_id', m.drop_id)
+       JSON_OBJECT('name', k.name, 'total_units', k.total_units),
+       JSON_OBJECT('name', 'Loteo San Pablo'),
+       JSON_OBJECT('forward', '2026-11-26.003', 'ticket', 'EVP-214', 'merged_project_id', m.drop_id)
   FROM tmp_evp214_san_pablo m
   JOIN projects k
     ON k.tenant_id = m.tenant_id
    AND k.id = m.keep_id
-  LEFT JOIN project_landing pl
-    ON pl.tenant_id = m.tenant_id
-   AND pl.project_id = m.keep_id
-  LEFT JOIN project_landing pld
-    ON pld.tenant_id = m.tenant_id
-   AND pld.project_id = m.drop_id
  WHERE m.drop_id IS NOT NULL
-    OR k.name <> 'Loteo San Pablo'
-    OR (pl.id IS NOT NULL AND pl.slug <> 'loteo-san-pablo');
+    OR k.name <> 'Loteo San Pablo';
 
 -- Audit duplicate project being merged and soft-deleted.
 INSERT INTO audit_logs (tenant_id, actor_type, action_code, entity_type, entity_id, before_json, after_json, metadata_json)
 SELECT m.tenant_id, 'SYSTEM', 'PROJECT_MERGED_INTO_CANONICAL', 'PROJECT', d.id,
        JSON_OBJECT('name', d.name, 'legacy_id', d.legacy_id, 'deleted_at', d.deleted_at),
        JSON_OBJECT('deleted_at', @evp214_now),
-       JSON_OBJECT('forward', '2026-11-26.002', 'ticket', 'EVP-214', 'canonical_project_id', m.keep_id)
+       JSON_OBJECT('forward', '2026-11-26.003', 'ticket', 'EVP-214', 'canonical_project_id', m.keep_id)
   FROM tmp_evp214_san_pablo m
   JOIN projects d
     ON d.tenant_id = m.tenant_id
@@ -128,42 +125,44 @@ UPDATE properties pr
        pr.updated_at = @evp214_now
  WHERE m.drop_id IS NOT NULL;
 
--- 2. Reassign landing assets (deduplicating identical URLs already on canonical project).
-DELETE a
-  FROM project_landing_assets a
-  JOIN tmp_evp214_san_pablo m
-    ON m.tenant_id = a.tenant_id
-   AND m.drop_id = a.project_id
-  JOIN project_landing_assets k
-    ON k.tenant_id = m.tenant_id
-   AND k.project_id = m.keep_id
-   AND k.url = a.url
- WHERE m.drop_id IS NOT NULL;
+-- 2. Reassign landing assets (optional table; deduplicate identical URLs already on canonical project).
+SET @evp214_sql = IF(
+    @evp214_has_landing_assets > 0,
+    'DELETE a FROM project_landing_assets a JOIN tmp_evp214_san_pablo m ON m.tenant_id = a.tenant_id AND m.drop_id = a.project_id JOIN project_landing_assets k ON k.tenant_id = m.tenant_id AND k.project_id = m.keep_id AND k.url = a.url WHERE m.drop_id IS NOT NULL',
+    'SELECT 1'
+);
+PREPARE evp214_stmt FROM @evp214_sql;
+EXECUTE evp214_stmt;
+DEALLOCATE PREPARE evp214_stmt;
 
-UPDATE project_landing_assets a
-  JOIN tmp_evp214_san_pablo m
-    ON m.tenant_id = a.tenant_id
-   AND m.drop_id = a.project_id
-   SET a.project_id = m.keep_id
- WHERE m.drop_id IS NOT NULL;
+SET @evp214_sql = IF(
+    @evp214_has_landing_assets > 0,
+    'UPDATE project_landing_assets a JOIN tmp_evp214_san_pablo m ON m.tenant_id = a.tenant_id AND m.drop_id = a.project_id SET a.project_id = m.keep_id WHERE m.drop_id IS NOT NULL',
+    'SELECT 1'
+);
+PREPARE evp214_stmt FROM @evp214_sql;
+EXECUTE evp214_stmt;
+DEALLOCATE PREPARE evp214_stmt;
 
--- 3. Reassign knowledge documents.
-UPDATE knowledge_documents kd
-  JOIN tmp_evp214_san_pablo m
-    ON m.tenant_id = kd.tenant_id
-   AND m.drop_id = kd.project_id
-   SET kd.project_id = m.keep_id,
-       kd.updated_at = @evp214_now
- WHERE m.drop_id IS NOT NULL;
+-- 3. Reassign knowledge documents (optional table).
+SET @evp214_sql = IF(
+    @evp214_has_knowledge > 0,
+    'UPDATE knowledge_documents kd JOIN tmp_evp214_san_pablo m ON m.tenant_id = kd.tenant_id AND m.drop_id = kd.project_id SET kd.project_id = m.keep_id, kd.updated_at = @evp214_now WHERE m.drop_id IS NOT NULL',
+    'SELECT 1'
+);
+PREPARE evp214_stmt FROM @evp214_sql;
+EXECUTE evp214_stmt;
+DEALLOCATE PREPARE evp214_stmt;
 
--- 4. Reassign lead interests.
-UPDATE lead_interests li
-  JOIN tmp_evp214_san_pablo m
-    ON m.tenant_id = li.tenant_id
-   AND m.drop_id = li.project_id
-   SET li.project_id = m.keep_id,
-       li.updated_at = @evp214_now
- WHERE m.drop_id IS NOT NULL;
+-- 4. Reassign lead interests (optional table).
+SET @evp214_sql = IF(
+    @evp214_has_lead_interests > 0,
+    'UPDATE lead_interests li JOIN tmp_evp214_san_pablo m ON m.tenant_id = li.tenant_id AND m.drop_id = li.project_id SET li.project_id = m.keep_id, li.updated_at = @evp214_now WHERE m.drop_id IS NOT NULL',
+    'SELECT 1'
+);
+PREPARE evp214_stmt FROM @evp214_sql;
+EXECUTE evp214_stmt;
+DEALLOCATE PREPARE evp214_stmt;
 
 -- 5. Merge and reassign user inventory scopes without violating uq_user_inventory_scopes_scope.
 UPDATE user_inventory_scopes k
@@ -229,56 +228,33 @@ UPDATE project_intake_units piu
    SET piu.project_id = m.keep_id
  WHERE m.drop_id IS NOT NULL;
 
--- 7. Remove duplicate project_landing row (or move it if canonical had none) and normalize slug/name.
-DELETE d
-  FROM project_landing d
-  JOIN tmp_evp214_san_pablo m
-    ON m.tenant_id = d.tenant_id
-   AND m.drop_id = d.project_id
-  JOIN project_landing k
-    ON k.tenant_id = m.tenant_id
-   AND k.project_id = m.keep_id
- WHERE m.drop_id IS NOT NULL;
+-- 7. Remove duplicate project_landing row (or move it if canonical had none) and normalize slug/name (optional table).
+SET @evp214_sql = IF(
+    @evp214_has_landing > 0,
+    'DELETE d FROM project_landing d JOIN tmp_evp214_san_pablo m ON m.tenant_id = d.tenant_id AND m.drop_id = d.project_id JOIN project_landing k ON k.tenant_id = m.tenant_id AND k.project_id = m.keep_id WHERE m.drop_id IS NOT NULL',
+    'SELECT 1'
+);
+PREPARE evp214_stmt FROM @evp214_sql;
+EXECUTE evp214_stmt;
+DEALLOCATE PREPARE evp214_stmt;
 
-UPDATE project_landing pl
-  JOIN tmp_evp214_san_pablo m
-    ON m.tenant_id = pl.tenant_id
-   AND m.drop_id = pl.project_id
-   SET pl.project_id = m.keep_id,
-       pl.updated_at = @evp214_now
- WHERE m.drop_id IS NOT NULL;
+SET @evp214_sql = IF(
+    @evp214_has_landing > 0,
+    'UPDATE project_landing pl JOIN tmp_evp214_san_pablo m ON m.tenant_id = pl.tenant_id AND m.drop_id = pl.project_id SET pl.project_id = m.keep_id, pl.updated_at = @evp214_now WHERE m.drop_id IS NOT NULL',
+    'SELECT 1'
+);
+PREPARE evp214_stmt FROM @evp214_sql;
+EXECUTE evp214_stmt;
+DEALLOCATE PREPARE evp214_stmt;
 
-UPDATE project_landing pl
-  JOIN tmp_evp214_san_pablo m
-    ON m.tenant_id = pl.tenant_id
-   AND m.keep_id = pl.project_id
-   SET pl.slug = 'loteo-san-pablo',
-       pl.content = CASE
-           WHEN JSON_TYPE(pl.content) = 'OBJECT'
-            AND UPPER(TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(pl.content, '$.name')), '')))
-                IN ('SAN PABLO 1', 'SAN PABLO 2', 'LOTEO SAN PABLO 1', 'LOTEO SAN PABLO 2')
-           THEN JSON_SET(pl.content, '$.name', 'Loteo San Pablo')
-           ELSE pl.content
-       END,
-       pl.updated_at = @evp214_now
- WHERE (
-           pl.slug <> 'loteo-san-pablo'
-           OR (
-               JSON_TYPE(pl.content) = 'OBJECT'
-               AND UPPER(TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(pl.content, '$.name')), '')))
-                   IN ('SAN PABLO 1', 'SAN PABLO 2', 'LOTEO SAN PABLO 1', 'LOTEO SAN PABLO 2')
-           )
-       )
-   AND NOT EXISTS (
-       SELECT 1
-         FROM (
-             SELECT id, tenant_id, project_id
-               FROM project_landing
-              WHERE slug = 'loteo-san-pablo'
-         ) AS conflict
-        WHERE conflict.tenant_id = pl.tenant_id
-          AND conflict.project_id <> pl.project_id
-   );
+SET @evp214_sql = IF(
+    @evp214_has_landing > 0,
+    'UPDATE project_landing pl JOIN tmp_evp214_san_pablo m ON m.tenant_id = pl.tenant_id AND m.keep_id = pl.project_id SET pl.slug = ''loteo-san-pablo'', pl.content = CASE WHEN JSON_TYPE(pl.content) = ''OBJECT'' AND UPPER(TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(pl.content, ''$.name'')), ''''))) IN (''SAN PABLO 1'', ''SAN PABLO 2'', ''LOTEO SAN PABLO 1'', ''LOTEO SAN PABLO 2'') THEN JSON_SET(pl.content, ''$.name'', ''Loteo San Pablo'') ELSE pl.content END, pl.updated_at = @evp214_now WHERE (pl.slug <> ''loteo-san-pablo'' OR (JSON_TYPE(pl.content) = ''OBJECT'' AND UPPER(TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(pl.content, ''$.name'')), ''''))) IN (''SAN PABLO 1'', ''SAN PABLO 2'', ''LOTEO SAN PABLO 1'', ''LOTEO SAN PABLO 2''))) AND NOT EXISTS (SELECT 1 FROM (SELECT id, tenant_id, project_id FROM project_landing WHERE slug = ''loteo-san-pablo'') AS conflict WHERE conflict.tenant_id = pl.tenant_id AND conflict.project_id <> pl.project_id)',
+    'SELECT 1'
+);
+PREPARE evp214_stmt FROM @evp214_sql;
+EXECUTE evp214_stmt;
+DEALLOCATE PREPARE evp214_stmt;
 
 -- 8. Rename canonical project, refresh total_units and soft-delete duplicate project.
 UPDATE projects k
@@ -314,4 +290,4 @@ COMMIT;
 DROP TEMPORARY TABLE IF EXISTS tmp_evp214_san_pablo;
 
 INSERT IGNORE INTO schema_versions (version, description)
-VALUES ('2026-11-26.002', 'Unify Loteo San Pablo 1 and Loteo San Pablo 2 into canonical Loteo San Pablo');
+VALUES ('2026-11-26.003', 'Unify Loteo San Pablo 1 and Loteo San Pablo 2 into canonical Loteo San Pablo');
