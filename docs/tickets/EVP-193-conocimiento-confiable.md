@@ -3,7 +3,7 @@
 
 **ABIERTO / NO APTO PARA RELEASE.** Regresión local: 663 aprobadas, 2 omitidas, 2344 aserciones. Gemini real completo: 137 PASS / 67 FAIL (49 críticos) / 29 DETERMINISTIC; 362 HTTP 200. 91 PASS críticos requieren revisión humana. Modelo gemini-3.5-flash-lite; corpus original de 233 casos, sin cambiar umbrales. Se evaluaron juntos develop 71a8528, incremento EVP-193 e191e0e y EVP-L200 146c485. No se modificó producción ni se cerraron tickets.
 
-[Detalle integrado, evidencia, límites y los 67 checks fallidos](https://github.com/maurocentu26/EverProp-Bellomo/blob/ticket/EVP-L200-derivacion-persistida/docs/tickets/EVP-L200-derivacion-persistida.md). Reporte local completo: report-20261125-211911.json, SHA256 A9342E0908A04E38508135092AC09B472D96E52BD201D94DFC5A740FF6FF8F53. La unidad 12 se consultó correctamente en RIO-003; persisten fallos reales y conflictos de evaluación descritos en el informe. No hay evidencia suficiente para certificar ausencia de errores.
+[Detalle integrado, evidencia, límites y los 67 checks fallidos](https://github.com/maurocentu26/EverProp-Bellomo/blob/29da632ff6cbfcc924d334479b800bb6a66b2466/docs/tickets/EVP-L200-derivacion-persistida.md). Reporte local completo: report-20261125-211911.json, SHA256 A9342E0908A04E38508135092AC09B472D96E52BD201D94DFC5A740FF6FF8F53. La unidad 12 se consultó correctamente en RIO-003; persisten fallos reales y conflictos de evaluación descritos en el informe. No hay evidencia suficiente para certificar ausencia de errores.
 
 Las secciones siguientes son historia de sus versiones y corridas; este resultado prevalece.
 ## Continuación de correcciones — 25/11/2026
