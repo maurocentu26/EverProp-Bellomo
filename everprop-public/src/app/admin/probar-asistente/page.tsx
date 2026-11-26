@@ -510,7 +510,8 @@ export default function ProbarAsistentePage() {
       const res = await loadAssistantTestSession(id, signal);
       if (signal?.aborted) return;
       setDetail(res.data);
-      setClosingNote(res.data.closing_note ?? "");
+      // EVP-215: the 3 s poll is silent; overwriting here erased what the user was typing.
+      if (!silent) setClosingNote(res.data.closing_note ?? "");
     } catch (reason) {
       if (!signal?.aborted && !silent) {
         toast.error(reason instanceof Error ? reason.message : "No se pudo cargar la sesión.");
