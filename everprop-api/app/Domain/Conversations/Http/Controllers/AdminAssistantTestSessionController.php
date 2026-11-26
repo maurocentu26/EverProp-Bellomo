@@ -6,18 +6,21 @@ use App\Domain\Conversations\Data\InboundMessage;
 use App\Domain\Conversations\Services\InboundMessageService;
 use App\Domain\CRM\Services\ContactIdentityResolver;
 use App\Domain\Identity\Enums\Capability;
+use App\Domain\Identity\Enums\RoleCode;
 use App\Domain\Identity\Services\AuthorizationService;
 use App\Domain\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Admin-only staging QA sessions for testing the assistant (EVP-207):
+ * Staging QA sessions for testing the assistant (EVP-207), for tenant admins and the client's
+ * ASSISTANT_TESTER account, which only sees its own sessions (EVP-212):
  * creates real WEB_CHAT conversations, lets admins rate each reply (GOOD/BAD + note),
  * finish sessions with a closing note, and export the full annotated trace.
  */
@@ -25,10 +28,10 @@ final class AdminAssistantTestSessionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $this->admin($request);
+        $user = $this->admin($request);
         $tenantId = $this->tenantId();
 
-        $rows = DB::table('assistant_test_sessions as s')
+        $rows = $this->owned(DB::table('assistant_test_sessions as s'), $user)
             ->join('conversations as c', fn ($j) => $j->on('c.id', '=', 's.conversation_id')->on('c.tenant_id', '=', 's.tenant_id'))
             ->leftJoin('users as u', fn ($j) => $j->on('u.id', '=', 's.created_by_user_id')->on('u.tenant_id', '=', 's.tenant_id'))
             ->where('s.tenant_id', $tenantId)
@@ -161,9 +164,9 @@ final class AdminAssistantTestSessionController extends Controller
 
     public function show(Request $request, string $session): JsonResponse
     {
-        $this->admin($request);
+        $user = $this->admin($request);
         $tenantId = $this->tenantId();
-        $row = $this->findSession($tenantId, $session);
+        $row = $this->findSession($tenantId, $session, $user);
 
         $reviews = DB::table('assistant_test_message_reviews as r')
             ->leftJoin('users as u', fn ($j) => $j->on('u.id', '=', 'r.reviewed_by_user_id')->on('u.tenant_id', '=', 'r.tenant_id'))
@@ -172,19 +175,27 @@ final class AdminAssistantTestSessionController extends Controller
             ->get(['r.message_sequence', 'r.rating', 'r.note', 'r.updated_at', 'u.display_name as reviewed_by_name'])
             ->keyBy('message_sequence');
 
+        // EVP-212: the assistant's handoff notice is queued with payload handoff_notice (ConversationControl::requestHuman).
+        $handoffMessageIds = DB::table('outbound_jobs')
+            ->where('tenant_id', $tenantId)
+            ->where('conversation_id', $row->conversation_id)
+            ->whereRaw("JSON_EXTRACT(payload_json, '$.handoff_notice') = true")
+            ->pluck('message_id')->map(fn ($id) => (int) $id)->flip();
+
         $messages = DB::table('messages')
             ->where('tenant_id', $tenantId)
             ->where('conversation_id', $row->conversation_id)
             ->where(fn ($q) => $q->where('direction', 'INBOUND')
                 ->orWhere(fn ($out) => $out->where('direction', 'OUTBOUND')->whereIn('delivery_status', ['SENT', 'DELIVERED', 'READ'])))
             ->orderBy('sequence')
-            ->get(['sequence', 'direction', 'sender_type', 'text_body', 'occurred_at'])
-            ->map(function (object $m) use ($reviews): array {
+            ->get(['id', 'sequence', 'direction', 'sender_type', 'text_body', 'occurred_at'])
+            ->map(function (object $m) use ($reviews, $handoffMessageIds): array {
                 $review = $reviews->get($m->sequence);
 
                 return [
                     'sequence' => (int) $m->sequence,
                     'from' => $m->direction === 'INBOUND' ? 'visitor' : ($m->sender_type === 'BOT' ? 'assistant' : 'advisor'),
+                    'handoff' => $handoffMessageIds->has((int) $m->id),
                     'text' => $m->text_body !== null ? (string) $m->text_body : null,
                     'at' => (string) $m->occurred_at,
                     'review' => $review !== null ? [
@@ -214,9 +225,9 @@ final class AdminAssistantTestSessionController extends Controller
 
     public function sendMessage(Request $request, string $session, InboundMessageService $inbound): JsonResponse
     {
-        $this->admin($request);
+        $user = $this->admin($request);
         $tenantId = $this->tenantId();
-        $row = $this->findSession($tenantId, $session);
+        $row = $this->findSession($tenantId, $session, $user);
         if ($row->status === 'FINISHED') {
             return response()->json(['message' => 'Esta sesión ya fue finalizada. Creá una nueva sesión para seguir probando.'], 409);
         }
@@ -258,7 +269,7 @@ final class AdminAssistantTestSessionController extends Controller
     {
         $user = $this->admin($request);
         $tenantId = $this->tenantId();
-        $row = $this->findSession($tenantId, $session);
+        $row = $this->findSession($tenantId, $session, $user);
 
         $exists = DB::table('messages')
             ->where('tenant_id', $tenantId)
@@ -300,9 +311,9 @@ final class AdminAssistantTestSessionController extends Controller
 
     public function finish(Request $request, string $session): JsonResponse
     {
-        $this->admin($request);
+        $user = $this->admin($request);
         $tenantId = $this->tenantId();
-        $row = $this->findSession($tenantId, $session);
+        $row = $this->findSession($tenantId, $session, $user);
 
         $data = $request->validate([
             'closing_note' => ['nullable', 'string', 'max:5000'],
@@ -332,9 +343,9 @@ final class AdminAssistantTestSessionController extends Controller
         ])->header('Cache-Control', 'private, no-store');
     }
 
-    private function findSession(int $tenantId, string $publicId): object
+    private function findSession(int $tenantId, string $publicId, User $user): object
     {
-        $row = DB::table('assistant_test_sessions as s')
+        $row = $this->owned(DB::table('assistant_test_sessions as s'), $user)
             ->join('conversations as c', fn ($j) => $j->on('c.id', '=', 's.conversation_id')->on('c.tenant_id', '=', 's.tenant_id'))
             ->leftJoin('users as u', fn ($j) => $j->on('u.id', '=', 's.created_by_user_id')->on('u.tenant_id', '=', 's.tenant_id'))
             ->where('s.tenant_id', $tenantId)
@@ -368,13 +379,24 @@ final class AdminAssistantTestSessionController extends Controller
         return app(TenantContext::class)->id();
     }
 
-    /** Existing RBAC (D05): tenant admin of the resolved tenant. */
+    /** Existing RBAC (D05): tenant admin of the resolved tenant, or the client's QA account (EVP-212). */
     private function admin(Request $request): User
     {
         /** @var User $user */
         $user = $request->user();
-        abort_unless(app(AuthorizationService::class)->allows($user, Capability::MANAGE_INTEGRATIONS), 403);
+        abort_unless($this->isTester($user) || app(AuthorizationService::class)->allows($user, Capability::MANAGE_INTEGRATIONS), 403);
 
         return $user;
+    }
+
+    private function isTester(User $user): bool
+    {
+        return $user->isActive() && (int) $user->tenant_id === $this->tenantId() && $user->role() === RoleCode::ASSISTANT_TESTER;
+    }
+
+    /** A tester only sees the sessions it created; admins see every session of the tenant. */
+    private function owned(Builder $query, User $user): Builder
+    {
+        return $query->when($user->role() === RoleCode::ASSISTANT_TESTER, fn ($q) => $q->where('s.created_by_user_id', $user->id));
     }
 }

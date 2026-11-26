@@ -43,7 +43,7 @@ export function AdminNavigationMenu({
   );
   // EVP-125: unanswered social DMs that are not leads yet, refreshed while the panel is visible.
   const [possibleLeads, setPossibleLeads] = useState(0);
-  const countsLeads = Boolean(user) && user?.role !== "ROTATOR";
+  const countsLeads = Boolean(user) && user?.role !== "ROTATOR" && user?.role !== "TESTER";
   useEffect(() => {
     if (!countsLeads) return;
     const refresh = () => { if (!document.hidden) possibleLeadsCount().then(setPossibleLeads).catch(() => undefined); };
@@ -53,6 +53,7 @@ export function AdminNavigationMenu({
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
   }, [countsLeads]);
 
+  if (user?.role === "TESTER") return <nav aria-label="Navegación de prueba" className="flex flex-col gap-1 p-3"><Link href="/admin/probar-asistente" onClick={onNavigate}>Probar asistente</Link><Link href="/admin/conversaciones" onClick={onNavigate}>Conversaciones</Link></nav>;
   if (user?.role === "ROTATOR") return <nav aria-label="Navegación del rotador" className="p-3"><Link href="/admin/leads" onClick={onNavigate}>Asignar leads</Link></nav>;
 
   return (

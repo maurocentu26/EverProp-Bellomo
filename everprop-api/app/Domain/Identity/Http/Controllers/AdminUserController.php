@@ -15,6 +15,9 @@ use Illuminate\Validation\Rules\Password;
 
 final class AdminUserController
 {
+    /** Roles a tenant admin may grant; ASSISTANT_TESTER is the client's QA account (EVP-212), never allowed to see prices. */
+    private const ROLES = ['SALES_ADVISOR', 'ROTATOR', 'TENANT_ADMIN', 'ASSISTANT_TESTER'];
+
     public function index(Request $request, TenantContext $tenant, UserPolicy $policy): JsonResponse
     {
         abort_unless($policy->viewAny($request->user()), 403);
@@ -31,7 +34,7 @@ final class AdminUserController
             'firstName' => 'required|string|max:79', 'lastName' => 'required|string|max:79',
             'email' => ['required', 'email', 'max:320', Rule::unique('users')->where('tenant_id', $tenant->id())],
             'phone' => ['required', 'regex:/^\+[1-9][0-9]{7,14}$/'],
-            'role' => ['required', Rule::in(['SALES_ADVISOR', 'ROTATOR', 'TENANT_ADMIN'])],
+            'role' => ['required', Rule::in(self::ROLES)],
         ]);
         $token = Str::random(64);
         $user = DB::transaction(function () use ($data, $tenant, $token) {
@@ -44,7 +47,7 @@ final class AdminUserController
             $user->save();
             DB::table('user_inventory_settings')->insert([
                 'tenant_id' => $tenant->id(), 'user_id' => $user->id, 'visibility_mode' => 'ALL',
-                'can_view_prices' => true, 'can_manage_inventory' => $data['role'] === 'TENANT_ADMIN',
+                'can_view_prices' => $data['role'] !== 'ASSISTANT_TESTER', 'can_manage_inventory' => $data['role'] === 'TENANT_ADMIN',
                 'can_manage_prices' => $data['role'] === 'TENANT_ADMIN',
             ]);
             Cache::put('user-activation:'.hash('sha256', $token), ['tenant' => $tenant->id(), 'user' => $user->id], now()->addHours(24));
@@ -61,7 +64,7 @@ final class AdminUserController
             $target = User::query()->where('tenant_id', $tenant->id())->where('public_id', $user)->lockForUpdate()->firstOrFail();
             abort_unless($policy->changeRole($request->user(), $target), 403);
             $data = $request->validate([
-                'role' => ['required', Rule::in(['SALES_ADVISOR', 'ROTATOR', 'TENANT_ADMIN'])],
+                'role' => ['required', Rule::in(self::ROLES)],
                 'tenant_id' => 'prohibited',
             ]);
             if ($target->role()->value !== $data['role']) {
@@ -69,7 +72,7 @@ final class AdminUserController
                 $target->save();
                 DB::table('user_inventory_settings')->updateOrInsert(
                     ['tenant_id' => $tenant->id(), 'user_id' => $target->id],
-                    ['visibility_mode' => 'ALL', 'can_view_prices' => true,
+                    ['visibility_mode' => 'ALL', 'can_view_prices' => $data['role'] !== 'ASSISTANT_TESTER',
                         'can_manage_inventory' => $data['role'] === 'TENANT_ADMIN',
                         'can_manage_prices' => $data['role'] === 'TENANT_ADMIN'],
                 );

@@ -20,6 +20,9 @@ El baseline no contiene tablas `roles` o `permissions`. La fuente canónica es `
 | `SALES_ADVISOR` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `BOT_OPERATOR` | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `READ_ONLY` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `ASSISTANT_TESTER` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+`ASSISTANT_TESTER` (EVP-212) es la cuenta de QA del cliente en staging. No tiene capacidades genéricas: `RotatorRoleBoundary` le permite solo `/api/v1/admin/assistant/test-sessions*` (únicamente sus propias sesiones; las ajenas dan 404) y la lectura de las conversaciones de esas sesiones. Todo lo demás da 403. Se crea con `can_view_prices = false`. Lee sus conversaciones completas, incluidas las notas internas y el resumen de derivación. Es para la prueba del cliente en staging; el código no lo limita por entorno, así que en producción no se debe asignar.
 
 Todas las celdas permitidas requieren además usuario activo, coincidencia de tenant y Policy del recurso.
 
@@ -32,6 +35,7 @@ Decisión del 2026-11-16 (EVP-146): `READ_ONLY` es un **supervisor de todo el te
 | `TENANT_ADMIN`, `SALES_MANAGER` | Todas las del tenant | Sí |
 | `SALES_ADVISOR` | Las asignadas a él y las sin asignar que esperan a una persona | Sí, sobre las que controla |
 | `READ_ONLY` | Todas las del tenant, mensajes incluidos | No (403) |
+| `ASSISTANT_TESTER` | Solo las de sus sesiones de prueba (las demás, 404) | No (403) |
 | `ROTATOR`, `BOT_OPERATOR` | No (403) | No |
 
 - Que `READ_ONLY` lea una conversación no la marca como leída. El contador de no leídos es del asignado.

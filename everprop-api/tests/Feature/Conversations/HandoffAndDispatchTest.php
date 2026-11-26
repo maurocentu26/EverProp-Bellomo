@@ -321,6 +321,9 @@ final class HandoffAndDispatchTest extends TestCase
         foreach ([RoleCode::ROTATOR, RoleCode::BOT_OPERATOR] as $role) {
             $as($role)->getJson('/api/v1/admin/conversations')->assertForbidden();
         }
+        // EVP-212: the client's QA account only sees conversations of its own test sessions; this one is not.
+        $as(RoleCode::ASSISTANT_TESTER)->getJson('/api/v1/admin/conversations')->assertOk()->assertJsonCount(0, 'data');
+        $as(RoleCode::ASSISTANT_TESTER)->getJson("/api/v1/admin/conversations/$publicId/messages")->assertNotFound();
 
         // Read only: every write is refused and nothing changes, not even the unread badge.
         $readOnly = $this->user($tenant, RoleCode::READ_ONLY);

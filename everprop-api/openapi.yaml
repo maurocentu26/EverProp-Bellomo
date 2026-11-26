@@ -2930,7 +2930,8 @@
                                         "enum": [
                                             "SALES_ADVISOR",
                                             "ROTATOR",
-                                            "TENANT_ADMIN"
+                                            "TENANT_ADMIN",
+                                            "ASSISTANT_TESTER"
                                         ]
                                     }
                                 }
@@ -3744,7 +3745,8 @@
                             "SALES_ADVISOR",
                             "BOT_OPERATOR",
                             "READ_ONLY",
-                            "ROTATOR"
+                            "ROTATOR",
+                            "ASSISTANT_TESTER"
                         ]
                     },
                     "status": {

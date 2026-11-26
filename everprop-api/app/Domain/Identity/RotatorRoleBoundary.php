@@ -11,6 +11,17 @@ final class RotatorRoleBoundary
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->user()?->role() === RoleCode::ASSISTANT_TESTER) {
+            // EVP-212: the client's QA account only reaches its test sessions and reads the conversations they created.
+            $allowed = $request->is('api/v1/admin/assistant/test-sessions', 'api/v1/admin/assistant/test-sessions/*')
+                || ($request->isMethod('GET') && $request->is(
+                    'api/v1/admin/conversations',
+                    'api/v1/admin/conversations/*/messages',
+                    'api/v1/admin/conversations/*/media/*'
+                ));
+            abort_unless($allowed, 403);
+        }
+
         if ($request->user()?->role() === RoleCode::ROTATOR) {
             // ponytail: acceso comercial provisorio para rol rotador por decisión de cliente (EVP-21). Revocar al migrar al rol comercial definitivo.
             $isLeadAction = $request->is(

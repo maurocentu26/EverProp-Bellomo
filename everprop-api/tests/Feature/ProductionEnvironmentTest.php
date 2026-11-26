@@ -73,6 +73,7 @@ final class ProductionEnvironmentTest extends TestCase
             ->expectsOutputToContain('OK Schema: lead interests')
             ->expectsOutputToContain('OK Schema: residential property details')
             ->expectsOutputToContain('OK Schema: assistant test sessions')
+            ->expectsOutputToContain('OK Schema: assistant tester role')
             ->expectsOutputToContain('OK Schema: Loteo San Pablo unified')
             ->assertSuccessful();
         DB::beginTransaction();
@@ -80,6 +81,14 @@ final class ProductionEnvironmentTest extends TestCase
             DB::table('schema_versions')->where('version', '2026-11-26.003')->delete();
             $this->artisan('everprop:production-check --connections')
                 ->expectsOutputToContain('FAIL Schema: Loteo San Pablo unified')->assertFailed();
+        } finally {
+            DB::rollBack();
+        }
+        DB::beginTransaction();
+        try {
+            DB::table('schema_versions')->where('version', '2026-11-26.002')->delete();
+            $this->artisan('everprop:production-check --connections')
+                ->expectsOutputToContain('FAIL Schema: assistant tester role')->assertFailed();
         } finally {
             DB::rollBack();
         }

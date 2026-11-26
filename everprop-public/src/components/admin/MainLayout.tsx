@@ -46,6 +46,13 @@ export default function MainLayout({ children }: Props) {
         if (currentUser?.role === "ROTATOR" && !rotatorRouteAllowed) router.replace("/admin/leads");
     }, [currentUser, rotatorRouteAllowed, router]);
 
+    // EVP-212: the client's QA account only has the test page and its own conversations.
+    const testerRouteBlocked = currentUser?.role === "TESTER" && !conversationsWorkspace;
+
+    useEffect(() => {
+        if (testerRouteBlocked) router.replace("/admin/probar-asistente");
+    }, [testerRouteBlocked, router]);
+
     useEffect(() => {
         if (!currentUserId) return;
 
@@ -131,7 +138,7 @@ export default function MainLayout({ children }: Props) {
                         <main id="admin-content" tabIndex={-1} data-admin-scroll-container="true" className={`min-h-0 flex-1 overflow-x-hidden bg-background ${conversationsWorkspace ? "overflow-hidden" : "overflow-y-auto p-4 sm:p-6 lg:p-8"}`}>
                             <div className={conversationsWorkspace ? "flex h-full min-h-0 w-full flex-col" : "admin-page-width mx-auto w-full max-w-[100rem] space-y-6"}>
                                 {currentUser.role === "ADVISOR" && !["/admin", "/admin/leads", "/admin/conversaciones"].includes(pathname) && <Link href={pathname.startsWith("/admin/leads/") ? "/admin/leads" : "/admin"} className="advisor-back">‹ Atrás</Link>}
-                                {currentUser.role === "ROTATOR" && !rotatorRouteAllowed ? <p>Abriendo asignación de leads…</p> : children}
+                                {testerRouteBlocked ? <p role="status">Abriendo pruebas del asistente…</p> : currentUser.role === "ROTATOR" && !rotatorRouteAllowed ? <p>Abriendo asignación de leads…</p> : children}
                             </div>
                         </main>
                     </div>

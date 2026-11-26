@@ -189,7 +189,10 @@ const isTouch = () => window.matchMedia("(pointer: coarse)").matches;
 export function ConversationInbox() {
   const { user } = useCurrentSession();
   const router = useRouter();
-  const readOnly = user?.apiRole === "READ_ONLY";
+  // EVP-212: the client's QA account reads only its test conversations and returns to its test page, not the panel.
+  const tester = user?.apiRole === "ASSISTANT_TESTER";
+  const readOnly = user?.apiRole === "READ_ONLY" || tester;
+  const panelHref = tester ? "/admin/probar-asistente" : "/admin";
   const isAdmin = user?.apiRole === "TENANT_ADMIN";
   const [filter, setFilter] = useState<ConversationFilter>("all");
   const [tab, setTab] = useState<ConversationTab>("human");
@@ -341,7 +344,7 @@ export function ConversationInbox() {
   useVisiblePolling(useCallback(() => void refreshList(), [refreshList]), 8000);
   // EVP-125: the chip shows how many possible leads wait, whatever filter is open.
   const [leadCount, setLeadCount] = useState<number | null>(null);
-  useVisiblePolling(useCallback(() => { possibleLeadsCount().then(setLeadCount).catch(() => undefined); }, []), 8000);
+  useVisiblePolling(useCallback(() => { if (!tester) possibleLeadsCount().then(setLeadCount).catch(() => undefined); }, [tester]), 8000);
   useVisiblePolling(useCallback(() => void refreshThread(), [refreshThread]), 3000);
 
   // Follow new messages only when already at the bottom; otherwise offer a jump instead of moving the reader.
@@ -593,7 +596,7 @@ export function ConversationInbox() {
   );
 
   const clientPanel = selected ? <>
-    <VisitRequestsBoard key={selected} conversationId={selected} channelLabel={current ? (CHANNEL_LABELS[current.channel] ?? current.channel) : "Sin informar"} />
+    {!tester && <VisitRequestsBoard key={selected} conversationId={selected} channelLabel={current ? (CHANNEL_LABELS[current.channel] ?? current.channel) : "Sin informar"} />}
     {!readOnly && <button type="button" disabled={busy !== null} className="conversation-secondary w-full" onClick={() => void run("lead", async () => {
       const { data } = await openConversationLead(selected);
       router.push(`/admin/leads/${data.lead_id}`);
@@ -605,7 +608,7 @@ export function ConversationInbox() {
     <section className={`wa-inbox conversation-workspace-inbox ${selected ? "has-selection" : ""}`}>
       {/* Desktop: the module owns the screen; this rail is the way out and the reading preferences. */}
       <nav className="conversation-rail" aria-label="Panel de EverProp">
-        <Link href="/admin" className="conversation-rail-item"><ArrowLeft className="h-5 w-5" aria-hidden /><span>Panel</span></Link>
+        <Link href={panelHref} className="conversation-rail-item"><ArrowLeft className="h-5 w-5" aria-hidden /><span>{tester ? "Pruebas" : "Panel"}</span></Link>
         <span className="conversation-rail-item is-current" aria-current="page">
           <MessageSquare className="h-5 w-5" aria-hidden /><span>Chats</span>
           {pendingForYou > 0 && <span className="conversation-rail-badge"><span className="sr-only">Para vos sin leer: </span>{pendingForYou}</span>}
@@ -618,7 +621,7 @@ export function ConversationInbox() {
       <div className={`conversation-columns ${docked && showClient && selected ? "has-client" : ""}`}>
         <aside className={`${selected ? "hidden md:flex" : "flex"} conversation-list min-w-0 flex-col`} aria-label="Listado de conversaciones">
           <header className="conversation-workspace-heading">
-            <Link href="/admin" className="conversation-icon-button md:hidden" aria-label="Volver al panel"><ArrowLeft className="h-5 w-5" aria-hidden /></Link>
+            <Link href={panelHref} className="conversation-icon-button md:hidden" aria-label={tester ? "Volver a las pruebas" : "Volver al panel"}><ArrowLeft className="h-5 w-5" aria-hidden /></Link>
             <h1>Conversaciones</h1>
             <span className="md:hidden"><PanelTextSizeControl /></span>
             <button type="button" disabled={refreshing} onClick={() => void refreshNow()} aria-describedby="inbox-refresh-status" aria-label="Actualizar ahora" title="Actualizar ahora" className="conversation-icon-button">
