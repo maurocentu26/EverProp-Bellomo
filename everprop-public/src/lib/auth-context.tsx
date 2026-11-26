@@ -31,7 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           const parsed = JSON.parse(storedDemo) as UserProfile;
-          if (parsed.source === "demo" && active) setCurrentUser(parsed);
+          const demoUser = parsed.source === "demo" ? MOCK_USERS.find(candidate => candidate.id === parsed.id) : null;
+          if (demoUser && active) setCurrentUser(demoUser);
         } catch {
           localStorage.removeItem(DEMO_STORAGE_KEY);
         }

@@ -41,9 +41,9 @@ export default function ProjectDetailView() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Property | null>(null);
   const [busyUnitId, setBusyUnitId] = useState<string | null>(null);
-  const canEdit = !isAdvisor && Boolean(user?.permissions?.includes("update") || user?.permissions?.includes("full_access") || user?.permissions?.includes("manage_inventory"));
-  const canCreate = !isAdvisor && Boolean(user?.permissions?.includes("create") || user?.permissions?.includes("full_access") || user?.permissions?.includes("manage_inventory"));
-  const canDelete = canEdit && Boolean(user?.permissions?.includes("delete") || user?.permissions?.includes("full_access"));
+  const canEdit = !isAdvisor && Boolean(user?.permissions?.includes("update"));
+  const canCreate = !isAdvisor && Boolean(user?.permissions?.includes("create"));
+  const canDelete = canEdit && Boolean(user?.permissions?.includes("delete"));
 
   async function changeUnitStatus(unit: Property, status: "available" | "reserved" | "sold" | "not_marketed") {
     if (!canEdit || busyUnitId || unit.status === status) return;

@@ -38,7 +38,7 @@ const typeFilters = [
 export default function AllPropertiesPage() {
   const { invalidateSession } = useAuth();
   const { isAdvisor, user } = useCurrentSession();
-  const canCreate = !isAdvisor && Boolean(user?.permissions?.includes("create") || user?.permissions?.includes("full_access") || user?.permissions?.includes("manage_inventory"));
+  const canCreate = !isAdvisor && Boolean(user?.permissions?.includes("create"));
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [dataState, setDataState] = useState<DataState>({ status: "loading" });

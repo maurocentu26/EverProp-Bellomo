@@ -34,8 +34,8 @@ type Props = {
 export default function PropertyDetailView({ propertyId }: Props) {
   const router = useRouter();
   const { isEngineer, isAdvisor, user } = useCurrentSession();
-  const canEditInventory = !isAdvisor && !isEngineer && Boolean(user?.permissions?.includes("update") || user?.permissions?.includes("full_access") || user?.permissions?.includes("manage_inventory"));
-  const canDeleteInventory = canEditInventory && Boolean(user?.permissions?.includes("delete") || user?.permissions?.includes("full_access"));
+  const canEditInventory = !isAdvisor && !isEngineer && Boolean(user?.permissions?.includes("update"));
+  const canDeleteInventory = canEditInventory && Boolean(user?.permissions?.includes("delete"));
   const visitSectionRef = useRef<HTMLDivElement>(null);
   const [projectName, setProjectName] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -345,8 +345,16 @@ export default function PropertyDetailView({ propertyId }: Props) {
                           const persisted = await updateEverpropPropertyStatus(property.id, st, property.version);
                           setProperty(persisted);
                           toast.success(`Estado actualizado a ${propertyStatusLabel(st)}`);
-                        } catch (e: any) {
-                          toast.error("No se pudo actualizar el estado: " + e.message);
+                        } catch (error) {
+                          if (error instanceof EverpropApiError && error.status === 409) {
+                            try {
+                              const fresh = await loadEverpropPropertyById(property.id);
+                              setProperty({ ...fresh, visits: property.visits });
+                              toast.error("La unidad cambió en otra sesión. Se recargó su estado; revisalo antes de volver a guardar.");
+                            } catch {
+                              toast.error("La unidad cambió en otra sesión. Recargá la ficha antes de volver a guardar.");
+                            }
+                          } else toast.error(error instanceof EverpropApiError && error.status === 403 ? "No tenés permiso para cambiar esta unidad." : error instanceof Error ? error.message : "No se pudo actualizar el estado.");
                         } finally { setSavingStatus(false); }
                       } else {
                         const nextProps = allProperties.map(p => p.id === property.id ? updated : p);

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 export default function NewPropertyPage() {
   const router = useRouter();
   const { isAdvisor, isReady, user } = useCurrentSession();
-  const cannotCreate = isAdvisor || !Boolean(user?.permissions?.includes("create") || user?.permissions?.includes("full_access") || user?.permissions?.includes("manage_inventory"));
+  const cannotCreate = isAdvisor || !Boolean(user?.permissions?.includes("create"));
 
   useEffect(() => {
     if (isReady && cannotCreate) {

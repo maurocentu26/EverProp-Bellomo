@@ -74,13 +74,15 @@ test('cleared optional fields are explicitly sent as null',async()=>{
 
 test('lot edits send measures, services and a paired cleared price',async()=>{
  let payload;
- const api=client((url,init)=>{payload=JSON.parse(init.body);return {data:{...property,price:null,currency_code:null,services:init.body.services_json,commercial_features:init.body.commercial_features_json}};});
+ const api=client((url,init)=>{payload=JSON.parse(init.body);return {data:{...property,price:null,currency_code:null,services:payload.services_json,commercial_features:payload.commercial_features_json}};});
  const land={frente_m:10,fondo_m:24,ochava_m2:0,padron:'A-123'};
- await api.updateEverpropProperty('property-a',{version:8,price:null,currency:null,services:{water:true,electricity:false},commercialFeatures:{land}});
+ const saved=await api.updateEverpropProperty('property-a',{version:8,price:null,currency:null,services:{water:true,electricity:false},commercialFeatures:{land}});
  assert.equal(payload.price,null);assert.equal(payload.currency_code,null);
  assert.equal(payload.services_json.water,true);assert.equal(payload.services_json.electricity,false);
  assert.equal(payload.commercial_features_json.land.padron,'A-123');
  assert.equal(payload.commercial_features_json.land.ochava_m2,0);
+ assert.equal(saved.services.water,true);
+ assert.equal(saved.commercialFeatures.land.padron,'A-123');
 });
 
 test('a batch-generated lot keeps every service when edited',async()=>{
