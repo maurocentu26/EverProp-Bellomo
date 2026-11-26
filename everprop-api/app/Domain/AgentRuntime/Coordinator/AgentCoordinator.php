@@ -230,7 +230,6 @@ final class AgentCoordinator
         $trace['sources'] = array_column($sources, 'source_id');
         // Evidence is what the model saw of each approved source: its heading and its excerpt (EVP-113).
         $trace['knowledge'] = array_map(fn (array $s): string => $s['title'].': '.$s['excerpt'], $sources);
-        $trace['prices'] = [];
         $trace['facts'] = [];
 
         $tenantName = (string) DB::table('tenants')->where('id', $context->tenantId)->value('name');
@@ -266,7 +265,6 @@ final class AgentCoordinator
                 return $summary;
             }
             $json = json_encode($envelope, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-            $this->collectPrices($envelope, $trace);
             $this->collectFacts($use['name'], is_array($use['input'] ?? null) ? $use['input'] : [], $envelope, $trace);
             if ($use['name'] === 'solicitar_visita' && $envelope['ok']) {
                 $trace['visit_requested'] = true;
@@ -382,28 +380,6 @@ final class AgentCoordinator
     }
 
     /**
-     * Only prices the tools actually returned are evidence for the OutputGuard (never ids, dates or
-     * other numbers from the payload). Property descriptions never back commercial terms (EVP-113): an
-     * advisor edits them without approval.
-     *
-     * @param  array<string, mixed>  $envelope
-     * @param  array<string, mixed>  $trace
-     */
-    private function collectPrices(array $envelope, array &$trace): void
-    {
-        if (! $envelope['ok']) {
-            return;
-        }
-        $data = $envelope['data'];
-        foreach (array_merge([$data], is_array($data['items'] ?? null) ? $data['items'] : []) as $item) {
-            $price = is_array($item) ? ($item['price'] ?? null) : null;
-            if (is_array($price) && isset($price['amount'], $price['currency'])) {
-                $trace['prices'][] = ['amount' => (string) $price['amount'], 'currency' => (string) $price['currency']];
-            }
-        }
-    }
-
-    /**
      * EVP-192: the property facts the inventory tools returned this turn are evidence for the OutputGuard (counts,
      * surface, code, place, category and the listing text). An inventory answer (items, an empty list or NOT_FOUND)
      * also lets the reply say a unit is not available, and a unit code asked for and not found (NOT_FOUND, or a search
@@ -433,7 +409,7 @@ final class AgentCoordinator
         foreach (is_array($data['items'] ?? null) ? $data['items'] : [$data] as $item) {
             if (is_array($item) && isset($item['id'])) {
                 $trace['facts'][] = array_intersect_key($item, array_flip(['code', 'bedrooms', 'bathrooms', 'area_m2', 'city', 'province',
-                    'neighborhood', 'project', 'category', 'description', 'price']));
+                    'neighborhood', 'project', 'category', 'description']));
             }
         }
     }
@@ -492,7 +468,8 @@ final class AgentCoordinator
         // Match the resolver's lowercase lookup exactly: an uppercase duplicate must not authorize another tenant.
         $hosts = array_values(array_filter($hosts, fn ($host): bool => is_string($host) && $host === strtolower($host)));
         $check = function (string $part, array $requested = [], ?string $factsText = null) use ($context, $trace, $draft, $visitor, $locations, $allowed, $hosts, &$facts): array {
-            return $this->guard->check($part, $trace['prices'] ?? [], $trace['knowledge'] ?? [],
+            // EVP-200: no tool price is ever evidence; financingAllowed stays off until the per-project panel flag exists.
+            return $this->guard->check($part, [], $trace['knowledge'] ?? [],
                 $trace['visit_requested'] ?? false, $draft, outOfHours: ! $draft && $this->back($context->tenantId) !== null,
                 visitorMessages: $visitor, requested: $requested, facts: $facts, inventoryChecked: $trace['inventory_checked'] ?? false,
                 locations: $locations, notFound: $trace['not_found'] ?? [], serverTexts: $allowed, factsText: $factsText, allowedHosts: $hosts);
@@ -657,7 +634,7 @@ final class AgentCoordinator
      */
     private function finish(ToolContext $context, string $decision, string $status, ?string $errorCode, array $trace, array $usage): void
     {
-        unset($trace['knowledge'], $trace['prices'], $trace['facts']); // content stays out of the run trace (ids and codes only)
+        unset($trace['knowledge'], $trace['facts']); // content stays out of the run trace (ids and codes only)
         // Only a run still STARTED: the reconciler may already have failed and handed it off.
         DB::table('chatbot_runs')->where('tenant_id', $context->tenantId)->where('id', $context->runId)->where('status', 'STARTED')->update([
             'decision' => $decision, 'status' => $status, 'error_code' => $errorCode,

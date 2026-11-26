@@ -2,6 +2,8 @@
 
 Rama `ticket/EVP-L200-derivacion-persistida`, desde `develop` `9b7259e`. Fecha: 2026-11-25.
 
+**Ticket Jira: EVP-209** (creado el 2026-11-25 para formalizar el ID provisional EVP-L200). Integrado con develop después de EVP-200: el test de precio en vivo pasa a verificar que la tool no entrega precio ni disponibilidad, y la instrucción final de Gemini ya no pide informar el dato actual frente a un folleto (precio, disponibilidad y condiciones de pago los confirma un asesor).
+
 ## Autorización y alcance
 
 Ramiro autorizó expresamente el ID provisional EVP-L200 en el chat para corregir la derivación, en una rama independiente y sin producción. Aplica la excepción de TICKETS.md; no se creó un ticket en Jira (el conector no tiene sesión). No se autoriza cerrar EVP-193/197 ni aprobar release.

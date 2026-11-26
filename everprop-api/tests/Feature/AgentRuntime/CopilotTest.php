@@ -104,11 +104,12 @@ final class CopilotTest extends TestCase
         $before = $this->snapshot($f);
         $llm = $this->llm([
             ScriptedLlm::tool('buscar_propiedades', ['unit_code' => 'L-101']),
-            ScriptedLlm::text('El lote L-101 está disponible y sale USD 85.000. ¿Querés que te pase más info?'),
+            // EVP-200: drafts follow the same rules (no price, no availability).
+            ScriptedLlm::text('El lote L-101 figura en el catálogo. ¿Querés que te pase más info?'),
         ]);
 
         $draft = $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk()
-            ->assertJsonPath('data.text', 'El lote L-101 está disponible y sale USD 85.000. ¿Querés que te pase más info?');
+            ->assertJsonPath('data.text', 'El lote L-101 figura en el catálogo. ¿Querés que te pase más info?');
 
         $this->assertSame($before, $this->snapshot($f), 'a draft sends, queues and changes nothing');
         $this->assertSame(AgentCoordinator::COPILOT_TOOLS, $llm->calls[0]['tools'], 'only read-only tools are offered');
@@ -217,13 +218,17 @@ final class CopilotTest extends TestCase
         $source = $knowledge->search((int) $f['tenant']->id, '¿Cuánto sale el L-101?')[0]['source_id'];
         $trace = fn (): array => json_decode((string) DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->orderByDesc('id')->value('trace_json'), true);
 
-        $this->llm([ScriptedLlm::text('El L-101 se financia en 36 cuotas fijas [Fuente: '.$source.'].')]);
-        $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk()->assertJsonPath('data.text', 'El L-101 se financia en 36 cuotas fijas.');
+        // EVP-200: the installments of the source are not disclosed by default, so the draft cites it without them.
+        $this->llm([ScriptedLlm::text('Un asesor te detalla la financiación del L-101 [Fuente: '.$source.'].')]);
+        $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk()->assertJsonPath('data.text', 'Un asesor te detalla la financiación del L-101.');
         $this->assertSame([$source], $trace()['cited']);
-        $this->assertSame(hash('sha256', 'El L-101 se financia en 36 cuotas fijas.'), $trace()['draft_sha256'], 'the advisor sends the clean text');
+        $this->assertSame(hash('sha256', 'Un asesor te detalla la financiación del L-101.'), $trace()['draft_sha256'], 'the advisor sends the clean text');
 
-        foreach (['El L-101 se financia en 60 cuotas [fuente: '.$source.'].' => 'UNSUPPORTED_TERM',
-            'El L-101 se financia en 36 cuotas [fuente: '.$doc.'#99].' => 'UNKNOWN_SOURCE', 'El L-101 se financia en 36 cuotas [fuente: F2].' => 'UNKNOWN_SOURCE'] as $unsafe => $code) {
+        foreach (['El L-101 se financia en 36 cuotas fijas [fuente: '.$source.'].' => 'UNSUPPORTED_TERM',
+            'El L-101 se financia en 60 cuotas [fuente: '.$source.'].' => 'UNSUPPORTED_TERM',
+            'Un asesor te detalla la financiación del L-101 [fuente: '.$doc.'#99].' => 'UNKNOWN_SOURCE', 'Un asesor te detalla la financiación del L-101 [fuente: F2].' => 'UNKNOWN_SOURCE',
+            // EVP-200: stating that financing exists is not disclosed by default, even citing an approved source.
+            'El L-101 tiene financiación propia [fuente: '.$source.'].' => 'UNSUPPORTED_TERM'] as $unsafe => $code) {
             $this->llm([ScriptedLlm::text($unsafe)]);
             $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertStatus(422)->assertJsonPath('error.code', 'UNSAFE_DRAFT');
             $this->assertSame([$code], $trace()['guard']);
@@ -233,7 +238,7 @@ final class CopilotTest extends TestCase
         $docB = $knowledge->create((int) $g['tenant']->id, (int) $g['advisor']->id, ['title' => 'Financiación B', 'body' => '¿Cuánto sale el L-101? 36 cuotas fijas.']);
         $knowledge->approve((int) $g['tenant']->id, $docB, (int) $g['advisor']->id);
         $sourceB = $knowledge->search((int) $g['tenant']->id, '¿Cuánto sale el L-101?')[0]['source_id'];
-        $this->llm([ScriptedLlm::text('El L-101 se financia en 36 cuotas fijas [fuente: '.$sourceB.'].')]);
+        $this->llm([ScriptedLlm::text('Un asesor te detalla la financiación del L-101 [fuente: '.$sourceB.'].')]);
         $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertStatus(422)->assertJsonPath('error.code', 'UNSAFE_DRAFT');
         $this->assertSame(['UNKNOWN_SOURCE'], $trace()['guard']);
         $this->assertSame([], $trace()['cited']);
@@ -280,7 +285,7 @@ final class CopilotTest extends TestCase
     {
         $f = $this->inControl();
         $g = $this->inControl();
-        $this->llm([ScriptedLlm::tool('buscar_propiedades', ['unit_code' => 'L-101']), ScriptedLlm::text('El L-101 sale USD 85.000.')]);
+        $this->llm([ScriptedLlm::tool('buscar_propiedades', ['unit_code' => 'L-101']), ScriptedLlm::text('El L-101 figura en el catálogo.')]);
         $this->suggest($f['advisor'], $f['tenant'], $f['conversation'])->assertOk();
         DB::table('chatbot_runs')->where('tenant_id', $f['tenant']->id)->update(['error_message' => 'SECRETO-PROVEEDOR-991']);
         $trace = fn (User $u, Tenant $t, string $c) => $this->actingAs($u)->withHeaders($this->tenantHeaders($t))->getJson("/api/v1/admin/conversations/$c/trace");
